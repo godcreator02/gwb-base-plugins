@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "验收件：一个 shadcn 按钮 + 一个亮暗开关，用来验运行时环境与样式这条链路通不通",
   "type": "module",
   "main": "dist/index.js",
@@ -34,13 +34,13 @@
   "peerDependencies": {
     "@godcreator02/gwb-plugin-api": ">=0.0.3",
     "@godcreator02/gwb-shared-react": ">=0.0.2",
-    "@godcreator02/gwb-store": ">=0.0.1",
+    "@godcreator02/gwb-data": ">=0.0.1",
     "@godcreator02/gwb-tokens": ">=0.0.2"
   },
   "devDependencies": {
     "@godcreator02/gwb-plugin-api": "0.0.3",
     "@godcreator02/gwb-shared-react": "workspace:*",
-    "@godcreator02/gwb-store": "workspace:*",
+    "@godcreator02/gwb-data": "workspace:*",
     "@godcreator02/gwb-tokens": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

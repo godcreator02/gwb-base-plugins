@@ -90,10 +90,10 @@ devDependencies**。
 
 ### 要认出「是谁在取我」，用 `Service` 基类，别用 `accessor`
 
-`ctx.gwbStore` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
+`ctx.gwbData` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
 名字去读别人的数据。cordis 有两条路能做到「服务感知调用方」，实测过才知道只有一条能走：
 
-{/* ref file="../plugins/store/src/index.ts" lines="33-48" */}
+{/* ref file="../plugins/data/src/index.ts" lines="33-48" */}
 
 - **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` **确实**是访问者的 ctx（实测
   `child.probe === child`）。但**`inject` 不认它**——件写 `inject: ['那个名字']` 会永远等下去，

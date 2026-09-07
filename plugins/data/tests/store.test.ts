@@ -9,7 +9,7 @@ const warnings: string[] = []
 const warn = (m: string): void => void warnings.push(m)
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gwb-store-'))
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gwb-data-'))
   warnings.length = 0
 })
 

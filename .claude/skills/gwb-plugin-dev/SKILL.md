@@ -98,9 +98,9 @@ pnpm build
 cd plugins/<件名>
 pnpm publish --registry http://127.0.0.1:4873/ --no-git-checks
 
-# 4. 装进 home
-cd $env:APPDATA\gwb-kernel\home
-node <内核仓>\apps\desktop\node_modules\pnpm\bin\pnpm.cjs add @godcreator02/gwb-<件名>@<版本>
+# 4. 装进那个 home（版本要先加进它的 pnpm-workspace.yaml 的 minimumReleaseAgeExclude）
+cd $env:APPDATA\gwb-kernel\homes\<home 名>
+pnpm add @godcreator02/gwb-<件名>@<版本>
 
 # 5. 在 <home>\cordis.yml 里加一条
 #    - id: <短名>
@@ -117,10 +117,19 @@ pnpm exec electron-vite build
 挂不上时看 `[loader]` 那行——内核有保底 error 出口，会报出 `ERR_MODULE_NOT_FOUND` 之类
 带完整路径的原因。
 
-### 一个会话一个干净 home
+### 一次验证一个干净 home
 
-验「从零装」这类事，把 `%APPDATA%\gwb-kernel\home` 整个删掉再起。别复用上一次留下的——
-里头是若干个不同时刻手工放进去的件，验什么都不算数。
+**别拿日常那个 `default` 验**。开一个新的：
+
+```powershell
+$env:GWB_HOME = 'data-2609070700'   # <被测件短名>-<yyMMddHHmm>
+```
+
+home 自动建在 `%APPDATA%\gwb-kernel\homes\<名>\`，不用先创建，日志也跟着走。复用旧 home 的
+下场是：里头躺着十几个不同时刻装进去的版本快照，验什么都不算数。
+
+完整的判断层（产物是不是新的、件进 home 只有哪一条路、哪几种「看着成了」其实没验、什么时候
+清理）在**内核仓的 `gwb-test` skill**，别在这儿抄第二份。
 
 ## 内核给的面就这么大
 

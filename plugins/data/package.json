@@ -1,7 +1,7 @@
 {
-  "name": "@godcreator02/gwb-store",
+  "name": "@godcreator02/gwb-data",
   "version": "0.0.1",
-  "description": "数据格：件把自己的东西落到 <home>/data/<包名>/ 下，一份文档一个 JSON",
+  "description": "件的数据：把自己的东西落到 <home>/data/<包名>/ 下，一份文档一个 JSON",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
     "src"
   ],
   "gwb": {
-    "title": "数据格"
+    "title": "数据"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

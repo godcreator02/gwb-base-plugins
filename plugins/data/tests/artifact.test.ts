@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-if (!built) console.warn('[gwb-store] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
+if (!built) console.warn('[gwb-data] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** 运行时真 import 的两个，一个都不能少、也不该多 */
 const ALLOWED_BARE = new Set(['cordis', '@godcreator02/gwb-plugin-api'])
