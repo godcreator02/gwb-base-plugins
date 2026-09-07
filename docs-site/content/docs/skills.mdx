@@ -89,6 +89,12 @@ ctx.inject(['gwbSkills'], (scoped) => {
 **frontmatter 取不到 `description` 也要报一句**：只认单行 `key: value`，折叠块（`>-`、`|`）
 取不到值。静默当成空的话，作者要到 agent 死活不读这个 skill 时才发现描述丢了。
 
-## 它不认识 MCP
+## 它不认识 MCP，但 agent 从 MCP 读它
 
-暴露给外部 agent 那一面在 [gwb-mcp](/docs/mcp)，不在这儿。这个件只管收集与查询。
+收集与查询收在 [gwb-mcp](/docs/mcp) 那头：skills 件不认识 MCP，mcp 件把这里的表翻译成
+MCP 的两格——`instructions` 点名此刻挂着的 skill（**唯一的发现面**，客户端不会自己去
+`resources/list`），正文挂成 `skill://gwb/<名>/<文件>` resources。翻译是**每请求现取
+`list()`** 的，热挂的件当场进说明书；`read` 读不到时 mcp 那头 throw，回 JSON-RPC 错误
+好过骗对面「说明书是空的」。
+
+局部注入接的两格也是对称的：skills 件停了/卸了，下一台 server 起就不带说明书，桥照开。

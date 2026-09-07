@@ -129,6 +129,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.2
         version: 0.0.2(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -307,6 +310,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -322,6 +328,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -349,6 +358,9 @@ importers:
       '@godcreator02/gwb-shell':
         specifier: workspace:*
         version: link:../shell
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       '@godcreator02/gwb-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -391,6 +403,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -406,6 +421,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9

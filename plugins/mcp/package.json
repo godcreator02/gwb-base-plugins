@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-mcp",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "MCP 桥：把命令面开给外部 agent，token 鉴权 + 两件工具",
   "type": "module",
   "main": "dist/index.js",
@@ -37,6 +37,7 @@
     "@godcreator02/gwb-commands": "workspace:*",
     "@godcreator02/gwb-data": "workspace:*",
     "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }

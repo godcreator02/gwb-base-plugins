@@ -32,7 +32,7 @@ token 落在 `<home>/data/@godcreator02/gwb-mcp/token.json`，形状 `{ token, c
 
 ## 工具面只有两件
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="119-143" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="142-206" */}
 
 **没有逐条门牌**：命令注册表随装了哪些件而变，没有一张固定清单，所以给的是
 「看清单」加「按名字调」这一对。旧线做过五件精选直通，后来发现它们不比
@@ -58,7 +58,7 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="145-156" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="208-219" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
@@ -69,7 +69,7 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 
 ## 一道门，不是两道
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="88-111" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="112-134" */}
 
 token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到正事。
 
@@ -81,7 +81,7 @@ token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到
 
 ## 取令牌存的是 promise，不是值
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="60-86" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="91-105" */}
 
 首启那次要异步落一份盘，而路由一挂上去随时可能进请求。存值的话，两个并发请求会各
 生成一个 token 互相盖掉；存 promise，先到的请求等的就是同一次首启。

@@ -12,16 +12,18 @@ livedoc: none
 
 | 件 | 包名 | 服务 | 状态 |
 | --- | --- | --- | --- |
-| **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.0.4**，装进 home 验通 |
-| **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.1**，落盘验通 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.13**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动 |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.4**，第三刀半完成，见[它的页](/docs/shell) |
-| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.2**，收集与查询验通，见[它的页](/docs/skills) |
-| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.1**，最小可连通版，见[它的页](/docs/mcp) |
-| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.0.2**，只做运行器（自检已拆去 hello），见[它的页](/docs/node-cli) |
-| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.3**，只做运行器；venv 建在**消费方件**的包根下，见[它的页](/docs/py-cli) |
+| **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.0.2**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
+| **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.3**，落盘验通；写失败从此 error 出声 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.14**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger` |
+| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.10**，第三刀半完成，见[它的页](/docs/shell)；窗格/报名的 info 日志在仓里待发 |
+| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.3**，收集与查询验通，见[它的页](/docs/skills) |
+| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.3**，instructions + `skill://` resources 接通 skills，agent 调用逐条留痕，见[它的页](/docs/mcp) |
+| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.0.4**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
+| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.5**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
 | **logger** | `@godcreator02/gwb-logger` | — | **已发 0.0.2**，四路日志窗格实机验通，见[它的页](/docs/logger) |
-| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.1**，node 半验通（界面与插件启停是第二版），见[它的页](/docs/settings) |
+| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.4**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
+| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.4**，装包/条目/启停/显示名，启停改名出声；自带一份 `gwb-plugins` skill |
+| **market** | `@godcreator02/gwb-market` | —（不 provide） | **已发 0.0.1**，白名单 + 装机窗格（装的动作跨件调 `plugins.install`） |
 
 ## 共享包（`packages/`，不是件）
 
@@ -104,18 +106,24 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 `ctx.gwbData.writeDoc('layout', …)`，不用自己拼路径、也不用碰 `fs`。原子落盘在那边兜着——
 布局写到一半崩了不会毁掉上一份。
 
+## 已接：mcp × skills 那道接口
+
+旧账记的是「等真有 agent 连上来撞上一张命令名清单不够用再做」——**用户点名「把 skill
+功能用起来」就是那个真实压力**，提前做的理由记在这里。接法照当初推的形状：
+
+- `instructions` 点名此刻挂着的 skill（**唯一的发现面**——客户端不会自己去
+  `resources/list`），每份一行名字 + 描述 + URI，正文一个字不放
+- 正文挂成 `skill://gwb/<名>/<文件>` resources，读回调走 `ctx.gwbSkills.read`，
+  读不到 throw（回 JSON-RPC 错误好过骗对面「说明书是空的」）
+- mcp 那侧**局部注入** `gwbSkills`：没装 skills 件的 home 里桥照开，只是没有说明书那格
+- 翻译层抽在 `plugins/mcp/src/skills.ts`（纯函数、有单测）；**没有加 skill 专用工具**——
+  元工具还是 `gwb_cli_list` / `gwb_cli_run` 两件
+
+照 hello 样板挂上说明书的一批：`commands` / `settings` / `plugins` / `node-cli` /
+`py-cli` 各一份，讲的全是 agent 经命令总线真用得着的东西（信封、参数形状、两层结构、
+回执字段）。
+
 ## 之后
-
-**mcp × skills 那道接口**：这一版两件**各自独立**——skills 收着说明书，mcp 开着口，
-中间没有线。接起来是 mcp 那侧的事，MCP 协议里没有 skill 这个原语，只有两格可用：
-`instructions`（initialize 时白送进 agent 上下文的那段，**唯一的发现面**——旧线实测
-客户端不会自己去 `resources/list`）与 `resources`（正文的载体，`skill://gwb/<名>/SKILL.md`）。
-接的时候走**局部注入**，不进 `export const inject`：没装 skills 件的 home 里这道桥照常开，
-只是没有说明书那一格。
-
-**等什么**：等真有 agent 连上来干活、而且撞上「一张命令名清单不够用」。眼下那份
-`gwb-basics` 经 `skill.read` 读得到，验链路够了；接进 MCP 是为了让 agent **自己发现**它，
-没有真实压力之前不做。
 
 **`gwb-settings` 的第二版**：node 半的设置读写[已经做完了](/docs/settings)，还欠两块。
 

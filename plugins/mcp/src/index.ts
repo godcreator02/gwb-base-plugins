@@ -7,7 +7,10 @@ import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands 与 gwbData
 import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
+// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
+import type {} from '@godcreator02/gwb-skills'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
+import { buildInstructions, skillResources, type SkillsSlot } from './skills.js'
 import { textResult, toolResult } from './tools.js'
 
 /**
@@ -20,6 +23,9 @@ import { textResult, toolResult } from './tools.js'
  *   工具面变了。认下——每请求一对是这道口的立身之本
  * - 工具面只有 `gwb_cli_list` / `gwb_cli_run` 两件：命令注册表随装了哪些件而变，
  *   没有一张固定清单，所以给的是「看清单」加「按名字调」，不是逐条门牌
+ * - **说明书（skill）也从这道口出**：`instructions` 点名此刻挂着的 skill（唯一的发现面），
+ *   正文挂成 `skill://gwb/<名>/<文件>` resources。收的那头是 `gwb-skills` 件，局部注入
+ *   接的——skills 件不在这儿时这道桥照开，只是 agent 读不到说明书
  * - 鉴权见 `auth.ts`。token 落 `ctx.gwbData` 的 `token` 文档，并**打进日志**——
  *   这一版没有界面，日志是它唯一的示人出口
  */
@@ -51,6 +57,19 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
   if (cli === undefined) return
 
   const wantPort = Number(config?.port ?? DEFAULT_PORT)
+
+  /**
+   * 说明书那格。**局部注入,不写进 export const inject**:skills 件不在时这道桥照开——
+   * 说明书的收发不是它能不能干活的前提。effect 里上下线对称:skills 件停了/卸了置空,
+   * 下一台 server 起就不带说明书
+   */
+  let skills: SkillsSlot | undefined
+  ctx.inject(['gwbSkills'], (scoped) => {
+    skills = scoped.gwbSkills
+    scoped.effect(() => () => {
+      skills = undefined
+    })
+  })
   /**
    * 实际监听端口，listen 成功后回填。**端口现读不固化**：首选端口被占时真实端口是
    * 退让来的另一个，apply 时抓一个常量下来，连接串就会指向另一个 home 的宿主
@@ -94,15 +113,19 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
     const token = await ensureToken()
     if (token === null) {
       // body 不带原因：真原因经 mcp.info 与日志给人
+      log.info('拒绝了一条请求：token 拿不到（503，原因见上面的错）')
       sendJson(res, 503, { error: 'token unavailable' })
       return false
     }
     // 鉴权最先做，任何分支都不得在这之前泄露注册表信息
     if (!bearerMatches(req.headers.authorization, token)) {
+      // 日志只说「没过」，不说带的是什么——bearer 值进了日志跟写在门上没区别
+      log.warn('拒绝了一条请求：鉴权没过（401）')
       sendJson(res, 401, { error: 'unauthorized' })
       return false
     }
     if (req.method !== 'POST') {
+      log.info(`拒绝了一条请求：不是 POST（405，收到的是 ${String(req.method)}）`)
       res.writeHead(405, { allow: 'POST', 'cache-control': 'no-store' })
       res.end()
       return false
@@ -117,12 +140,23 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
    * `if (cli === undefined) return` 之前就被调用，于是不给 `cli` 保留窄化
    */
   const buildServer = (): McpServer => {
-    const server = new McpServer({ name: 'gwb', version: kernel.appVersion ?? '0.0.0' })
+    // 每请求现取:此刻挂着的 skill 当场进说明书,热挂的件不用等重连之外的动作
+    const list = skills?.list() ?? []
+    const server = new McpServer(
+      { name: 'gwb', version: kernel.appVersion ?? '0.0.0' },
+      // instructions 是 skill 唯一的发现面:客户端不会自己 resources/list,
+      // 不在这段里点名的 skill 等于不存在
+      { instructions: buildInstructions(list) },
+    )
 
     server.registerTool(
       'gwb_cli_list',
       { description: '列出这个 home 此刻有哪些命令（名字 + 描述 + 注册它的件）。命令随装了哪些件而变，没有固定清单。' },
-      () => textResult({ count: cli.list().length, commands: cli.list() }),
+      () => {
+        const commands = cli.list()
+        log.info(`agent 列了一遍命令清单（${commands.length} 条）`)
+        return textResult({ count: commands.length, commands })
+      },
     )
 
     server.registerTool(
@@ -136,8 +170,37 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
           args: z.unknown().optional().describe('可选参数，命令自己校验'),
         },
       },
-      async ({ command, args }) => toolResult(await cli.run(command, args)),
+      async ({ command, args }) => {
+        const result = await cli.run(command, args)
+        // 这道口是露在外面的：agent 每次调用都得留痕。commands.run 记不了「是 agent
+        // 调的」——这一条补的正是来源
+        const error =
+          result !== null && typeof result === 'object' && 'error' in result
+            ? String((result as { error: unknown }).error)
+            : undefined
+        if (result !== null && typeof result === 'object' && (result as { ok?: unknown }).ok === true) {
+          log.info(`agent 调了 ${command}：成了`)
+        } else {
+          log.warn(`agent 调了 ${command}：没成（${error ?? '没说原因'}）`)
+        }
+        return toolResult(result)
+      },
     )
+
+    // 说明书挂成 resources:主文件一条、附件各一条。正文回读走 skills 件的登记表,
+    // **读不到就 throw**——回 JSON-RPC 错误好过骗对面「说明书是空的」
+    for (const res of skillResources(list)) {
+      server.registerResource(
+        res.name,
+        res.uri,
+        { title: res.title, description: res.description, mimeType: res.mimeType },
+        async () => {
+          const text = await skills?.read(res.source.skill, res.source.file)
+          if (text === undefined) throw new Error(`读不到 ${res.source.skill}/${res.source.file}（不在登记表里）`)
+          return { contents: [{ uri: res.uri, mimeType: res.mimeType, text }] }
+        },
+      )
+    }
 
     return server
   }
