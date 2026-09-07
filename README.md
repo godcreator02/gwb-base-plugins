@@ -13,7 +13,7 @@
 
 ```powershell
 pnpm install
-pnpm check          # typecheck + vitest
+pnpm check          # typecheck + oxlint + vitest
 pnpm build          # tsc，产物落各件的 lib/
 pnpm doc            # livedoc check：钉住的代码变了会报黄
 ```
