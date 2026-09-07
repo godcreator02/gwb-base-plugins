@@ -15,8 +15,19 @@ export interface GwbCommands {
   run(name: string, args?: unknown): Promise<GwbResult>
 }
 
-/** 注册表本体，不碰 ctx。`warn` 由调用方给，真跑时是 cordis logger */
-export function createRegistry(warn: (message: string) => void): GwbCommands {
+/** 注册表要的两级嗓门。真跑时给 cordis logger——它自带这两级 */
+export interface RegistryLog {
+  info: (message: string) => void
+  warn: (message: string) => void
+}
+
+/**
+ * 注册表本体，不碰 ctx。
+ *
+ * **每一条命令的登记与执行都出声**：run 过去把一切异常吞进回执，调用方看得到，
+ * 日志里却毫无痕迹——「谁在什么时候调了什么、成没成」是命令总线最基本的账。
+ */
+export function createRegistry(log: RegistryLog): GwbCommands {
   const table = new Map<string, { def: Required<GwbCommandDef>; handler: (args?: unknown) => unknown }>()
 
   return {
@@ -26,7 +37,9 @@ export function createRegistry(warn: (message: string) => void): GwbCommands {
       const prev = table.get(def.name)
       // 撞名后来者赢，但要告警
       if (prev !== undefined) {
-        warn(`命令 ${def.name} 被重复注册，后来者生效：${prev.def.plugin} → ${entry.plugin}`)
+        log.warn(`命令 ${def.name} 被重复注册，后来者生效：${prev.def.plugin} → ${entry.plugin}`)
+      } else {
+        log.info(`命令 ${def.name} 登记上了（${entry.plugin}）`)
       }
       table.set(def.name, record)
       // 只收自己那份
@@ -41,14 +54,24 @@ export function createRegistry(warn: (message: string) => void): GwbCommands {
 
     async run(name, args) {
       const found = table.get(name)
-      if (found === undefined) return { ok: false, error: `没有这条命令：${name}` }
+      if (found === undefined) {
+        log.warn(`跑了条不存在的命令：${name}`)
+        return { ok: false, error: `没有这条命令：${name}` }
+      }
       try {
         const result = await found.handler(args)
         // handler 自己判过成败就原样透传，没判的一律算成了
-        if (result !== null && typeof result === 'object' && 'ok' in result) return result as GwbResult
+        if (result !== null && typeof result === 'object' && 'ok' in result) {
+          const typed = result as GwbResult
+          if (typed.ok) log.info(`命令 ${name} 跑完了`)
+          else log.warn(`命令 ${name} 回了失败：${typed.error ?? '没说原因'}`)
+          return typed
+        }
+        log.info(`命令 ${name} 跑完了`)
         return { ok: true, data: result }
       } catch (err) {
         // 不炸到调用方
+        log.warn(`命令 ${name} 抛了，收成回执：${String(err)}`)
         return { ok: false, error: String(err) }
       }
     },

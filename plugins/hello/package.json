@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表、「几格各画各的」与「同一格开两份互不干扰」，外加自带一 node 一 python 两条 CLI",
   "type": "module",
   "main": "dist/index.js",

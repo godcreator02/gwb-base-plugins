@@ -6,6 +6,7 @@ import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-shell'
+import type {} from '@godcreator02/gwb-skills'
 import { readHomeDependencies } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
@@ -153,7 +154,15 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     this.wireSettings()
     this.wireCommands()
     this.wireShell()
+    this.wireSkills()
     this.info(`件管理就绪（ctx.gwbPlugins），自己那条条目是 ${ownEntryId(this.own)}，看表走 ${LIST_COMMAND}`)
+  }
+
+  /** 说明书局部注入:skills 件不在时本件照常挂。skills/ 目录得进 package.json 的 files */
+  private wireSkills(): void {
+    this.own.inject(['gwbSkills'], (ctx) => {
+      ctx.effect(() => ctx.gwbSkills.register(new URL('../skills/', import.meta.url)))
+    })
   }
 
   /** 数据件是**可选**的：嵌套注入，在了才接上，走了自动摘，后来才挂也接得上 */
@@ -301,7 +310,10 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     if (deps[pkg] === undefined) {
       throw new Error(`home 里没装 ${pkg}，加不了条目。先走 ${INSTALL_COMMAND}，或者自己去 home 里 pnpm add。`)
     }
-    return this.createEntry(pkg, id, config)
+    const entryId = await this.createEntry(pkg, id, config)
+    // install 那条路有它自己的「装上了」，这条补的是单独加条目的那一趟
+    this.info(`条目 ${entryId}（${pkg}）加进 cordis.yml 了`)
+    return entryId
   }
 
   removeEntry(entryId: string): void {
@@ -314,11 +326,15 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
 
   async enable(entryId: string): Promise<void> {
     // **null 是「删掉这个字段」**，不是「设成 null」——loader 的 update 拿 null 当删用
-    await this.tree.update(this.locate(entryId), { disabled: null })
+    const id = this.locate(entryId)
+    await this.tree.update(id, { disabled: null })
+    this.info(`条目 ${id} 已启用`)
   }
 
   async disable(entryId: string): Promise<void> {
-    await this.tree.update(this.locate(entryId), { disabled: true })
+    const id = this.locate(entryId)
+    await this.tree.update(id, { disabled: true })
+    this.info(`条目 ${id} 已停用`)
   }
 
   async setLabel(entryId: string, label: string): Promise<GwbResult> {
@@ -338,6 +354,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     else next[id] = trimmed
     await store.writeDoc(LABELS_DOC, next)
     this.labels = next
+    this.info(trimmed === '' ? `条目 ${id} 的显示名已抹掉` : `条目 ${id} 的显示名改成「${trimmed}」`)
     return { ok: true }
   }
 

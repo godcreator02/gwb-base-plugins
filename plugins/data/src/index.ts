@@ -75,7 +75,15 @@ export default class GwbData extends Service implements GwbDataApi {
   }
 
   async writeDoc(doc: string, value: unknown): Promise<void> {
-    return writeDoc(this.dir, doc, value)
+    const owner = this.owner()
+    this.warnOnRandomId(owner)
+    try {
+      await writeDoc(entryDir(this.home, owner.entryId), doc, value)
+    } catch (err: unknown) {
+      // 落盘失败过去只是把异常原样抛给调用方——很多调用方一吞，数据丢了都没声没响
+      this.ctx.logger(NAME).error(`写 ${owner.entryId}/${doc} 失败：${String(err)}`)
+      throw err
+    }
   }
 
   /**

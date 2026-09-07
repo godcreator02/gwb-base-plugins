@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-plugins",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "管 home 里的包与 cordis.yml 里的条目：装包、加条目、启停、改显示名，外加一格「已装的件」窗格",
   "type": "module",
   "main": "dist/index.js",
@@ -17,7 +17,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
@@ -42,6 +43,7 @@
     "@godcreator02/gwb-settings": "workspace:*",
     "@godcreator02/gwb-shared-react": "workspace:*",
     "@godcreator02/gwb-shell": "workspace:*",
+    "@godcreator02/gwb-skills": "workspace:*",
     "@godcreator02/gwb-tokens": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

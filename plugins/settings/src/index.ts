@@ -2,6 +2,8 @@ import { Service } from 'cordis'
 import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
 import type {} from '@godcreator02/gwb-commands'
+// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
+import type {} from '@godcreator02/gwb-skills'
 import { homeFile, looksRandom, machineFile } from './paths.js'
 import {
   createRegistry,
@@ -61,6 +63,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private readonly registry: SettingsRegistry
   private readonly files: Record<SettingScope, string>
   private readonly warn: (message: string) => void
+  private readonly info: (message: string) => void
   private writeTask: ReturnType<typeof setTimeout> | undefined
   private readonly pending = new Set<SettingScope>()
 
@@ -68,6 +71,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     super(ctx, 'gwbSettings')
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
     this.warn = (message: string): void => ctx.logger(NAME).warn(message)
+    this.info = (message: string): void => ctx.logger(NAME).info(message)
     const dataDir = requireKernel(ctx).dataDir
     this.files = { home: homeFile(dataDir), machine: machineFile(dataDir) }
     this.registry = createRegistry(this.warn)
@@ -104,6 +108,11 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       )
     })
     this.ctx.logger(NAME).info(`设置就绪（ctx.gwbSettings），取表走 ${ALL_COMMAND}`)
+    // 说明书那一格,**局部注入**:没装 skills 件的 home 里设置件照常挂。
+    // 产物在 dist/ 下,包根的 skills/ 是 '../skills/';那个目录得进 package.json 的 files
+    this.ctx.inject(['gwbSkills'], (scoped) => {
+      scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+    })
   }
 
   /**
@@ -148,6 +157,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     const slot = this.locateOwn(key, '删')
     this.registry.drop(slot)
     await this.flush(slot.scope)
+    this.info(`设置 ${slot.section}.${slot.key}（${slot.scope}）已删`)
   }
 
   /** 本件声明过这个 key 才动得了它。没声明就抛——写一项谁也不认识的东西进盘是静默事故 */
@@ -163,19 +173,28 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private async putAt(slot: Slot, value: unknown): Promise<void> {
     this.registry.put(slot, value)
     await this.flush(slot.scope)
+    this.info(`设置 ${slot.section}.${slot.key}（${slot.scope}）已写`)
   }
 
-  /** 落一份盘。**日志里永远不打 value**——gwb-kernel.log 是落盘的，凭据进去就拿不出来 */
+  /**
+   * 落一份盘。**日志里永远不打 value**——gwb-kernel.log 是落盘的，凭据进去就拿不出来。
+   * 写没写成得出声：直写路径过去把异常裸抛给调用方，调用方一吞，「没存上」就无声了
+   */
   private async flush(scope: SettingScope): Promise<void> {
     const mine = this.registry.file(scope)
-    if (scope === 'home') {
-      await writeSettings(this.files.home, mine)
-      return
+    try {
+      if (scope === 'home') {
+        await writeSettings(this.files.home, mine)
+        return
+      }
+      // machine.json 跨 home 共享，可能有另一个实例也在写。原子 rename 保证不写坏，
+      // 但会**丢更新**（A 读→B 读→A 写→B 写）。写前重读合并，把窗口缩到毫秒级
+      const disk = readSettings(this.files.machine, this.warn)
+      await writeSettings(this.files.machine, mergeFiles(disk, mine))
+    } catch (err: unknown) {
+      this.warn(`设置落盘失败（${scope}）：${String(err)}`)
+      throw err
     }
-    // machine.json 跨 home 共享，可能有另一个实例也在写。原子 rename 保证不写坏，
-    // 但会**丢更新**（A 读→B 读→A 写→B 写）。写前重读合并，把窗口缩到毫秒级
-    const disk = readSettings(this.files.machine, this.warn)
-    await writeSettings(this.files.machine, mergeFiles(disk, mine))
   }
 
   /** 元信息落盘要合批：每个件挂上都写一次的话，一次启动要写 N 遍 */
@@ -186,9 +205,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       this.writeTask = undefined
       const scopes = [...this.pending]
       this.pending.clear()
-      void Promise.all(scopes.map((scope2) => this.flush(scope2))).catch((err: unknown) => {
-        this.warn(`元信息落盘失败：${String(err)}`)
-      })
+      // 失败 flush 自己 warn 过了，这儿只兜住不让它成为没人接的 rejection
+      void Promise.all(scopes.map((scope2) => this.flush(scope2))).catch(() => undefined)
     }, 0)
   }
 

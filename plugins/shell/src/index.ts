@@ -59,11 +59,15 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly registry: PaneRegistry
   /** 件级信息另一张表：键是 entryId，一条条目至多一条。判据见 plugin-registry 的头注 */
   private readonly plugentry: PluginRegistry
+  /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
+  private readonly info: (message: string) => void
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbShell')
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
-    const warn = (message: string): void => ctx.logger('gwb-shell').warn(message)
+    const logger = ctx.logger('gwb-shell')
+    const warn = (message: string): void => logger.warn(message)
+    this.info = (message: string): void => logger.info(message)
     this.registry = createPaneRegistry(warn)
     this.plugentry = createPluginRegistry(warn)
   }
@@ -106,7 +110,10 @@ export default class GwbShell extends Service implements GwbShellApi {
   }
 
   registerPane(spec: PaneSpec): () => void {
-    const off = this.registry.register(this.owner(), spec)
+    const owner = this.owner()
+    const off = this.registry.register(owner, spec)
+    // 「哪格窗格是谁的」是注册表最基本的账：过去只有撞名才出声，挂上了反而无声
+    this.info(`窗格 ${spec.id}（${spec.title}）登记上了（${owner.pkg}）`)
     // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘。
     // 忘了收的症状是「件卸了格还在，点开是个死格」——静默的错，这层自动把它消掉
     this.ctx.effect(() => off)
@@ -114,7 +121,9 @@ export default class GwbShell extends Service implements GwbShellApi {
   }
 
   describeSelf(info: PluginInfo): () => void {
-    const off = this.plugentry.describe(this.owner(), info)
+    const owner = this.owner()
+    const off = this.plugentry.describe(owner, info)
+    this.info(`${owner.pkg} 报了名字：${info.title}`)
     this.ctx.effect(() => off)
     return off
   }

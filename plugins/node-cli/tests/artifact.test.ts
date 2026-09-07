@@ -56,7 +56,7 @@ describe('这个件只做运行器', () => {
     const manifest = JSON.parse(fs.readFileSync(path.resolve(here, '../package.json'), 'utf8')) as {
       files?: string[]
     }
-    expect(manifest.files).toEqual(['dist', 'src'])
+    expect(manifest.files).toEqual(['dist', 'src', 'skills'])
     expect(fs.existsSync(path.resolve(here, '../selftest'))).toBe(false)
   })
 })

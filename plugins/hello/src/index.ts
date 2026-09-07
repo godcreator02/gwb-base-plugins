@@ -39,25 +39,27 @@ interface Probe {
 }
 
 export function apply(ctx: GwbContext): void {
+  // 件说话的正规出口。裸 console 那阵子它只进得了文件、进不了窗格——样板得带好这个头
+  const log = ctx.logger(name)
   // 注册在 apply 里,同步的。身份不用报——服务从 fiber 上认。也不用自己包 effect,
   // 本件卸载时这两格自动从表上摘掉
   ctx.gwbShell.registerPane({ id: 'main', title: '验收件', icon: 'flask-conical' })
   // **声明 duplicable 的那一格**:它每一份自己一个本地计数,开两份互不干扰
   ctx.gwbShell.registerPane({ id: 'counter', title: '计数器', icon: 'hash', duplicable: true })
   ctx.gwbShell.describeSelf({ title: '验收件', icon: 'flask-conical' })
-  console.log('[hello] 注册了两格（main、counter）并报了名字')
+  log.info('注册了两格（main、counter）并报了名字')
 
   // 这条链上的错必须有出口:apply 是同步的,里头的 async 一旦静默 reject,
   // 现象就是「件挂上了但什么都没发生」——查起来毫无线索
   void (async () => {
-    console.log(`[hello] gwbData = ${typeof ctx.gwbData}，dir = ${ctx.gwbData?.dir ?? '取不到'}`)
+    log.info(`gwbData = ${typeof ctx.gwbData}，dir = ${ctx.gwbData?.dir ?? '取不到'}`)
     const before = (await ctx.gwbData.readDoc('probe')) as Probe | undefined
     const runs = (before?.runs ?? 0) + 1
     await ctx.gwbData.writeDoc('probe', { runs, at: new Date().toISOString() })
-    console.log(`[hello] data 通了：这是第 ${runs} 次启动（上次 ${before?.at ?? '无'}）`)
-    console.log(`[hello] home=${requireKernel(ctx).dataDir}`)
+    log.info(`data 通了：这是第 ${runs} 次启动（上次 ${before?.at ?? '无'}）`)
+    log.info(`home=${requireKernel(ctx).dataDir}`)
   })().catch((err: unknown) => {
-    console.error(`[hello] data 探针失败：${err instanceof Error ? err.stack : String(err)}`)
+    log.error(`data 探针失败：${err instanceof Error ? err.stack : String(err)}`)
   })
 
   // 说明书那一格。**局部注入,不写进 export const inject**:写进去,这个件在没装
@@ -89,6 +91,6 @@ export function apply(ctx: GwbContext): void {
       version: '0.0.1',
       command: 'gwb-hello-py',
     })
-    console.log('[hello] 两条 CLI 登记好了（hello.node、hello.python）')
+    log.info('两条 CLI 登记好了（hello.node、hello.python）')
   })
 }

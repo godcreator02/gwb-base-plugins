@@ -3,6 +3,8 @@ import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
 import type {} from '@godcreator02/gwb-commands'
+// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
+import type {} from '@godcreator02/gwb-skills'
 import { ensureVenv, venvPaths, type BootstrapResult } from './bootstrap.js'
 import { createRegistry, type PyCliRegistry, type PyCliSpec, type RegisteredPyCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
@@ -79,6 +81,10 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
   private readonly registry: PyCliRegistry
   /** 提供方自己的 ctx。往总线上挂命令得用这一份——消费者未必 inject 过 gwbCommands */
   private readonly own: GwbContext
+  /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
+  private readonly info: (message: string) => void
+  private readonly warn: (message: string) => void
+  private readonly error: (message: string) => void
   /** 正在跑的守卫,按包根去重。并发调 run 时不该同时起两个 uv sync */
   private readonly inflight = new Map<string, Promise<BootstrapResult>>()
 
@@ -86,7 +92,11 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     super(ctx, 'gwbPyCli')
     this.own = ctx
     // 构造时 this.ctx 还是**提供方**自己的,logger 绑的是本件
-    this.registry = createRegistry((message) => ctx.logger(PLUGIN_NAME).warn(message))
+    const logger = ctx.logger(PLUGIN_NAME)
+    this.info = (message: string): void => logger.info(message)
+    this.warn = (message: string): void => logger.warn(message)
+    this.error = (message: string): void => logger.error(message)
+    this.registry = createRegistry((message) => this.warn(message))
   }
 
   /** 服务就绪时把看表那条命令挂上；effect 包着,本件卸载时自动注销 */
@@ -101,6 +111,11 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
       ),
     )
     this.own.logger(PLUGIN_NAME).info(`python CLI 运行器就绪（ctx.gwbPyCli）,看表走 ${LIST_COMMAND}`)
+    // 说明书那一格,**局部注入**:没装 skills 件的 home 里运行器照常挂。
+    // 产物在 dist/ 下,包根的 skills/ 是 '../skills/';那个目录得进 package.json 的 files
+    this.own.inject(['gwbSkills'], (scoped) => {
+      scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+    })
   }
 
   /** 守卫一趟并把结果说出来。日志的措辞就是实机验收时要看的那一行 */
@@ -150,6 +165,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
   register(spec: PyCliSpec): () => void {
     const plugin = this.owner()
     const off = this.registry.register(plugin, spec)
+    this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const record = this.registry.get(spec.name)!
     const cli = this.own.gwbCommands
     const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', plugin }, (args) =>
@@ -183,6 +199,8 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
   private async runRecord(record: RegisteredPyCli, extraArgs: readonly string[]): Promise<CliRunResult> {
     const ready = await this.ensureReady(record)
     if (!ready.ready) {
+      // register 时那趟守卫有日志,run 时这道重验过去静默抛——venv 坏了的现场得留一句
+      this.warn(`venv 没就绪,${record.name} 跑不了：${ready.reason ?? '没说原因'}`)
       throw new Error(`venv 没就绪,${record.name} 跑不了：${ready.reason ?? '没说原因'}`)
     }
     const paths = venvPaths(record.packageRoot)
@@ -192,13 +210,26 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
         ? path.join(paths.scriptsDir, `${record.command}.exe`)
         : path.join(paths.scriptsDir, 'python.exe')
     const prefix = record.module !== undefined ? ['-m', record.module] : []
-    return runProcess({
+    // 起跑与收尾都出声:一条子进程从生到死,日志里得能对上账
+    this.info(`跑 ${record.name}（追加 ${extraArgs.length} 个参数,时限 ${record.timeoutMs}ms）`)
+    const result = await runProcess({
       command,
       args: [...prefix, ...record.args, ...extraArgs],
       cwd: record.cwd ?? paths.projectDir,
       env: { ...PY_ENV, ...record.env },
       timeoutMs: record.timeoutMs,
     })
+    if (result.ok) {
+      this.info(`${record.name} 跑完了：退出码 ${String(result.exitCode)}，耗时 ${result.durationMs}ms`)
+    } else if (result.exitCode === null && !result.timedOut) {
+      // 起不来（可执行文件不在之类）：原因 runProcess 收进了 stderr
+      this.error(`${record.name} 起不动：${result.stderr.text.trim().slice(-300) || '没说原因'}`)
+    } else if (result.timedOut) {
+      this.warn(`${record.name} 超时（时限 ${result.timeoutMs}ms），整棵进程树已收掉`)
+    } else {
+      this.warn(`${record.name} 没跑成：退出码 ${String(result.exitCode)}\n${result.stderr.text.trim().slice(-500)}`)
+    }
+    return result
   }
 }
 
