@@ -1,0 +1,38 @@
+{
+  "name": "@godcreator02/gwb-settings",
+  "version": "0.0.1",
+  "description": "设置：件声明自己有哪些设置项，值落在两份 JSON 里——本 home 一份、全机一份",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "peer 两条:cordis 与词汇表包都是**运行时真 import**（Service 基类要 extends 而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）。三档判据见内核仓 CLAUDE.md",
+  "//cli": "cli 件是 **dev**,跟 gwb-shell 那边不一样。两条理由:一、它在这儿是空 `import type {}`（只为激活对方的 declare module），实测产物的 .js 与 .d.ts 里一处都没有它,不占导出面;二、这个件对命令总线是**可选**的——嵌套注入,没有它服务面照样完整。写 peer 会把它强制装进 home,那跟「可选」自相矛盾",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），一升版消费方就不匹配了",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "cordis": "^4.0.0-rc.9"
+  },
+  "devDependencies": {
+    "@godcreator02/gwb-cli": "workspace:*",
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  }
+}
