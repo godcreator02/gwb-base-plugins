@@ -12,8 +12,8 @@ livedoc: none
 
 | 件 | 包名 | 服务 | 状态 |
 | --- | --- | --- | --- |
-| **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.3**，装进 home 验通 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.1**，验收件，将来被真外壳替掉 |
+| **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.4**，装进 home 验通 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.3**，验收件兼样板，将来被真外壳替掉 |
 | **shell** | `@godcreator02/gwb-shell` | — | 下一个 |
 | **logger** | `@godcreator02/gwb-logger` | — | 待做 |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
@@ -24,8 +24,8 @@ livedoc: none
 
 | 包 | 装什么 | 状态 |
 | --- | --- | --- |
-| **shared-react** | `@godcreator02/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.1** |
-| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.1** |
+| **shared-react** | `@godcreator02/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.2** |
+| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.2** |
 
 样式构建线在 `tools/build-styles.ts`，**不做成包**——消费方只有仓内的件，做成包过不了
 准入判据第二关。件的 `build` 脚本直接调它。
@@ -64,15 +64,22 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 六个图标名的花名册）、CDP 探针驱动面、状态栏里的母仓品牌、`void host` 那个半吊子契约
 （参数里给了 host bridge 却改吃 `window.gwb`）。
 
-**两条要先定**（走 `gwb-decide`）：
+**前置全部清空了**，三条当初挡在前面的都已落地：
 
-1. 窗格清单住 `package.json` 的 `gwb.panes`（母仓做法，好处是外壳能在件的束加载前就排出
-   完整的「可开窗格」表），还是允许运行时注册
-2. dockview 的基础表与皮肤住宿主文档层（母仓做法，一条没写进契约的隐性耦合），还是住
-   shell 自己的束
+1. **窗格清单：运行时注册**（不是静态 `gwb.panes`）。母仓那条「外壳排表时 client 束还没
+   加载」的理由在 cordis 下不成立——件挂上时它的 node 半就在跑了，注册发生在 `apply` 里，
+   而 `client.js` 仍然点了才动态 import。判据见内核仓 decisions
+2. **dockview 的基础表与皮肤住 shell 自己的束**。内核零 UI 知识，样式经 `gwb://` 走件的
+   `exports`
+3. **React 与样式那条链路已经通了**：内核拼注 importmap、`gwb://` 交任意子路径、令牌包
+   共享一份。`plugins/hello` 是跑通的样板
 
-**还要处理**：React 与组件怎么进来。设计已经定了（token 共享 + 组件复制 + React 走
-`gwb.shared` 声明），但**内核那半还没实现**——外壳是第一个消费方，到时候一起做。
+所以 shell 开工时**照 hello 抄那套接线**（`components.json` + 别名三处 + 样式先注后渲染），
+省下来的力气全花在 dockview 上。
+
+**开工就会撞上的一件事**：布局要落盘（母仓住 `<home>/data/shell/layout.json`）。内核的
+「数据格（`store`）」正在等的就是「第一个真要落盘的件」——**shell 就是它**。所以这一刀
+连带把内核那条前提点亮，要么先补 `store`，要么 shell 先走 `gwbKernel.dataDir` 自己拼路径。
 
 ## 之后
 
