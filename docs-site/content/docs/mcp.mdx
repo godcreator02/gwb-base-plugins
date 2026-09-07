@@ -1,0 +1,109 @@
+---
+title: gwb-mcp：把命令面开给 agent
+description: 自己起 node:http，无状态 streamableHTTP，工具面只有两件
+livedoc: none
+---
+
+# gwb-mcp
+
+把 [`ctx.gwbCli`](/docs/cli) 那份命令注册表开给任意外部 agent。方向**永远**是
+agent → 工作台。
+
+包名 `@godcreator02/gwb-mcp`，无界面。`inject: ['gwbCli', 'gwbData']`。
+
+## 怎么连
+
+起来之后日志里有两行：
+
+```
+[I] gwb-mcp MCP 端点就绪：http://127.0.0.1:2870/mcp
+[I] gwb-mcp token（仅本机使用，勿外传）：<43 个字符>
+```
+
+**这一版没有界面，日志就是 token 唯一的示人出口**（另一条是命令 `mcp.info`，
+但那得先有办法调命令）。客户端配置形如：
+
+```json
+{ "url": "http://127.0.0.1:2870/mcp", "headers": { "Authorization": "Bearer <token>" } }
+```
+
+token 落在 `<home>/data/@godcreator02/gwb-mcp/token.json`，形状 `{ token, createdAt }`。
+重启沿用，不会每次换一个。
+
+## 工具面只有两件
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="119-143" */}
+
+**没有逐条门牌**：命令注册表随装了哪些件而变，没有一张固定清单，所以给的是
+「看清单」加「按名字调」这一对。旧线做过五件精选直通，后来发现它们不比
+`gwb_cli_run` 多任何能力，只是多了几条要维护的常驻描述。
+
+业务失败（命令不存在、参数不对）回的是 `isError` 的文本，**不是协议错误**——
+agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON-RPC 错误，
+分不清是自己叫错了还是这台工作台坏了。
+
+## 为什么自己起 `node:http`
+
+三条路都看过：
+
+- **`@cordisjs/plugin-http`** —— 它是 **HTTP 客户端**（`ctx.http`，axios 风格），
+  收不了请求。内核仓 roadmap 那条「装官方的 plugin-http/plugin-server」把两者混为一谈了
+- **`@cordisjs/plugin-server`** —— 能用，`ctx.server` 拿得到原始 `req._req` / `res._res`。
+  但它最后一次发布早于 cordis `4.0.0-rc.9` 两个半月，属于「semver 说行、作者没验过」
+- **拆一个 `gwb-http` 件出来**（旧线的做法）—— 一个宿主一个 server、谁要挂路由谁来注册。
+  职责分得正，但**这个 server 上眼下就只有本件一个客户**
+
+于是自己起，就在 `apply` 里。真出现第二个要开口的件，那时再拆——那一刀只动本件内部，
+不动任何跨件契约。
+
+## 无状态：每请求一对
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="145-156" */}
+
+`new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
+`sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
+
+好处是工具面永远是**此刻**的——热挂上来的件当场就在清单里。
+代价是**发不出 list_changed 那类通知**：正连着的 agent 要等下一次重连才知道多了什么。
+认下这个代价，为一条通知改成有状态不划算。
+
+## 一道门，不是两道
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="88-111" */}
+
+token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到正事。
+
+**「没给 token」与「给错 token」的响应逐字相同**——拒绝面一旦有差别，就是在给外面
+一个试探面。实机两发对比过。503 的 body 也不带原因（未鉴权的请求不该从错误文本里
+读出这台机器的情况），真原因走 `mcp.info` 与日志——问那条命令的人本来就在本机。
+
+比较本身走 `timingSafeEqual`，而且**长度先判**：不让时序侧信道透出前缀。
+
+## 取令牌存的是 promise，不是值
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="60-86" */}
+
+首启那次要异步落一份盘，而路由一挂上去随时可能进请求。存值的话，两个并发请求会各
+生成一个 token 互相盖掉；存 promise，先到的请求等的就是同一次首启。
+
+失败之后把它置空,下一次请求重来一遍——盘一时写不进去不该把这条口永久钉死在 503 上。
+
+## 依赖那 4.3MB
+
+官方 SDK 的 `dependencies` 拖着 express@5、hono、cors、jose、ajv、eventsource、
+express-rate-limit 一串，解包 4.3MB、693 个文件，跟着这个件全装进 home。
+
+摆上桌算过：换成自写一份最小 JSON-RPC（只做 initialize / tools/list / tools/call）
+是百来行、零依赖，但协议细节（版本协商、Accept 校验、错误码）得自己跟，
+而客户端的实际行为是唯一裁判。第一版求的是**能连通**，所以用 SDK。
+
+写成 `dependencies` 而不是 `peer`：这个件没有导出面（不 provide 服务、没人 import 它的
+类型），没有「消费方必须解析得到」这回事。
+
+## 安全边界
+
+**持 token 就拿到写面**：`gwb_cli_run` 能调的是完整的命令注册表，包括往 home 里装件。
+这个系统的信任模型是两层——**装件 = 授权**（件在宿主进程里有完整 Node 权限，无沙箱），
+**token 给谁 = 授权**（持 token 的 agent 等同一个远程的你）。
+
+绑 `127.0.0.1`，不对外。命令级的拒绝名单这一版不做。

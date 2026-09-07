@@ -436,3 +436,60 @@ shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
 
 CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 dev」要挪到 devDependencies
 ——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个件的人多下一份用不上的包。
+
+
+---
+
+## MCP 与 skill
+
+### 块注释里出现 `*/` 会把注释提前关掉
+
+写 MCP 那段头注释时提了一句「发不出 `notifications/*/list_changed`」——**那个 `/*/`
+里的 `*/` 当场关掉了 `/** … */`**，后面整段注释变成代码。
+
+症状最坑：报的不是「注释没闭合」，而是一屏
+
+```
+error TS1443: Module declaration names may only use ' or " quoted strings.
+error TS1127: Invalid character.
+```
+
+**看着完全像文件编码坏了**——第一反应是去查 UTF-8 与 BOM，读了字节头才排除。
+路径样式的 glob 写进块注释之前先看一眼里头有没有 `*/`。
+
+### 函数声明拿不到外层 `const` 的窄化
+
+`const cli = ctx.gwbCli` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
+是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="113-119" */}
+
+症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
+
+### `Accept` 少一个值就是 406
+
+SDK 的 streamable HTTP 要求 POST 同时带 `application/json` **与** `text/event-stream`。
+只写前者拿到的是
+
+```
+406 {"error":{"code":-32000,"message":"Not Acceptable: Client must accept both …"}}
+```
+
+手工 curl / `Invoke-WebRequest` 试这道口时极容易只写 `application/json`，然后把 406
+误判成鉴权挂了或者路由没挂上。这条只在实机试得出来，代码里看不见。
+
+### 共享包被当 peer 自动装，就不在 home 顶层，importmap 是空的
+
+新开一个 home、`pnpm add` 几个件之后起来，渲染层报
+
+```
+[renderer] SHARED （空）
+[renderer] 起不来:TypeError: Failed to resolve module specifier "react"
+```
+
+原因是内核的 `collectShared` 扫的是 **`<home>/package.json` 的 `dependencies`**，
+而 `gwb-shared-react` / `gwb-tokens` 是作为别人的 peer 被 pnpm 顺手装进 `node_modules` 的
+——躺在那儿够得着，但**不在顶层 dependencies 里**，所以一条 importmap 声明都收不到。
+
+`pnpm add` 显式装一次这两个包就好。**node 半的件完全不受影响**，所以验无界面的件时
+这条红字可以先放着——但别把它当成自己刚写的那个件的问题。

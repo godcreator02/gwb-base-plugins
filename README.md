@@ -2,14 +2,16 @@
 
 `gwb-kernel`（最小内核，单元 `26090705ymz`）的基础件仓。
 
-| 件        | 包名                           | 服务                |
-| -------- | ---------------------------- | ----------------- |
-| cli      | `@godcreator02/gwb-cli`      | `ctx.gwbCli`      |
-| data     | `@godcreator02/gwb-data`     | `ctx.gwbData`     |
-| shell    | `@godcreator02/gwb-shell`    | `ctx.gwbShell`    |
-| hello    | `@godcreator02/gwb-hello`    | —（验收件）            |
-| logger   | `@godcreator02/gwb-logger`   | —                 |
-| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` |
+| 件        | 包名                           | 服务                 |
+| -------- | ---------------------------- | ------------------ |
+| cli      | `@godcreator02/gwb-cli`      | `ctx.gwbCli`       |
+| data     | `@godcreator02/gwb-data`     | `ctx.gwbData`      |
+| shell    | `@godcreator02/gwb-shell`    | `ctx.gwbShell`     |
+| hello    | `@godcreator02/gwb-hello`    | —（验收件）             |
+| skills   | `@godcreator02/gwb-skills`   | `ctx.gwbSkills`    |
+| mcp      | `@godcreator02/gwb-mcp`      | —（不 provide，只开一道口） |
+| logger   | `@godcreator02/gwb-logger`   | —                  |
+| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings`  |
 
 **各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
 

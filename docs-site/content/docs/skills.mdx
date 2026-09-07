@@ -1,0 +1,94 @@
+---
+title: gwb-skills：说明书注册表
+description: 谁有说明书谁自己挂上来；只管收集与查询，不认识 MCP
+livedoc: none
+---
+
+# gwb-skills
+
+skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状照 Anthropic Agent Skills
+那套）。工作台把命令面开给外部 agent 之后，agent 手上只有一张命令名清单——多步流程、
+调用顺序、踩过的坑无处可讲，这个件就是那些话的落点。
+
+包名 `@godcreator02/gwb-skills`，服务 `ctx.gwbSkills`。无界面，零第三方依赖
+（frontmatter 是手写的行解析，没拉 YAML 库）。
+
+## 它的面
+
+{/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
+
+外加两条命令：`skill.list`（表）与 `skill.read`（正文）。
+
+## 三条纪律
+
+各挡一种**骗人的局面**——这是这个件全部的设计重量所在。
+
+### 挂载是主动的
+
+件在自己的 `apply` 里挂一个目录，随 `ctx.effect` 卸载回收。**不扫 `node_modules`、
+不问条目树的启停**。
+
+于是表里每一条都对应一个此刻真挂着的件，不会出现「skill 在、它讲的那条命令不在」
+——agent 照着一份讲着不存在的能力的说明书干活，症状是它做错了而没人知道为什么。
+
+### 正文每次现读盘
+
+{/* ref file="../plugins/skills/src/index.ts" lines="148-159" */}
+
+改了 `SKILL.md` 的正文立刻生效，不必重挂件；内存里只留元信息。
+
+**注册时扫的那部分不吃这个便宜**：加删文件、改 frontmatter 仍要重挂——文件清单是
+`register` 那一刻定下的。
+
+### `read` 只查登记表，不拼路径
+
+上面那段的第二个 `if` 就是这道防线。名字来查表、文件名必须在扫出来的清单里——
+**一旦改成路径拼接，一个带 `../` 的参数就能读出件目录以外的任何文件**。
+
+实机验过四种写法（`../package.json`、`../../cordis.yml`、`SKILL.md/../../../` …）全被拒，
+而且拒绝文本跟「没这份 skill」逐字相同——分开报等于告诉外面哪些名字存在。
+
+## 怎么挂
+
+在你的件里，**走局部注入**：
+
+```ts
+// 不写进 export const inject——写进去,这个件在没装 skills 件的 home 里就整个挂不上了,
+// 而说明书不是它能不能干活的前提
+ctx.inject(['gwbSkills'], (scoped) => {
+  scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+})
+```
+
+`'../skills/'` 是因为产物在 `dist/` 下、目录在包根。
+
+**然后把那个目录加进 `package.json` 的 `files`**：
+
+{/* has file="../plugins/hello/package.json" text="skills" */}
+
+漏了这一条，包照发、照装得上，直到那个件挂载去扫目录时才报「读不动」。
+
+## 身份不用自己报
+
+`register` 没有「你是谁」这个参数——服务从 `this.ctx.fiber.entry` 上认：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="102-113" */}
+
+跟 `gwb-data` 认数据目录、`gwb-shell` 认窗格归属是同一个套路。**件不报名字，
+也就没法报别人的名字**去挂一份冒名的说明书。
+
+旧线那版是 `register(dir, plugin?)` 加从路径推目录名——推得出来，但它是个可以被随便
+覆盖的参数。
+
+## 四条上限
+
+扫描不是无限的：单文件 512KB、往下三层、一个 skill 最多 64 份文件、只收
+`.md/.txt/.json/.yml/.yaml`。超了的那些不静默丢——`collectSkills` 把话攒进 `problems`，
+由调用方逐条 warn 出来。
+
+**frontmatter 取不到 `description` 也要报一句**：只认单行 `key: value`，折叠块（`>-`、`|`）
+取不到值。静默当成空的话，作者要到 agent 死活不读这个 skill 时才发现描述丢了。
+
+## 它不认识 MCP
+
+暴露给外部 agent 那一面在 [gwb-mcp](/docs/mcp)，不在这儿。这个件只管收集与查询。

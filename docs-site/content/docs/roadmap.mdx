@@ -1,6 +1,6 @@
 ---
 title: 路线
-description: 四个件到哪了、下一个是什么、各自要注意什么
+description: 各个件到哪了、下一个是什么、各自要注意什么
 livedoc: none
 ---
 
@@ -14,8 +14,10 @@ livedoc: none
 | --- | --- | --- | --- |
 | **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.4**，装进 home 验通 |
 | **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.1**，落盘验通 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.10**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.12**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；另挂一份 demo skill |
 | **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.4**，第三刀半完成，见[它的页](/docs/shell) |
+| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.2**，收集与查询验通，见[它的页](/docs/skills) |
+| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.1**，最小可连通版，见[它的页](/docs/mcp) |
 | **logger** | `@godcreator02/gwb-logger` | — | 待做 |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
 
@@ -101,6 +103,17 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 布局写到一半崩了不会毁掉上一份。
 
 ## 之后
+
+**mcp × skills 那道接口**：这一版两件**各自独立**——skills 收着说明书，mcp 开着口，
+中间没有线。接起来是 mcp 那侧的事，MCP 协议里没有 skill 这个原语，只有两格可用：
+`instructions`（initialize 时白送进 agent 上下文的那段，**唯一的发现面**——旧线实测
+客户端不会自己去 `resources/list`）与 `resources`（正文的载体，`skill://gwb/<名>/SKILL.md`）。
+接的时候走**局部注入**，不进 `export const inject`：没装 skills 件的 home 里这道桥照常开，
+只是没有说明书那一格。
+
+**等什么**：等真有 agent 连上来干活、而且撞上「一张命令名清单不够用」。眼下那份
+`gwb-basics` 经 `skill.read` 读得到，验链路够了；接进 MCP 是为了让 agent **自己发现**它，
+没有真实压力之前不做。
 
 **`gwb-logger`**：母仓那 205 行 client 是干净的，可以搬（订阅实时 + 取历史段 + 按 `ts`
 归并去重 + 级别筛选）。它的 node 半**不要**——cordis logger 的出口归官方
