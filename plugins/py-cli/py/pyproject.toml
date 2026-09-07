@@ -1,0 +1,24 @@
+# 自检的靶子,同时是**消费方照抄的模板**：一个件要跑 python CLI,它的 `py/` 就长这样。
+#
+# 三处跟 gwb-py-cli 的守卫对得上,改名字要一起改：
+# - `name` 与 `version` → 件登记时给的 distName / version,守卫拿它比对 dist-info 目录名
+# - `[project.scripts]` 的入口点 → 守卫在 venv 里生成 `<名>.exe` 垫片,spawn 的就是它
+# - `uv.lock` 必须在:守卫跑的是 `uv sync --frozen`,没锁文件当场失败
+
+[project]
+name = "gwb-pycli-selftest"
+version = "0.0.1"
+description = "gwb-py-cli 的自检靶子：在 venv 里跑起来,打一行 JSON"
+requires-python = ">=3.10"
+dependencies = []
+
+# 入口点垫片。件登记时给 command: "gwb-pycli-selftest"
+[project.scripts]
+gwb-pycli-selftest = "gwb_pycli_selftest.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gwb_pycli_selftest"]

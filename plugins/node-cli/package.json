@@ -1,0 +1,39 @@
+{
+  "name": "@godcreator02/gwb-node-cli",
+  "version": "0.0.1",
+  "description": "跑 node 写的 CLI：件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "//files": "selftest 不能漏——自检命令的靶子住在那儿，不发出去就是一条指向空气的命令",
+  "files": [
+    "dist",
+    "src",
+    "selftest"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "cordis 是运行时真 import（Service 基类要 extends,而且必须是宿主那一份,两份 cordis 的 instanceof 对不上）→ peer。契约包只 import type,但 GwbContext 出现在构造函数签名里、也就出现在导出面上,消费方 typecheck 时必须解析得到 → 也是 peer（三档判据的中间那档）。gwb-cli 同理:静态 inject 它,没有它这个件根本挂不上。三档判据见内核仓 CLAUDE.md",
+  "peerDependencies": {
+    "@godcreator02/gwb-cli": ">=0.0.4",
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "cordis": "^4.0.0-rc.9"
+  },
+  "devDependencies": {
+    "@godcreator02/gwb-cli": "0.0.4",
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  }
+}
