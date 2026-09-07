@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r --no-bail typecheck",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --no-bail typecheck",
+    "lint": "oxlint . --type-aware --deny-warnings",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm test",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
     "doc": "pnpm --filter gwb-base-plugins-docs-site exec livedoc check",
     "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec livedoc confirm"
   },
@@ -16,6 +17,8 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^24.0.0",
     "esbuild": "^0.27.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "7.0.2001",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^7.0.2",

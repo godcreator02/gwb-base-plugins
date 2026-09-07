@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  // 各包有自己的 tsconfig，这份只收编它们漏下的：仓根脚本、构建脚本、件的 tests。
+  // 件的 tsconfig 有 rootDir: "src"，tests 加不进去（不在 rootDir 下）——所以在这儿通配收编，
+  // 新件的 tests 自动进来，件那份一个字不用动
+  "include": ["tools/**/*.ts", "vitest.config.ts", "plugins/*/tests/**/*.ts", "plugins/*/build.ts"]
+}
