@@ -196,6 +196,40 @@ mountPane({ host, shell, pane }, container) => { dispose() }
 「关掉一格，另一格的样式跟着没了」——静默，且要两格同开才复现。留着的代价只是内存里
 一份 CSSOM。
 
+## 状态栏
+
+井底下那条，**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」。
+布局是两行：井 `flex-1 min-h-0`，状态栏 `flex-none`。
+
+**`min-h-0` 少不了**：flex 子项默认 `min-height: auto`，井里内容一高就把状态栏挤出屏幕。
+
+三格：
+
+| 项 | 干什么 |
+| --- | --- |
+| **＋ 可开窗格** | 点开列出注册表里所有格，选一个就开 |
+| **home** | 一眼看出自己在哪个 home 里，开测试 home 时不用翻日志 |
+| **亮暗** | 切 `html.dark`，令牌整套跟着换 |
+
+**＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致：已经开着的点了是聚焦，
+声明了 `duplicable` 的行尾多一个「＋一份」。**已开的那条不 disable**——点它是聚焦，
+那是个有用的动作，标一下就够。
+
+判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，两个入口（件调的
+`openOwnPane`、状态栏调的 `openSpec`）共用后者。
+
+### 菜单的 portal 必须挂回外壳的根
+
+件的样式表整张 scope 在 `[data-gwb-plugin="…"]` 之下，而 radix 的 Portal 默认挂 `body`
+——挂出去之后菜单一个类名都不生效。所以 `shadcn add` 拉下来的 `dropdown-menu.tsx`
+**本仓改过一处**：给 `DropdownMenuContent` 加了 `container`，透给 Portal。
+
+（这跟 dockview 那张表不 scope 是同一个根因的两面：`.dv-*` 我们管不着，所以整张不 scope；
+而我们自己的菜单归我们管，得让它待在 scope 里面。）
+
+**重新 `shadcn add dropdown-menu` 会覆盖那个文件**，那时要把这段补回来——组件源码里也写着
+这句。
+
 ## 两张样式表，规矩不同
 
 | 产物 | scope | 装什么 |
@@ -211,9 +245,38 @@ mountPane({ host, shell, pane }, container) => { dispose() }
 ——本地应用里那一百 KB 不值这个风险。
 
 **皮肤把 `--dv-*` 接到令牌上**，所以亮暗不靠换 dockview 的主题类：令牌跟着 `html.dark`
-变，井、标签条、件里的按钮一起变，**一行都不用重新构建**。实机验过。
+变，井、标签条、件里的按钮一起变，**一行都不用重新构建**。实机逐处量过——标签条、
+活动/非活动标签、分隔线、滚动条，暗色下全接着令牌走。
+
+**一个例外：`--dv-floating-box-shadow`**。dockview 给的默认值在暗底上量出来是
+`rgba(0,0,0,0.12)`，浮动组整个失去立体感。这个变量的语义**本来就跟明暗有关**（阴影就是
+影子），所以皮肤表里给暗色单独一档 `.dark .dockview-theme-gwb`。
+
+这不违反上面那条：**换的不是 dockview 的主题类，是我们自己这张表按 `.dark` 给不同的值**
+——跟令牌表本身 `:root` / `.dark` 两套值是同一个做法。往后再发现哪个变量在暗色下不对，
+照这条补，别去换基底类（换基底要在运行时监听 `html.dark`，而接令牌是纯 CSS）。
 
 主题怎么交给 dockview（挂在 `<html>` 上是没用的）见[撞过的墙](/docs/walls)。
+
+## 为什么不用 dockview 自己的注册
+
+**下一个人一定会问**：dockview 有 `components` 表，为什么还要 `pane-registry`？
+
+因为那两样管的不是一回事。dockview 的 `components` 是「component 名 → React 组件」——
+我们全部窗格都映到**同一个** `plugin` 名上；而 `pane-registry` 是「有哪几格值得存在」。
+
+它替代不了，差的三样是根本性的：
+
+- **跨进程**——dockview 的注册面全是同一个 JS 堆里的对象引用，没有任何可序列化的形态；
+  我们的注册方在 node 进程、消费方在浏览器
+- **未开也在表里**——dockview 所有枚举口（`api.panels` / `groups` / `toJSON`）**只回
+  已实例化的**。`DockviewOptions` 六十多个字段里没有 `catalog` / `availablePanels` 这类
+  东西
+- **身份与元数据**——`title` 在它那儿是 `addPanel` 的入参、不是可查询的目录项；
+  `icon` / `duplicable` / `entryId` / `pkg` 它完全没有
+
+一句话：**dockview 管「已经决定要有这一格之后它长什么样」，`pane-registry` 管「有哪几格
+值得存在」**——后者 dockview 从设计上就留给宿主。
 
 ## 撞名与说不清自己是谁
 
