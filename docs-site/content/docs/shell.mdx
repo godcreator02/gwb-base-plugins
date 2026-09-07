@@ -11,48 +11,64 @@ livedoc: none
 - **node 半**——窗格注册服务，件在自己的 `apply` 里说「我有一格窗格」
 - **浏览器半**——一口 dockview 窗格井，把注册表里的每一格开出来
 
-分四刀做，**眼下到第三刀**：井开得出格了，导航、状态栏、布局落盘还没有。四刀各是
-什么、到哪了，见[路线](/docs/roadmap)。
+分四刀做，**眼下到第三刀半**：井开得出格了、一个件能有好几格、同一格能开好几份；
+导航、状态栏、布局落盘还没有。四刀各是什么、到哪了，见[路线](/docs/roadmap)。
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="26-37" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="27-52" */}
 
-件给的那三样，与服务替它填上的身份：
+件给的那几样，与服务替它填上的身份：
 
-{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-31" */}
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-38" */}
 
 ## 怎么用
 
-**注册一格**（在你的件里）：
+**注册窗格、报自己的名字**（在你的件里）：
 
 ```ts
 export const inject = ['gwbShell']
 
 export function apply(ctx: GwbContext) {
   ctx.gwbShell.registerPane({ id: 'main', title: '我这一格', icon: 'flask-conical' })
+  // 声明了 duplicable 的格才开得出第二份
+  ctx.gwbShell.registerPane({ id: 'doc', title: '文档', duplicable: true })
+  ctx.gwbShell.describeSelf({ title: '我这个件', icon: 'box' })
 }
 ```
 
-`icon` 是 [lucide](https://lucide.dev) 的图标名，kebab-case。可以不给——画它是第四刀
-导航的事，这一刀只原样收下。
+一个件想有几格就注册几格。`icon` 是 [lucide](https://lucide.dev) 的图标名，kebab-case，
+可以不给——画它是第四刀导航的事，这一刀只原样收下。
 
-**跟 `gwb-cli` 的 `register` 不一样，这儿不用自己包 `ctx.effect`**：件卸载时这一格
-自动从表上摘掉。`registerPane` 仍然回一个注销函数，那是给要提前摘的场景。
+**`duplicable` 不写就是「我只能有一份」**。默认单份是因为代价不对称：一个没想过多实例
+的件被开两份可能状态打架（它可能用了模块级单例），而默认单份的代价只是想多份的件多写
+一个字段。第四刀的导航也要靠它决定「点一下是聚焦还是新开」。
 
-**从界面取表**（在你的 client 束里）：
+**给人看的名字归运行时**（`describeSelf`），不进包清单。包清单里那种没人读的字段死掉时
+没有任何机制会发现——`gwb.title` 就这么放了一阵，四个包声明着、零处读、两仓文档站一句
+没提。如今包清单里只剩 `gwb.shell` 与 `gwb.shared` 两个字段有人读。
+
+**跟 `gwb-cli` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：件卸载时表上
+那几条自动摘掉。它们仍然回注销函数，那是给要提前摘的场景。
+
+**从界面取表**（在你的 client 束里），两张各取各的：
 
 ```js
-const reply = await args.host.call('shell.panes')
-// { ok: true, data: [{ id, title, icon?, entryId, pkg }, …] }
+await args.host.call('shell.panes')
+// { ok: true, data: [{ id, title, icon?, duplicable?, entryId, pkg }, …] }
+await args.host.call('shell.plugins')
+// { ok: true, data: [{ title, icon?, entryId, pkg }, …] }
 ```
+
+**两张表不合并**：那张的键是 `(entryId, 窗格 id)`、一条条目可以有好几条；这张的键就是
+`entryId`、一条条目至多一条。消费方也不同（井里开格吃前者，导航列件名吃后者）。
 
 ## 身份不由件自己报
 
-`registerPane` 只收 `{ id, title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的
-fiber** 上取：
+`registerPane` 只收 `{ id, title, icon?, duplicable? }`，`describeSelf` 只收
+`{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="69-84" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="91-106" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。
@@ -64,6 +80,26 @@ fiber** 上取：
 **两样都要，不是只要包名**：同一个包挂两条条目是两份独立配置的实例，只有 `entryId`
 分得开它们。
 
+## 定义与实例是两回事
+
+|  | 是什么 | 谁产出 |
+| --- | --- | --- |
+| 窗格**定义** | 注册表里一条，件说「我有这么一格」 | `pane-registry` |
+| 窗格**实例** | 井里一个 panel，声明了 `duplicable` 就能有好几份 | `uniquePanelId` |
+
+这两个概念一开始是同一个东西——`panelIdOf(entryId, paneId)` 是纯函数，同一格必然拼出
+同一个 id。而 dockview 的 `addPanel` 撞 id 是**同步抛 Error**，所以「开第二份」这件事
+在拼 id 这一层就被堵死了。
+
+分家之后 `panelIdOf` 的身份是**基名**，实例 id 由 `uniquePanelId` 算：
+
+- 第一份的 id **就是基名**，跟只能开一份的那些格长得一模一样——落盘的东西因此不受影响
+- 第二份起追 `:2` / `:3`。分隔用 `:` 不用 `#`（`#` 在 CSS 里是 id 选择器）
+- 查的是**当下井里真有哪些**，不是任何一个计数器。所以第四刀恢复落盘布局之后再开新格
+  也不会撞
+- 序号跟 id 一起回，**不让调用方从 id 里拆**——标题要追的「(2)」得有个正当来源，而反解
+  id 正是这一族函数反复禁的事
+
 ## 窗格 id 是个不透明的键
 
 `plugin:<entryId>:<窗格 id>`。实机长这样：**`plugin:home:hello:main`**——四段，
@@ -71,6 +107,10 @@ fiber** 上取：
 
 那个前缀不能去掉，理由见[撞过的墙](/docs/walls)。要 `entryId` 或 `paneId` 就从面板的
 `params` 里取,那儿本来就分开存着,从来不必反解。
+
+**窗格 id 里不许有 `:`**——注册那一步就拒了。`entryId` 自己带冒号，窗格 id 里再有一个的
+话，两组不同的「条目 × 窗格」能拼出同一个基名，而查重会把它当成「已经开着」静默追个
+`:2` 上去。人看到的是自己的窗格标题莫名多了个「(2)」，源头却在另一个件的注册参数里。
 
 ## 为什么硬 inject 命令总线
 
@@ -101,24 +141,58 @@ fiber** 上取：
 ## 浏览器半：井与一格
 
 `bootShell` 拿到内核给的 `{ host, home, entries }`，占住整页那个根：注三张表 → 取一次
-注册表 → 渲染 dockview → 把每一格 `addPanel` 上去。**第三刀没有导航、没有状态栏、
-布局不落盘**，所以默认布局就是「表里有几格开几格」，没有「上次摆成什么样」要恢复。
+注册表 → 渲染 dockview → 把每一格开出来。**眼下没有导航、没有状态栏、布局不落盘**，
+所以默认布局就是「表里有几格开几格」，全落在一个 group 里当兄弟 tab，没有「上次摆成
+什么样」要恢复。
 
 一格窗格由 `PluginPane` 承载，它是 `mountPane` 契约的外壳这一侧：
 
 ```
-注件的样式表 → 等它真到位 → 动态 import client 束 → mountPane({ host, pane }, 容器)
-→ 收下 dispose
+注件的样式表 → 等它真到位 → 动态 import client 束
+→ mountPane({ host, shell, pane }, 容器) → 收下 dispose
 ```
 
 **样式与模块在同一个 effect 里**：件的表要先注、而且要等它真到位再 import，这两件事是
-一条时序上的承诺；拆成两个 effect 就只剩「谁先跑」这种靠排列顺序的默契。**拿不到
-`dispose` 就报契约不符**，不装作成功——那条路上关格时清不掉，让写件的人当场看见。
+一条时序上的承诺；拆成两个 effect 就只剩「谁先跑」这种靠排列顺序的默契。格间总线的句柄
+也在这条 effect 里取、清理时松手。**拿不到 `dispose` 就报契约不符**，不装作成功——那条
+路上关格时清不掉，让写件的人当场看见。
 
-窗格拿到的 args 这一刀**只有 `{ host, pane }`**。`shell` 那层（`openPane`、格间总线）
-要等第四刀有了导航、有了多格共存，形状才定得下来。args 是对象，加字段不破坏已有的件。
+## 窗格件拿到的 args
 
-**样式表注过就不摘**：同一个件开两格没必要注两条，而摘它需要引用计数，计数错了的症状是
+这是**窗格件契约的正本**（内核只定 `bootShell`，`mountPane` 的 args 由外壳定）：
+
+```ts
+mountPane({ host, shell, pane }, container) => { dispose() }
+```
+
+| | 是什么 |
+| --- | --- |
+| `host.call(command, args?)` | 命令通道，走到宿主分发再原路回 |
+| `shell.openPane(paneId, { duplicate? })` | 打开**本件**的另一格 |
+| `shell.bus` | 格间小总线，`emit(type, detail?)` 与 `on(type, fn)` 回注销函数 |
+| `pane.id` | 这一格是本件的哪一格（注册时给的那个 id） |
+| `pane.instance` | 这**一份**的唯一键。开两份时两份的这个值不一样 |
+
+**只开得了自己那几格**：`entryId` 由 `PluginPane` 造这个对象时闭包绑定，件报不出别人的
+条目——跟 `registerPane` 不收身份是同一条理由。
+
+`openPane` 的行为：已经开着就聚焦；`duplicate: true` **而且**那格声明过 `duplicable`
+才再开一份；要多份但没声明就退回聚焦、外加一条 console 警告（不静默也不抛）；认不出
+`paneId` 什么都不做，但话里带得出是谁要开什么。
+
+判断全在 `planOpen` 那个纯函数里，接线那侧只剩「按 kind 分派」——那四条分支**有两条
+实机点不出来**（要多份而没声明那条，得专门写一个错的件才走得到）。
+
+**表现取不用快照**：件是热挂载的，后挂上的件在快照里没有自己。取表是一次本地 IPC，
+而调用方全是 click 回调、没人等返回值。
+
+**总线的桶按条目分**，所以同一条条目的几格——含同一格的两份——在同一个桶里。一格松手时
+自己挂的听众要摘干净，理由见[撞过的墙](/docs/walls)。
+
+**重复那份开在右边一个新 group**：不给 `position` 的话它落进当前 group 当兄弟 tab，
+一开就把第一份盖住，而「两份同屏」正是多实例唯一能眼见为实的地方。
+
+**样式表注过就不摘**：同一个件开几格没必要注几条，而摘它需要引用计数，计数错了的症状是
 「关掉一格，另一格的样式跟着没了」——静默，且要两格同开才复现。留着的代价只是内存里
 一份 CSSOM。
 

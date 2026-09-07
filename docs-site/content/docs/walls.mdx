@@ -88,6 +88,25 @@ devDependencies**。
 
 ## 服务
 
+### 一格松手时不摘听众——单实例把这个洞遮了整整三刀
+
+格间总线的 `release()` 原来只减引用计数、桶空了才整个删。**一格一份的年代这完全看不
+出问题**：最后一格松手时桶就没了，听众摘没摘都一样。
+
+同一格能开两份之后遮不住了：关掉两份里的一份，**它挂的听众仍被另一份撑在桶里**，于是
+关掉的那一格继续收事件，回调往一棵已经拆掉的 React 树上打。症状要么是 console 里
+「往已卸载组件 setState」，要么干脆无声泄漏。
+
+这条是**新能力引出来的旧洞**，不是新写坏的。句柄现在自己记一份挂过什么，`release` 时
+逐条摘、再松手——顺序反过来的话桶可能已经拆了，摘了个寂寞，而桶没拆那种情况正是这几行
+要治的。
+
+{/* ref file="../plugins/shell/src/bus.ts" lines="121-131" */}
+
+两条跟着定下来的语义：`emit` 在 `release` 之后是**静默**的（外壳的清理顺序是「先让件
+dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效）；桶里那层是 `Set`，
+**按函数引用去重**，两格挂同一个函数只存一份、谁先摘谁带走。
+
 ### 要认出「是谁在取我」，用 `Service` 基类，别用 `accessor`
 
 `ctx.gwbData` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
@@ -126,7 +145,7 @@ devDependencies**。
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="37-52" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="50-68" */}
 
 ---
 
@@ -153,7 +172,7 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 搬 shell 那批纯逻辑时撞到两条。**规则本身没错，是这两处代码故意反着来**：
 
-{/* ref file="../plugins/shell/src/bus.ts" lines="72-79" */}
+{/* ref file="../plugins/shell/src/bus.ts" lines="94-101" */}
 
 - **`unicorn/no-useless-spread`** —— `for (const fn of [...set])` 那份拷贝是有意的：听众
   收到事件后摘掉自己是常事，直接遍历活集合会漏掉或重复。规则看不出「遍历期间集合会被改」
@@ -258,6 +277,24 @@ resolve 不了。
 **过渡关掉之后本来就不用等**：`getComputedStyle` 是同步的，改完类名当场读就是终值。
 要等异步的东西就用 `setTimeout`（它不受节流影响到这个程度），别用 rAF。
 
+### dockview 的标签不听 `.click()`
+
+探针要切窗格标签时 `tab.click()` **一点反应都没有**，而且不报错——活动标签原样不动，
+探针接着就撞上「找不到那一格里的按钮」，看着像是那一格没画出来。
+
+它听的是 **`pointerdown` / `mousedown` 序列**：
+
+```js
+for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
+  tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0 }))
+}
+```
+
+顺带一条**验收时必须知道的**：同一个 group 里不活动的那一格，dockview 的默认渲染器
+（`onlyWhenVisible`）**只把 DOM 摘走、不卸组件**。所以 `querySelector` 找不到它里面的
+东西，但它的 React 状态、总线监听全都还活着——「切走再切回来，计数还在」是对的，
+「切走的那一格收不到总线事件」则是错的。
+
 ---
 
 ## gwb:// 取货
@@ -305,6 +342,44 @@ HTML.dockview-theme-light dockview-theme-gwb   ← 我们挂的这份被压在�
 
 `<html>` 上那份留着当兜底，给可能挂到 `body` 下的门户元素——多挂一个只定义变量的类
 代价是零，漏了的话那些元素一片没样式，而且要拖起来才发现。
+
+### `addPanel` 撞 id 是同步抛，而抛出去的后果比「少开一格」重
+
+`api.addPanel({ id })` 撞上已经存在的 id **同步抛 Error**（`_doAddPanel` 头一句就是这个
+守卫），不覆盖、不返回已有的那个。
+
+第三刀的 `onReady` 里是裸 `addPanel`，**没预检也没 try/catch**。当时不炸纯粹是运气好——
+注册表的 Map 键 `(entryId, 窗格 id)` 在上游保证了不会有同键两条。而它一旦炸：
+
+1. `onReady` 是在 dockview-react 的 `useEffect(…, [])` 里**同步**调的，异常从 effect 里
+   冲出去 → React 把整棵树卸掉 → **白页**
+2. 那个 effect 的 `return () => api.dispose()` **从来没被返回**，DockviewComponent 连同
+   它的 ResizeObserver 一起泄漏
+3. `bootShell` 的 `.catch` 接不到——它接的是 `boot()` 那条 Promise，不是 React 渲染
+
+所以开格只有一条路：**先算好唯一 id 再 addPanel**，`onReady` 与 `openPane` 同吃这一处。
+
+顺带一条查证掉的顾虑：**panel id 不进 DOM**。tab 与 tabpanel 的 DOM id 是自增计数器
+（`dv-tab-N`），dockview 全文的 `querySelector` 查的都是 `.dv-*` 类名。所以 id 里用什么
+字符都安全——`:` 作分隔的理由不是「怕 querySelector」，是「就一种分隔符」。
+
+另有一条**格式硬要求**：落盘时 panel 表是**按 id 做键的对象**（`_doFromJSON` 里
+`Object.keys(data.panels)`），所以序列化格式根本表达不出重复 id。实例 id 全局唯一不是
+「最好这样」，是格式要求。
+
+### 窗格 id 里不许有 `:`，否则查重会静默认错格
+
+`entryId` 自己就带冒号（实机 `home:hello`），而面板 id 是 `plugin:<entryId>:<窗格 id>`。
+窗格 id 里再有一个冒号的话，两组不同的「条目 × 窗格」能拼出同一个基名：
+
+- `home:hello` + `main` → `plugin:home:hello:main`
+- `home` + `hello:main` → `plugin:home:hello:main`
+
+**加了实例查重之后这个洞反而更难查**：以前是 `addPanel` 当场抛，现在查重把它当成
+「已经开着」，静默追个 `:2` 上去。人看到的是自己的窗格标题莫名多了个「(2)」，而源头
+在另一个件的注册参数里。
+
+注册那一步直接拒了，跟空 id 一样抛、话里带包名。
 
 ### 产物守卫的正则得锚在行首，不然被它自己的错误消息骗
 

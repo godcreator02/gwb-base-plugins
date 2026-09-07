@@ -14,8 +14,8 @@ livedoc: none
 | --- | --- | --- | --- |
 | **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.4**，装进 home 验通 |
 | **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.1**，落盘验通 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.9**，验收件兼样板；这一刀起是**窗格件**，不再是外壳 |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.3**，第三刀完成：井开得出格了，见[它的页](/docs/shell) |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.10**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份 |
+| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.4**，第三刀半完成，见[它的页](/docs/shell) |
 | **logger** | `@godcreator02/gwb-logger` | — | 待做 |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
 
@@ -49,15 +49,20 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 | **一** | 搬纯逻辑：`bus` / `liveness` / `mount-handle` / `panels` | **完成**，41 条测试全绿 |
 | **二** | `ctx.gwbShell` 窗格注册服务；`openable` 这时才搬 | **完成**，实机验通 |
 | **三** | dockview 骨架 + 开一格插件窗格 | **完成**，实机验通 |
+| **三半** | 一个件多格、同一格开多份、`args.shell` 落地 | **完成**，实机验通 |
 | **四** | 布局落盘（`ctx.gwbData`）+ 导航 + 状态栏 | 待做 |
 
-**前三刀交出的面与判据见[它自己那页](/docs/shell)。**
+**各刀交出的面与判据见[它自己那页](/docs/shell)。**
 
 - **一**：搬进来的四个模块全是纯逻辑，`openable` 特意推迟到第二刀
 - **二**：`openable` 是**重写不是搬**——母仓那份吃的是「条目表 × 包声明的 `gwb.panes`」，
   运行时注册下 join、过滤、老格兼容三样一起消掉了。`mount-handle` 也跟着契约改名改了
 - **三**：`hello` 这一刀起降级成**窗格件**（导出 `mountPane`、`gwb.shell` 摘掉），
   外壳的位置归 shell。两个 `shell: true` 会让渲染层不挑，所以这两条必须同一次换过来
+- **三半**（不在原来的四刀里）：窗格的**定义**与**实例**分家。它插在三与四之间，因为
+  **第四刀的导航要靠这一刀定下来的形状**——点一下是聚焦还是新开、右键给不给「新开一份」、
+  导航列件名从哪来。顺带清掉两笔账：`gwb.title` 这个死字段（四个包声明、零读点、
+  两仓文档站一句没提），以及 `bus.ts` 那个「搬进来三刀、有测试、零消费方」的模块
 
 ## 第四刀要用的东西
 
