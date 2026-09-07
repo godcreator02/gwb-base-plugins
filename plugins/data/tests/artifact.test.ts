@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
  * 产物守卫：相对 import 必须带扩展名；裸名只许那两个。
  * 缺产物时整组跳过——门禁不依赖 build。
  *
- * 跟 `gwb-cli` 那份不同：**这个件不可能自包含**。`Service` 基类必须是宿主跑的那一份
+ * 跟 `gwb-commands` 那份不同：**这个件不可能自包含**。`Service` 基类必须是宿主跑的那一份
  * cordis（两份 cordis 的 instanceof 对不上），`requireKernel` 也是真函数。所以裸名
  * 不是「没做干净」，是这个件的形态使然——但名单要钉死，多一个就得有人解释为什么。
  */

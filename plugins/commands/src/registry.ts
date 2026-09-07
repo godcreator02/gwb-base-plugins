@@ -8,7 +8,7 @@ export interface GwbCommandDef {
 }
 
 /** 命令总线的面。件之间的契约，住在提供方这个包里 */
-export interface GwbCli {
+export interface GwbCommands {
   /** 注册一条命令,返回注销函数（配 ctx.effect 用,消费者卸载时自动回收）*/
   register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void
   list(): Required<GwbCommandDef>[]
@@ -16,7 +16,7 @@ export interface GwbCli {
 }
 
 /** 注册表本体，不碰 ctx。`warn` 由调用方给，真跑时是 cordis logger */
-export function createRegistry(warn: (message: string) => void): GwbCli {
+export function createRegistry(warn: (message: string) => void): GwbCommands {
   const table = new Map<string, { def: Required<GwbCommandDef>; handler: (args?: unknown) => unknown }>()
 
   return {

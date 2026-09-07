@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-py-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建一个 venv，spawn venv 里的可执行文件",
   "type": "module",
   "main": "dist/index.js",
@@ -23,14 +23,14 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "跟 gwb-node-cli 同一套判据:cordis 是运行时真 import（Service 基类,而且必须是宿主那一份）;契约包只 import type 但 GwbContext 出现在构造函数签名上,消费方 typecheck 时要解析得到;gwb-cli 是静态 inject 的对象。三档判据见内核仓 CLAUDE.md",
+  "//deps": "跟 gwb-node-cli 同一套判据:cordis 是运行时真 import（Service 基类,而且必须是宿主那一份）;契约包只 import type 但 GwbContext 出现在构造函数签名上,消费方 typecheck 时要解析得到;gwb-commands 是静态 inject 的对象。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {
-    "@godcreator02/gwb-cli": ">=0.0.4",
+    "@godcreator02/gwb-commands": ">=0.0.1",
     "@godcreator02/gwb-plugin-api": ">=0.0.3",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-cli": "0.0.4",
+    "@godcreator02/gwb-commands": "workspace:*",
     "@godcreator02/gwb-plugin-api": "0.0.3",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"

@@ -1,7 +1,7 @@
 import { Service } from 'cordis'
 import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
-import type {} from '@godcreator02/gwb-cli'
+// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
+import type {} from '@godcreator02/gwb-commands'
 import { homeFile, looksRandom, machineFile } from './paths.js'
 import {
   createRegistry,
@@ -81,8 +81,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     // 命令是**可选**的：没有命令总线时服务面照样完整，只是界面调不到——这一条跟
     // gwb-shell 判得不一样，它没有 cli 就是个开不出任何东西的空井。
     // 嵌套注入：cli 在才挂，走了自动摘，后来才挂也接得上
-    this.ctx.inject(['gwbCli'], (ctx) => {
-      const cli = ctx.gwbCli
+    this.ctx.inject(['gwbCommands'], (ctx) => {
+      const cli = ctx.gwbCommands
       // inject 保证了它在，这句只是把类型收窄
       if (cli === undefined) return
       ctx.effect(() =>

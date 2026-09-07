@@ -1,0 +1,57 @@
+{
+  "name": "@godcreator02/gwb-plugins",
+  "version": "0.0.3",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包、加条目、启停、改显示名，外加一格「已装的件」窗格",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "//exports": "./style.css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": "./dist/client.js",
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "peer 四条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）;两个共享包是**浏览器半跑起来的前提**——react 系经页面 importmap 解析到 gwb-shared-react,令牌表经 gwb:// 取。三档判据见内核仓 CLAUDE.md",
+  "//devDeps": "commands / data / settings / shell 四条都是 **dev**:在这儿全是空 `import type {}`（只为激活对方的 declare module）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选**的——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、窗格开不出来。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾。**shell 这条跟 logger 件不一样**:logger 把 shell 写成 peer,因为那个件除了一格窗格什么都不做、没有外壳就该挂不上;这个件反过来,服务面与命令面才是主体,窗格是可选的那一层",
+  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖,但**打进本束**——它们不在 importmap 里,外置成裸名就是运行期炸,所以按本仓判据算 dev",
+  "//peerRange": "写 >= 不写 ^:caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）,共享包一升版消费方就不匹配了",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-shared-react": ">=0.0.2",
+    "@godcreator02/gwb-tokens": ">=0.0.2",
+    "cordis": "^4.0.0-rc.9"
+  },
+  "devDependencies": {
+    "@godcreator02/gwb-commands": "workspace:*",
+    "@godcreator02/gwb-data": "workspace:*",
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-settings": "workspace:*",
+    "@godcreator02/gwb-shared-react": "workspace:*",
+    "@godcreator02/gwb-shell": "workspace:*",
+    "@godcreator02/gwb-tokens": "workspace:*",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.2.5",
+    "cordis": "4.0.0-rc.9",
+    "esbuild": "^0.27.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "typescript": "^7.0.2"
+  }
+}

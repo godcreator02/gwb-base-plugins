@@ -1,5 +1,5 @@
 import { isRecord } from '@godcreator02/gwb-plugin-api'
-import { assertKey, assertSection, SHARED_SECTION } from './paths.js'
+import { assertKey, assertSection, entrySection, SHARED_SECTION } from './paths.js'
 
 /** 注册表本体：内存里的两张表 + 定义表 + 解析规则。不碰 ctx、不碰 fs，于是可测 */
 
@@ -38,7 +38,7 @@ export type SettingsFile = Record<string, Record<string, StoredSetting>>
 
 /**
  * 调用方是谁。**两样都要**：机器级按包名分区（跨 home 稳定），home 级按 entryId 分区
- * （同一个包挂两条时分得开）。
+ * （同一个包挂两条时分得开）。entryId 是全的（`home:hello`），落盘的分区名取它的末段。
  */
 export interface Owner {
   entryId: string
@@ -78,15 +78,20 @@ export interface SettingsRegistry {
   all(): SettingView[]
 }
 
-/** 定义表的键。NUL 做分隔——entryId 与设置名都不可能含它 */
+/**
+ * 定义表的键。NUL 做分隔——条目 id 与设置名都不可能含它。
+ *
+ * 用的是**末段**，跟落盘的分区名一个写法：同一个 owner 两种写法迟早有人对不上。
+ * 这张表在内存里，键不落盘。
+ */
 function defKey(owner: Owner, key: string): string {
-  return `${owner.entryId}\u0000${key}`
+  return `${entrySection(owner.entryId)}\u0000${key}`
 }
 
-/** 一项声明落在哪一格 */
+/** 一项声明落在哪一格。home 级那档取条目 id 的末段，见 `entrySection` */
 function slotOf(owner: Owner, def: SettingDef): Slot {
   const scope = def.scope ?? 'home'
-  const section = def.shared === true ? SHARED_SECTION : scope === 'machine' ? owner.pkg : owner.entryId
+  const section = def.shared === true ? SHARED_SECTION : scope === 'machine' ? owner.pkg : entrySection(owner.entryId)
   return { scope, section, key: def.key }
 }
 
@@ -148,7 +153,8 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
     define(owner, def) {
       assertKey(def.key)
-      assertSection(owner.entryId)
+      // 分区名算一遍就是校验：id 不合规、段数超了都在这儿抛——抛在动表之前
+      assertSection(entrySection(owner.entryId))
       assertSection(owner.pkg)
       // 空 title 是「这一项没说自己是谁」，让它进表只会在界面上多一格没标签的框
       if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)

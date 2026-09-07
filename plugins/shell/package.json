@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-shell",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "外壳：dockview 窗格井 + 窗格注册服务",
   "type": "module",
   "main": "dist/index.js",
@@ -26,10 +26,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "peer 分两类。node 半那三条:cordis 是**运行时真 import**（Service 基类要 extends，而且必须是宿主那一份）;词汇表包与 cli 件只 import type，但都出现在**导出的类型面**上。浏览器半那两条共享包:件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思。dockview 是 dev——它**打进本束**，不走 importmap，外置成裸名就是运行期炸",
+  "//deps": "peer 分两类。node 半那三条:cordis 是**运行时真 import**（Service 基类要 extends，而且必须是宿主那一份）;词汇表包与 commands 件只 import type，但都出现在**导出的类型面**上。浏览器半那两条共享包:件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思。dockview 是 dev——它**打进本束**，不走 importmap，外置成裸名就是运行期炸",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator02/gwb-commands": ">=0.0.4",
+    "@godcreator02/gwb-commands": ">=0.0.1",
     "@godcreator02/gwb-plugin-api": ">=0.0.3",
     "@godcreator02/gwb-shared-react": ">=0.0.2",
     "@godcreator02/gwb-tokens": ">=0.0.2",

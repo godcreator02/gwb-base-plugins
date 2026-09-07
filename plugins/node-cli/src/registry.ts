@@ -17,7 +17,7 @@ export const MAX_TIMEOUT_MS = 110_000
 
 /** 消费方登记一条命令时给的东西 */
 export interface NodeCliSpec {
-  /** 命令名,同时是挂进 gwbCli 总线的那个名字 */
+  /** 命令名,同时是挂进 gwbCommands 总线的那个名字 */
   name: string
   description?: string
   /**

@@ -71,7 +71,7 @@ plugins/<件名>/
 1. **相对 import 必须带 `.js`** —— ESM 不做扩展名补全
 2. **产物里不许有裸名 import** —— 件该是自包含的
 
-两条都由产物守卫测试拦（照 `plugins/cli/tests/artifact.test.ts` 抄一份）。**TypeScript 不会
+两条都由产物守卫测试拦（照 `plugins/commands/tests/artifact.test.ts` 抄一份）。**TypeScript 不会
 替你强制第一条**——`moduleResolution` 只能用 `bundler`，用不了会强制它的 `nodenext`
 （cordis 的 `.d.ts` 不兼容）。为什么见文档站。
 
@@ -139,7 +139,7 @@ home 自动建在 `%APPDATA%\gwb-kernel\homes\<名>\`，不用先创建，日志
 - `kernel.info` / `kernel.install` 两条内核命令
 - `gwb://asset/plugins/<包名>/client.js`
 
-要调别的件的能力，走 `ctx.gwbCli`（`inject: ['gwbCli']`）。
+要调别的件的能力，走 `ctx.gwbCommands`（`inject: ['gwbCommands']`）。
 
 ## 母仓那批是参考，不是模板
 

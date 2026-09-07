@@ -1,16 +1,4 @@
 {
-  "content/docs/cli.mdx": {
-    "../plugins/cli/src/registry.ts:3-16": {
-      "kind": "git",
-      "blob": "8c6883676d3e37571661bfd8edb509a2d3a6bc63",
-      "commit": "31a468e988ae85ac50e57b492834df02fac45c7a",
-      "lines": [
-        3,
-        16
-      ],
-      "hash": "7b1c9f926456bf90f074d7e3cff0fe86361399c74f489844a272ad5e6f28c492"
-    }
-  },
   "content/docs/walls.mdx": {
     "../tsconfig.base.json:4-6": {
       "kind": "git",
@@ -359,7 +347,7 @@
     "../plugins/settings/src/registry.ts:all": {
       "kind": "git",
       "blob": "5d6a1f107e7958284afb4969497fa75e2d3e964f",
-      "commit": "31a468e988ae85ac50e57b492834df02fac45c7a",
+      "commit": "c514cf023e24965f377cbd73283bd93fb2b8c64c",
       "lines": [
         1,
         235
@@ -369,7 +357,7 @@
     "../plugins/settings/src/store.ts:all": {
       "kind": "git",
       "blob": "d4b2aa98365598628e989f24fd23470cc54c342c",
-      "commit": "31a468e988ae85ac50e57b492834df02fac45c7a",
+      "commit": "c514cf023e24965f377cbd73283bd93fb2b8c64c",
       "lines": [
         1,
         51
@@ -381,7 +369,7 @@
     "../plugins/logger/src/index.ts:18-27": {
       "kind": "git",
       "blob": "70a8914b5bc9c400dd22547de61bc8f2db3aaf21",
-      "commit": "31a468e988ae85ac50e57b492834df02fac45c7a",
+      "commit": "c514cf023e24965f377cbd73283bd93fb2b8c64c",
       "lines": [
         18,
         27

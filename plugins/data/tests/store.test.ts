@@ -39,7 +39,7 @@ describe('readDoc 三档', () => {
 
 describe('writeDoc', () => {
   it('目录不存在就建出来——懒建,装了没用过的件不该在盘上留空目录', async () => {
-    const deep = path.join(dir, 'data', '@scope', 'name')
+    const deep = path.join(dir, 'data', 'hello')
     expect(fs.existsSync(deep)).toBe(false)
     await writeDoc(deep, 'layout', { ok: true })
     expect(await readDoc(deep, 'layout', warn)).toEqual({ ok: true })

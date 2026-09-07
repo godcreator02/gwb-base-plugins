@@ -1,0 +1,55 @@
+{
+  "name": "@godcreator02/gwb-market",
+  "version": "0.0.1",
+  "description": "市场：摆出能装什么，点一下装。清单是件自带的手工白名单，不联网",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "//exports": "./style.css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": "./dist/client.js",
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "//gwb": "**整段没有**：这个件是窗格件（不声明 gwb.shell），也不提供任何裸名（没有 gwb.shared）。给人看的名字归运行时——node 半调 ctx.gwbShell.describeSelf",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**，少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "四条 peer 跟 logger 件一模一样，因为这两个件是同一种件：**除了一格窗格什么都不做**。契约包只 import type，但 apply 的参数类型进了 dist/index.d.ts（出现在导出的类型面上）；shell 件一行值都没 import，可 inject 它是**运行期硬依赖**——home 里没有外壳这一格根本没地方画，那时就该挂不上；两个共享包是浏览器半跑起来的前提（react 系经页面 importmap、令牌表经 gwb://）",
+  "//notPeer": "**gwb-plugins 不写进来**（连 dev 都不写）：市场调它的两条命令是**跨件调用**，走命令总线按名字派发，源码里一个字都没 import 它。没装它市场照样挂得上，只是显示一句「装不了东西」——这正是这一格该有的样子。写 peer 会把一个纯运行时的、可缺席的关系伪装成解析期依赖",
+  "//shellRange": ">=0.0.4：只用 registerPane 与 describeSelf 两样，没用到更后面加的字段",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-shared-react": ">=0.0.2",
+    "@godcreator02/gwb-shell": ">=0.0.4",
+    "@godcreator02/gwb-tokens": ">=0.0.2"
+  },
+  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖，但**打进本束**——它们不在 importmap 里，外置成裸名就是运行期炸，所以按本仓判据算 dev",
+  "devDependencies": {
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-shared-react": "workspace:*",
+    "@godcreator02/gwb-shell": "workspace:*",
+    "@godcreator02/gwb-tokens": "workspace:*",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.2.5",
+    "esbuild": "^0.27.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "typescript": "^7.0.2"
+  }
+}

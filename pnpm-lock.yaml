@@ -124,7 +124,7 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  plugins/cli:
+  plugins/commands:
     devDependencies:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.2
@@ -247,6 +247,48 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  plugins/market:
+    devDependencies:
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.0.3
+        version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-shared-react':
+        specifier: workspace:*
+        version: link:../../packages/shared-react
+      '@godcreator02/gwb-shell':
+        specifier: workspace:*
+        version: link:../shell
+      '@godcreator02/gwb-tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.5
+        version: 19.2.5(@types/react@19.2.18)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      cn:
+        specifier: ^0.2.5
+        version: 0.2.5
+      esbuild:
+        specifier: ^0.27.0
+        version: 0.27.7
+      radix-ui:
+        specifier: ^1.6.7
+        version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   plugins/mcp:
     dependencies:
       '@modelcontextprotocol/sdk':
@@ -256,9 +298,9 @@ importers:
         specifier: ^4.5.4
         version: 4.5.4
     devDependencies:
-      '@godcreator02/gwb-cli':
+      '@godcreator02/gwb-commands':
         specifier: workspace:*
-        version: link:../cli
+        version: link:../commands
       '@godcreator02/gwb-data':
         specifier: workspace:*
         version: link:../data
@@ -274,9 +316,9 @@ importers:
 
   plugins/node-cli:
     devDependencies:
-      '@godcreator02/gwb-cli':
-        specifier: 0.0.4
-        version: 0.0.4(@godcreator02/gwb-plugin-api@0.0.3(cordis@4.0.0-rc.9))
+      '@godcreator02/gwb-commands':
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
@@ -287,11 +329,65 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  plugins/plugins:
+    devDependencies:
+      '@godcreator02/gwb-commands':
+        specifier: workspace:*
+        version: link:../commands
+      '@godcreator02/gwb-data':
+        specifier: workspace:*
+        version: link:../data
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.0.3
+        version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-settings':
+        specifier: workspace:*
+        version: link:../settings
+      '@godcreator02/gwb-shared-react':
+        specifier: workspace:*
+        version: link:../../packages/shared-react
+      '@godcreator02/gwb-shell':
+        specifier: workspace:*
+        version: link:../shell
+      '@godcreator02/gwb-tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.5
+        version: 19.2.5(@types/react@19.2.18)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      cn:
+        specifier: ^0.2.5
+        version: 0.2.5
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
+      esbuild:
+        specifier: ^0.27.0
+        version: 0.27.7
+      radix-ui:
+        specifier: ^1.6.7
+        version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   plugins/py-cli:
     devDependencies:
-      '@godcreator02/gwb-cli':
-        specifier: 0.0.4
-        version: 0.0.4(@godcreator02/gwb-plugin-api@0.0.3(cordis@4.0.0-rc.9))
+      '@godcreator02/gwb-commands':
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
@@ -304,9 +400,9 @@ importers:
 
   plugins/settings:
     devDependencies:
-      '@godcreator02/gwb-cli':
+      '@godcreator02/gwb-commands':
         specifier: workspace:*
-        version: link:../cli
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
@@ -319,9 +415,9 @@ importers:
 
   plugins/shell:
     devDependencies:
-      '@godcreator02/gwb-cli':
+      '@godcreator02/gwb-commands':
         specifier: workspace:*
-        version: link:../cli
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
@@ -373,9 +469,9 @@ importers:
 
   plugins/skills:
     devDependencies:
-      '@godcreator02/gwb-cli':
+      '@godcreator02/gwb-commands':
         specifier: workspace:*
-        version: link:../cli
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
@@ -793,11 +889,6 @@ packages:
 
   '@fumari/image-size@0.1.0':
     resolution: {integrity: sha512-x2o9u6P8uKUK15B8XgEoRhR3PgLoLSbQKK6FUCd14JzumEw+e8FXZPelij/dZ4VQVMp4r61VD3DcvSo3aEhLAA==}
-
-  '@godcreator02/gwb-cli@0.0.4':
-    resolution: {integrity: sha512-kMDfN3ENyBMXdlgtB39mDIuvUNm0ooKRFwuxwC+K/o3t8EWkuCtBuDC6wDZieMjGX9WmpVk7wWRq9ZTwoDBLeA==}
-    peerDependencies:
-      '@godcreator02/gwb-plugin-api': '>=0.0.2'
 
   '@godcreator02/gwb-plugin-api@0.0.2':
     resolution: {integrity: sha512-BCPHClXqadvd+upF6Hm3iRbFQzDPcMIlrua40tqpGHSlGpdaoDfhuqfYmgXYDaKr3O2GM8JFh9FgrVqIZBRWmg==}
@@ -4251,10 +4342,6 @@ snapshots:
       tailwindcss: 4.3.3
 
   '@fumari/image-size@0.1.0': {}
-
-  '@godcreator02/gwb-cli@0.0.4(@godcreator02/gwb-plugin-api@0.0.3(cordis@4.0.0-rc.9))':
-    dependencies:
-      '@godcreator02/gwb-plugin-api': 0.0.3(cordis@4.0.0-rc.9)
 
   '@godcreator02/gwb-plugin-api@0.0.2(cordis@4.0.0-rc.9)':
     dependencies:

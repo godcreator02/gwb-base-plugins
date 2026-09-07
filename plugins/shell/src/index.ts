@@ -1,7 +1,7 @@
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
-import type {} from '@godcreator02/gwb-cli'
+// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
+import type {} from '@godcreator02/gwb-commands'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 
@@ -16,7 +16,7 @@ export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
  * cordis 下件挂上时它的 node 半就在跑了，注册发生在 `apply` 里，而 `client.js` 仍然
  * 是点了才动态 import——动态注册一分懒加载都没牺牲。
  *
- * **为什么表要经命令过桥**：内核的 fd3 派发除两条自省命令外一律走 `ctx.gwbCli`，
+ * **为什么表要经命令过桥**：内核的 fd3 派发除两条自省命令外一律走 `ctx.gwbCommands`，
  * 内核本体不认识任何件的命令名。所以这个件硬 `inject` 命令总线：没有它，注册表出不了
  * 这个进程，外壳就是个开不出任何东西的空井——那种时候不如不挂，cordis 会在日志里
  * 明说它在等谁。
@@ -50,7 +50,7 @@ export interface GwbShellApi {
 
 export default class GwbShell extends Service implements GwbShellApi {
   /** 没有命令总线就不挂——inject 是 cordis 的等待机制，不是建议 */
-  static inject = ['gwbCli']
+  static inject = ['gwbCommands']
 
   /**
    * 注册表本体。**用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份
@@ -70,7 +70,7 @@ export default class GwbShell extends Service implements GwbShellApi {
 
   /** 服务就绪时把取表那两条命令挂上；effect 包着，本件卸载时自动注销 */
   [Service.init](): void {
-    const cli = this.ctx.gwbCli
+    const cli = this.ctx.gwbCommands
     // inject 保证了它在，这句只是把类型收窄
     if (cli === undefined) return
     this.ctx.effect(() =>

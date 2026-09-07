@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>gwb 三格窗格设计图</title>
+
+<!--
+  两张表，职责不同，顺序不能反：
+
+  1. 令牌包的 theme.css：**声明面**——语义变量的值（亮暗两套）加 preflight。
+     真运行时由页面加载一次，全部件共用这一份，所以换主题不用重新构建任何件
+  2. 本包的 style.css：只含工具类，整张 scope 在 [data-gwb-plugin="gwb-design-demo"] 之下，
+     由 `node ../tools/build-styles.ts` 生成，跟件那半走的是同一条构建线
+-->
+<link rel="stylesheet" href="../packages/tokens/dist/theme.css" />
+<link rel="stylesheet" href="dist/style.css" />
+
+<style>
+  /*
+   * 脚手架自己的样式：**故意全写成内联的原生 CSS,一个工具类都不用**。
+   * 顶栏和外框不是设计的一部分,混用工具类的话「哪些是要审的界面、哪些是我搭的台子」
+   * 就分不清了。变量借令牌包那一份。
+   */
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--muted);
+    color: var(--foreground);
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+
+  #bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+    font-size: 13px;
+  }
+  #bar strong { font-size: 13px; font-weight: 600; }
+  #bar .hint { color: var(--muted-foreground); font-size: 12px; }
+  #bar .spacer { flex: 1; }
+  #bar button {
+    font: inherit;
+    font-size: 12px;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--background);
+    color: var(--foreground);
+    cursor: pointer;
+  }
+  #bar button[aria-pressed="true"] { background: var(--secondary); font-weight: 600; }
+  #bar .group { display: flex; gap: 4px; }
+
+  #canvas {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 10px;
+  }
+  body[data-layout="one"] #canvas { grid-template-columns: minmax(0, 1fr); }
+  body[data-layout="one"] .frame[hidden] { display: none; }
+
+  .frame {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--background);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  }
+  .frame-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--muted);
+    font-size: 12px;
+  }
+  .frame-head b { font-weight: 600; }
+  .frame-head code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 11px;
+    color: var(--muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 一格井。真运行时这一层是 dockview 的 panel,尺寸由井给 */
+  .pane { flex: 1; min-height: 0; overflow: hidden; }
+</style>
+</head>
+
+<body data-layout="row">
+
+<div id="bar">
+  <strong>gwb 三格窗格设计图</strong>
+  <span class="hint">真 shadcn 组件 · 真令牌 · 真 scope · 假数据。这条顶栏是脚手架，不属于任何一格</span>
+  <span class="spacer"></span>
+  <div class="group">
+    <button data-layout="row" aria-pressed="true">三格并排</button>
+    <button data-layout="settings">只看设置</button>
+    <button data-layout="mcp">只看 MCP</button>
+    <button data-layout="skills">只看 Skill</button>
+  </div>
+  <button id="theme">切到暗色</button>
+</div>
+
+<div id="canvas">
+  <section class="frame" data-key="settings">
+    <div class="frame-head"><b>设置</b><code>@godcreator02/gwb-settings</code></div>
+    <!--
+      data-gwb-plugin 在这儿是 demo 的包名（样式表就是按它 scope 的）。
+      搬进件的时候这个属性由外壳挂,值是那个件自己的完整包名
+    -->
+    <div class="pane" id="pane-settings" data-gwb-plugin="gwb-design-demo"></div>
+  </section>
+
+  <section class="frame" data-key="mcp">
+    <div class="frame-head"><b>MCP</b><code>@godcreator02/gwb-mcp</code></div>
+    <div class="pane" id="pane-mcp" data-gwb-plugin="gwb-design-demo"></div>
+  </section>
+
+  <section class="frame" data-key="skills">
+    <div class="frame-head"><b>Skill</b><code>@godcreator02/gwb-skills</code></div>
+    <div class="pane" id="pane-skills" data-gwb-plugin="gwb-design-demo"></div>
+  </section>
+</div>
+
+<!-- iife,不是 module——module 在 file:// 下会被当跨源挡掉,双击打不开 -->
+<script src="dist/demo.js"></script>
+
+<script>
+  // 脚手架的两个开关。原生 JS,不进束
+  const body = document.body
+  const frames = [...document.querySelectorAll('.frame')]
+  const layoutButtons = [...document.querySelectorAll('#bar button[data-layout]')]
+
+  function setLayout(key) {
+    body.dataset.layout = key === 'row' ? 'row' : 'one'
+    for (const f of frames) f.hidden = key !== 'row' && f.dataset.key !== key
+    for (const b of layoutButtons) b.setAttribute('aria-pressed', String(b.dataset.layout === key))
+  }
+  for (const b of layoutButtons) b.addEventListener('click', () => setLayout(b.dataset.layout))
+
+  // 暗色挂 html 上的 .dark——令牌包那份表就是这么写的
+  const themeButton = document.getElementById('theme')
+  themeButton.addEventListener('click', () => {
+    const dark = document.documentElement.classList.toggle('dark')
+    themeButton.textContent = dark ? '切到亮色' : '切到暗色'
+  })
+</script>
+
+</body>
+</html>

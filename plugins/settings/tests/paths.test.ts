@@ -1,6 +1,14 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { assertKey, assertSection, homeFile, looksRandom, machineFile, SHARED_SECTION } from '../src/paths.js'
+import {
+  assertKey,
+  assertSection,
+  entrySection,
+  homeFile,
+  looksRandom,
+  machineFile,
+  SHARED_SECTION,
+} from '../src/paths.js'
 
 describe('设置名', () => {
   it('kebab-case 收下', () => {
@@ -21,9 +29,9 @@ describe('设置名', () => {
 })
 
 describe('分区名', () => {
-  it('包名与 entryId 照收', () => {
+  it('包名与条目 id 的末段照收', () => {
     expect(() => assertSection('@godcreator02/gwb-hello')).not.toThrow()
-    expect(() => assertSection('home:hello')).not.toThrow()
+    expect(() => assertSection('hello')).not.toThrow()
   })
 
   it('顶掉公共区的拒掉', () => {
@@ -32,6 +40,43 @@ describe('分区名', () => {
 
   it('空的拒掉', () => {
     expect(() => assertSection('')).toThrow()
+  })
+})
+
+describe('条目 id 换分区名', () => {
+  it('只取末段——前缀 home: 是 loader 拼的，跟着内核的 ENTRY_ROOT 走，不进分区名', () => {
+    expect(entrySection('home:hello')).toBe('hello')
+    expect(entrySection('home:py-cli')).toBe('py-cli')
+  })
+
+  it('没前缀的照收', () => {
+    expect(entrySection('hello')).toBe('hello')
+  })
+
+  it('超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区', () => {
+    expect(() => entrySection('home:group:hello')).toThrow(/段/)
+  })
+
+  it('每一段都要 kebab-case,前缀那段也算——跟 gwb-data 的目录名一套字符集', () => {
+    for (const bad of ['home:Hello', 'home:a_b', 'home:', ':hello', 'Home:hello', 'home:a--b', '']) {
+      expect(() => entrySection(bad), bad).toThrow(/kebab-case/)
+    }
+  })
+
+  it('点段与分隔符不认', () => {
+    for (const bad of ['.', '..', 'home:..', 'home:a.b', 'home:a/b', 'home:a\\b']) {
+      expect(() => entrySection(bad), bad).toThrow()
+    }
+  })
+
+  it('顶掉公共区的那个名字连字符集这关都过不了', () => {
+    expect(() => entrySection(SHARED_SECTION)).toThrow()
+    expect(() => entrySection(`home:${SHARED_SECTION}`)).toThrow()
+  })
+
+  it('跟随机 id 那个守卫不重叠:随机 id 算得出分区名,只是每次启动换一个', () => {
+    expect(entrySection('home:a3f9c210')).toBe('a3f9c210')
+    expect(looksRandom('home:a3f9c210')).toBe(true)
   })
 })
 

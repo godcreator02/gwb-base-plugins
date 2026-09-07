@@ -3,7 +3,7 @@
  * `panels` 的做法）：`bootShell` 的参数由内核的渲染层拼，那半在另一个仓里。
  */
 
-/** 内核交出来的命令口。整条链路是：界面 → IPC → 主进程 → fd3 → 内核 dispatch → ctx.gwbCli */
+/** 内核交出来的命令口。整条链路是：界面 → IPC → 主进程 → fd3 → 内核 dispatch → ctx.gwbCommands */
 export interface HostBridge {
   call(command: string, args?: unknown): Promise<unknown>
 }

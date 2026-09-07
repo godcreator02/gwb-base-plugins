@@ -4,7 +4,7 @@
 
 | 件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
-| cli | `@godcreator02/gwb-cli` | `ctx.gwbCli` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核的 dispatch 除两条自省命令外全走它 |
+| commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核的 dispatch 除两条自省命令外全走它 |
 | shell | `@godcreator02/gwb-shell` | — | dockview 外壳,占整页 |
 | logger | `@godcreator02/gwb-logger` | — | 日志窗格 |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
@@ -14,7 +14,7 @@
 **包名 `@godcreator02/gwb-<件名>`。** 加 `gwb-` 前缀是为了跟已废弃的那批错开——
 `@godcreator02/cli`、`/shell`、`/logger`、`/settings` 被那批占着。
 
-**服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-cli` → `ctx.gwbCli`）。cordis 官方件
+**服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-commands` → `ctx.gwbCommands`）。cordis 官方件
 的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。判据与理由在内核仓的
 `CLAUDE.md`。
 

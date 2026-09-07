@@ -48,7 +48,7 @@ export function apply(ctx: GwbContext) {
 没有任何机制会发现——`gwb.title` 就这么放了一阵，四个包声明着、零处读、两仓文档站一句
 没提。如今包清单里只剩 `gwb.shell` 与 `gwb.shared` 两个字段有人读。
 
-**跟 `gwb-cli` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：件卸载时表上
+**跟 `gwb-commands` 的 `register` 不一样，这两个都不用自己包 `ctx.effect`**：件卸载时表上
 那几条自动摘掉。它们仍然回注销函数，那是给要提前摘的场景。
 
 **从界面取表**（在你的 client 束里），两张各取各的：
@@ -115,7 +115,7 @@ await args.host.call('shell.plugins')
 ## 为什么硬 inject 命令总线
 
 注册发生在 node 半，而排窗格的是浏览器半——表得过桥。而内核的 `dispatch` 除
-`kernel.info` 与 `kernel.install` 两条自省命令外**全部走 `ctx.gwbCli`**，内核本体
+`kernel.info` 与 `kernel.install` 两条自省命令外**全部走 `ctx.gwbCommands`**，内核本体
 不认识任何件的命令名。
 
 所以只有一条路：shell 自己注册一条 `shell.panes`。没有命令总线，注册表出不了这个

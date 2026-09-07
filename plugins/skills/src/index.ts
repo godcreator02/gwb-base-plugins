@@ -3,8 +3,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
-import type {} from '@godcreator02/gwb-cli'
+// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
+import type {} from '@godcreator02/gwb-commands'
 import { collectSkills, SKILL_ENTRY, type CollectedSkill, type GwbSkill } from './collect.js'
 
 export type { GwbSkill } from './collect.js'
@@ -52,7 +52,7 @@ export interface GwbSkillsApi {
 
 export default class GwbSkills extends Service implements GwbSkillsApi {
   /** 没有命令总线就不挂——inject 是 cordis 的等待机制，不是建议 */
-  static inject = ['gwbCli']
+  static inject = ['gwbCommands']
 
   /**
    * skill 名 → 那一份（名字全局唯一，见 register 的重名纪律）。
@@ -67,7 +67,7 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
 
   /** 服务就绪时把取表那条命令挂上；effect 包着，本件卸载时自动注销 */
   [Service.init](): void {
-    const cli = this.ctx.gwbCli
+    const cli = this.ctx.gwbCommands
     // inject 保证了它在，这句只是把类型收窄
     if (cli === undefined) return
     this.ctx.effect(() =>

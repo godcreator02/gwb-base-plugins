@@ -7,9 +7,9 @@ import { describe, expect, it } from 'vitest'
  * 产物守卫：相对 import 必须带扩展名；裸名只许那两个。
  * 缺产物时整组跳过——门禁不依赖 build。
  *
- * 跟 `gwb-cli` 那份不同：**这个件不可能自包含**。`Service` 基类必须是宿主跑的那一份
+ * 跟 `gwb-commands` 那份不同：**这个件不可能自包含**。`Service` 基类必须是宿主跑的那一份
  * cordis（两份 cordis 的 instanceof 对不上），`requireKernel` 与 `isRecord` 也是真函数。
- * `@godcreator02/gwb-cli` **不该出现**——它是空 `import type`，只为激活对方的
+ * `@godcreator02/gwb-commands` **不该出现**——它是空 `import type`，只为激活对方的
  * `declare module`，`verbatimModuleSyntax` 会把那句整个删掉。它要是冒出来了，说明
  * 有人把它写成了值 import。
  */

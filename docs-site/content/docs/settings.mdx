@@ -1,0 +1,168 @@
+---
+title: gwb-settings：设置
+description: 件声明自己有哪些设置项，值分两份落盘——本 home 一份、全机一份。凭据放后者
+livedoc: none
+---
+
+# gwb-settings
+
+**件声明，服务落盘。** 件说「我有一项叫 `level` 的设置，标题是这个、类型是那个」，
+值往哪写、跟不跟着 home 走，由声明里的两个字段算出来。
+
+`ctx.gwbSettings` 四样：
+
+```ts
+define(def: SettingDef): () => void   // 声明一项。件卸载时自动摘，不用自己包 ctx.effect
+get(key: string): unknown             // 同步——表在内存里
+set(key: string, value: unknown): Promise<void>
+delete(key: string): Promise<void>    // 抹掉值，定义还在，get 回落到 default
+```
+
+外加三条命令：`settings.all` / `settings.get` / `settings.set`。
+
+## 值落在哪
+
+**两份文件，同一个结构**（按件嵌套 ＋ 一格 `"*"` 公共区），只有键的来源不同：
+
+```
+%APPDATA%\gwb-kernel\
+├── machine.json              ← 全机一份，跟 homes 并列。键 = 完整包名
+└── homes\
+    ├── default\
+    │   ├── cordis.yml
+    │   └── settings.json     ← 本 home，跟 cordis.yml 并排。键 = 条目 id 的末段
+    └── test-2609071810\
+        └── settings.json
+```
+
+```jsonc
+// machine.json
+{
+  "*": { "anthropic-api-key": { "title": "Anthropic API Key", "type": "secret", "value": "sk-ant-..." } },
+  "@godcreator02/gwb-x": { "license": { "title": "许可证", "type": "string", "value": "..." } }
+}
+
+// <home>/settings.json
+{
+  "logger":   { "level": { "title": "日志级别", "type": "string", "value": "info" } },
+  "logger-2": { "level": { "value": "debug" } }        // 同一个包的第二条条目，各存各的
+}
+```
+
+**两份的键必然不同，不是没统一。** 条目 id 是 home 局部的概念（不同 home 的 `cordis.yml`
+里 id 可以不一样），机器级跨 home 就只能用包名；而 home 级要能分开「同一个包挂的两条条目」，
+只有条目 id 做得到。
+
+home 级那档取的是 **`entryId` 的末段**（`home:logger` → `logger`），不是完整 entryId——
+理由与那条守卫见[撞过的墙](/docs/walls)。
+
+后果是**同一个包挂两条时，机器级设置共享、home 级各存各的**——而那正是机器级该有的语义。
+
+**为什么不走 `gwbData`**：那两份文件都不在它管的 `<home>/data/<条目 id>/` 底下。原子落盘的
+手法是照抄它的（同目录 `.tmp` ＋ rename），不是 import——那是它的内部实现，没导出。
+
+## `scope` 与 `shared`：四格，但只有两种写法
+
+两个字段正交，合起来确实是四格：
+
+| | 跟着 home | 全机一份 |
+| --- | --- | --- |
+| **公共区**（`shared: true`） | 主题、语言 | **API key、token** |
+| **件自己的分区** | **日志级别、窗格偏好** | 某个件自己的许可证 |
+
+四格都有真实例，所以没合成一个字段。但**实践中只有两种写法**：
+
+```ts
+// 绝大多数件：home 级、自己的分区
+ctx.gwbSettings.define({ key: 'level', title: '日志级别', type: 'string', default: 'info' })
+
+// 凭据：机器级、公共区
+ctx.gwbSettings.define({
+  key: 'anthropic-api-key', title: 'Anthropic API Key',
+  type: 'secret', scope: 'machine', shared: true,
+})
+```
+
+`type` 只是**给界面挑控件**用的，不做运行时校验——那是 cordis 本体的事（`plugin.Config` 走
+Standard Schema）。`secret` 只影响界面打不打码，**存储照样明文**。
+
+## 解析顺序
+
+```
+get(key)
+  1. 本件声明过这个 key？→ 按它的 scope/shared 直接定位；没值回 def.default
+  2. 没声明 → 查 settings.json 的 "*"，再查 machine.json 的 "*"
+  3. 都没有 → 回 undefined 并 warn 一声
+set(key, value)
+  同 1；走到 2 就抛
+```
+
+第 2 步是**跨件共享**的全部机制：件 A 把 token 声明进公共区，件 B 不用 `define` 就读得到。
+凭据本来就该这么共享——每个件各存一份的话，轮换时必然漏一处，而漏掉那份的症状是
+「这个件能用、那个件 401」。
+
+`set` 走到第 2 步直接抛，不是宽容处理：**写一项谁也不认识的东西进盘是静默事故**。
+
+{/* ref file="../plugins/settings/src/registry.ts" */}
+
+## 身份不由件自己报
+
+`define`/`get`/`set` 都只收短 key，落到哪个分区由服务从**调用方的 fiber** 上取
+（`gwb-data` 的 `owner()`、`gwb-shell` 的 `owner()` 是同一个套路：方法里的 `this.ctx` 是
+消费者的 ctx，不是提供方的）。件报不出名字，也就没法改别人的设置。
+
+实机验过：探针件调 `define`，落盘的分区是探针自己那条条目（`home:probe` → `probe`），
+不是 settings 那条。
+
+**这条错了不会报错**，只会把数据写进别人名下——所以它是这个件最该盯的一条。
+
+## 两份元信息：代码是权威，盘上是快照
+
+`define` 时 title/type 会**写进盘上那份**，件挂着时以代码为准、覆盖盘上的。
+
+为什么要落一份：**这个件将来还管插件启停**。停掉一个件它的设置就从界面上消失、连
+「先配好 key 再启用」都做不了，那很怪。`settings.all` 每行带一个 `live` 字段标着
+「此刻还有件声明它吗」，界面据此标灰。
+
+代价是两份可能不一致，靠「代码是权威」这条规则压住。
+
+## 三条判得跟别的件不一样的
+
+**一、`all()` 只做命令，不进服务面。** 界面要看全部件的全部项，而服务面受身份约束——两者
+矛盾，所以分开：服务面给件用（全部绑身份），命令面给界面用（全局视图）。不这么分的话，
+服务上就得开一个「能看见所有件凭据」的口子。
+
+**二、不硬 `inject: ['gwbCommands']`。** 用嵌套注入 `ctx.inject(['gwbCommands'], ...)`：cli 在才挂
+命令、走了自动摘、后来才挂也接得上。**跟 `gwb-shell` 判得不一样**，理由说得清——shell
+没有命令总线就是个开不出任何东西的空井，而这个件没有它**服务面照样完整**，别的件照样
+`get`/`set`，只是界面调不到。
+
+**三、读盘在构造函数里同步做完。** `Service` 的 `provide` 发生在 `super()` 里，构造一返回
+消费方就可能挂上并 `get`；而 `[Service.init]` 是**之后**才跑的，`_execute` 对 async init
+只是 `effect.then(...)`，**不挡消费方挂上**。所以异步读的话，那一刻表还是空的，而 `get`
+是同步的。内核自己的 `ensureHome` 也是同步 fs，一致。
+
+{/* ref file="../plugins/settings/src/store.ts" */}
+
+## 条目没写 id 的话，只 warn 一声
+
+home 级设置按条目 id 做键，而条目不写 `id` 时 loader 发的是 8 位随机十六进制串、每次
+启动都变（判据见内核仓的「撞过的墙」）。`define` 时认出这种 id 就在日志里说一句。
+
+**不抛错**——那条件本来能跑；**也不静默**——对不上是最难查的那种。
+
+## 凭据明文的账
+
+明文是拍过板的（个人应用）。三笔账记在这儿，将来疼的时候认得出是哪一条：
+
+1. **`settings.all` 把凭据交给渲染层**。眼下同机、件都是自己写的，但 mcp 那条线一旦真的
+   把命令面开给外部 agent，**第一个要重看的就是这条命令**
+2. **`machine.json` 跨所有 home**——一处泄露就是全部 home 的凭据
+3. **它跟 `homes/` 并列**，备份整个 userData 时跟着走
+
+实现上定死一条：**日志里永远不打 `value`**。内核日志是落盘的，凭据进去就拿不出来。
+
+## 第二版欠什么
+
+界面那半、插件启停/卸载。两块都在[路线](/docs/roadmap)那页，动手前先看内核仓 walls 里
+关于 `ctx.loader` 的那几条。

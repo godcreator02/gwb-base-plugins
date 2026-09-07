@@ -50,10 +50,10 @@ describe('声明与读写', () => {
 })
 
 describe('落在哪一格', () => {
-  it('不写 scope 就是 home，按 entryId 分区', () => {
+  it('不写 scope 就是 home，按条目 id 的末段分区', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
-    expect(reg.locate(alice, 'level')).toEqual({ scope: 'home', section: 'home:alice', key: 'level' })
+    expect(reg.locate(alice, 'level')).toEqual({ scope: 'home', section: 'alice', key: 'level' })
   })
 
   it('machine 按包名分区——entryId 是 home 局部的，跨不了 home', () => {
@@ -78,8 +78,8 @@ describe('落在哪一格', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
     reg.define(alice2, { key: 'level', title: '级别', type: 'string' })
-    expect(reg.locate(alice, 'level')?.section).toBe('home:alice')
-    expect(reg.locate(alice2, 'level')?.section).toBe('home:alice-2')
+    expect(reg.locate(alice, 'level')?.section).toBe('alice')
+    expect(reg.locate(alice2, 'level')?.section).toBe('alice-2')
 
     reg.define(alice, { key: 'license', title: '许可证', type: 'string', scope: 'machine' })
     reg.define(alice2, { key: 'license', title: '许可证', type: 'string', scope: 'machine' })
@@ -157,13 +157,32 @@ describe('撞名与说不清自己是谁', () => {
     const { reg } = fresh()
     expect(() => reg.define(alice, { key: 'A/B', title: 'x', type: 'string' })).toThrow()
   })
+
+  it('条目 id 不合规当场抛——它要当分区名用,跟 gwb-data 那边一套字符集', () => {
+    const { reg } = fresh()
+    const bad: Owner = { entryId: 'home:Alice', pkg: '@godcreator02/gwb-alice' }
+    expect(() => reg.define(bad, { key: 'level', title: '级别', type: 'string' })).toThrow(/kebab-case/)
+  })
+
+  it('条目 id 超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区', () => {
+    const { reg } = fresh()
+    const nested: Owner = { entryId: 'home:group:alice', pkg: '@godcreator02/gwb-alice' }
+    expect(() => reg.define(nested, { key: 'level', title: '级别', type: 'string' })).toThrow(/段/)
+  })
+
+  it('抛在动表之前——坏 id 那条不该在定义表里留下半条', () => {
+    const { reg } = fresh()
+    const bad: Owner = { entryId: 'home:Alice', pkg: '@godcreator02/gwb-alice' }
+    expect(() => reg.define(bad, { key: 'level', title: '级别', type: 'string' })).toThrow()
+    expect(reg.all()).toEqual([])
+  })
 })
 
 describe('元信息：代码是权威，盘上是快照', () => {
   it('件挂上时用代码里的 title 覆盖盘上那份，值不动', () => {
     const warn = vi.fn()
     const reg = createRegistry(warn)
-    reg.load({ 'home:alice': { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } }, {})
+    reg.load({ alice: { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } }, {})
     reg.define(alice, { key: 'level', title: '代码里的新标题', type: 'string' })
     const row = reg.all().find((v) => v.key === 'level')
     expect(row?.title).toBe('代码里的新标题')
@@ -186,7 +205,7 @@ describe('元信息：代码是权威，盘上是快照', () => {
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
     reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', scope: 'machine', shared: true })
     expect(reg.all().map((v) => `${v.scope}/${v.section}/${v.key}`).sort()).toEqual([
-      'home/home:alice/level',
+      'home/alice/level',
       'machine/*/api-key',
     ])
   })

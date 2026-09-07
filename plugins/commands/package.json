@@ -1,6 +1,7 @@
 {
-  "name": "@godcreator02/gwb-cli",
-  "version": "0.0.4",
+  "name": "@godcreator02/gwb-commands",
+  "version": "0.0.1",
+  "//name": "改名之前叫 @godcreator02/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCli.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev。三档判据见内核仓 CLAUDE.md",
+  "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCommands.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {
     "@godcreator02/gwb-plugin-api": ">=0.0.2"
   },

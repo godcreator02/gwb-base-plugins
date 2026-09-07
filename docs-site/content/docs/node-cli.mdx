@@ -60,7 +60,7 @@ export function apply(ctx: GwbContext) {
 `cwd` 不给的话落在 `entry` 自己旁边（也就是 `dist/`）。**不继承宿主的 cwd**——那是内核的
 目录，跟这条命令毫无关系，而且随内核怎么起而变。要确定的工作目录就自己给。
 
-登记的命令**同时挂进 `gwbCli` 总线**，所以界面直接调得到：
+登记的命令**同时挂进 `gwbCommands` 总线**，所以界面直接调得到：
 
 ```js
 await window.gwb.command('mine.build', ['--watch'])   // 一串就是追加参数

@@ -1,30 +1,30 @@
 ---
-title: gwb-cli：命令总线
+title: gwb-commands：命令总线
 description: 件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发
 livedoc: none
 ---
 
-# gwb-cli
+# gwb-commands
 
 **没有这个件，界面调不到任何 node 侧的能力**——内核的 `dispatch` 除 `kernel.info` 与
-`kernel.install` 两条自省命令外，全部走 `ctx.gwbCli`。
+`kernel.install` 两条自省命令外，全部走 `ctx.gwbCommands`。
 
-包名 `@godcreator02/gwb-cli`，服务 `ctx.gwbCli`。产物 4 个文件、零运行时依赖。
+包名 `@godcreator02/gwb-commands`，服务 `ctx.gwbCommands`。产物 4 个文件、零运行时依赖。
 
 ## 它的面
 
-{/* ref file="../plugins/cli/src/registry.ts" lines="3-16" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-16" */}
 
 ## 怎么用
 
 **登记一条命令**（在你的件里）：
 
 ```ts
-export const inject = ['gwbCli']
+export const inject = ['gwbCommands']
 
 export function apply(ctx: GwbContext) {
   ctx.effect(() =>
-    ctx.gwbCli.register(
+    ctx.gwbCommands.register(
       { name: 'mine.hello', description: '回一句话', plugin: 'mine' },
       (args) => ({ got: args }),
     ),
@@ -45,7 +45,7 @@ args.host.call('mine.hello', { n: 7 }).then((res) => {
 })
 ```
 
-整条链路是：界面 → IPC → 主进程 → fd3 → 内核 `dispatch` → `ctx.gwbCli` → 你的 handler
+整条链路是：界面 → IPC → 主进程 → fd3 → 内核 `dispatch` → `ctx.gwbCommands` → 你的 handler
 → 原路回。
 
 ## 回执的形状

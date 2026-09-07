@@ -1,8 +1,8 @@
 import path from 'node:path'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
-import type {} from '@godcreator02/gwb-cli'
+// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
+import type {} from '@godcreator02/gwb-commands'
 import { ensureVenv, venvPaths, type BootstrapResult } from './bootstrap.js'
 import { createRegistry, type PyCliRegistry, type PyCliSpec, type RegisteredPyCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
@@ -22,7 +22,7 @@ export { STAMP_NAME, venvPaths } from './bootstrap.js'
  * venv 被外力抹掉了（`pnpm install` 重解整个 `.pnpm/<hash>` 目录就会）当场重建。
  * 自愈不是单独一条路径,它就是守卫本身。
  *
- * **登记的命令同时挂进 `gwbCli` 总线**,所以这个件硬 `inject` 总线。
+ * **登记的命令同时挂进 `gwbCommands` 总线**,所以这个件硬 `inject` 总线。
  */
 
 /** 此刻登记了哪些 */
@@ -70,14 +70,14 @@ function toExtraArgs(args?: unknown): string[] {
 
 export default class GwbPyCli extends Service implements GwbPyCliApi {
   /** 没有命令总线就不挂——inject 是 cordis 的等待机制,不是建议 */
-  static inject = ['gwbCli']
+  static inject = ['gwbCommands']
 
   /**
    * 注册表本体。**用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份
    * `Object.create(this)`,而 `#` 私有字段的内部槽不在原型链上,派生对象上一读就炸。
    */
   private readonly registry: PyCliRegistry
-  /** 提供方自己的 ctx。往总线上挂命令得用这一份——消费者未必 inject 过 gwbCli */
+  /** 提供方自己的 ctx。往总线上挂命令得用这一份——消费者未必 inject 过 gwbCommands */
   private readonly own: GwbContext
   /** 正在跑的守卫,按包根去重。并发调 run 时不该同时起两个 uv sync */
   private readonly inflight = new Map<string, Promise<BootstrapResult>>()
@@ -91,7 +91,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
 
   /** 服务就绪时把看表那条命令挂上；effect 包着,本件卸载时自动注销 */
   [Service.init](): void {
-    const cli = this.own.gwbCli
+    const cli = this.own.gwbCommands
     // inject 保证了它在,这句只是把类型收窄
     if (cli === undefined) return
 
@@ -151,7 +151,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     const plugin = this.owner()
     const off = this.registry.register(plugin, spec)
     const record = this.registry.get(spec.name)!
-    const cli = this.own.gwbCli
+    const cli = this.own.gwbCommands
     const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', plugin }, (args) =>
       this.run(spec.name, toExtraArgs(args)),
     )

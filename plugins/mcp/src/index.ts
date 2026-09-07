@@ -4,8 +4,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
 import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCli 与 gwbData
-import type {} from '@godcreator02/gwb-cli'
+// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands 与 gwbData
+import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
 import { textResult, toolResult } from './tools.js'
@@ -27,7 +27,7 @@ import { textResult, toolResult } from './tools.js'
 export const name = 'gwb-mcp'
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
-export const inject = ['gwbCli', 'gwbData']
+export const inject = ['gwbCommands', 'gwbData']
 
 /** 首选端口。被占（多 home 同时开的常态）就退让到系统分配的那个 */
 const DEFAULT_PORT = 2870
@@ -46,7 +46,7 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
 export function apply(ctx: GwbContext, config?: { port?: number }): void {
   const log = ctx.logger(name)
   const kernel = requireKernel(ctx)
-  const cli = ctx.gwbCli
+  const cli = ctx.gwbCommands
   // inject 保证了它在，这句只是把类型收窄
   if (cli === undefined) return
 
