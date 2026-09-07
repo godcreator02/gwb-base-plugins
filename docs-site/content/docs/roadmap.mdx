@@ -14,8 +14,8 @@ livedoc: none
 | --- | --- | --- | --- |
 | **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.4**，装进 home 验通 |
 | **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.1**，落盘验通 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.8**，验收件兼样板，将来被真外壳替掉 |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.1**，第二刀完成：注册服务验通，见[它的页](/docs/shell) |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.9**，验收件兼样板；这一刀起是**窗格件**，不再是外壳 |
+| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.3**，第三刀完成：井开得出格了，见[它的页](/docs/shell) |
 | **logger** | `@godcreator02/gwb-logger` | — | 待做 |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
 
@@ -48,47 +48,40 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 | --- | --- | --- |
 | **一** | 搬纯逻辑：`bus` / `liveness` / `mount-handle` / `panels` | **完成**，41 条测试全绿 |
 | **二** | `ctx.gwbShell` 窗格注册服务；`openable` 这时才搬 | **完成**，实机验通 |
-| **三** | dockview 骨架 + 开一格插件窗格 | 待做 |
+| **三** | dockview 骨架 + 开一格插件窗格 | **完成**，实机验通 |
 | **四** | 布局落盘（`ctx.gwbData`）+ 导航 + 状态栏 | 待做 |
 
-**第二刀交出的面与判据见[它自己那页](/docs/shell)。** `openable` 是**重写不是搬**——
-母仓那份吃的是「条目表 × 包声明的 `gwb.panes`」，运行时注册下 join、过滤、老格兼容
-三样一起消掉了。
+**前三刀交出的面与判据见[它自己那页](/docs/shell)。**
 
-**`mount-handle` 搬的时候改了**：它收窄的正是窗格契约，而契约刚从 `mount` / `unmount`
-改成 **`mountPane` / `dispose`**（判据见内核仓文档站的「写一个件」）。
+- **一**：搬进来的四个模块全是纯逻辑，`openable` 特意推迟到第二刀
+- **二**：`openable` 是**重写不是搬**——母仓那份吃的是「条目表 × 包声明的 `gwb.panes`」，
+  运行时注册下 join、过滤、老格兼容三样一起消掉了。`mount-handle` 也跟着契约改名改了
+- **三**：`hello` 这一刀起降级成**窗格件**（导出 `mountPane`、`gwb.shell` 摘掉），
+  外壳的位置归 shell。两个 `shell: true` 会让渲染层不挑，所以这两条必须同一次换过来
 
-**第三刀开工前的现状**：`hello` 眼下**同时**是外壳件和注册方——它注册了一格窗格，
-但它自己就是那个外壳，所以那一格没人画。第三刀 hello 降级成纯窗格件、`@test/shell`
-删掉，那一格正好接着用，验收断言「能把 hello 开成一格」也就有了现成的对象。
+## 第四刀要用的东西
 
-**该抄思路的 dockview 工程细节**（都是踩出来的）：
+**母仓那几条 dockview 工程细节，第三刀只用上了第一条，其余是第四刀的**：
 
-- 面板组件表必须是**模块级常量**——换引用会让 dockview 重建全部格
-- 导航定宽用 `constraints`（不进 `toJSON`，每轮布局变化要重钉），**必须去重**，
-  否则 `setConstraints` 自己触发 `onDidLayoutChange` 无限递归、占死主线程
-- 默认布局里 `setSize` 必须等第二格落位后才调
-- 首帧门：布局与条目表都到手前根本不渲染 dockview
-- 布局落盘 400ms 防抖（用 `ctx.setTimeout`，件卸载时自动收）
-- `PluginPane` 那条 effect：注样式 → **await 它真到位** → 动态 import → 调 `mount` →
-  存 `unmount`；拿不到 `unmount` 就报契约不符而不是装作成功
+| 细节 | 第三刀 | 为什么 |
+| --- | --- | --- |
+| 面板组件表必须是**模块级常量** | **已用** | 换引用会让 dockview 重建全部格 |
+| 首帧门 | **不需要** | 数据在 `createRoot` 之前就取齐了，压根没有「还没到手」的那一帧 |
+| 导航定宽 `constraints` **必须去重** | 第四刀 | 不去重的话 `setConstraints` 自己触发 `onDidLayoutChange` 无限递归、占死主线程 |
+| 默认布局里 `setSize` 等第二格落位 | 第四刀 | 眼下只有一格 |
+| 布局落盘 400ms 防抖（`ctx.setTimeout`） | 第四刀 | 还不落盘 |
+
+**`liveness` 的输入将来要换**。它现在按「条目表」判一格背后的件是 live / idle / gone，
+而第三刀根本没接它——运行时注册已经隐含了「件活着」，注册表里没有的格本来就开不出来。
+但**热卸一个件**时：件卸载 → effect 收尾 → 注册表摘掉那格 → **dockview 里那格还开着**。
+那时要关掉它，判据的来源是**注册表变了**而不是条目表变了。第四刀真接它时按这个形状改。
+
+**渲染层还不感知任何变化**：`bootShell` 取一次注册表就完了，件后来挂上/卸掉界面都不知道。
+第四刀要么加事件推送，要么在导航上给一颗刷新。
 
 **明确不抄**：老布局兼容（约 60 行 + 5 个双分支）、母仓插件名硬编码（`console` 特判、
 六个图标名的花名册）、CDP 探针驱动面、状态栏里的母仓品牌、`void host` 那个半吊子契约
 （参数里给了 host bridge 却改吃 `window.gwb`）。
-
-**前置全部清空了**，三条当初挡在前面的都已落地：
-
-1. **窗格清单：运行时注册**（不是静态 `gwb.panes`）。母仓那条「外壳排表时 client 束还没
-   加载」的理由在 cordis 下不成立——件挂上时它的 node 半就在跑了，注册发生在 `apply` 里，
-   而 `client.js` 仍然点了才动态 import。判据见内核仓 decisions
-2. **dockview 的基础表与皮肤住 shell 自己的束**。内核零 UI 知识，样式经 `gwb://` 走件的
-   `exports`
-3. **React 与样式那条链路已经通了**：内核拼注 importmap、`gwb://` 交任意子路径、令牌包
-   共享一份。`plugins/hello` 是跑通的样板
-
-所以 shell 开工时**照 hello 抄那套接线**（`components.json` + 别名三处 + 样式先注后渲染），
-省下来的力气全花在 dockview 上。
 
 **落盘那条已经解决了**：`gwb-data` 件先做出来了，shell 写 `inject: ['gwbData']` 就能
 `ctx.gwbData.writeDoc('layout', …)`，不用自己拼路径、也不用碰 `fs`。原子落盘在那边兜着——

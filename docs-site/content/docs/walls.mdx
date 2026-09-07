@@ -248,6 +248,83 @@ document.head.appendChild(kill)
 顺带：直接读 `getComputedStyle(el).getPropertyValue('--primary')` 也不受过渡影响——
 CSS 变量本身不参与过渡（除非用 `@property` 声明过类型）。
 
+### 探针里别用 `requestAnimationFrame` 等帧——后台窗口里它根本不跑
+
+上一条的**同一个根因，另一副面孔**。验亮暗切换时探针写成「点一下按钮 → 等两帧 →
+读颜色」，症状是 **CDP 直接超时**：`Runtime.evaluate` 一去不回，20 秒后自己断掉。
+查了一圈才想起来是 Chromium 节流后台窗口——rAF 一次都没触发，那个 promise 永远
+resolve 不了。
+
+**过渡关掉之后本来就不用等**：`getComputedStyle` 是同步的，改完类名当场读就是终值。
+要等异步的东西就用 `setTimeout`（它不受节流影响到这个程度），别用 rAF。
+
+---
+
+## gwb:// 取货
+
+### 子路径是 `exports` 表里的键，不是文件名
+
+约定是 `gwb://asset/plugins/<包名>/<exports 子路径>`，而**子路径就是 `exports` 键去掉
+开头那两个字符**：`"./client": "./dist/client.js"` 这条，地址里写的是 `client`，
+不是 `client.js`，也不是 `dist/client.js`。
+
+第三刀写 `PluginPane` 时想当然写成了 `client.js`，症状是
+
+```
+TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@godcreator02/gwb-hello/client.js
+```
+
+——**读着像网络错或者文件不在**，实际是内核拿 `./client.js` 去 `exports` 表里查、查不到。
+同一个 URL 里紧挨着的 `style.css` 反而是对的（那条 exports 键就叫 `./style.css`），
+两条并排更容易看漏。
+
+{/* ref file="../plugins/shell/src/client/asset.ts" lines="1-18" */}
+
+---
+
+## dockview
+
+### 主题必须经 `theme` 选项交给它，挂在 `<html>` 上没用
+
+第三刀最费时间的一条。皮肤表写好了、`<html>` 上挂了 `dockview-theme-light
+dockview-theme-gwb` 两个类，探针读 `document.documentElement` 上的
+`--dv-group-view-background-color` 是对的（`oklch(1 0 0)`），**可井底是一片深蓝黑**。
+
+根因在祖先链里：dockview 自己会把主题类名写到它内部的 `.dv-shell` 上，不传就是默认的
+**`dockview-theme-abyss`**（一套深色主题）。那一层比 `<html>` 近，整个把我们的值压掉了。
+
+```
+DIV.dv-shell dockview-theme-abyss …     ← 它在这儿挂,--dv-* 从这层往下都是 abyss 的
+…
+HTML.dockview-theme-light dockview-theme-gwb   ← 我们挂的这份被压在外面
+```
+
+正解是传 `theme: { name, className, colorScheme }`。**`className` 一个字段塞得下两个类**
+——dockview 那边是 `classNames.split(' ')` 收的，所以「自带默认值那套 + 只覆盖配色的
+我们这套」能一起挂上。
+
+`<html>` 上那份留着当兜底，给可能挂到 `body` 下的门户元素——多挂一个只定义变量的类
+代价是零，漏了的话那些元素一片没样式，而且要拖起来才发现。
+
+### 产物守卫的正则得锚在行首，不然被它自己的错误消息骗
+
+shell 的产物守卫头一次跑就报「`dockview-enterprise` 泄漏进束里了」。**束是干净的**
+——那个字符串出自 dockview 的一句错误消息，文案里嵌着一段示例代码：
+
+```
+  npm install dockview-enterprise
+  import 'dockview-enterprise'; // self-registers every enterprise module
+```
+
+第一版正则满文件找 `import '…'`，773KB 的束里什么文本都有。改成 `^import` 锚行首：
+认的是**产物的形状**——tsc 与 esbuild 都把顶层 import 顶格写，字符串字面量里的那种
+总带着缩进。跟 shared-react 那条补丁正则同属一类，是个明摆着的脆弱点，但比满文件
+找三个字母可靠得多。
+
+同一份守卫里查「dockview.css 不许有 scope 规则」那条也被自己绊了一次：两张表的**头注
+里都在讲这件事**，`toContain('data-gwb-plugin')` 查到的是文案不是规则。查规则之前先
+剥注释。
+
 ---
 
 ## 组件与 shadcn CLI
