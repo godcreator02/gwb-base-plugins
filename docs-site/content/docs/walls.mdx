@@ -164,6 +164,36 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 所有包都补上 `"prepublishOnly": "pnpm build"`。
 
+### `files` 收整个目录时，`__pycache__` 跟着一起发出去了
+
+`gwb-py-cli` 的 `files` 里写了 `py`，而**开发工位上只要跑过一次那个 python 项目就有了
+`__pycache__`**。第一版 0.0.1 发出去、装进 home 一看：
+
+```
+package/py/gwb_pycli_selftest/__pycache__/__main__.cpython-313.pyc
+```
+
+发出去的是**别人机器上的字节码**，带着绝对路径与 python 版本号。它不会让谁当场报错——
+python 发现 `.pyc` 与源码时间戳对不上会自己重编——所以这类东西**混进去就一直在那儿**，
+没有任何机制会发现。
+
+`files` 里补一条否定式 `"!py/**/__pycache__"`，并且当场验过它真的起作用（故意造出
+`__pycache__` 再 `pnpm pack` 看包里还有没有）：
+
+{/* has file="../plugins/py-cli/package.json" text="__pycache__" */}
+
+**这条引用本来想把那个 glob 原样写进 `text=`，结果当场撞了本页下面那条**——`**/` 里
+带着 `*/`，把 `{/* … */}` 提前关掉了，`pnpm doc` 报的是一句
+`Could not parse expression with acorn: Unterminated string constant`。
+所以 `text=` 里只留了 `__pycache__`，glob 写在正文的反引号里。
+
+顺带钉进产物守卫，防它哪天被人当成手滑删掉：
+
+{/* has file="../plugins/py-cli/tests/artifact.test.ts" text="__pycache__ 排在包外" */}
+
+**判据**：`files` 一旦收的是**整个目录**而不是具体文件，就得想一遍「这个目录在开发工位上
+会不会长出别的东西」。`dist` 与 `src` 没这问题（构建产物与源码是干净的），`py` 有。
+
 ---
 
 ## 门禁
@@ -276,6 +306,31 @@ resolve 不了。
 
 **过渡关掉之后本来就不用等**：`getComputedStyle` 是同步的，改完类名当场读就是终值。
 要等异步的东西就用 `setTimeout`（它不受节流影响到这个程度），别用 rAF。
+
+### 验 node-only 的件不必起 electron，但 `createRequire` 得先 `realpath`
+
+无界面的件可以直接在 home 里拿 node 挂一个真的 cordis 上下文验——服务挂得上、命令进得了
+总线、执行核起得来进程，全都验得到，比起 electron 快得多。两处讲究：
+
+- **`cordis` 不在 home 顶层**。它是件的 peer，pnpm 把它装在 `.pnpm` 里件的真身那一层。
+  探针 `import 'cordis'` 直接报 `ERR_MODULE_NOT_FOUND`
+- **要从件那一层解析，而且得先 `fs.realpathSync`**。`node_modules/@godcreator02/x` 是条
+  软链，`createRequire` 拿软链路径往上找 node_modules 是找不到 cordis 的：
+
+  ```
+  Error: Cannot find module 'cordis'
+  Require stack:
+  - <home>\node_modules\@godcreator02\gwb-py-cli\dist\index.js
+  ```
+
+  解开软链之后就落在 `.pnpm/<件>@<hash>/node_modules/` 那一层，cordis 在那儿
+
+**还必须是同一份 cordis**——两份的 `Service` instanceof 对不上，件挂上去会以莫名其妙的
+方式坏掉。所以探针里的 `Context` 也从件那一层解析，不从探针自己的位置。
+
+顺带：件走 `<home>/node_modules/...` 的路径 import 就好，node 会自己 realpath 到 `.pnpm`
+里的真身——件算出来的包根正是它实际装着的位置，`gwb-py-cli` 的 venv 也就建在那儿，
+而那正是要验的东西。
 
 ### dockview 的标签不听 `.click()`
 

@@ -1,0 +1,94 @@
+---
+title: gwb-node-cli：跑 node 写的 CLI
+description: 件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它
+livedoc: none
+---
+
+# gwb-node-cli
+
+包名 `@godcreator02/gwb-node-cli`，服务 `ctx.gwbNodeCli`。node-only，没有界面那半。
+
+件要跑一条命令行时，本来得自己写一遍 spawn、超时、杀进程树、输出截断、编码——这几样
+**正是最容易写错的部分**，而且写错了都不当场报错。这个件把它们收成一处。
+
+## 它不做取址
+
+**CLI 是消费方件自己 build 出来的产物**，跟件同一个包发出去。所以路径由件自己算，
+登记时递一个绝对路径进来：
+
+```ts
+const CLI_ENTRY = path.join(
+  path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+  'dist', 'cli.js',
+)
+```
+
+这儿**不读 `bin` 字段、不认 `node_modules/.bin` 垫片、不查 PATH、不过 shell**，
+`argv[0]` 一律是 `process.execPath`（正在跑本件的那个 node）。
+
+两个好处：Windows 上的引号地狱与带空格的路径一次根除；pnpm 的隔离结构下「运行器
+resolve 不到消费方那一层的包」这个问题根本不会出现——**压根不需要解析**。
+
+将来真要跑第三方 npm 包的 bin 时再加 `pkg + resolveFrom` 那一层，现在不加。
+
+## 它的面
+
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="19-36" */}
+
+回执：
+
+{/* ref file="../plugins/node-cli/src/run.ts" lines="26-44" */}
+
+## 怎么用
+
+```ts
+export const inject = ['gwbNodeCli']
+
+export function apply(ctx: GwbContext) {
+  ctx.gwbNodeCli.register({
+    name: 'mine.build',
+    description: '跑我的构建 CLI',
+    entry: CLI_ENTRY,
+    args: ['--json'],
+  })
+}
+```
+
+**不用自己包 `ctx.effect`**——件卸载时这条命令自动从表上、也从命令总线上摘掉。
+要提前摘就收 `register` 回的那个函数。
+
+登记的命令**同时挂进 `gwbCli` 总线**，所以界面直接调得到：
+
+```js
+await window.gwb.command('mine.build', ['--watch'])   // 一串就是追加参数
+await window.gwb.command('mine.build', { args: ['--watch'] })  // 这么写也认
+```
+
+自带两条命令：`node-cli.list`（此刻登记了哪些）与 `node-cli.selftest`（起一个 node 子进程
+打一行 JSON）。**自检那条装上就能验这条路通没通**，不必等第一个消费方件写出来。
+
+## 超时的天花板是 110 秒，不是随便定的
+
+`timeoutMs` 默认 60 秒，**上限钉死 110 秒，超过当场拒绝注册**。
+
+因为内核那条 fd3 命令通道是 **120 秒硬超时**：超了它把 pending 摘掉，宿主再回也没人接。
+那时调用方看到的是内核那句「命令超时」——不是这边给的 `timedOut` 回执，更没有
+`spillPath`。留 10 秒余量，保证超时永远由这边先报，现场才查得动。
+
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-16" */}
+
+## 三条形状上的纪律
+
+都是从 DSH 那套抄来的，各自的现场见[撞过的墙](/docs/walls)：
+
+1. **argv 全程数组，一次都不过 shell** —— 引号、空格、`&`、中文参数原样到达
+2. **输出只保尾部 64,000 字节** —— 砍过就把全量落一份临时文件，回执里给 `spillPath`。
+   出错原因常常在被砍掉的那头，只留尾巴人就没得查了
+3. **超时杀整棵树** —— Windows 上只杀直接子进程的话，孙子进程会变成零 CPU 的僵尸挂着
+   占住目录；DSH 实测残留过 20 分钟，而那时父 pid 已经没了、事后再 taskkill 也找不到
+
+## 一条实机才知道的
+
+`process.execPath` 在宿主里是 **electron.exe**（内核用 `ELECTRON_RUN_AS_NODE=1` 把它当
+node 使起来的）。所以起 node 子进程时那个变量得跟着传，不然它会去开一扇窗，而不是跑
+那个 js。内核起宿主时是同一个绕法。

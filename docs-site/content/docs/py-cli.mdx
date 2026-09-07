@@ -1,0 +1,131 @@
+---
+title: gwb-py-cli：跑 python 写的 CLI
+description: 件包根下用 uv 建一个 venv——件装在 node_modules 里，venv 也就在 node_modules 里
+livedoc: none
+---
+
+# gwb-py-cli
+
+包名 `@godcreator02/gwb-py-cli`，服务 `ctx.gwbPyCli`。node-only，没有界面那半。
+
+比 [gwb-node-cli](/docs/node-cli) 多两层：**守卫**（venv 在不在、对不对）与**自愈**
+（被外力抹掉了自己重建）。
+
+## venv 落在哪
+
+`<件包根>/py/.venv`。件装进 `node_modules` 之后，venv 就在 `node_modules` 里——
+实机长这样：
+
+```
+<home>/node_modules/.pnpm/@godcreator02+gwb-py-cli@0._<hash>/node_modules/
+  @godcreator02/gwb-py-cli/
+    py/
+      pyproject.toml
+      uv.lock
+      .venv/            ← 守卫现建的，不进包、不进 git
+        Scripts/gwb-pycli-selftest.exe
+        Lib/site-packages/gwb_pycli_selftest-0.0.1.dist-info/
+```
+
+**pnpm 重解那层目录时 venv 会被抹掉，这是设计内行为**——下次挂载或下次调用时守卫重建。
+
+## 消费方的 `py/` 长什么样
+
+本件自带的那份既是自检靶子，也是**照抄的模板**。三处跟守卫对得上，改名字要一起改：
+
+- `name` 与 `version` → 登记时给的 `distName` / `version`，守卫拿它比对 `dist-info` 目录名
+- `[project.scripts]` 的入口点 → 守卫在 venv 里生成 `<名>.exe` 垫片，spawn 的就是它
+- **`uv.lock` 必须在** → 守卫跑的是 `uv sync --frozen`，没锁文件当场失败
+
+包清单的 `files` 要带 `py`，还要带 `"!py/**/__pycache__"`——为什么见[撞过的墙](/docs/walls)。
+
+## 守卫
+
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="70-92" */}
+
+四条判据：
+
+1. **版本比对静态读 `dist-info` 的目录名，不起 python 进程** —— 热路径上零解释器开销。
+   包名要按 PyPA 那条规矩归一化（`-`、`_`、`.` 折成 `_` 再小写）：登记时给的是
+   `gwb-pycli-selftest`，盘上是 `gwb_pycli_selftest-0.0.1.dist-info`
+2. **同步带 `--inexact`** —— 开发工位上 `py/.venv` 与项目自己的开发环境一份两吃
+3. **失败不抛** —— uv 不在 PATH、退出非零，一律收敛成 `{ ready: false, reason }`。
+   件本身照常挂上，只是这批命令跑不了
+4. **`Scripts` / `Lib` 是 Windows 专属段** —— Windows-only 是本生态的分发前提
+
+### 出身记号
+
+建成时把包根写进 `<venv>/.gwb-built-for`。守卫发现记号缺失或指着别处，就当 venv 不新鲜、
+重建。
+
+**放在 venv 里面**，让它跟 venv 同生共死——放外面的话 venv 被删了记号还在，就有了
+「记号说建好了、其实没有」的半状态。
+
+防的是 venv 跟着包目录被整份搬走：venv 里的可编辑安装记着**建它那次**的包根，搬到别处
+照样起得来、但指向的是别人的树。DSH 为 pnpm 的 side-effects cache 撞出这条；我们不走
+postinstall 用不上那个场景，但 home 被整体拷贝或改名时一模一样。
+
+### 自愈不是单独一条路径
+
+`run` 每次都先过一遍守卫。**幂等**：已就绪时只是三次 fs 调用、零进程；venv 被抹掉了当场
+重建。所以「垫片 ENOENT 了再重试一刀」那种事后补救根本不需要写。
+
+同一个包根上并发调只会真跑一趟（`inflight` 按包根去重），不会同时起两个 `uv sync`。
+
+## uv 只认 PATH
+
+**npm 上没有 astral 官方的 uv 分发包**：`uv` 那个包是不相干的 UTF-8 校验库，
+`@astral-sh/uv` / `@astral-sh/ruff` / `uv-bin` / `uvx` 全是 404，搜出来的只有第三方 CDK、
+semantic-release 插件和一个第三方下载器。要「跟着 npm 装」只能自己造包塞二进制或写下载器
+——两条都是新的维护面，代价远大于「机器上装一次 uv」。
+
+拉不起时的措辞是给人看的：
+
+```
+venv 没就绪,py-cli.selftest 跑不了：拉不起 uv（PATH 上没有？）：装上 uv 或把它加进 PATH,再重载本件。
+```
+
+**为什么不走 `postinstall`**（DSH 那边的主路）：home 的 `pnpm-workspace.yaml` 里没有
+`allowBuilds`，内核的 `pnpm add` 也不带脚本放行，pnpm 11 默认跳过依赖的 `postinstall`
+——那条路在这边**默认静默失效**。走挂载时的守卫反而顺带躲开了 pnpm 的 side-effects cache
+串世界那个坑（它只在 postinstall 路径上存在）。
+
+## 它的面
+
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="19-45" */}
+
+`command` 与 `module` **二选一，给两个也拒**：
+
+- `command: 'x'` → 跑 `<venv>/Scripts/x.exe`（`[project.scripts]` 生成的垫片）
+- `module: 'x.cli'` → 跑 `<venv>/Scripts/python.exe -m x.cli`
+
+## 怎么用
+
+```ts
+export const inject = ['gwbPyCli']
+
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+export function apply(ctx: GwbContext) {
+  ctx.gwbPyCli.register({
+    name: 'mine.analyze',
+    packageRoot: PACKAGE_ROOT,
+    distName: 'mine-analyzer',
+    version: '0.1.0',
+    command: 'mine-analyzer',
+    args: ['--json'],
+  })
+}
+```
+
+登记时顺手发起一次守卫，**但不挡着 `apply` 往下走**——首次可能要下一个 python 解释器。
+
+自带 `py-cli.list` 与 `py-cli.selftest` 两条。超时的上限同 node 那半，110 秒。
+
+## 编码
+
+给 python 子进程显式注 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`。机器级
+`PYTHONUTF8=1` 本来就是本生态的前提，这儿再注一遍是零成本的兜底——少了它 Windows 上
+中文输出就是一片乱码，而且报错报得莫名其妙。
+
+靶子的输出里特意带一个中文字段和 `sys.stdout.encoding`，实机一眼就看得出这条有没有生效。
