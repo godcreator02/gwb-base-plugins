@@ -8,10 +8,7 @@ livedoc: none
 
 包名 `@godcreator02/gwb-logger`，**没有服务**。它只做一件事：把内核汇好的那条流水画成一格窗格。
 
-**这页写在代码之前**，所以还没有钉住任何代码。件做出来之后补上 `ref` 记号再 `confirm`。
-
-**内核那半已经落地并实机验通了**（四路汇总、缓冲、`gwb.logs` 两条口、文件轮转），下面写的
-通道名与条目形状就是实现里的样子，照着写即可。
+两半都做完了，实机验通：内核那半（四路汇总、缓冲、`gwb.logs` 两条口、文件轮转）与这个件。
 
 ## 先看分工：日志的活几乎全不在这个件里
 
@@ -38,18 +35,7 @@ livedoc: none
 
 一格窗格、一次报名，就这些：
 
-```ts
-export const name = 'gwb-logger'
-
-/** 没有外壳就不挂——这一格窗格是这个件的全部 */
-export const inject = ['gwbShell']
-
-export function apply(ctx: GwbContext): void {
-  ctx.gwbShell.registerPane({ id: 'main', title: '日志', icon: 'scroll-text', duplicable: true })
-  ctx.gwbShell.describeSelf({ title: '日志', icon: 'scroll-text' })
-  ctx.logger(name).info('日志窗格已注册')
-}
-```
+{/* ref file="../plugins/logger/src/index.ts" lines="18-27" */}
 
 两条注册都**不用自己包 `ctx.effect`**：件卸载时表上那两条自动摘掉。
 
@@ -142,12 +128,17 @@ preload，这条线只有一版，去掉。
 进缓冲 → 推回窗格 → 那条路上如果又打了一句，就是一变二、二变四，**界面当场冻死**。所以
 **窗格在收日志的路径上一个 console 都不许打**；取表失败那种非循环路径上的可以留。
 
-**二、Radix 的门户会逃出 scope 围栏。** 件的样式表整张 scope 在 `[data-gwb-plugin=…]` 之下，
-而 Select 的弹层默认挂在 `body` 下——挂出去就一条规则都匹配不上，**症状是「下拉打开是一片
-没样式的白板」**。这个件是**第一个用门户组件的件**（`hello` 只有 Button，外壳那张 dockview
-表本来就不 scope）。走法是把 Portal 的 `container` 指回 `mountPane` 给的那个容器——它身上正好
-带着 `data-gwb-plugin`。**要实机验一次弹层的定位有没有被容器的 `overflow-auto` 裁掉**；真裁了
-就退回「一排 chips」的无门户方案。
+**二、Radix 的门户会逃出 scope 围栏——这条已经处理掉了，写在这儿是防它回来。** 件的样式表
+整张 scope 在 `[data-gwb-plugin=…]` 之下，而 Select 的弹层默认挂在 `body` 下，挂出去就一条
+规则都匹配不上，**症状是「下拉打开是一片没样式的白板」**。这个件是**第一个用门户组件的件**
+（`hello` 只有 Button，外壳那张 dockview 表本来就不 scope）。
+
+走法：`src/client/portal.tsx` 供一个 `PortalContainer` context，窗格在顶层把 `mountPane` 给的
+容器放进去（它身上正好带着 `data-gwb-plugin`），**改过的 `select.tsx` 自己去读**。
+**做成 context 而不是让调用方逐个传**——传漏了同样是静默白板，而那种错没有任何现象。
+
+实机验过：弹层挂在本件容器里、背景与圆角都匹配上了、176×285 没被容器的 `overflow-auto` 裁掉、
+三个分组（件／宿主／渲）都在。**下一个要用门户组件的件照这个办**，别再从 shadcn 原样拉一份。
 
 **三、`icon` 名要查一眼。** `scroll-text` 是确定有的；`logs` 这个名字是 lucide 较新加的，用之前
 先确认在不在。图标这一版注册了也只是原样收着——真画是外壳导航的事。
@@ -165,9 +156,16 @@ preload，这条线只有一版，去掉。
 - **两个共享包**（`gwb-shared-react` / `gwb-tokens`）：浏览器半靠 home 里有它们才跑得起来
   ——react 系经页面 importmap、令牌表经 `gwb://`
 
-`radix-ui` / `class-variance-authority` / `cn` 是 **dev**：它们**打进本束**，外置成裸名就是
-运行期炸。`cordis` 一个字都没 import（node 半不 `extends Service`、只写 `apply`），本件不写，
+`radix-ui` / `class-variance-authority` / `cn` / `lucide-react` 是 **dev**：它们是 shadcn 组件的
+运行时依赖，但**打进本束**——不在 importmap 里，外置成裸名就是运行期一句
+`Failed to resolve module specifier`。产物守卫钉着这条（`client.js` 里除那四个共享名之外
+不许有裸名，而且 `select-trigger` 得真在束里）。
+
+`cordis` 一个字都没 import（node 半不 `extends Service`、只写 `apply`），本件不写，
 由契约包的 peer 带进来——对照 `gwb-shell`，那边 `extends Service` 是运行时真 import，写的是 peer。
+
+**组件是从 shadcn 官方拉的四个**（button / badge / input / select），照仓里的规矩各拉各的。
+`select.tsx` 手改过一行（Portal 的 container），改动连着理由写在那一行的注释里。
 
 peer 范围一律写 `>=` 不写 `^`：caret 在 `0.0.x` 上锁死 patch（`^0.0.1` 只匹配 `0.0.1`），
 共享包一升版消费方就不匹配了。

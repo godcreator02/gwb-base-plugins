@@ -269,6 +269,28 @@ CSS 里**未分层的规则优先级高于所有分层规则**。件的表只写
 
 ## 验收方法
 
+### 装件时**共享包要显式带上**——pnpm 自动装的 peer 不算数
+
+验收开的干净 home 里装了 `cli` / `shell` / `logger` / `hello` 四个件，起来之后**页面一片空白**。
+
+**症状**：日志里一句挂载错误都没有，四个件全报「挂上」，外壳也认出来了；错在渲染层的最后一行：
+
+```
+19:02:46.548 I renderer SHARED （空）
+19:02:46.581 E renderer 起不来:TypeError: Failed to resolve module specifier "react".
+```
+
+**为什么**：件的 `peerDependencies` 里写着两个共享包，而 pnpm 的 `auto-install-peers` 确实
+把它们装进了 `node_modules`——**但没写进 home 的 `dependencies`**。而内核收 `gwb.shared`
+声明时**只扫 `dependencies`**（共享包不是件、不在条目树上，那是唯一看得见它们的地方）。
+于是 importmap 是空的，任何带界面的件都解析不到 `react`。
+
+**修**：`kernel.install` 的 specs 里把 `@godcreator02/gwb-shared-react` 与
+`@godcreator02/gwb-tokens` 一起写上。**验收清单里但凡有带界面的件，这两个就得跟着装。**
+
+这条容易被「peer 会被 pnpm 自动装进 home」那句话骗过去——**那句话没错，错在「装进来」不等于
+「进了 dependencies」**。
+
 ### 量颜色前先关掉过渡——「等它跑完」是靠不住的
 
 shadcn 的 button 基础类里有 `transition-all`。切换 `.dark` 之后立刻 `getComputedStyle`
@@ -481,7 +503,24 @@ shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
 
 `@/` 别名一共要配三处，都指 `src/client`：件根的 tsconfig（**给 CLI 读**，它据此决定把
 拉下来的组件放哪）、`src/client` 那份（给 typecheck）、`build.ts` 里 esbuild 的 `alias`
-（给打包）。少配一处的症状各不相同，但都是构建期就炸，不会拖到运行时。
+（给打包）。
+
+### 件根少配那处 `paths`，CLI 会把组件放进一个**字面叫 `@` 的目录**
+
+上一条原先写着「少配一处都是构建期就炸，不会拖到运行时」——**那句不全对，件根那处不是**。
+
+CLI 拿件根的 tsconfig 去解析 `components.json` 里的 `@/components/ui`。件根没有 `paths` 时
+它**不报错、也不回落**，照字面建出一个目录：
+
+```
+plugins/logger/@/components/ui/button.tsx   ← 四个组件全落这儿
+```
+
+**症状**：CLI 高高兴兴说 `✔ Created 4 files`，只是路径写的是 `@\components\ui\button.tsx`
+——那一行是唯一的线索，而且很容易当成别名的显示写法扫过去。真正的报错要等到 typecheck，
+说的是「找不到 `@/components/ui/button`」，跟根因隔着一层。
+
+**修**：件根 tsconfig 补上 `paths`，删掉误建的 `@` 目录重拉一次。写这个件时就是这么撞的。
 
 ### 新版 shadcn 不再生成 `lib/utils.ts`，改用 `cn` 这个包
 
