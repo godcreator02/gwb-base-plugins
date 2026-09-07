@@ -6,7 +6,9 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm test"
+    "check": "pnpm typecheck && pnpm test",
+    "doc": "pnpm --filter gwb-base-plugins-docs-site exec livedoc check",
+    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec livedoc confirm"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

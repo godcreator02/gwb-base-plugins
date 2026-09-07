@@ -1,0 +1,85 @@
+---
+title: 撞过的墙
+description: 件这边为什么写成这样——每条连着它钉住的那段代码
+livedoc: none
+---
+
+# 撞过的墙
+
+代码注释只写现状，**为什么、症状、当时怎么查的，全在这一页**，每条钉在具体代码上。
+
+内核那边的规则与坑在内核仓的站上；这一页只记件自己的。
+
+---
+
+## 相对 import 必须带 `.js`，而它是个静默失败
+
+产物给 node 直接加载（loader 不打包），ESM 不做扩展名补全。少了 `.js` 的症状是
+**件挂不上，而日志一个字都没有**——第一个件就是这么撞的，查了几分钟才定位。
+
+（内核后来补了保底 error 出口，同样的错现在当场是一行 `ERR_MODULE_NOT_FOUND` 带路径。）
+
+本想让 TypeScript 替我们强制这一条，**结果不行**：
+
+@@livedoc ref ../tsconfig.base.json:4-6 @@
+
+`moduleResolution: nodenext` 会强制相对 import 带扩展名，但 **cordis 自己的 `.d.ts` 不兼容
+它**——那边写的是 `export * from './context'`，相对 import 不带扩展名。nodenext 解析不了，
+整个 `Context` 类型退化成空，症状是 `ctx.logger` / `effect` / `provide` 全报「不存在」。
+
+所以只能回 `bundler`，那一条改由产物守卫拦：
+
+@@livedoc ref ../plugins/cli/tests/artifact.test.ts:21-43 @@
+
+顺带钉住第二条：**产物里不许有裸名 import**。件该是自包含的——契约包与 cordis 都只
+`import type`、编译期擦除，`gwb-cli` 的产物里除了一条 `./registry.js` 什么都没有。
+
+缺产物时整组跳过，门禁不依赖 `build`。
+
+---
+
+## 契约包走 peer，不是 dev
+
+判据「运行时真 import 了才写 peer，只 `import type` 写 dev」**漏了中间一档**：
+
+@@livedoc has ../plugins/cli/package.json "peerDependencies" @@
+
+`GwbCli.run` 回的是 `GwbResult`——它出现在**导出的类型**里，消费方装了这个件之后必须
+解析得到。写成 `devDependency` 的症状是消费方那边全解析不到，因为**发布出去的包不带
+devDependencies**。
+
+同一个坑在内核仓也撞了一次（词汇表包的 `GwbContext extends Context` 把 cordis 写成 dev）。
+三档判据的正本在内核仓的 `CLAUDE.md`。
+
+**白得的一条**：peer 声明之后，pnpm 把契约包自动装进了 home，消费方不用手动装。
+
+`cordis` 仍然是 dev——它只在 `apply` 的参数类型里用，不出现在导出面。
+
+---
+
+## 撞名是后来者赢，但不许静默地赢
+
+@@livedoc ref ../plugins/cli/src/registry.ts:23-36 @@
+
+件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个件的处理器上，
+**两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
+
+## 注销只收自己那份
+
+同一段里那个 `if (table.get(def.name) === record)`：撞名之后**先卸载的那个件，不该把接手的
+那份一起带走**。少了这个判等，卸一个件会让另一个件注册的命令跟着消失。
+
+## 一条命令抛出来不该炸到调用方
+
+@@livedoc ref ../plugins/cli/src/registry.ts:42-54 @@
+
+它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
+
+---
+
+## 服务用 `ctx.effect` 包着 provide
+
+@@livedoc ref ../plugins/cli/src/index.ts:17-25 @@
+
+本件卸载时服务自动撤销。不包的话，件卸了而 `ctx.gwbCli` 还挂在那，调用方打到一个
+已经没人维护的注册表上。

@@ -4,11 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物守卫。拦的是一个**静默失败**:产物里的相对 import 少了 `.js`,node 的 ESM 加载器
- * 找不到模块,而 loader 把那个错误整个吞掉——件就是挂不上,日志里一个字都没有。
- *
- * tsconfig 用的是 bundler 解析（不能用 nodenext,cordis 的 .d.ts 不兼容),所以 TS 不会
- * 替我们强制这一条。缺产物时整组跳过:门禁不依赖 build。
+ * 产物守卫：相对 import 必须带扩展名、不许有裸名 import。
+ * 缺产物时整组跳过——门禁不依赖 build。为什么要这两条，见文档站。
  */
 
 const libDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../lib')

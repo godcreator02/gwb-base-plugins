@@ -1,0 +1,66 @@
+---
+title: gwb-cli：命令总线
+description: 件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发
+livedoc: none
+---
+
+# gwb-cli
+
+**没有这个件，界面调不到任何 node 侧的能力**——内核的 `dispatch` 除 `kernel.info` 与
+`kernel.install` 两条自省命令外，全部走 `ctx.gwbCli`。
+
+包名 `@godcreator02/gwb-cli`，服务 `ctx.gwbCli`。产物 4 个文件、零运行时依赖。
+
+## 它的面
+
+@@livedoc ref ../plugins/cli/src/registry.ts:3-16 @@
+
+## 怎么用
+
+**登记一条命令**（在你的件里）：
+
+```ts
+export const inject = ['gwbCli']
+
+export function apply(ctx: GwbContext) {
+  ctx.effect(() =>
+    ctx.gwbCli.register(
+      { name: 'mine.hello', description: '回一句话', plugin: 'mine' },
+      (args) => ({ got: args }),
+    ),
+  )
+}
+```
+
+`register` 回的是注销函数，**用 `ctx.effect` 包着**——本件卸载时注册自动回收。
+
+`plugin` 这个字段由注册方自带，不从 `ctx.name` 读：那是 cordis 的追踪属性，没 `inject`
+就读会抛。
+
+**从界面调**（在你的 client 束里）：
+
+```js
+args.host.call('mine.hello', { n: 7 }).then((res) => {
+  // { ok: true, data: { got: { n: 7 } } }
+})
+```
+
+整条链路是：界面 → IPC → 主进程 → fd3 → 内核 `dispatch` → `ctx.gwbCli` → 你的 handler
+→ 原路回。
+
+## 回执的形状
+
+handler **自己判过成败就原样透传**，没判的一律算成了：
+
+- 回 `{ ok: false, error: '...' }` → 原样交给调用方
+- 回 `42` → 包成 `{ ok: true, data: 42 }`
+- 抛异常 → `{ ok: false, error: '<异常文本>' }`，不炸到调用方
+- 命令没注册 → `{ ok: false, error: '没有这条命令：xxx' }`
+
+## 三条判据
+
+写进测试的那三条，各自的理由见[撞过的墙](/docs/walls)：
+
+1. **撞名后来者赢，但要告警** —— 静默改派的话两边谁都不报错
+2. **注销只收自己那份** —— 撞名后先卸的不该带走接手的
+3. **handler 抛出来不炸调用方** —— 它可能是界面上的一次点击
