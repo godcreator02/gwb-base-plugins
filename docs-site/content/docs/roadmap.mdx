@@ -1,0 +1,72 @@
+---
+title: 路线
+description: 四个件到哪了、下一个是什么、各自要注意什么
+livedoc: none
+---
+
+# 路线
+
+内核那边的路线在**内核仓的站**上（`26090705ymz/gwb-kernel`）。这页只管件。
+
+## 状态
+
+| 件 | 包名 | 服务 | 状态 |
+| --- | --- | --- | --- |
+| **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.3**，装进 home 验通 |
+| **shell** | `@godcreator02/gwb-shell` | — | 下一个 |
+| **logger** | `@godcreator02/gwb-logger` | — | 待做 |
+| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
+
+## 下一个：`gwb-shell`
+
+分量最大的一个。母仓那个件 1351 行，探查过一遍，**能直接搬的和不能搬的界限很清楚**。
+
+**能原样搬（约 400 行源码 + 426 行测试，零 DOM/React/import，node 里直接跑）**：
+
+`mount-handle`（mount 契约收窄）、`bus`（格间总线，分桶 + 引用计数 + 听众异常隔离）、
+`panels`、`liveness`（一格背后的件是 live/idle/gone）、`openable`（条目 × panes → 可开
+窗格表）。这是母仓那个件里质量最高的部分。
+
+**该抄思路的 dockview 工程细节**（都是踩出来的）：
+
+- 面板组件表必须是**模块级常量**——换引用会让 dockview 重建全部格
+- 导航定宽用 `constraints`（不进 `toJSON`，每轮布局变化要重钉），**必须去重**，
+  否则 `setConstraints` 自己触发 `onDidLayoutChange` 无限递归、占死主线程
+- 默认布局里 `setSize` 必须等第二格落位后才调
+- 首帧门：布局与条目表都到手前根本不渲染 dockview
+- 布局落盘 400ms 防抖（用 `ctx.setTimeout`，件卸载时自动收）
+- `PluginPane` 那条 effect：注样式 → **await 它真到位** → 动态 import → 调 `mount` →
+  存 `unmount`；拿不到 `unmount` 就报契约不符而不是装作成功
+
+**明确不抄**：老布局兼容（约 60 行 + 5 个双分支）、母仓插件名硬编码（`console` 特判、
+六个图标名的花名册）、CDP 探针驱动面、状态栏里的母仓品牌、`void host` 那个半吊子契约
+（参数里给了 host bridge 却改吃 `window.gwb`）。
+
+**两条要先定**（走 `gwb-decide`）：
+
+1. 窗格清单住 `package.json` 的 `gwb.panes`（母仓做法，好处是外壳能在件的束加载前就排出
+   完整的「可开窗格」表），还是允许运行时注册
+2. dockview 的基础表与皮肤住宿主文档层（母仓做法，一条没写进契约的隐性耦合），还是住
+   shell 自己的束
+
+**还要处理**：React 与组件怎么进来。设计已经定了（token 共享 + 组件复制 + React 走
+`gwb.shared` 声明），但**内核那半还没实现**——外壳是第一个消费方，到时候一起做。
+
+## 之后
+
+**`gwb-logger`**：母仓那 205 行 client 是干净的，可以搬（订阅实时 + 取历史段 + 按 `ts`
+归并去重 + 级别筛选）。它的 node 半**不要**——cordis logger 的出口归官方
+`plugin-logger-console`，落盘归内核。重做时去掉 `logBacklog?.()` 的可选链（新内核只有
+一版 preload）。
+
+需要内核先补**日志环形缓冲与 `logBacklog` 通道**——那条正在等这个件出现。
+
+**`gwb-settings`**：范围要重新划。母仓那 981 行里，「插件启停/卸载」那半建立在 config 件
+的 `host.config.*` 之上，而**新内核有 loader**，直接用 `ctx.loader` 的
+`create`/`remove`/`update` 就行，**热挂卸是白得的、不用重启**。
+
+**明确不抄**：`platform` 分区 + `window.confirm` 拦截（那个布尔不带任何特权，弹窗文案里的
+「兜底页」是母仓概念）、`settings.data.list` 那个目录统计器（跟「设置」没必然关系）。
+
+**要修的名不副实**：母仓那颗「卸载」按钮只摘 yml 条目、不碰 `node_modules`。要么接上真的
+卸包，要么改叫「移出插件树」。
