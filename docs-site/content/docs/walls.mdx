@@ -147,6 +147,33 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 
 {/* ref file="../plugins/shell/src/openable.ts" lines="50-68" */}
 
+### cordis 对服务不做任何版本校验，所以 peer 的 range 是唯一的校验点
+
+读 cordis 4.0.0-rc.9 的产物查实的，四条都是「没有」：
+
+- **服务的契约面就是一个裸字符串名字**。注册记录只有 `{name, value, fiber, check}` 四个
+  字段，没有版本、没有 schema、没有描述
+- 类型里那个 `Plugin.provide` 字段**运行时从来不读**，是个死类型（全文搜过，只有类型声明
+  处出现，没有任何读取点）
+- **`inject` 全是硬依赖，没有可选形式**——没有 `'foo?'` 后缀，也没有 `{required, optional}`
+  分组（那是 cordis 3.x 的老写法，rc.9 会把它当成两个**叫 `required` 和 `optional` 的服务名**，
+  于是永远 PENDING）
+- **依赖不满足是完全静默的**：无日志、无超时、无报错
+
+所以「可选依赖」只能靠 `ctx.inject([...], cb)` 开一个子 fiber——子 fiber 缺服务就永远
+PENDING，父件照常挂上。hello 给 `gwbSkills` 与两条 CLI 用的都是这一招。
+
+**跨件的版本约束因此只剩 `peer` 的 range 一个执行点**，就在 pnpm 装包那一刻。件调一个
+新版才有的字段、而 home 里装着老版时，老版的 `normalize` 直接忽略那个字段——全链路零提示。
+代价不对称：写了而不必要，只是多一条声明；该写而没写，是静默失效。所以**服务依赖也写 peer**，
+哪怕产物里对它零 import。
+
+### `await ctx.plugin(...)` 会立即 resolve，即便插件根本没跑
+
+`Fiber.await()` 是 `while (this.inertia) await this.inertia`——依赖没满足时 `inertia` 是
+`undefined`，那个 while 一次都不进。**别拿它当「加载完成」信号**：写探针时 `await
+ctx.plugin(x)` 之后立刻去调 `x` 提供的服务，服务可能压根还不在。
+
 ---
 
 ## 发版
@@ -166,8 +193,9 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 ### `files` 收整个目录时，`__pycache__` 跟着一起发出去了
 
-`gwb-py-cli` 的 `files` 里写了 `py`，而**开发工位上只要跑过一次那个 python 项目就有了
-`__pycache__`**。第一版 0.0.1 发出去、装进 home 一看：
+**撞在 `gwb-py-cli` 0.0.1 上**（那一版还自带一个 python 自检靶子，后来那个靶子搬去 hello 了）：
+`files` 里写了 `py`，而**开发工位上只要跑过一次那个 python 项目就有了 `__pycache__`**。
+发出去、装进 home 一看：
 
 ```
 package/py/gwb_pycli_selftest/__pycache__/__main__.cpython-313.pyc
@@ -178,9 +206,9 @@ python 发现 `.pyc` 与源码时间戳对不上会自己重编——所以这�
 没有任何机制会发现。
 
 `files` 里补一条否定式 `"!py/**/__pycache__"`，并且当场验过它真的起作用（故意造出
-`__pycache__` 再 `pnpm pack` 看包里还有没有）：
+`__pycache__` 再 `pnpm pack` 看包里还有没有）。如今带 `py/` 的是 hello，那条否定式跟着它：
 
-{/* has file="../plugins/py-cli/package.json" text="__pycache__" */}
+{/* has file="../plugins/hello/package.json" text="__pycache__" */}
 
 **这条引用本来想把那个 glob 原样写进 `text=`，结果当场撞了本页下面那条**——`**/` 里
 带着 `*/`，把 `{/* … */}` 提前关掉了，`pnpm doc` 报的是一句
@@ -189,7 +217,7 @@ python 发现 `.pyc` 与源码时间戳对不上会自己重编——所以这�
 
 顺带钉进产物守卫，防它哪天被人当成手滑删掉：
 
-{/* has file="../plugins/py-cli/tests/artifact.test.ts" text="__pycache__ 排在包外" */}
+{/* has file="../plugins/hello/tests/artifact.test.ts" text="__pycache__ 排在包外" */}
 
 **判据**：`files` 一旦收的是**整个目录**而不是具体文件，就得想一遍「这个目录在开发工位上
 会不会长出别的东西」。`dist` 与 `src` 没这问题（构建产物与源码是干净的），`py` 有。
@@ -328,6 +356,40 @@ resolve 不了。
 
 **过渡关掉之后本来就不用等**：`getComputedStyle` 是同步的，改完类名当场读就是终值。
 要等异步的东西就用 `setTimeout`（它不受节流影响到这个程度），别用 rAF。
+
+### 探针的轮询要放在 node 侧，别写在页面里——同一个根因的第三副面孔
+
+上面那条说 rAF 在后台窗口里不跑。**页面内的 `setTimeout` 轮询同样靠不住**：验 hello 那两条
+CLI 时，写成
+
+```js
+// 在页面里跑:20 秒轮询,一次都没成
+new Promise((resolve) => {
+  const tick = () => { if (找到了) return resolve(true); setTimeout(tick, 200) }
+  tick()
+})
+```
+
+**20 秒一次都没等到**，而同一段判断在 node 侧 `await new Promise(r => setTimeout(r, 2000))`
+之后一次 `Runtime.evaluate` 就读到了。原因同上：窗口没获得焦点时 Chromium 把页面的 timer
+节流掉，而 React 的重渲染也排在那类被节流的 task 里。
+
+**写法**：轮询的循环放在 node 侧，每轮发一次独立的 `Runtime.evaluate`，页面里只做一次同步判断。
+
+### dockview 的标签要**反复点到成功为止**
+
+`.dv-tab` 上 dispatch 那串 `pointerdown/mousedown/...`（见下面那条）**点得太早时照样返回成功，
+但那一格并不会切过来**——dockview 还没把事件接上。一次性点完就去等，会等到超时。
+
+正确的形状是把点击本身放进轮询：每轮先看目标那格的 DOM 出现没有，没出现就再点一次。
+
+### 探针里判「这次的结果」别拿自己塞的 DOM 属性当记号
+
+验那三颗按钮时，想用 `node.setAttribute('data-stale','1')` 标记上一轮的输出、再用
+`:not([data-stale])` 等新结果。**永远等不到**：React 更新时复用的是同一个 DOM 节点，
+自己塞的属性它既不认识也不会替你摘掉。
+
+比对 `textContent` 变化才是可靠的。
 
 ### 验 node-only 的件不必起 electron，但 `createRequire` 得先 `realpath`
 
@@ -495,7 +557,7 @@ Tailwind v4 下 `tailwind.config` 填空字符串（v4 没有配置文件了）�
 
 ### 别写 `baseUrl`——TS 7 把它移除了
 
-{/* ref file="../plugins/hello/tsconfig.json" lines="1-14" */}
+{/* ref file="../plugins/hello/tsconfig.json" lines="1-12" */}
 
 shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
 `error TS5102: Option 'baseUrl' has been removed`。TS 7 里 `paths` 直接相对 tsconfig

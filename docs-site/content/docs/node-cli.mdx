@@ -33,7 +33,7 @@ resolve 不到消费方那一层的包」这个问题根本不会出现——**�
 
 ## 它的面
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="19-36" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="19-37" */}
 
 回执：
 
@@ -57,6 +57,9 @@ export function apply(ctx: GwbContext) {
 **不用自己包 `ctx.effect`**——件卸载时这条命令自动从表上、也从命令总线上摘掉。
 要提前摘就收 `register` 回的那个函数。
 
+`cwd` 不给的话落在 `entry` 自己旁边（也就是 `dist/`）。**不继承宿主的 cwd**——那是内核的
+目录，跟这条命令毫无关系，而且随内核怎么起而变。要确定的工作目录就自己给。
+
 登记的命令**同时挂进 `gwbCli` 总线**，所以界面直接调得到：
 
 ```js
@@ -64,8 +67,9 @@ await window.gwb.command('mine.build', ['--watch'])   // 一串就是追加参�
 await window.gwb.command('mine.build', { args: ['--watch'] })  // 这么写也认
 ```
 
-自带两条命令：`node-cli.list`（此刻登记了哪些）与 `node-cli.selftest`（起一个 node 子进程
-打一行 JSON）。**自检那条装上就能验这条路通没通**，不必等第一个消费方件写出来。
+自带一条 `node-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
+验收归消费方件；`plugins/hello` 就是那个样板，它自带的 `src/cli.ts` 编译成 `dist/cli.js`
+之后登记进来，界面上点一下就跑。
 
 ## 超时的天花板是 110 秒，不是随便定的
 

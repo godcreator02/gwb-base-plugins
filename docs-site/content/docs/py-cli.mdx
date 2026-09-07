@@ -11,27 +11,30 @@ livedoc: none
 比 [gwb-node-cli](/docs/node-cli) 多两层：**守卫**（venv 在不在、对不对）与**自愈**
 （被外力抹掉了自己重建）。
 
+**这个件自己不带 python 项目。** 它只做运行器——`py/` 与 venv 都住在**消费方件**的包根下。
+样板是 `plugins/hello`。
+
 ## venv 落在哪
 
-`<件包根>/py/.venv`。件装进 `node_modules` 之后，venv 就在 `node_modules` 里——
-实机长这样：
+`<消费方件的包根>/py/.venv`。件装进 `node_modules` 之后，venv 就在 `node_modules` 里——
+实机长这样（这是 hello 那份的真实路径形状）：
 
 ```
-<home>/node_modules/.pnpm/@godcreator02+gwb-py-cli@0._<hash>/node_modules/
-  @godcreator02/gwb-py-cli/
+<home>/node_modules/.pnpm/@godcreator02+gwb-hello@0.0_<hash>/node_modules/
+  @godcreator02/gwb-hello/
     py/
       pyproject.toml
       uv.lock
       .venv/            ← 守卫现建的，不进包、不进 git
-        Scripts/gwb-pycli-selftest.exe
-        Lib/site-packages/gwb_pycli_selftest-0.0.1.dist-info/
+        Scripts/gwb-hello-py.exe
+        Lib/site-packages/gwb_hello_py-0.0.1.dist-info/
 ```
 
 **pnpm 重解那层目录时 venv 会被抹掉，这是设计内行为**——下次挂载或下次调用时守卫重建。
 
 ## 消费方的 `py/` 长什么样
 
-本件自带的那份既是自检靶子，也是**照抄的模板**。三处跟守卫对得上，改名字要一起改：
+照 [hello](/docs/roadmap) 那份抄。三处跟守卫对得上，改名字要一起改：
 
 - `name` 与 `version` → 登记时给的 `distName` / `version`，守卫拿它比对 `dist-info` 目录名
 - `[project.scripts]` 的入口点 → 守卫在 venv 里生成 `<名>.exe` 垫片，spawn 的就是它
@@ -82,7 +85,7 @@ semantic-release 插件和一个第三方下载器。要「跟着 npm 装」只�
 拉不起时的措辞是给人看的：
 
 ```
-venv 没就绪,py-cli.selftest 跑不了：拉不起 uv（PATH 上没有？）：装上 uv 或把它加进 PATH,再重载本件。
+venv 没就绪,hello.python 跑不了：拉不起 uv（PATH 上没有？）：装上 uv 或把它加进 PATH,再重载本件。
 ```
 
 **为什么不走 `postinstall`**（DSH 那边的主路）：home 的 `pnpm-workspace.yaml` 里没有
@@ -120,7 +123,8 @@ export function apply(ctx: GwbContext) {
 
 登记时顺手发起一次守卫，**但不挡着 `apply` 往下走**——首次可能要下一个 python 解释器。
 
-自带 `py-cli.list` 与 `py-cli.selftest` 两条。超时的上限同 node 那半，110 秒。
+自带一条 `py-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
+验收归消费方件，样板是 `plugins/hello`。超时的上限同 node 那半，110 秒。
 
 ## 编码
 
@@ -128,4 +132,19 @@ export function apply(ctx: GwbContext) {
 `PYTHONUTF8=1` 本来就是本生态的前提，这儿再注一遍是零成本的兜底——少了它 Windows 上
 中文输出就是一片乱码，而且报错报得莫名其妙。
 
-靶子的输出里特意带一个中文字段和 `sys.stdout.encoding`，实机一眼就看得出这条有没有生效。
+hello 那份的输出里特意带一个中文字段和 `sys.stdout.encoding`，界面上点一下就看得出
+这条有没有生效。
+
+## 怎么验
+
+装 `plugins/hello`（它同时带着一 node 一 python 两条 CLI），打开「验收件」那一格，
+点那三颗按钮。实测的三条回执：
+
+| 点哪颗 | 回执 |
+| --- | --- |
+| 跑 node CLI | `exitCode=0 ok=true 67ms`，stdout 是一行 JSON，`cwd` 落在 `dist/` |
+| 跑 python CLI | `exitCode=0 ok=true 168ms`，`prefix` 指着 hello 包根下那个 `.venv`，中文不乱码 |
+| 跑一条注定失败的 | `exitCode=1 ok=false`，stderr 原样回到界面 |
+
+把 `cordis.yml` 里两条运行器摘掉再起一次，**hello 照常挂上、两格照常画**，点按钮回的是
+「没有这条命令：hello.node」——那就是可选注入该有的样子。
