@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -67,17 +67,31 @@ function App(): ReactElement {
   )
 }
 
-async function boot(root: HTMLElement): Promise<void> {
+async function boot(container: HTMLElement): Promise<Root> {
   // 令牌表先注：件表里全是 var() 引用，值在那张表上。两张都等到位再渲染
   await loadStyle(assetUrl(TOKENS, 'theme.css'))
   await loadStyle(assetUrl(SELF, 'style.css'))
   // 件的表整张 scope 在这个属性之下——容器上不挂它，一个类名都不生效
-  root.setAttribute('data-gwb-plugin', SELF)
-  createRoot(root).render(<App />)
+  container.setAttribute('data-gwb-plugin', SELF)
+  const root = createRoot(container)
+  root.render(<App />)
+  return root
 }
 
-export function mountShell(_args: unknown, root: HTMLElement): void {
-  void boot(root).catch((err: unknown) => {
-    root.textContent = `验收件起不来：${String(err)}`
+/**
+ * 外壳那半的入口。**回一个 `{ dispose }`**：这个件被卸载时，页面上这棵 React 树
+ * 得有人拆——渲染层眼下还不会调它，但契约面先立在这儿。
+ */
+export function bootShell(_args: unknown, container: HTMLElement): { dispose(): void } {
+  const mounted = boot(container).catch((err: unknown) => {
+    container.textContent = `验收件起不来：${String(err)}`
+    return undefined
   })
+  return {
+    dispose() {
+      // 挂载是异步的：dispose 可能赶在它之前，所以接在同一条链上而不是拿个变量去猜
+      void mounted.then((root) => root?.unmount())
+      container.textContent = ''
+    },
+  }
 }

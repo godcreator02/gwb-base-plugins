@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "验收件：一个 shadcn 按钮 + 一个亮暗开关，用来验运行时环境与样式这条链路通不通",
   "type": "module",
   "main": "dist/index.js",
