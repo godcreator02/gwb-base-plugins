@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
@@ -22,15 +21,10 @@ export { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './registry.js'
  * 所以这个件硬 `inject` 总线:没有它,登记进来的命令出不了这个进程。
  */
 
-/** 自检:装上就能验这条路通没通,不必等第一个消费方件写出来 */
-export const SELFTEST_COMMAND = 'node-cli.selftest'
 /** 此刻登记了哪些 */
 export const LIST_COMMAND = 'node-cli.list'
 
 const PLUGIN_NAME = 'gwb-node-cli'
-/** 本文件住 `<包根>/dist/index.js`,上一级就是包根 */
-const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const SELFTEST_ENTRY = path.join(PACKAGE_ROOT, 'selftest', 'probe.mjs')
 
 /**
  * 宿主是 electron 当 node 使起来的,所以 `process.execPath` 是 electron.exe——
@@ -87,7 +81,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     this.registry = createRegistry((message) => ctx.logger(PLUGIN_NAME).warn(message))
   }
 
-  /** 服务就绪时把自检与看表两条命令挂上；effect 包着,本件卸载时自动注销 */
+  /** 服务就绪时把看表那条命令挂上；effect 包着,本件卸载时自动注销 */
   [Service.init](): void {
     const cli = this.own.gwbCli
     // inject 保证了它在,这句只是把类型收窄
@@ -98,21 +92,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
         this.registry.list(),
       ),
     )
-    // 自检那条不进注册表:它是本件自己的,不占消费方的命名空间,也不该出现在 list 里
-    this.own.effect(() =>
-      cli.register(
-        { name: SELFTEST_COMMAND, description: '自检:起一个 node 子进程打一行 JSON', plugin: PLUGIN_NAME },
-        (args) =>
-          runProcess({
-            command: process.execPath,
-            args: [SELFTEST_ENTRY, ...toExtraArgs(args)],
-            cwd: PACKAGE_ROOT,
-            env: ELECTRON_AS_NODE,
-            timeoutMs: 15_000,
-          }),
-      ),
-    )
-    this.own.logger(PLUGIN_NAME).info(`node CLI 运行器就绪（ctx.gwbNodeCli）,自检走 ${SELFTEST_COMMAND}`)
+    this.own.logger(PLUGIN_NAME).info(`node CLI 运行器就绪（ctx.gwbNodeCli）,看表走 ${LIST_COMMAND}`)
   }
 
   /**
@@ -156,7 +136,9 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     return runProcess({
       command: process.execPath,
       args: [found.entry, ...found.args, ...extraArgs],
-      cwd: found.cwd ?? PACKAGE_ROOT,
+      // 不给就落在那个 js 自己旁边。**不继承宿主的 cwd**——那是内核的目录,跟这条命令毫无关系,
+      // 而且随内核怎么起而变。要确定的工作目录就自己给 cwd
+      cwd: found.cwd ?? path.dirname(found.entry),
       env: { ...ELECTRON_AS_NODE, ...found.env },
       timeoutMs: found.timeoutMs,
     })

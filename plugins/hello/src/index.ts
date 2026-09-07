@@ -1,11 +1,16 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbData 与 gwbShell 这两个名字
+// 只为激活那几个件的 `declare module 'cordis'`——它们给 ctx 加上各自那个名字
 import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-shell'
 import type {} from '@godcreator02/gwb-skills'
+import type {} from '@godcreator02/gwb-node-cli'
+import type {} from '@godcreator02/gwb-py-cli'
 
 /**
- * node 半：拿 data 件存一份计数，每次启动 +1；再往外壳注册**两格**窗格、报一下自己叫什么。
+ * node 半：拿 data 件存一份计数，每次启动 +1；往外壳注册**两格**窗格、报一下自己叫什么；
+ * 再把自己那**一 node 一 python 两条 CLI** 登记给两个运行器。
  *
  * 这个件是**验收件**，它的活就是把链路走一遍给人看：浏览器那半验运行时环境与样式，
  * node 这半验数据落盘与窗格注册——读回上次写的值就说明真的落了盘、也真的认出了
@@ -16,6 +21,14 @@ import type {} from '@godcreator02/gwb-skills'
  * 「几格各画各的」与「同一格开两份互不干扰」这两件事。
  */
 export const name = 'gwb-hello'
+
+/** 本文件住 `<包根>/dist/index.js`，上一级就是包根 */
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+/**
+ * node CLI 的入口。**吃的是 `dist/` 里的编译产物，不是 `src/` 里的源**——
+ * 而且必须是绝对路径，相对路径运行器当场拒
+ */
+const NODE_CLI_ENTRY = path.join(PACKAGE_ROOT, 'dist', 'cli.js')
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
 export const inject = ['gwbData', 'gwbShell']
@@ -52,5 +65,30 @@ export function apply(ctx: GwbContext): void {
   // 产物在 dist/ 下,所以包根的 skills/ 是 '../skills/';那个目录得进 package.json 的 files
   ctx.inject(['gwbSkills'], (scoped) => {
     scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+  })
+
+  // 两条 CLI，同样是局部注入——**cordis 的 inject 全是硬依赖，没有可选形式**，
+  // 「可选」靠的就是这一句开出来的子 fiber:缺服务时它自己永远 PENDING，
+  // 而本件照常挂上、两格窗格照常画，界面上那两颗按钮置灰。
+  //
+  // 两个 register 都**不用自己包 effect**:运行器内部已经挂在调用方的 effect 上了
+  // （跟 registerPane 一个待遇,跟上面 gwbSkills.register 不一样——那个要自己包）
+  ctx.inject(['gwbNodeCli', 'gwbPyCli'], (scoped) => {
+    scoped.gwbNodeCli.register({
+      name: 'hello.node',
+      description: '本件的 node CLI（dist/cli.js 是 tsc 编译产物）',
+      entry: NODE_CLI_ENTRY,
+    })
+    // distName / version / command 三处要跟 py/pyproject.toml 对得上,
+    // 对不上时症状是「venv 建好了但守卫说版本不对」。tests/artifact.test.ts 钉着这三处
+    scoped.gwbPyCli.register({
+      name: 'hello.python',
+      description: '本件的 python CLI（venv 由守卫建在包根的 py/ 下）',
+      packageRoot: PACKAGE_ROOT,
+      distName: 'gwb-hello-py',
+      version: '0.0.1',
+      command: 'gwb-hello-py',
+    })
+    console.log('[hello] 两条 CLI 登记好了（hello.node、hello.python）')
   })
 }

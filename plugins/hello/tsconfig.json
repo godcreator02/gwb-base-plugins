@@ -10,6 +10,8 @@
       "@/*": ["./src/client/*"]
     }
   },
-  // 浏览器半另有一份 tsconfig（jsx + DOM + 无 node 全局），产物走 esbuild 不走 tsc
-  "include": ["src/index.ts"]
+  // 浏览器半另有一份 tsconfig（jsx + DOM + 无 node 全局），产物走 esbuild 不走 tsc。
+  // **两个入口逐个列出，别图省事写 `src/**/*.ts`**：那样 src/client 下将来出现的 .ts
+  // 会被这一半的 tsc 误收，而它的 lib 里没有 DOM
+  "include": ["src/index.ts", "src/cli.ts"]
 }

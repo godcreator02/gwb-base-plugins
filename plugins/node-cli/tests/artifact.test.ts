@@ -51,15 +51,12 @@ describe.skipIf(!built)('产物', () => {
   })
 })
 
-describe('自检靶子', () => {
-  it('发得出去——包清单的 files 带着 selftest', () => {
+describe('这个件只做运行器', () => {
+  it('包里不带任何靶子——验收归 hello，运行器不背跟职责无关的东西', () => {
     const manifest = JSON.parse(fs.readFileSync(path.resolve(here, '../package.json'), 'utf8')) as {
       files?: string[]
     }
-    expect(manifest.files).toContain('selftest')
-  })
-
-  it('靶子文件在', () => {
-    expect(fs.existsSync(path.resolve(here, '../selftest/probe.mjs'))).toBe(true)
+    expect(manifest.files).toEqual(['dist', 'src'])
+    expect(fs.existsSync(path.resolve(here, '../selftest'))).toBe(false)
   })
 })

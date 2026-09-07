@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
  * 浏览器半——**两格窗格**（不再是整页外壳）。`mountPane` 按 `args.pane.id` 分派。
  *
  * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经 gwb:// 拿得到、
- * scope 生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**。
+ * scope 生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**，
+ * 外加**跑得起本件自带的那两条 CLI**（一 node 一 python）并把回执显出来。
  *
  * **亮暗那颗按钮挪到状态栏去了**：它改的是 `html.dark`、影响整页，本来就该归外壳。
  * 「切换当场变色而不重新构建」那条验收因此也归那边。
@@ -19,6 +20,10 @@ import { Button } from '@/components/ui/button'
 /** 外壳交出来的两条取表命令。这儿不 import shell 的常量：那是 node 半的包,浏览器半不牵它 */
 const PANES_COMMAND = 'shell.panes'
 const PLUGINS_COMMAND = 'shell.plugins'
+
+/** 本件那两条 CLI。名字跟 node 半登记的那两条对得上,同样不 import 过来 */
+const NODE_CLI_COMMAND = 'hello.node'
+const PY_CLI_COMMAND = 'hello.python'
 
 /** 格间总线上那个打招呼的事件名。两格约好的,外壳不认识它 */
 const HELLO_EVENT = 'hello:wave'
@@ -79,8 +84,138 @@ async function fetchTable<T>(host: PaneArgs['host'], command: string): Promise<T
   }
 }
 
+/**
+ * 跑一条 CLI 之后拿到的东西。按形状收，不牵那两个运行器包的类型——它们是 node 半的包。
+ *
+ * **命令总线不会把它包进 `{ ok, data }`**：总线的规矩是「handler 自己判过成败就原样
+ * 透传」，判据是回值上有没有 `ok` 字段——而这份回执正好自带一个。所以这儿收到的就是
+ * 它本身，跟上面 `fetchTable` 那条路不一样，别照抄那边的解包。
+ */
+interface CliRunResult {
+  ok: boolean
+  exitCode: number | null
+  timedOut: boolean
+  timeoutMs: number
+  durationMs: number
+  stdout: { text: string; truncated: boolean; spillPath?: string }
+  stderr: { text: string; truncated: boolean; spillPath?: string }
+}
+
+/** 一次运行的展示态：要么拿到回执，要么连命令都没调通（没注册、venv 没就绪之类）*/
+interface CliShot {
+  command: string
+  args: readonly string[]
+  result?: CliRunResult
+  error?: string
+}
+
+async function runCli(host: PaneArgs['host'], command: string, args: readonly string[]): Promise<CliShot> {
+  try {
+    const reply = (await host.call(command, args)) as Partial<CliRunResult> & { error?: string }
+    // 有 stdout 就是运行器的回执;只有 ok/error 的那种是总线自己回的
+    // （「没有这条命令」，或者 handler 抛了——python 那半 venv 没就绪就走这条）
+    if (!('stdout' in reply)) return { command, args, error: reply.error ?? JSON.stringify(reply) }
+    return { command, args, result: reply as CliRunResult }
+  } catch (err) {
+    return { command, args, error: String(err) }
+  }
+}
+
 function Empty({ what }: { what: string }): ReactElement {
   return <p className="text-sm text-muted-foreground">{what}</p>
+}
+
+/** 两条 CLI 各跑一趟，外加一条注定失败的——验退出码真能原样带回界面 */
+function CliBlock({ args }: { args: PaneArgs }): ReactElement {
+  const [shot, setShot] = useState<CliShot | undefined>()
+  const [busy, setBusy] = useState(false)
+
+  const fire = (command: string, cliArgs: readonly string[]): void => {
+    setBusy(true)
+    void runCli(args.host, command, cliArgs).then((next) => {
+      setShot(next)
+      setBusy(false)
+    })
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-card p-4 text-card-foreground">
+      <p className="text-sm font-semibold">两条 CLI（本件自带，一 node 一 python）</p>
+      <p className="text-sm text-muted-foreground">
+        node 那条跑的是 <span className="font-mono">dist/cli.js</span>——tsc 编译产物；python
+        那条跑包根 <span className="font-mono">py/.venv</span> 里的入口点垫片，那个 venv 由守卫现建。
+      </p>
+
+      <div className="flex flex-wrap gap-3">
+        <Button data-probe="run-node" disabled={busy} onClick={() => fire(NODE_CLI_COMMAND, ['来自界面'])}>
+          跑 node CLI
+        </Button>
+        <Button
+          data-probe="run-python"
+          variant="secondary"
+          disabled={busy}
+          onClick={() => fire(PY_CLI_COMMAND, ['来自界面'])}
+        >
+          跑 python CLI
+        </Button>
+        <Button
+          data-probe="run-fail"
+          variant="outline"
+          disabled={busy}
+          onClick={() => fire(NODE_CLI_COMMAND, ['--fail'])}
+        >
+          跑一条注定失败的
+        </Button>
+      </div>
+
+      {shot === undefined ? (
+        <Empty what={busy ? '跑着呢……' : '还没跑过。点上面任意一颗。'} />
+      ) : (
+        <CliShotView shot={shot} />
+      )}
+    </div>
+  )
+}
+
+function CliShotView({ shot }: { shot: CliShot }): ReactElement {
+  const { result } = shot
+  return (
+    <div className="space-y-2" data-probe="cli-out">
+      <p className="font-mono text-xs text-muted-foreground">
+        {shot.command} {shot.args.join(' ')}
+      </p>
+      {result === undefined ? (
+        // 调不通跟「跑了但失败了」是两回事,分开显示——前者多半是件没装或 venv 没就绪
+        <p className="text-sm text-destructive" data-probe="cli-error">
+          调不通：{shot.error}
+        </p>
+      ) : (
+        <>
+          <p className="font-mono text-xs" data-probe="cli-meta">
+            {`exitCode=${String(result.exitCode)} ok=${String(result.ok)} ${
+              result.timedOut ? '超时 ' : ''
+            }${String(result.durationMs)}ms`}
+          </p>
+          {result.stdout.text === '' ? null : (
+            <pre
+              className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs whitespace-pre-wrap"
+              data-probe="cli-stdout"
+            >
+              {result.stdout.text}
+            </pre>
+          )}
+          {result.stderr.text === '' ? null : (
+            <pre
+              className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs whitespace-pre-wrap text-destructive"
+              data-probe="cli-stderr"
+            >
+              {result.stderr.text}
+            </pre>
+          )}
+        </>
+      )}
+    </div>
+  )
 }
 
 function PaneTable({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
@@ -113,7 +248,7 @@ function PluginTable({ plugins }: { plugins: PluginRow[] | undefined }): ReactEl
   )
 }
 
-/** `main` 那一格：验样式、验两张表、给出开另一格的三个入口 */
+/** `main` 那一格：验样式、验两张表、跑那两条 CLI、给出开另一格的三个入口 */
 function MainPane({ args }: { args: PaneArgs }): ReactElement {
   const [panes, setPanes] = useState<PaneRow[] | undefined>()
   const [plugins, setPlugins] = useState<PluginRow[] | undefined>()
@@ -165,6 +300,8 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
         <p className="text-sm font-semibold">件表（{PLUGINS_COMMAND}）</p>
         <PluginTable plugins={plugins} />
       </div>
+
+      <CliBlock args={args} />
 
       <div className="flex flex-wrap gap-3">
         <Button data-probe="open-counter" onClick={() => args.shell.openPane('counter')}>

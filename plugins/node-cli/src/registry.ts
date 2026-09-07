@@ -29,6 +29,7 @@ export interface NodeCliSpec {
   entry: string
   /** 固定前缀参数。调用时给的参数追加在它后面 */
   args?: readonly string[]
+  /** 不给就落在 `entry` 自己旁边。**不继承宿主的 cwd**——那是内核的目录,跟这条命令无关 */
   cwd?: string
   env?: Record<string, string>
   /** 不给就是 DEFAULT_TIMEOUT_MS。超过 MAX_TIMEOUT_MS 当场拒绝注册 */

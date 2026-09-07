@@ -1,11 +1,10 @@
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
 import type {} from '@godcreator02/gwb-cli'
 import { ensureVenv, venvPaths, type BootstrapResult } from './bootstrap.js'
-import { createRegistry, normalize, type PyCliRegistry, type PyCliSpec, type RegisteredPyCli } from './registry.js'
+import { createRegistry, type PyCliRegistry, type PyCliSpec, type RegisteredPyCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
 
 export type { PyCliSpec, RegisteredPyCli } from './registry.js'
@@ -15,9 +14,9 @@ export { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './registry.js'
 export { STAMP_NAME, venvPaths } from './bootstrap.js'
 
 /**
- * 跑 python 写的 CLI。件的包根下带一个 python 项目（`py/`），守卫用 uv 在那儿建一个
- * venv——件装在 `node_modules` 里，venv 也就在 `node_modules` 里——然后 spawn venv 里的
- * 可执行文件。
+ * 跑 python 写的 CLI。**消费方件**的包根下带一个 python 项目（`py/`），守卫用 uv 在那儿
+ * 建一个 venv——件装在 `node_modules` 里，venv 也就在 `node_modules` 里——然后 spawn venv
+ * 里的可执行文件。这个件自己不带任何 python 项目，它只做运行器。
  *
  * **守卫是幂等的,而且每次跑命令之前都过一遍**：已经好了就是三次 fs 调用、零进程；
  * venv 被外力抹掉了（`pnpm install` 重解整个 `.pnpm/<hash>` 目录就会）当场重建。
@@ -26,31 +25,16 @@ export { STAMP_NAME, venvPaths } from './bootstrap.js'
  * **登记的命令同时挂进 `gwbCli` 总线**,所以这个件硬 `inject` 总线。
  */
 
-/** 自检:装上就能验这条路通没通——venv 建得出来、垫片跑得起来、输出收得回来 */
-export const SELFTEST_COMMAND = 'py-cli.selftest'
 /** 此刻登记了哪些 */
 export const LIST_COMMAND = 'py-cli.list'
 
 const PLUGIN_NAME = 'gwb-py-cli'
-/** 本文件住 `<包根>/dist/index.js`,上一级就是包根 */
-const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * 给 python 子进程的两条。机器级 `PYTHONUTF8=1` 是本生态的前提,这儿再注一遍是
  * 零成本的兜底——少了它 Windows 上中文输出就是一片乱码,而且报错报得莫名其妙
  */
 const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
-
-/** 本件自带那个 python 项目：既是自检的靶子,也是消费方照抄的模板 */
-const SELFTEST_SPEC = normalize(PLUGIN_NAME, {
-  name: SELFTEST_COMMAND,
-  description: '自检:在 venv 里跑一条 python 入口点,打一行 JSON',
-  packageRoot: PACKAGE_ROOT,
-  distName: 'gwb-pycli-selftest',
-  version: '0.0.1',
-  command: 'gwb-pycli-selftest',
-  timeoutMs: 60_000,
-})
 
 /** 消费方拿到的那一格。写 `inject: ['gwbPyCli']` 才有 */
 export interface GwbPyCliApi {
@@ -105,7 +89,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     this.registry = createRegistry((message) => ctx.logger(PLUGIN_NAME).warn(message))
   }
 
-  /** 服务就绪时把自检与看表两条命令挂上；effect 包着,本件卸载时自动注销 */
+  /** 服务就绪时把看表那条命令挂上；effect 包着,本件卸载时自动注销 */
   [Service.init](): void {
     const cli = this.own.gwbCli
     // inject 保证了它在,这句只是把类型收窄
@@ -116,17 +100,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
         this.registry.list(),
       ),
     )
-    // 自检那条不进注册表:它是本件自己的,不占消费方的命名空间,也不该出现在 list 里
-    this.own.effect(() =>
-      cli.register({ name: SELFTEST_COMMAND, description: SELFTEST_SPEC.description, plugin: PLUGIN_NAME }, (args) =>
-        this.runRecord(SELFTEST_SPEC, toExtraArgs(args)),
-      ),
-    )
-
-    const logger = this.own.logger(PLUGIN_NAME)
-    logger.info(`python CLI 运行器就绪（ctx.gwbPyCli）,自检走 ${SELFTEST_COMMAND}`)
-    // 自己那个 venv 先建起来,但**不挡着件挂上**——首次可能要下一个 python 解释器
-    void this.bootstrap(SELFTEST_SPEC, logger)
+    this.own.logger(PLUGIN_NAME).info(`python CLI 运行器就绪（ctx.gwbPyCli）,看表走 ${LIST_COMMAND}`)
   }
 
   /** 守卫一趟并把结果说出来。日志的措辞就是实机验收时要看的那一行 */

@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-node-cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "跑 node 写的 CLI：件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它",
   "type": "module",
   "main": "dist/index.js",
@@ -12,11 +12,9 @@
     },
     "./package.json": "./package.json"
   },
-  "//files": "selftest 不能漏——自检命令的靶子住在那儿，不发出去就是一条指向空气的命令",
   "files": [
     "dist",
-    "src",
-    "selftest"
+    "src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

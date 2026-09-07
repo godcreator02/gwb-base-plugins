@@ -10,8 +10,9 @@ import { describe, expect, it } from 'vitest'
  * 为什么偏偏 `cordis` 得留：`Service` 基类必须是**宿主跑的那一份**,两份 cordis 的
  * instanceof 对不上。契约包与 cli 件都是 `import type`,整句擦除,不该出现在产物里。
  *
- * 后半段守的是另一件事：**那个 python 项目得跟着包发出去**。少了它,守卫无从建 venv,
- * 而症状是装上之后自检命令报「venv 没就绪」——离真正的原因（包里没有 pyproject）很远。
+ * 后半段守的是另一件事：**这个件不许再长出 python 项目来**。第一版自带过一个自检靶子,
+ * 那是错的——运行器背一个跟自己职责无关的 uv 项目,而验收本来就该落在消费方件上
+ * （样板见 `plugins/hello`）。
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -53,40 +54,18 @@ describe.skipIf(!built)('产物', () => {
   })
 })
 
-describe('自检靶子那个 python 项目', () => {
+describe('这个件只做运行器', () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(here, '../package.json'), 'utf8')) as {
     files?: string[]
   }
 
-  it('发得出去——包清单的 files 带着 py', () => {
-    expect(manifest.files).toContain('py')
+  it('自己不带 python 项目——py/ 与 venv 都住在消费方件的包根下', () => {
+    expect(manifest.files).toEqual(['dist', 'src'])
+    expect(fs.existsSync(path.resolve(here, '../py'))).toBe(false)
   })
 
-  it('pyproject 与锁文件都在——守卫跑的是 uv sync --frozen,少了锁文件当场失败', () => {
-    expect(fs.existsSync(path.resolve(here, '../py/pyproject.toml'))).toBe(true)
-    expect(fs.existsSync(path.resolve(here, '../py/uv.lock'))).toBe(true)
-  })
-
-  it('pyproject 里的名字、版本、入口点跟 src 里登记的那条对得上', () => {
-    const toml = fs.readFileSync(path.resolve(here, '../py/pyproject.toml'), 'utf8')
-    const index = fs.readFileSync(path.resolve(here, '../src/index.ts'), 'utf8')
-    // 三处一改就得一起改,对不上时症状是「venv 建好了但守卫说版本不对」
-    for (const literal of ['gwb-pycli-selftest', '0.0.1']) {
-      expect(toml).toContain(literal)
-      expect(index).toContain(literal)
-    }
-    expect(toml).toMatch(/^\[project\.scripts\]\s*\ngwb-pycli-selftest\s*=/m)
-  })
-
-  it('venv 不进包——它是装到 node_modules 之后现建的', () => {
-    expect(manifest.files).not.toContain('py/.venv')
+  it('仓根仍然忽略 venv——消费方件建出来的那些也走这一条', () => {
     const ignore = fs.readFileSync(path.resolve(here, '../../../.gitignore'), 'utf8')
     expect(ignore).toMatch(/^\.venv\/$/m)
-  })
-
-  it('__pycache__ 排在包外——第一版就是这么漏出去的', () => {
-    // 开发工位上跑过一次那个 py 项目就有了 __pycache__,而 files 收的是整个 py/。
-    // 漏出去的是别人机器上的字节码,带着绝对路径与 python 版本号
-    expect(manifest.files).toContain('!py/**/__pycache__')
   })
 })
