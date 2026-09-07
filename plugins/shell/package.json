@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-shell",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "外壳：dockview 窗格井 + 窗格注册服务",
   "type": "module",
   "main": "dist/index.js",
@@ -20,8 +20,8 @@
     "dist",
     "src"
   ],
+  "//gwb": "只剩 shell 一个字段。**给人看的名字归运行时**（ctx.gwbShell.describeSelf）——包清单里那种没人读的字段死掉时没有任何机制会发现,gwb.title 就这么放了一阵",
   "gwb": {
-    "title": "外壳",
     "shell": true
   },
   "scripts": {

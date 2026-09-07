@@ -97,4 +97,27 @@ describe('说不清自己是谁的一律抛——不静默进表', () => {
     expect(() => reg.register(echo, { id: 'main', title: '' })).toThrow(/main/)
     expect(reg.list()).toEqual([])
   })
+
+  it('窗格 id 带冒号也抛——那是拼面板 id 的分隔符', () => {
+    // entryId 自己就带冒号（实机 `home:hello`）。窗格 id 里再有一个的话,两组不同的
+    // (条目, 窗格) 能拼出同一个面板 id,而开格那处的查重会把它当成「已经开着」、
+    // 静默追个 `:2` 上去——人看到的是标题莫名多了个 (2),源头在别的件的注册参数里
+    const { reg } = fresh()
+    expect(() => reg.register(echo, { id: 'a:b', title: '回声' })).toThrow(/冒号/)
+    expect(reg.list()).toEqual([])
+  })
+})
+
+describe('duplicable：这一格能不能开多份', () => {
+  it('不写就是不能——默认单份', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声' })
+    expect(reg.list()[0]!.duplicable).toBeUndefined()
+  })
+
+  it('写了原样收下', () => {
+    const { reg } = fresh()
+    reg.register(echo, { id: 'main', title: '回声', duplicable: true })
+    expect(reg.list()[0]!.duplicable).toBe(true)
+  })
 })

@@ -3,8 +3,10 @@ import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 cli 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCli 这个名字
 import type {} from '@godcreator02/gwb-cli'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
+import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
+export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
 
 /**
  * node 半：窗格注册服务。件在自己的 `apply` 里说「我有一格窗格」，浏览器那半经
@@ -20,8 +22,9 @@ export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
  * 明说它在等谁。
  */
 
-/** 浏览器半取窗格表的命令名。注册与调用两处同吃这一个常量 */
+/** 浏览器半取表的两条命令。注册与调用两处同吃这两个常量 */
 export const PANES_COMMAND = 'shell.panes'
+export const PLUGINS_COMMAND = 'shell.plugins'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
@@ -32,8 +35,17 @@ export interface GwbShellApi {
    * 自动从表上摘掉。
    */
   registerPane(spec: PaneSpec): () => void
+  /**
+   * 报一下自己叫什么。给人看的名字归运行时，不进包清单——包清单里那种字段没人读的
+   * 时候没有任何机制会发现（`gwb.title` 就这么死了一阵）。
+   *
+   * 收尾同 `registerPane`：件卸载时自动从表上摘掉。
+   */
+  describeSelf(info: PluginInfo): () => void
   /** 此刻表里有哪些格，按注册先后 */
   panes(): RegisteredPane[]
+  /** 此刻有哪些件报过名字，按报名先后 */
+  plugins(): RegisteredPlugin[]
 }
 
 export default class GwbShell extends Service implements GwbShellApi {
@@ -45,14 +57,18 @@ export default class GwbShell extends Service implements GwbShellApi {
    * `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，派生对象上一读就炸。
    */
   private readonly registry: PaneRegistry
+  /** 件级信息另一张表：键是 entryId，一条条目至多一条。判据见 plugin-registry 的头注 */
+  private readonly plugentry: PluginRegistry
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbShell')
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
-    this.registry = createPaneRegistry((message) => ctx.logger('gwb-shell').warn(message))
+    const warn = (message: string): void => ctx.logger('gwb-shell').warn(message)
+    this.registry = createPaneRegistry(warn)
+    this.plugentry = createPluginRegistry(warn)
   }
 
-  /** 服务就绪时把取表那条命令挂上；effect 包着，本件卸载时自动注销 */
+  /** 服务就绪时把取表那两条命令挂上；effect 包着，本件卸载时自动注销 */
   [Service.init](): void {
     const cli = this.ctx.gwbCli
     // inject 保证了它在，这句只是把类型收窄
@@ -63,7 +79,13 @@ export default class GwbShell extends Service implements GwbShellApi {
         () => this.registry.list(),
       ),
     )
-    this.ctx.logger('gwb-shell').info(`窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND}`)
+    this.ctx.effect(() =>
+      cli.register(
+        { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字', plugin: 'gwb-shell' },
+        () => this.plugentry.list(),
+      ),
+    )
+    this.ctx.logger('gwb-shell').info(`窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}`)
   }
 
   /**
@@ -91,8 +113,18 @@ export default class GwbShell extends Service implements GwbShellApi {
     return off
   }
 
+  describeSelf(info: PluginInfo): () => void {
+    const off = this.plugentry.describe(this.owner(), info)
+    this.ctx.effect(() => off)
+    return off
+  }
+
   panes(): RegisteredPane[] {
     return this.registry.list()
+  }
+
+  plugins(): RegisteredPlugin[] {
+    return this.plugentry.list()
   }
 }
 

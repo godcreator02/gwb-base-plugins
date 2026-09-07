@@ -4,15 +4,15 @@ import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-shell'
 
 /**
- * node 半：拿 data 件存一份计数，每次启动 +1；再往外壳注册一格窗格。
+ * node 半：拿 data 件存一份计数，每次启动 +1；再往外壳注册**两格**窗格、报一下自己叫什么。
  *
  * 这个件是**验收件**，它的活就是把链路走一遍给人看：浏览器那半验运行时环境与样式，
  * node 这半验数据落盘与窗格注册——读回上次写的值就说明真的落了盘、也真的认出了
- * 「我是谁」；注册那格出现在 `shell.panes` 的回执里，就说明服务真从 fiber 上认出了
+ * 「我是谁」；注册那两格出现在 `shell.panes` 的回执里，就说明服务真从 fiber 上认出了
  * 注册方的条目与包名。
  *
- * 眼下它**同时**还是外壳件（`gwb.shell` 为 true），所以这一格注册了也没人画。
- * 第三刀 shell 真能画界面时它降级成纯窗格件，那一格正好接着用。
+ * 两格是**故意**的：`main` 只能开一份，`counter` 声明了 `duplicable`——一个件同时验
+ * 「几格各画各的」与「同一格开两份互不干扰」这两件事。
  */
 export const name = 'gwb-hello'
 
@@ -26,9 +26,12 @@ interface Probe {
 
 export function apply(ctx: GwbContext): void {
   // 注册在 apply 里,同步的。身份不用报——服务从 fiber 上认。也不用自己包 effect,
-  // 本件卸载时这一格自动从表上摘掉
+  // 本件卸载时这两格自动从表上摘掉
   ctx.gwbShell.registerPane({ id: 'main', title: '验收件', icon: 'flask-conical' })
-  console.log('[hello] 窗格注册了一格：main')
+  // **声明 duplicable 的那一格**:它每一份自己一个本地计数,开两份互不干扰
+  ctx.gwbShell.registerPane({ id: 'counter', title: '计数器', icon: 'hash', duplicable: true })
+  ctx.gwbShell.describeSelf({ title: '验收件', icon: 'flask-conical' })
+  console.log('[hello] 注册了两格（main、counter）并报了名字')
 
   // 这条链上的错必须有出口:apply 是同步的,里头的 async 一旦静默 reject,
   // 现象就是「件挂上了但什么都没发生」——查起来毫无线索

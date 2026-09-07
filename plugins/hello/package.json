@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.9",
-  "description": "验收件（一格窗格）：一个 shadcn 按钮 + 一个亮暗开关 + 一张窗格注册表，用来验运行时环境、样式与窗格注册这几条链路通不通",
+  "version": "0.0.10",
+  "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表，外加「几格各画各的」与「同一格开两份互不干扰」",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,10 +19,7 @@
     "dist",
     "src"
   ],
-  "//gwb": "**不再是外壳件**：这一刀起它降级成窗格件,整页那个根归 gwb-shell。渲染层遇到两条 shell: true 一律不挑,所以这一条与 shell 那边的 true 必须同一次发版换过来",
-  "gwb": {
-    "title": "验收件"
-  },
+  "//gwb": "**整段没有了**:这个件是窗格件（不声明 gwb.shell）,而给人看的名字归运行时——node 半调 ctx.gwbShell.describeSelf。包清单里如今只剩 shell 与 shared 两个字段有人读",
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
