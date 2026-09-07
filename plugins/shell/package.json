@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-shell",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "外壳：dockview 窗格井 + 窗格注册服务",
   "type": "module",
   "main": "dist/index.js",
@@ -20,10 +20,7 @@
     "dist",
     "src"
   ],
-  "//gwb": "只剩 shell 一个字段。**给人看的名字归运行时**（ctx.gwbShell.describeSelf）——包清单里那种没人读的字段死掉时没有任何机制会发现,gwb.title 就这么放了一阵",
-  "gwb": {
-    "shell": true
-  },
+  "//gwb": "**整段没有了**:这个件是外壳,而「我是外壳」这件事靠 provide gwbShell 服务说,不靠包清单——内核看的就是「谁 provide 了它」。包清单里如今只剩 gwb.shared 有人读,而那个是硬的(共享包不是件、没有运行时)",
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
@@ -45,9 +42,12 @@
     "@godcreator02/gwb-tokens": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
+    "cn": "^0.2.5",
     "cordis": "4.0.0-rc.9",
     "dockview-react": "8.2.0",
     "esbuild": "^0.27.7",
+    "lucide-react": "^1.41.0",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "typescript": "^7.0.2"

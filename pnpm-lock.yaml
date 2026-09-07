@@ -213,6 +213,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.5
         version: 19.2.5(@types/react@19.2.18)
+      cn:
+        specifier: ^0.2.5
+        version: 0.2.5
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -222,6 +225,12 @@ importers:
       esbuild:
         specifier: ^0.27.7
         version: 0.27.7
+      lucide-react:
+        specifier: ^1.41.0
+        version: 1.41.0(react@19.2.8)
+      radix-ui:
+        specifier: ^1.6.7
+        version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
         version: 19.2.8

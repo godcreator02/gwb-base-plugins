@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
  * 浏览器半——**两格窗格**（不再是整页外壳）。`mountPane` 按 `args.pane.id` 分派。
  *
  * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经 gwb:// 拿得到、
- * scope 生效、亮暗切换当场变色而不重新构建任何东西、两张注册表过得了桥，外加这一刀
- * 新加的两件——**几格各画各的**，以及**同一格开两份互不干扰**。
+ * scope 生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**。
+ *
+ * **亮暗那颗按钮挪到状态栏去了**：它改的是 `html.dark`、影响整页，本来就该归外壳。
+ * 「切换当场变色而不重新构建」那条验收因此也归那边。
  *
  * **样式与 scope 属性都不归这儿管了**：外壳的 `PluginPane` 在 import 这个束之前就把
  * `style.css` 注好、把 `data-gwb-plugin` 挂在容器上了。令牌表更是页面级的一份，
@@ -113,7 +115,6 @@ function PluginTable({ plugins }: { plugins: PluginRow[] | undefined }): ReactEl
 
 /** `main` 那一格：验样式、验两张表、给出开另一格的三个入口 */
 function MainPane({ args }: { args: PaneArgs }): ReactElement {
-  const [dark, setDark] = useState(false)
   const [panes, setPanes] = useState<PaneRow[] | undefined>()
   const [plugins, setPlugins] = useState<PluginRow[] | undefined>()
 
@@ -132,12 +133,6 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
       alive = false
     }
   }, [args.host])
-
-  const toggle = (): void => {
-    const next = !dark
-    setDark(next)
-    document.documentElement.classList.toggle('dark', next)
-  }
 
   return (
     <div className="h-full space-y-6 overflow-auto p-8">
@@ -197,10 +192,6 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
           朝总线喊一嗓子
         </Button>
       </div>
-
-      <Button variant="outline" onClick={toggle}>
-        切到{dark ? '亮色' : '暗色'}
-      </Button>
     </div>
   )
 }

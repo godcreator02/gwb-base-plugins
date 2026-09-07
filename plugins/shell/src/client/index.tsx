@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import {
   DockviewReact,
@@ -8,8 +8,17 @@ import {
   type IDockviewPanelProps,
 } from 'dockview-react'
 import { PluginPane } from './PluginPane.js'
+import { StatusBar } from './StatusBar.js'
 import { assetUrl, loadStyle } from './asset.js'
-import { listOpenable, planOpen, specForOwnPane, titleForOrdinal, uniquePanelId, type OpenableSpec } from '../openable.js'
+import {
+  listOpenable,
+  planOpen,
+  specForOwnPane,
+  titleForOrdinal,
+  uniquePanelId,
+  type OpenableSpec,
+  type OpenPlan,
+} from '../openable.js'
 import { PLUGIN_COMPONENT } from '../panels.js'
 import type { HostBridge, PaneRow, ShellArgs, ShellBridge } from './types.js'
 
@@ -104,7 +113,23 @@ async function openOwnPane(
   options: { duplicate?: boolean } | undefined,
 ): Promise<void> {
   const panes = await fetchPanes(host)
-  const plan = planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, takenIn(api), who)
+  applyPlan(api, planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, takenIn(api), who))
+}
+
+/**
+ * 外壳自己开一格（状态栏的＋列表点的就是这条）。**走跟件调 `openPane` 同一个 `planOpen`**
+ * ——所以行为一致：已经开着的点了是聚焦，声明了 `duplicable` 的才开得出第二份。
+ *
+ * 跟 `openOwnPane` 的差别只在入口：那边件只给得出 `paneId`、要现取表查 spec，这边 spec
+ * 本来就在手上（＋列表就是拿它排出来的）。
+ */
+function openSpec(api: DockviewApi, spec: OpenableSpec, duplicate: boolean): void {
+  const who = { entryId: spec.params?.entryId ?? '', paneId: spec.params?.paneId ?? '' }
+  applyPlan(api, planOpen(spec, { duplicate }, takenIn(api), who))
+}
+
+/** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
+function applyPlan(api: DockviewApi, plan: OpenPlan): void {
   if (plan.kind !== 'open' && plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
   if (plan.kind === 'none') return
   if (plan.kind === 'focus') {
@@ -162,16 +187,45 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
   },
 }
 
-function App({ specs }: { specs: OpenableSpec[] }): ReactElement {
+function App({ specs, home, root }: { specs: OpenableSpec[]; home: string; root: HTMLElement }): ReactElement {
+  // 井外面那条状态栏要用 api（开格）与「此刻开着哪些」（标已开），而 api 只在 onReady
+  // 的回调里出现——接住它
+  const [api, setApi] = useState<DockviewApi | null>(null)
+  const [openIds, setOpenIds] = useState<string[]>([])
+
   const onReady = (event: DockviewReadyEvent): void => {
     // 走跟 openPane 同一条路：算唯一 id 再开。裸 addPanel 的话，specs 里万一出现
     // 两条同 id，第二条会同步抛、异常冲出 onReady，**整口井起不来**而不是少开一格
     for (const spec of specs) addInstance(event.api, spec)
+    setApi(event.api)
   }
-  // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html
+
+  useEffect(() => {
+    if (api === null) return
+    const sync = (): void => setOpenIds(api.panels.map((p) => p.id))
+    sync()
+    // 布局落盘将来订的是同一个事件
+    const sub = api.onDidLayoutChange(sync)
+    return () => sub.dispose()
+  }, [api])
+
+  // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html。
+  // 井那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕
   return (
-    <div className="fixed inset-0">
-      <DockviewReact components={COMPONENTS} onReady={onReady} theme={GWB_THEME} />
+    <div className="fixed inset-0 flex flex-col">
+      <div className="min-h-0 flex-1">
+        <DockviewReact components={COMPONENTS} onReady={onReady} theme={GWB_THEME} />
+      </div>
+      <StatusBar
+        specs={specs}
+        openIds={openIds}
+        home={home}
+        scopeRef={root}
+        onOpen={(spec, duplicate) => {
+          if (api === null) return
+          openSpec(api, spec, duplicate)
+        }}
+      />
     </div>
   )
 }
@@ -214,7 +268,8 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   console.log(`[shell] 开 ${specs.length} 格：${specs.map((s) => s.id).join('、') || '（表是空的）'}`)
 
   const reactRoot = createRoot(root)
-  reactRoot.render(<App specs={specs} />)
+  // root 传下去是给状态栏那个菜单的 portal 用的——挂 body 上就出了 scope
+  reactRoot.render(<App specs={specs} home={args.home} root={root} />)
   return reactRoot
 }
 

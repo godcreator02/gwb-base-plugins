@@ -49,4 +49,16 @@
   /* 滚动条 */
   --dv-scrollbar-background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
   --dv-tabs-container-scrollbar-color: var(--muted-foreground);
+
+  /* 浮动组的阴影。dockview 给的默认值在亮底上够用，暗底上量出来是 rgba(0,0,0,0.12)——
+     几乎看不见，浮动组整个失去立体感。这个变量的语义**本来就跟明暗有关**，所以下面
+     给暗色单独一档。（这跟「配色全接令牌、不换主题类」不冲突：换的不是 dockview 的
+     主题类，而是我们自己这张表按 `.dark` 给不同的值，跟令牌表本身两套值是同一个做法。） */
+  --dv-floating-box-shadow: 0 8px 24px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.12);
+}
+
+/* `.dark` 在 <html> 上，`.dockview-theme-gwb` 在 dockview 内部的 .dv-shell 上——后者是
+   前者的后代，所以这条选得中，而且特异性比上面那条高 */
+.dark .dockview-theme-gwb {
+  --dv-floating-box-shadow: 0 8px 32px oklch(0 0 0 / 0.55), 0 2px 8px oklch(0 0 0 / 0.4);
 }
