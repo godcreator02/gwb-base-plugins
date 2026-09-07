@@ -68,7 +68,7 @@ await args.host.call('shell.plugins')
 `registerPane` 只收 `{ id, title, icon?, duplicable? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="91-106" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="95-110" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。

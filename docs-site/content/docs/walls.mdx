@@ -182,13 +182,13 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 id 现在要当目录名与分区名用，比包名危险，于是跟文档名、设置名同一套 kebab-case，
 **对分段后的每一段**校验（点号不在字符集里，`.` 与 `..` 这两个穿越段因此也进不来）。
 
-@@livedoc ref ../plugins/data/src/paths.ts:35-64 @@
+{/* ref file="../plugins/data/src/paths.ts" lines="35-64" */}
 
 **两个件的这段算法必须给同一个答案**，而它们是两份拷贝（`gwb-data` 的 `entryDirName`、
 `gwb-settings` 的 `entrySection`）。十几行纯逻辑，为它新建一个共享包过不了准入判据第二关；
 两边注释里互相点名，改一处就得改另一处。**下一处要用到它的件出现时，这个判断要重看。**
 
-@@livedoc ref ../plugins/settings/src/paths.ts:62-94 @@
+{/* ref file="../plugins/settings/src/paths.ts" lines="62-94" */}
 
 ### 没手写 id 的条目，数据每次启动新建一份
 
@@ -720,7 +720,7 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="113-119" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="136-142" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
 
