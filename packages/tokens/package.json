@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-tokens",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
   "type": "module",
   "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",

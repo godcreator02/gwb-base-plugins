@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发",
   "type": "module",
   "main": "dist/index.js",
