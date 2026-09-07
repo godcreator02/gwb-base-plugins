@@ -2,6 +2,7 @@ import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbData 与 gwbShell 这两个名字
 import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-shell'
+import type {} from '@godcreator02/gwb-skills'
 
 /**
  * node 半：拿 data 件存一份计数，每次启动 +1；再往外壳注册**两格**窗格、报一下自己叫什么。
@@ -44,5 +45,12 @@ export function apply(ctx: GwbContext): void {
     console.log(`[hello] home=${requireKernel(ctx).dataDir}`)
   })().catch((err: unknown) => {
     console.error(`[hello] data 探针失败：${err instanceof Error ? err.stack : String(err)}`)
+  })
+
+  // 说明书那一格。**局部注入,不写进 export const inject**:写进去,这个件在没装
+  // skills 件的 home 里就整个挂不上了——而说明书不是它能不能干活的前提。
+  // 产物在 dist/ 下,所以包根的 skills/ 是 '../skills/';那个目录得进 package.json 的 files
+  ctx.inject(['gwbSkills'], (scoped) => {
+    scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
   })
 }

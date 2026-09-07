@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表，外加「几格各画各的」与「同一格开两份互不干扰」",
   "type": "module",
   "main": "dist/index.js",
@@ -15,8 +15,10 @@
     "./style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
+  "//files": "**skills 必须在这儿**：漏了包照发、照装得上，直到那个件挂载去扫目录时才报「读不动」",
   "files": [
     "dist",
+    "skills",
     "src"
   ],
   "//gwb": "**整段没有了**:这个件是窗格件（不声明 gwb.shell）,而给人看的名字归运行时——node 半调 ctx.gwbShell.describeSelf。包清单里如今只剩 shell 与 shared 两个字段有人读",
@@ -33,9 +35,17 @@
     "@godcreator02/gwb-shared-react": ">=0.0.2",
     "@godcreator02/gwb-data": ">=0.0.1",
     "@godcreator02/gwb-shell": ">=0.0.1",
-    "@godcreator02/gwb-tokens": ">=0.0.2"
+    "@godcreator02/gwb-tokens": ">=0.0.2",
+    "@godcreator02/gwb-skills": ">=0.0.1"
+  },
+  "//peerDependenciesMeta": "gwb-skills 是**可选的** peer,别的几条不是。区别就是 inject 的两种写法:data 与 shell 在 `export const inject` 里（缺了整个件不挂），skills 走 ctx.inject 局部注入（没装那个件,这个件照常干活,只是说明书没处挂）",
+  "peerDependenciesMeta": {
+    "@godcreator02/gwb-skills": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@godcreator02/gwb-skills": "workspace:*",
     "@godcreator02/gwb-plugin-api": "0.0.3",
     "@godcreator02/gwb-shared-react": "workspace:*",
     "@godcreator02/gwb-data": "workspace:*",
