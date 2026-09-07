@@ -21,7 +21,7 @@ livedoc: none
 
 本想让 TypeScript 替我们强制这一条，**结果不行**：
 
-@@livedoc ref ../tsconfig.base.json:4-6 @@
+{/* ref file="../tsconfig.base.json" lines="4-6" */}
 
 `moduleResolution: nodenext` 会强制相对 import 带扩展名，但 **cordis 自己的 `.d.ts` 不兼容
 它**——那边写的是 `export * from './context'`，相对 import 不带扩展名。nodenext 解析不了，
@@ -29,7 +29,7 @@ livedoc: none
 
 所以只能回 `bundler`，那一条改由产物守卫拦：
 
-@@livedoc ref ../plugins/cli/tests/artifact.test.ts:21-43 @@
+{/* ref file="../plugins/cli/tests/artifact.test.ts" lines="21-43" */}
 
 顺带钉住第二条：**产物里不许有裸名 import**。件该是自包含的——契约包与 cordis 都只
 `import type`、编译期擦除，`gwb-cli` 的产物里除了一条 `./registry.js` 什么都没有。
@@ -42,7 +42,7 @@ livedoc: none
 
 判据「运行时真 import 了才写 peer，只 `import type` 写 dev」**漏了中间一档**：
 
-@@livedoc has ../plugins/cli/package.json "peerDependencies" @@
+{/* has file="../plugins/cli/package.json" text="peerDependencies" */}
 
 `GwbCli.run` 回的是 `GwbResult`——它出现在**导出的类型**里，消费方装了这个件之后必须
 解析得到。写成 `devDependency` 的症状是消费方那边全解析不到，因为**发布出去的包不带
@@ -59,7 +59,7 @@ devDependencies**。
 
 ## 撞名是后来者赢，但不许静默地赢
 
-@@livedoc ref ../plugins/cli/src/registry.ts:23-36 @@
+{/* ref file="../plugins/cli/src/registry.ts" lines="23-36" */}
 
 件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
@@ -71,7 +71,7 @@ devDependencies**。
 
 ## 一条命令抛出来不该炸到调用方
 
-@@livedoc ref ../plugins/cli/src/registry.ts:42-54 @@
+{/* ref file="../plugins/cli/src/registry.ts" lines="42-54" */}
 
 它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
 
@@ -79,7 +79,7 @@ devDependencies**。
 
 ## 服务用 `ctx.effect` 包着 provide
 
-@@livedoc ref ../plugins/cli/src/index.ts:17-25 @@
+{/* ref file="../plugins/cli/src/index.ts" lines="17-25" */}
 
 本件卸载时服务自动撤销。不包的话，件卸了而 `ctx.gwbCli` 还挂在那，调用方打到一个
 已经没人维护的注册表上。
