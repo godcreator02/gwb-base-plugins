@@ -65,12 +65,17 @@ function packageName(pkgDir: string): string {
  */
 function styleInput(pkgDir: string): string {
   const reference = require.resolve('@godcreator02/gwb-tokens/theme.reference.css')
-  return [
+  const lines = [
     `@import 'tailwindcss/theme' theme(reference);`,
     `@import '${slash(reference)}' theme(reference);`,
     `@import 'tailwindcss/utilities' layer(utilities) source(none);`,
     `@source "${slash(path.join(pkgDir, 'src'))}";`,
-  ].join('\n')
+  ]
+  // 件自己的规则追在末尾。这个文件也是 components.json 的 tailwind.css——shadcn CLI
+  // 要求那个字段指一个真实路径,正好让件作者有个地方写自己的 css
+  const own = path.join(pkgDir, 'src', 'client', 'styles.css')
+  if (fs.existsSync(own)) lines.push(`@import '${slash(own)}';`)
+  return lines.join('\n')
 }
 
 export async function buildStyles(pkgDir: string): Promise<{ scope: string; bytes: number }> {

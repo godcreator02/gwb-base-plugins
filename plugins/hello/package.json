@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "验收件：一个 shadcn 按钮 + 一个亮暗开关，用来验运行时环境与样式这条链路通不通",
   "type": "module",
   "main": "lib/index.js",
@@ -27,7 +27,8 @@
     "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json"
   },
-  "//deps": "两个共享包写 peer：件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。radix/cva/clsx/tailwind-merge 是组件的运行时依赖但**打进本束**——它们不在 importmap 里,外置成裸名就是运行期炸",
+  "//deps": "两个共享包写 peer：件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。radix/cva/cn 是组件的运行时依赖但**打进本束**——它们不在 importmap 里,外置成裸名就是运行期炸",
+  "//cn": "shadcn CLI 拉组件时自己装的（它是 clsx + tailwind-merge 的官方替代，出自 shadcn-ui/cn），装进 dependencies；这里挪到 dev——按本仓判据「打进本束的算 dev」。clsx 与 tailwind-merge 跟着退场,新版组件不再生成本地的 lib/utils.ts",
   "peerDependencies": {
     "@godcreator02/gwb-shared-react": "^0.0.1",
     "@godcreator02/gwb-tokens": "^0.0.1"
@@ -38,12 +39,11 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
+    "cn": "^0.2.5",
     "esbuild": "^0.27.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "tailwind-merge": "^3.3.1",
     "typescript": "^7.0.2"
   }
 }

@@ -30,6 +30,15 @@ livedoc: none
 样式构建线在 `tools/build-styles.ts`，**不做成包**——消费方只有仓内的件，做成包过不了
 准入判据第二关。件的 `build` 脚本直接调它。
 
+## 组件：各拉各的
+
+**这个仓里没有组件库，也没有 registry。** 每个件自己放一份 `components.json`，要什么组件就
+`pnpm dlx shadcn@latest add <名>` 从 shadcn 官方拉。件之间的组件不需要一致——统一风格由令牌
+保证，不由组件源码一致保证。
+
+`plugins/hello` 是第一份样板：`components.json` + 两份 tsconfig 的 `paths` + `build.ts` 的
+esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
+
 ## 下一个：`gwb-shell`
 
 分量最大的一个。母仓那个件 1351 行，探查过一遍，**能直接搬的和不能搬的界限很清楚**。

@@ -141,11 +141,67 @@ CSS 里**未分层的规则优先级高于所有分层规则**。件的表只写
 
 ## 验收方法
 
-### 量颜色要等过渡结束，否则读到的是中间值
+### 量颜色前先关掉过渡——「等它跑完」是靠不住的
 
-shadcn 的 button 基础类里有 `transition-all`。切换 `.dark` 之后立刻 `getComputedStyle`，
-读到的是过渡动画的中间色——第一次验收就这么被骗了一回：暗色 `--primary` 应该是
-`oklch(0.92 …)`，读出来却是 `oklab(0.223 …)`，看着像「切换没生效」。
+shadcn 的 button 基础类里有 `transition-all`。切换 `.dark` 之后立刻 `getComputedStyle`
+读到的是过渡中间色：暗色 `--primary` 应该是 `oklch(0.92 …)`，第一次验收读出来是
+`oklab(0.223 …)`，看着像「切换没生效」。
 
-而 body 没有 transition，它当场就变对了——**两个元素的读数不一致正是这个坑的指纹**。
-等 600ms 再读，四项颜色全部精确等于令牌表里声明的值。
+**当时的解法是「等 600ms 再读」，那是错的，后来就翻车了**：同一套代码换了个组件重跑，
+600ms 之后读到的是 `oklab(0.21 …)`——**过渡的起点**，一动没动。原因是探针把窗口
+**最小化**启动，而 Chromium 会**节流后台窗口的动画**，等多久都可能停在起点。上一次
+读对纯属碰巧。
+
+两个可靠的判据：
+
+- **返回格式就是指纹**：过渡进行中返回 `oklab(…)`（插值空间），停下来才是原始的 `oklch(…)`。
+  读到 oklab 就说明这个数不能信
+- **body 与按钮读数不一致**也是指纹：body 没有 transition，它任何时候都是终值
+
+正确的量法是**把过渡关掉再读**，跟等多久无关：
+
+```js
+const kill = document.createElement('style')
+kill.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}'
+document.head.appendChild(kill)
+```
+
+顺带：直接读 `getComputedStyle(el).getPropertyValue('--primary')` 也不受过渡影响——
+CSS 变量本身不参与过渡（除非用 `@property` 声明过类型）。
+
+---
+
+## 组件与 shadcn CLI
+
+### `components.json` 的 `tailwind` 是必填的，件因此得有个样式入口
+
+schema 的顶层 required 是 `style` / `tailwind` / `rsc` / `aliases`，而 `tailwind` 自己的
+required 是 `config` / `css` / `baseColor` / `cssVariables`——**一个都不能省**。省了报的是
+一句没有细节的 `Invalid configuration found in …/components.json`。
+
+`tailwind.css` 得指一个真实路径。件本来没有 CSS 入口（构建输入由 `tools/build-styles.ts`
+在内存里拼），所以补了一个 `src/client/styles.css`。**这不是被工具逼出来的负担**——件作者
+本来就需要一个地方写自己的 CSS 规则，构建线把它 `@import` 到输入末尾。
+
+Tailwind v4 下 `tailwind.config` 填空字符串（v4 没有配置文件了）。
+
+### 别写 `baseUrl`——TS 7 把它移除了
+
+{/* ref file="../plugins/hello/tsconfig.json" lines="1-14" */}
+
+shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
+`error TS5102: Option 'baseUrl' has been removed`。TS 7 里 `paths` 直接相对 tsconfig
+所在目录解析，把 `baseUrl` 删掉就行，别的不用动。
+
+`@/` 别名一共要配三处，都指 `src/client`：件根的 tsconfig（**给 CLI 读**，它据此决定把
+拉下来的组件放哪）、`src/client` 那份（给 typecheck）、`build.ts` 里 esbuild 的 `alias`
+（给打包）。少配一处的症状各不相同，但都是构建期就炸，不会拖到运行时。
+
+### 新版 shadcn 不再生成 `lib/utils.ts`，改用 `cn` 这个包
+
+拉下来的组件头一行是 `import { cn } from "cn"`——那是 shadcn 官方发的包
+（`github.com/shadcn-ui/cn`，MIT），定位是 clsx + tailwind-merge 的 drop-in 替代。
+所以 **`lib/utils.ts` 没有了**，`clsx` 与 `tailwind-merge` 也跟着退场。
+
+CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 dev」要挪到 devDependencies
+——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个件的人多下一份用不上的包。

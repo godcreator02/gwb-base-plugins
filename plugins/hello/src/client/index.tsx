@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Button } from './components/ui/button'
+import { Button } from '@/components/ui/button'
 
 /**
  * 浏览器半。验的就是四样：裸名 import 经页面 importmap 解析得到、

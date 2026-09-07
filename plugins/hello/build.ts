@@ -17,6 +17,9 @@ await build({
   entryPoints: ['src/client/index.tsx'],
   outfile: 'lib/client.js',
   external: SHARED,
+  // shadcn 拉下来的组件写的是 @/lib/… 这种别名,跟 components.json 与两份 tsconfig 的
+  // paths 是同一条约定（都指 src/client）
+  alias: { '@': path.join(here, 'src', 'client') },
   absWorkingDir: here,
   format: 'esm',
   platform: 'browser',
