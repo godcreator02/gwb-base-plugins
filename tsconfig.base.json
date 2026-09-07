@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    // 只能是 bundler，不能是 nodenext：cordis 自己的 .d.ts 写的是 `export * from './context'`，
+    // 相对 import 不带扩展名，nodenext 解析不了——整个 Context 会退化成空类型，
+    // 症状是 ctx.logger / effect / provide 全报「不存在」。
+    // 代价是 TS 不再强制相对 import 带扩展名，而产物是给 node 直接加载的、ESM 要求带。
+    // 那一条改由 tests/artifact.test.ts 的产物守卫拦——它是静默失败：loader 吞掉 import
+    // 错误，件就是挂不上而一个字都不报。
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "skipLibCheck": true
+  }
+}

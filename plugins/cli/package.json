@@ -1,0 +1,32 @@
+{
+  "name": "@godcreator02/gwb-cli",
+  "version": "0.0.2",
+  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "gwb": {
+    "title": "命令总线"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "//deps": "一条运行时依赖都没有。契约包与 cordis 都只 import type，类型编译时就擦除了——判据是「运行时真 import 了它才写 peer」。这也顺带躲开母仓那个坑：peer 会被打包器外置成裸名，浏览器里解析不到",
+  "devDependencies": {
+    "@godcreator02/gwb-plugin-api": "0.0.2",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  }
+}

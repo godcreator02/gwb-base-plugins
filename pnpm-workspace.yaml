@@ -1,0 +1,4 @@
+packages:
+  - plugins/*
+minimumReleaseAgeExclude:
+  - '@godcreator02/gwb-plugin-api@0.0.1 || 0.0.2'
