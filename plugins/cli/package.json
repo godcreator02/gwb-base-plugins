@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发",
   "type": "module",
   "main": "lib/index.js",
@@ -23,7 +23,10 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
-  "//deps": "一条运行时依赖都没有。契约包与 cordis 都只 import type，类型编译时就擦除了——判据是「运行时真 import 了它才写 peer」。这也顺带躲开母仓那个坑：peer 会被打包器外置成裸名，浏览器里解析不到",
+  "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCli.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev。三档判据见内核仓 CLAUDE.md",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.2"
+  },
   "devDependencies": {
     "@godcreator02/gwb-plugin-api": "0.0.2",
     "cordis": "4.0.0-rc.9",
