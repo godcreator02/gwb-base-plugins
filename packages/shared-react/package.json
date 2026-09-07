@@ -4,14 +4,14 @@
   "description": "运行时环境：react 系的 CJS→ESM 束。件的浏览器半写裸名 import，经页面 importmap 拿到同一份实例",
   "type": "module",
   "exports": {
-    "./react": "./lib/react.js",
-    "./react-jsx-runtime": "./lib/react-jsx-runtime.js",
-    "./react-dom": "./lib/react-dom.js",
-    "./react-dom-client": "./lib/react-dom-client.js",
+    "./react": "./dist/react.js",
+    "./react-jsx-runtime": "./dist/react-jsx-runtime.js",
+    "./react-dom": "./dist/react-dom.js",
+    "./react-dom-client": "./dist/react-dom-client.js",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
+    "dist",
     "src"
   ],
   "//gwb.shared": "提供方声明「我给页面提供这几个裸名」，值是本包的 exports 子路径。内核扫 home 清单收齐所有声明拼成 importmap——它不认识 react 这个词，只搬运声明。一个裸名只许一个提供方，撞了内核报出来",

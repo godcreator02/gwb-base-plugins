@@ -7,17 +7,17 @@ import { describe, expect, it } from 'vitest'
  * 产物验收：四份束在位，且**自包含性**成立——react 本体零裸名 import、react-dom 系以裸名
  * 依赖 react、谁都不许留 require 探针。这三条错了都是静默的：页面上要到打开窗格才看得见。
  *
- * **产物不在就整组跳过**：门禁吃的是源码，而 lib/ 是 gitignore 的，新克隆的仓里压根没有。
+ * **产物不在就整组跳过**：门禁吃的是源码，而 dist/ 是 gitignore 的，新克隆的仓里压根没有。
  * 硬红的话「跑一遍门禁」就等于「先跑一遍构建」。跳过时打一句，别让人以为它悄悄过了。
  */
 
-const libDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'lib')
+const distDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 const BUNDLES = ['react.js', 'react-jsx-runtime.js', 'react-dom.js', 'react-dom-client.js']
-const built = BUNDLES.every((f) => fs.existsSync(path.join(libDir, f)))
+const built = BUNDLES.every((f) => fs.existsSync(path.join(distDir, f)))
 
-if (!built) console.warn('[shared-react] lib/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
+if (!built) console.warn('[shared-react] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
-const read = (name: string): string => fs.readFileSync(path.join(libDir, name), 'utf8')
+const read = (name: string): string => fs.readFileSync(path.join(distDir, name), 'utf8')
 /** 束里的裸名依赖：产物是 esm，只会有 `from "x"` 这一种形态 */
 const imports = (code: string): string[] => [
   ...new Set([...code.matchAll(/from\s*"([^"]+)"/g)].map((m) => m[1]!)),
@@ -25,7 +25,7 @@ const imports = (code: string): string[] => [
 
 describe.skipIf(!built)('shared-react 产物', () => {
   it('四份束都在', () => {
-    for (const f of BUNDLES) expect(fs.existsSync(path.join(libDir, f))).toBe(true)
+    for (const f of BUNDLES) expect(fs.existsSync(path.join(distDir, f))).toBe(true)
   })
 
   it('react 本体自包含——有裸名 import 就会绕出第二个实例', () => {

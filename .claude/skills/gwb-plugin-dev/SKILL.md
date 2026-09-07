@@ -10,7 +10,7 @@ description: 在这个仓里起一个新件、改一个件、发版、装进 hom
 ```
 plugins/<件名>/
   package.json
-  tsconfig.json     只要 extends 与 outDir/rootDir
+  tsconfig.json     只要 extends 与 outDir/rootDir（产物一律落 dist/，别用 lib）
   src/index.ts      export const name / apply(ctx)
   tests/            纯逻辑单测 + 产物守卫
 ```
@@ -20,7 +20,7 @@ plugins/<件名>/
 ```json
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "outDir": "lib", "rootDir": "src" },
+  "compilerOptions": { "outDir": "dist", "rootDir": "src" },
   "include": ["src/**/*.ts"]
 }
 ```
@@ -32,10 +32,10 @@ plugins/<件名>/
   "name": "@godcreator02/gwb-<件名>",
   "type": "module",
   "exports": {
-    ".": { "types": "./lib/index.d.ts", "default": "./lib/index.js" },
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
     "./package.json": "./package.json"
   },
-  "files": ["lib", "src"],
+  "files": ["dist", "src"],
   "gwb": { "title": "显示名" },
   "scripts": {
     "build": "tsc -p tsconfig.json",

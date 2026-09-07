@@ -9,7 +9,7 @@ import { build } from 'esbuild'
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const outDir = path.join(here, 'lib')
+const outDir = path.join(here, 'dist')
 
 /** react-dom 两份把 react 外置：它俩要跟 react.js 那份是同一个实例，由页面 importmap 钉住 */
 const TARGETS = [

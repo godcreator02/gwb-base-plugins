@@ -15,7 +15,7 @@ const SHARED = ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client']
 
 await build({
   entryPoints: ['src/client/index.tsx'],
-  outfile: 'lib/client.js',
+  outfile: 'dist/client.js',
   external: SHARED,
   // shadcn 拉下来的组件写的是 @/lib/… 这种别名,跟 components.json 与两份 tsconfig 的
   // paths 是同一条约定（都指 src/client）
@@ -32,4 +32,4 @@ await build({
   logLevel: 'warning',
 })
 
-console.log('[hello] lib/client.js ← src/client/index.tsx')
+console.log('[hello] dist/client.js ← src/client/index.tsx')

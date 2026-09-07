@@ -3,17 +3,17 @@
   "version": "0.0.3",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发",
   "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
+    "dist",
     "src"
   ],
   "gwb": {

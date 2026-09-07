@@ -3,20 +3,20 @@
   "version": "0.0.2",
   "description": "验收件：一个 shadcn 按钮 + 一个亮暗开关，用来验运行时环境与样式这条链路通不通",
   "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "//exports": "./style.css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
-    "./client": "./lib/client.js",
-    "./style.css": "./lib/style.css",
+    "./client": "./dist/client.js",
+    "./style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
+    "dist",
     "src"
   ],
   "gwb": {

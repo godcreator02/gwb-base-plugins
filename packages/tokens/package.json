@@ -5,12 +5,12 @@
   "type": "module",
   "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",
   "exports": {
-    "./theme.css": "./lib/theme.css",
-    "./theme.reference.css": "./lib/theme.reference.css",
+    "./theme.css": "./dist/theme.css",
+    "./theme.reference.css": "./dist/theme.reference.css",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
+    "dist",
     "src"
   ],
   "scripts": {

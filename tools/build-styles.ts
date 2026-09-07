@@ -7,7 +7,7 @@ import tailwind from '@tailwindcss/postcss'
 
 /**
  * 件的样式表构建：Tailwind 4 扫件的 src，出一张只含工具类的表，
- * 整张 scope 到 `[data-gwb-plugin="<完整包名>"]`，落 `lib/style.css`。
+ * 整张 scope 到 `[data-gwb-plugin="<完整包名>"]`，落 `dist/style.css`。
  *
  * 件的作者不写 Tailwind 入口——输入 css 由这里拼（见 styleInput）。
  */
@@ -60,7 +60,7 @@ function packageName(pkgDir: string): string {
  * - 前两行 `theme(reference)`：让类名解析得出来（`bg-primary` → `var(--primary)`），
  *   但**一个变量声明都不输出**——值在运行时取页面那张表的
  * - 只引 utilities，**不引 preflight**：preflight 全局一份，归令牌包那张表
- * - `source(none)` 关掉自动扫描，只认下面那条显式 @source；否则会把 lib/ 里的产物
+ * - `source(none)` 关掉自动扫描，只认下面那条显式 @source；否则会把 dist/ 里的产物
  *   也扫进来，凭空多出一堆没人用的类，而且不报错
  */
 function styleInput(pkgDir: string): string {
@@ -97,7 +97,7 @@ export async function buildStyles(pkgDir: string): Promise<{ scope: string; byte
   })
 
   const head = `/* 由 tools/build-styles.ts 生成：${scope} 的工具类表，整张 scope 在 ${prefix} 之下。改样式改源码重新构建，别手改这份 */\n`
-  const outFile = path.join(pkgDir, 'lib', 'style.css')
+  const outFile = path.join(pkgDir, 'dist', 'style.css')
   fs.mkdirSync(path.dirname(outFile), { recursive: true })
   const text = head + scoped.toString()
   fs.writeFileSync(outFile, text, 'utf8')
@@ -107,5 +107,5 @@ export async function buildStyles(pkgDir: string): Promise<{ scope: string; byte
 // 直接跑时：拿 cwd 当件的包目录（件的 build 脚本在自己的目录里调它）
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { scope, bytes } = await buildStyles(process.cwd())
-  console.log(`[styles] lib/style.css ← ${scope}（${bytes.toLocaleString()} 字节）`)
+  console.log(`[styles] dist/style.css ← ${scope}（${bytes.toLocaleString()} 字节）`)
 }

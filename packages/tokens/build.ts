@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url))
-const outDir = path.join(here, 'lib')
+const outDir = path.join(here, 'dist')
 const require = createRequire(import.meta.url)
 
 /**
@@ -34,5 +34,5 @@ fs.writeFileSync(
 // 映射面原样发出去：件的构建期引的就是这个形态
 fs.copyFileSync(path.join(here, 'src', 'theme.reference.css'), path.join(outDir, 'theme.reference.css'))
 
-console.log('[tokens] lib/theme.css ← preflight + tokens.css')
-console.log('[tokens] lib/theme.reference.css ← 原样拷')
+console.log('[tokens] dist/theme.css ← preflight + tokens.css')
+console.log('[tokens] dist/theme.reference.css ← 原样拷')
