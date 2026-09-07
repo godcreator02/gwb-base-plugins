@@ -153,9 +153,15 @@ importers:
       '@godcreator02/gwb-data':
         specifier: workspace:*
         version: link:../data
+      '@godcreator02/gwb-node-cli':
+        specifier: workspace:*
+        version: link:../node-cli
       '@godcreator02/gwb-plugin-api':
         specifier: 0.0.3
         version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-py-cli':
+        specifier: workspace:*
+        version: link:../py-cli
       '@godcreator02/gwb-shared-react':
         specifier: workspace:*
         version: link:../../packages/shared-react
@@ -185,6 +191,51 @@ importers:
         version: 0.27.7
       radix-ui:
         specifier: ^1.4.3
+        version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  plugins/logger:
+    devDependencies:
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.0.3
+        version: 0.0.3(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-shared-react':
+        specifier: workspace:*
+        version: link:../../packages/shared-react
+      '@godcreator02/gwb-shell':
+        specifier: workspace:*
+        version: link:../shell
+      '@godcreator02/gwb-tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.5
+        version: 19.2.5(@types/react@19.2.18)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      cn:
+        specifier: ^0.2.5
+        version: 0.2.5
+      esbuild:
+        specifier: ^0.27.0
+        version: 0.27.7
+      lucide-react:
+        specifier: ^1.41.0
+        version: 1.41.0(react@19.2.8)
+      radix-ui:
+        specifier: ^1.6.7
         version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react:
         specifier: 19.2.8
@@ -280,6 +331,9 @@ importers:
       '@godcreator02/gwb-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@types/node':
+        specifier: ^26.4.1
+        version: 26.4.1
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -301,6 +355,9 @@ importers:
       lucide-react:
         specifier: ^1.41.0
         version: 1.41.0(react@19.2.8)
+      postcss:
+        specifier: ^8.5.28
+        version: 8.5.28
       radix-ui:
         specifier: ^1.6.7
         version: 1.6.7(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
