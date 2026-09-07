@@ -138,9 +138,15 @@ importers:
 
   plugins/hello:
     devDependencies:
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.0.3
+        version: 0.0.3(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-shared-react':
         specifier: workspace:*
         version: link:../../packages/shared-react
+      '@godcreator02/gwb-store':
+        specifier: workspace:*
+        version: link:../store
       '@godcreator02/gwb-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -168,6 +174,18 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  plugins/store:
+    devDependencies:
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.0.3
+        version: 0.0.3(cordis@4.0.0-rc.9)
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -582,6 +600,11 @@ packages:
 
   '@godcreator02/gwb-plugin-api@0.0.2':
     resolution: {integrity: sha512-BCPHClXqadvd+upF6Hm3iRbFQzDPcMIlrua40tqpGHSlGpdaoDfhuqfYmgXYDaKr3O2GM8JFh9FgrVqIZBRWmg==}
+    peerDependencies:
+      cordis: ^4.0.0-rc.9
+
+  '@godcreator02/gwb-plugin-api@0.0.3':
+    resolution: {integrity: sha512-jqXKi7O/DPJhTWJ4HofWO7D9fa4SdZmaS4x6lpXFKHYAQzfcz9oeFCRelJRH7V5M3SDodNKhcTACESs//bXJyQ==}
     peerDependencies:
       cordis: ^4.0.0-rc.9
 
@@ -3662,6 +3685,10 @@ snapshots:
   '@fumari/image-size@0.1.0': {}
 
   '@godcreator02/gwb-plugin-api@0.0.2(cordis@4.0.0-rc.9)':
+    dependencies:
+      cordis: 4.0.0-rc.9
+
+  '@godcreator02/gwb-plugin-api@0.0.3(cordis@4.0.0-rc.9)':
     dependencies:
       cordis: 4.0.0-rc.9
 

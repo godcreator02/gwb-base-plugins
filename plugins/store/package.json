@@ -1,0 +1,38 @@
+{
+  "name": "@godcreator02/gwb-store",
+  "version": "0.0.1",
+  "description": "数据格：件把自己的东西落到 <home>/data/<包名>/ 下，一份文档一个 JSON",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "gwb": {
+    "title": "数据格"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "两条都是 peer,而且理由不同档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份，两份 cordis 的 instanceof 对不上）；词汇表包也是运行时 import（requireKernel 是个真函数，不是类型）。对照 gwb-cli——它的 cordis 只在 apply 的参数类型里用,所以那边是 dev。三档判据见内核仓 CLAUDE.md",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "cordis": "^4.0.0-rc.9"
+  },
+  "devDependencies": {
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  }
+}

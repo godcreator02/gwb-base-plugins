@@ -21,7 +21,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
   },
   "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCli.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {

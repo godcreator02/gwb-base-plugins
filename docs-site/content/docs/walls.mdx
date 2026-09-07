@@ -86,7 +86,45 @@ devDependencies**。
 
 ---
 
-## 共享包
+## 服务
+
+### 要认出「是谁在取我」，用 `Service` 基类，别用 `accessor`
+
+`ctx.gwbStore` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
+名字去读别人的数据。cordis 有两条路能做到「服务感知调用方」，实测过才知道只有一条能走：
+
+{/* ref file="../plugins/store/src/index.ts" lines="33-48" */}
+
+- **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` **确实**是访问者的 ctx（实测
+  `child.probe === child`）。但**`inject` 不认它**——件写 `inject: ['那个名字']` 会永远等下去，
+  fiber 建出来了、`apply` 不跑，**而且一声不吭**。查这个现象只能靠「件挂上了但什么都没发生」
+- **`Service` 基类**：`inject` 认它，而且方法里的 `this.ctx` 就是**消费者**的 ctx。实测两个件
+  各自取同一个服务，拿到的身份互不相同
+
+身份从 `this.ctx.fiber.entry.options.name` 取，那是件在 `cordis.yml` 里的 `name`，也就是包名。
+**`entry` 是 loader 挂上去的、不是 cordis 本体的面**，所以代码里按运行时形状取、不动全局类型
+声明——裸 `Context` 上没有它（根上下文取到的 `hasEntry` 就是 false）。
+
+顺带一条：`extends Service` 意味着 **cordis 是运行时依赖，得写 peer**（两份 cordis 的
+`instanceof` 对不上）。对照 `gwb-cli`——它只在 `apply` 的参数类型里用 cordis，那边是 dev。
+同一个包在两个件里档位不同，这正是三档判据要一条条判的原因。
+
+---
+
+## 发版
+
+### `pnpm check` 不构建——不加 `prepublishOnly` 就会静默发出旧产物
+
+`pnpm check` 是 typecheck + lint + test，**它不跑 build**。而件的 `package.json` 里如果没有
+`prepublishOnly`，`pnpm publish` 就把上一版的 `dist/` 原样发出去了。
+
+**这次就中招了**：hello 0.0.4 加了 store 探针，发出去、装进 home、日志里明明写着「挂上
+home:hello」，可是探针的输出一行都没有，盘上也没出现文件。查了一圈代码才想起来——**发的是
+0.0.3 那版的产物**（那时 `apply` 还是空的）。
+
+症状极难认：件挂上了、不报错、只是新写的东西全没生效。
+
+所有包都补上 `"prepublishOnly": "pnpm build"`。
 
 ### react 至今没有 ESM 出口，中间包躲不掉
 

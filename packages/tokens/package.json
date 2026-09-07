@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "build": "node build.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
   },
   "//deps": "tailwindcss 只是构建输入——preflight 那段样式从它的包里取出来拼进产物，运行期没人 import 它。件那边编自己的表时另有一份 tailwindcss，跟这里无关",
   "devDependencies": {

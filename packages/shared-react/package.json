@@ -25,7 +25,8 @@
   },
   "scripts": {
     "build": "node build.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
   },
   "//deps": "react 是**构建输入**，产物里已经内联，运行期 node 侧根本不加载这个包——所以是 dev 不是 peer。react-dom 束里那句裸名 `import 'react'` 由页面 importmap 解析，不走 node 解析。版本精确钉：两份束里的 react 必须是同一版，浮动版本号会让它们悄悄错开",
   "devDependencies": {

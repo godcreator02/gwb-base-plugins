@@ -39,10 +39,15 @@ plugins/<件名>/
   "gwb": { "title": "显示名" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
   }
 }
 ```
+
+**`prepublishOnly` 别漏**：`pnpm check` 只跑 typecheck / lint / test，**它不构建**。少了这条，
+`pnpm publish` 会把上一版的 `dist/` 原样发出去，而且一声不吭——装到 home 里的是旧代码，
+现象是「件挂上了但新写的东西全没生效」。
 
 **包名加 `gwb-` 前缀**（跟废弃那批错开）。**服务名一律 `gwb` 开头小驼峰**，默认跟件名对应。
 

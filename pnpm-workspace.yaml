@@ -9,4 +9,4 @@ allowBuilds:
   esbuild: true
 
 minimumReleaseAgeExclude:
-  - '@godcreator02/gwb-plugin-api@0.0.1 || 0.0.2'
+  - '@godcreator02/gwb-plugin-api@0.0.1 || 0.0.2 || 0.0.3'
