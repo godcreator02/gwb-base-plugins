@@ -3,6 +3,7 @@ import path from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
+import postcss from 'postcss'
 
 /**
  * 浏览器半打包，外加拼那张**不 scope** 的样式表。
@@ -40,20 +41,55 @@ await build({
 console.log('[shell] dist/client.js ← src/client/index.tsx')
 
 /**
- * `dist/dockview.css` = dockview 的原表 + 我们那张皮肤。
+ * `dist/dockview.css` = **裁过的** dockview 基础规则 + 我们自己那套 theme。
  *
- * **原表整张带上，一行不裁**。它 150KB，其中大半是十几套内置主题（github / nord /
- * catppuccin …）我们一套都不用。裁掉它们能省一百来 KB，但基础规则与主题规则在同一个
- * 文件里交错着，裁错一条的症状是「某个交互没样式」——本地应用里那一百 KB 不值这个风险。
+ * dockview 自带 18 套主题，我们一套都不挂——所以凡是**选择器里带 `.dockview-` 的块**
+ * 整个剔掉。那不只是 18 套配色：`.dockview-spaced` 这个 modifier 也在其中，它装着圆角与
+ * 间距的落地规则（我们那张 theme 表把用得上的复刻了一份）。
  *
- * 皮肤拼在**后面**：两者特异性相同，靠顺序赢。
+ * **按选择器裁，不是按行猜**。第三刀写过「原表整张带上一行不裁——基础规则与主题规则
+ * 交错着，裁错一条的症状是某个交互没样式」，那条判据当时成立：那时我们挂着它的
+ * `dockview-theme-light`，没有可靠的切分依据。现在一个内置主题都不用了，整类可以按
+ * 选择器整体剔除，风险从「猜」变成了「解析」。
+ *
+ * 用 postcss 解析、**不用字符串数括号**：CSS 的注释与字符串里都可能有括号。
  */
 const dockviewCss = require.resolve('dockview-react/dist/styles/dockview.css')
-const skinFile = path.join(here, 'src', 'client', 'dockview-skin.css')
-const head = `/* 由 build.ts 拼装：dockview 原表 + gwb 皮肤。**这张不 scope**——它管的 .dv-* 类名不经我们的手，而且门户元素挂在 body 下。改皮肤改 src/client/dockview-skin.css 重新构建，别手改这份 */\n`
-const out = head + fs.readFileSync(dockviewCss, 'utf8') + '\n' + fs.readFileSync(skinFile, 'utf8')
+const themeFile = path.join(here, 'src', 'client', 'dockview-theme.css')
+const rawCss = fs.readFileSync(dockviewCss, 'utf8')
+const themeCss = fs.readFileSync(themeFile, 'utf8')
+
+/** 这条选择器只有挂了 dockview 自带的某个类才命中——我们只挂 `dockview-theme-gwb` */
+function isTheirs(selector: string): boolean {
+  return selector.includes('.dockview-')
+}
+
+const base = postcss.parse(rawCss)
+base.walkRules((rule) => {
+  // at-rule 底下的「规则」不是选择器（keyframes 的 `from`/`to`），别去动
+  if (rule.parent?.type === 'atrule' && (rule.parent as { name?: string }).name !== 'media') return
+  if (rule.selectors.every(isTheirs)) {
+    rule.remove()
+    return
+  }
+  // 一条规则挂着好几个选择器时，只摘掉属于他们的那几个
+  const keep = rule.selectors.filter((s) => !isTheirs(s))
+  if (keep.length !== rule.selectors.length) rule.selectors = keep
+})
+const baseCss = base.toString()
+
+const head =
+  `/* 由 build.ts 拼装：**裁过的** dockview 基础规则 + gwb 自己那套 theme。\n` +
+  ` * 它自带的 18 套主题连同 .dockview-spaced 那个 modifier 一起裁掉了——我们一套都不挂。\n` +
+  ` * 这张不 scope（.dv-* 不经我们的手，门户元素在 body 下）。\n` +
+  ` * 改主题改 src/client/dockview-theme.css 重新构建，别手改这份 */\n`
+const out = head + baseCss + '\n' + themeCss
 const outFile = path.join(here, 'dist', 'dockview.css')
 fs.mkdirSync(path.dirname(outFile), { recursive: true })
 fs.writeFileSync(outFile, out, 'utf8')
 
-console.log(`[shell] dist/dockview.css ← dockview 原表 + 皮肤（${Buffer.byteLength(out, 'utf8').toLocaleString()} 字节）`)
+const saved = Buffer.byteLength(rawCss, 'utf8') - Buffer.byteLength(baseCss, 'utf8')
+console.log(
+  `[shell] dist/dockview.css ← 基础规则 + gwb theme（${Buffer.byteLength(out, 'utf8').toLocaleString()} 字节，` +
+    `裁掉他们的主题省了 ${saved.toLocaleString()}）`,
+)

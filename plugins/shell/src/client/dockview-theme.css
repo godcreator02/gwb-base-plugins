@@ -1,0 +1,238 @@
+/* ============================================================
+ * dockview 的主题——**完整的一套，不在它自带的主题上打补丁**。
+ *
+ * 它自带 18 套主题，我们一套都不挂：`build.ts` 把那些块整类裁掉（选择器带
+ * `.dockview-` 的全剔，含 `.dockview-spaced` 那个 modifier），产物里只剩**无条件生效**的
+ * 基础规则加这张表。要它的布局与拖放，不要它的审美。
+ *
+ * 这张表**不 scope**——它管的 DOM 类名（`.dv-*`）不经我们的手，而且拖拽指示器、浮动组
+ * 这些门户元素挂在 `body` 下，包进 `:where([data-gwb-plugin=…])` 就一条都匹配不上。
+ *
+ * **变量的全集由构建期守卫钉着**：`build.ts` 扫基础规则里所有 `var(--dv-…)`，跟这儿定义的
+ * 比对，缺一个就当场抛。dockview 升级新增变量时，那是唯一能挡住「静默塌陷」的地方——
+ * 读空不报错，只是某个高度没了、某个交互没样式。
+ *
+ * **亮暗不靠换类**：配色全是 `var(--…)`，令牌跟着 `html.dark` 变，井、标签、件里的东西
+ * 一起变，一行都不用重新构建。只有一个例外在最下面。
+ * ============================================================ */
+
+.dockview-theme-gwb {
+  /* ── 形状 ─────────────────────────────────────────────
+   * **矩形分割**：标签紧贴、方角、靠分隔线划开。井是一套分割布局，圆角会把「这两块是
+   * 挨着的」这层关系变模糊——一块块圆角卡片读起来是「几个独立的东西浮在底上」，
+   * 而它们其实是切出来的相邻区域。
+   *
+   * 圆角留给**控件**（状态栏的按钮与菜单走 shadcn 那套 `--radius`），井里不用。
+   *
+   * 我们自己拿主意的是尺寸那几样：标签条 32px（比 dockview 的 35px 紧一档，跟状态栏的
+   * h-7 对得上）、字号 12px、内边距 10px。 */
+  --dv-tabs-and-actions-container-height: 32px;
+  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-tab-font-size: 12px;
+  --dv-tab-close-icon-size: 12px;
+  --dv-tab-border-radius: 0px;
+  --dv-tab-margin-block: 0px;
+  --dv-tab-margin-inline: 0px;
+  --dv-tab-margin: var(--dv-tab-margin-block) var(--dv-tab-margin-inline);
+  --dv-border-radius: 0px;
+  --dv-spacing-padding: 0px;
+  --dv-sash-border-radius: 0px;
+  --dv-dropdown-border-radius: 0px;
+  /* 标签条一行装不下时最多堆几行（多行标签是企业模块，这儿只是别让它读空） */
+  --dv-max-tab-rows: 3;
+  --dv-wrap-vertical-tab-height: auto;
+  --dv-pinned-sticky-left: 0px;
+
+  /* ── 井与标签条 ───────────────────────────────────── */
+  --dv-group-view-background-color: var(--background);
+  --dv-tabs-and-actions-container-background-color: var(--muted);
+
+  /* 标签四态：组活不活 × 这一页显不显 */
+  --dv-activegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+
+  /* ── 分隔与边框 ───────────────────────────────────── */
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  /**
+   * 标签之间那条竖线。**矩形分割全靠它**：标签紧贴着排，而非活动标签跟标签条底
+   * 都是 `--muted`（同色），没有这条线两个非活动标签就连成一片了。
+   *
+   * 这个变量在别处也用（固定标签的下边线、溢出菜单的分隔、整格的 outline），
+   * 但**画标签之间那条线的规则要我们自己写**——见文件下半段。
+   */
+  --dv-tab-divider-color: var(--border);
+  --dv-floating-border: 1px solid var(--border);
+  --dv-floating-group-border: 1px solid var(--border);
+
+  /* 拖动条：静止时透明，拖起来才显色（沿用 dockview 的手法） */
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--ring);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.5s;
+
+  /* ── 交互反馈 ─────────────────────────────────────── */
+  --dv-icon-hover-background-color: var(--accent);
+  --dv-paneview-active-outline-color: var(--ring);
+  --dv-edge-dock-indicator-color: var(--primary);
+  --dv-drag-over-background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+  --dv-drag-over-border-color: var(--primary);
+  --dv-drag-over-border: none;
+  --dv-transition-duration: 150ms;
+  --dv-overlay-z-index: 999;
+
+  /* ── 滚动条 ───────────────────────────────────────── */
+  --dv-scrollbar-background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  --dv-tabs-container-scrollbar-color: var(--muted-foreground);
+
+  /* ── 浮动组 ───────────────────────────────────────── */
+  --dv-floating-titlebar-height: 24px;
+  --dv-floating-titlebar-background-color: var(--muted);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--border);
+  --dv-floating-group-dragging-opacity: 0.6;
+  /* 阴影在亮底上够用就行，暗底另有一档，见文件末尾 */
+  --dv-floating-box-shadow: 0 8px 24px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.12);
+
+  /* ── 标签分组（企业模块的功能，这儿只是别让它读空）─── */
+  --dv-tab-group-color: var(--muted-foreground);
+  --dv-tab-group-line-opacity: 0.6;
+  --dv-tab-group-chip-padding: 2px 6px;
+  --dv-tab-group-chip-border-radius: 4px;
+  --dv-tab-group-chip-font-size: 11px;
+  --dv-tab-group-color-grey: var(--muted-foreground);
+  --dv-tab-group-color-blue: oklch(0.6 0.16 250);
+  --dv-tab-group-color-red: oklch(0.58 0.2 25);
+  --dv-tab-group-color-yellow: oklch(0.75 0.15 85);
+  --dv-tab-group-color-green: oklch(0.6 0.15 150);
+  --dv-tab-group-color-pink: oklch(0.65 0.2 350);
+  --dv-tab-group-color-purple: oklch(0.6 0.2 300);
+  --dv-tab-group-color-cyan: oklch(0.65 0.12 200);
+  --dv-tab-group-color-orange: oklch(0.68 0.16 55);
+
+  /* ── 下面这些是**企业模块**才会出现的 DOM 用的（右键菜单、拖放罗盘、智能对齐）。
+   * 那些模块没装，所以这几条现在一次都用不上；定义它们只为一件事：**守卫要求全覆盖，
+   * 而不维护「已知用不到」的例外清单**——例外清单会腐烂，全定义不会。 */
+  --dv-context-menu-background-color: var(--popover);
+  --dv-context-menu-color: var(--popover-foreground);
+  --dv-dnd-compass-color: var(--primary);
+  --dv-dnd-compass-cell-color: color-mix(in oklab, var(--primary) 25%, transparent);
+  --dv-dnd-compass-active-cell-color: color-mix(in oklab, var(--primary) 50%, transparent);
+  --dv-dnd-compass-edge-cell-color: color-mix(in oklab, var(--primary) 12%, transparent);
+  --dv-smart-guides-color: var(--primary);
+  --dv-smart-guides-preview-color: color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+/* ============================================================
+ * 形状那批的**落地规则**。
+ *
+ * 光定义变量不够：用它们的规则原本住在 dockview 的 `.dockview-spaced` 块里，而那整块
+ * 被裁掉了。这几条是从那儿复刻过来的——只留我们这个形态用得上的，
+ * edge-peek / 垂直标签条 / 多行标签那些跟着走。
+ *
+ * **眼下圆角与留白都是 0，所以这几条实际上是空转的。** 留着不是忘了删：它们是「圆角
+ * 怎么落地」这件事的实现，有了它们，将来想给井加圆角只要改上面一个变量；没有的话得
+ * 回头再从 dockview 那张原表里把这几条挖一遍。
+ * ============================================================ */
+
+/* 井的外圈留白 */
+.dockview-theme-gwb .dv-dockview {
+  padding: var(--dv-spacing-padding);
+}
+
+/* 一格的圆角：容器裁一次，上下两端各自再圆一次——不然内容会溢出圆角 */
+.dockview-theme-gwb .dv-groupview {
+  border-radius: var(--dv-border-radius);
+}
+.dockview-theme-gwb .dv-groupview .dv-tabs-and-actions-container {
+  padding: 0 calc(var(--dv-border-radius) / 2);
+  border-top-left-radius: var(--dv-border-radius);
+  border-top-right-radius: var(--dv-border-radius);
+}
+.dockview-theme-gwb .dv-groupview .dv-content-container,
+.dockview-theme-gwb .dv-render-overlay {
+  border-bottom-left-radius: var(--dv-border-radius);
+  border-bottom-right-radius: var(--dv-border-radius);
+}
+
+/**
+ * 标签的圆角走变量，**左右内边距只能写死**——dockview 的基础规则里那句
+ * `padding: 0.25rem 0.5rem` 是字面值不是变量，而基础规则是裁不掉的那半。
+ */
+.dockview-theme-gwb .dv-tab {
+  border-radius: var(--dv-tab-border-radius);
+  padding: 0 10px;
+}
+
+/**
+ * 标签之间那条分隔线——**矩形分割的骨**，也是这张表里唯一一条「补 dockview 的漏」。
+ *
+ * 它自己有三条画这个的规则，选择器是 `.dv-tabs-container.dv-horizontal .dv-tab:not(:first-child)::before`。
+ * **8.2.0 里那三条一条都匹配不上**：标签条的方向类早就改成了 `dv-tabs-container-vertical`
+ * （水平态干脆不挂 modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view，
+ * 分隔线的选择器没跟着改。它们自带的 18 套主题里那些 `--dv-tab-divider-color` 也就一起
+ * 空转了——**这跟我们裁表无关，是它上游的 bug**，任何主题下都画不出来。
+ *
+ * 所以照着它原本的意图重写一遍，只换成能命中的选择器。`.dv-tab` 的
+ * `position: relative` 在基础规则里，不用我们给。
+ */
+.dockview-theme-gwb .dv-tabs-container .dv-tab:not(:first-child)::before {
+  content: ' ';
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  pointer-events: none;
+  width: 1px;
+  height: 100%;
+  background-color: var(--dv-tab-divider-color);
+}
+/* 竖排标签条（边缘组）：轴换一下，线横过来 */
+.dockview-theme-gwb .dv-tabs-container-vertical .dv-tab:not(:first-child)::before {
+  width: 100%;
+  height: 1px;
+}
+
+.dockview-theme-gwb .dv-sash {
+  border-radius: var(--dv-sash-border-radius);
+}
+
+/* 拖放指示器：整块落点用整格的圆角，边缘那条细的用四分之一 */
+.dockview-theme-gwb .dv-drop-target-anchor {
+  border-radius: calc(var(--dv-border-radius) / 4);
+}
+.dockview-theme-gwb .dv-drop-target-anchor.dv-drop-target-content {
+  border-radius: var(--dv-border-radius);
+}
+
+.dockview-theme-gwb .dv-tabs-overflow-dropdown-default {
+  border-radius: var(--dv-dropdown-border-radius);
+}
+
+/* 浮动组那一套 */
+.dockview-theme-gwb .dv-resize-container {
+  border-radius: var(--dv-border-radius) !important;
+}
+.dockview-theme-gwb .dv-resize-container > .dv-grid-view {
+  padding: var(--dv-spacing-padding);
+}
+.dockview-theme-gwb .dv-resize-container-with-titlebar > .dv-floating-titlebar {
+  border-top-left-radius: var(--dv-border-radius);
+  border-top-right-radius: var(--dv-border-radius);
+}
+
+/**
+ * 唯一一个跟着明暗走的变量。dockview 给的默认值在亮底上够用，暗底上量出来是
+ * `rgba(0,0,0,0.12)`——浮动组整个失去立体感。阴影的语义**本来就跟明暗有关**。
+ *
+ * 这不违反「亮暗不靠换类」：换的不是 dockview 的主题类，是我们自己这张表按 `.dark`
+ * 给不同的值，跟令牌表本身 `:root` / `.dark` 两套值是同一个做法。
+ */
+.dark .dockview-theme-gwb {
+  --dv-floating-box-shadow: 0 8px 32px oklch(0 0 0 / 0.55), 0 2px 8px oklch(0 0 0 / 0.4);
+}

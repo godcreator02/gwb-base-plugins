@@ -95,4 +95,28 @@ describe.skipIf(!built)('产物', () => {
     expect(stripComments(dockview)).not.toContain('data-gwb-plugin')
     expect(dockview).toContain('.dockview-theme-gwb')
   })
+
+  /**
+   * 裁表那步是**每次构建都在跑的代码**，写坏了的症状分两头：裁多了是某个交互没样式，
+   * 裁少了是他们的主题偷偷生效、把我们的值盖掉。两头都不报错，所以钉住。
+   */
+  it('dockview 自带的主题一个都不许剩，除了我们自己那个', () => {
+    const css = stripComments(fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8'))
+    const theirs = [...css.matchAll(/\.dockview-[a-z0-9-]+/g)]
+      .map((m) => m[0])
+      .filter((c) => c !== '.dockview-theme-gwb')
+    expect([...new Set(theirs)]).toEqual([])
+  })
+
+  it('裁完之后基础规则还在——别把井本身也裁没了', () => {
+    const css = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
+    // 这几个类是井的骨架，全由 dockview 的 JS 建，规则少一条就是一处没样式
+    for (const cls of ['.dv-groupview', '.dv-tabs-and-actions-container', '.dv-tab', '.dv-sash', '.dv-drop-target']) {
+      expect(css).toContain(cls)
+    }
+    // 裁掉的是三分之二那批主题，剩下的应该在 50–70KB 这一档；掉出去说明裁法出事了
+    const bytes = Buffer.byteLength(css, 'utf8')
+    expect(bytes).toBeGreaterThan(45_000)
+    expect(bytes).toBeLessThan(75_000)
+  })
 })

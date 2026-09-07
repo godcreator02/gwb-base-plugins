@@ -475,12 +475,59 @@ DIV.dv-shell dockview-theme-abyss …     ← 它在这儿挂,--dv-* 从这层�
 HTML.dockview-theme-light dockview-theme-gwb   ← 我们挂的这份被压在外面
 ```
 
-正解是传 `theme: { name, className, colorScheme }`。**`className` 一个字段塞得下两个类**
-——dockview 那边是 `classNames.split(' ')` 收的，所以「自带默认值那套 + 只覆盖配色的
-我们这套」能一起挂上。
+正解是传 `theme: { name, className, colorScheme }`。**`className` 一个字段塞得下几个类**
+——dockview 那边是 `classNames.split(' ')` 收的。
 
 `<html>` 上那份留着当兜底，给可能挂到 `body` 下的门户元素——多挂一个只定义变量的类
 代价是零，漏了的话那些元素一片没样式，而且要拖起来才发现。
+
+**后来撤掉了它的主题**，`className` 现在只有 `dockview-theme-gwb` 一个（当时是
+`dockview-theme-light` 打头、我们那份只覆盖配色）。这条墙本身没变：**不经 `theme` 选项
+交，`.dv-shell` 上就是 `dockview-theme-abyss`**——撤主题之后忘了传，症状照旧是井底深蓝黑。
+
+### 它自带的 18 套主题一套都不挂，所以那批变量得自己给全
+
+撤掉它的主题之后，裁剩的基础规则引用的 **54 个 `--dv-*` 全由 `dockview-theme.css` 提供**
+（表里实际定义了 71 个——多出来的是企业模块那批与我们自己的中间变量，**故意全定义**，
+维护「已知用不到」的例外清单只会腐烂）。dockview 升级新增一个，我们就漏一个，而**漏了是
+读空、不报错**——只是某个高度没了、某个交互没样式。
+
+**升级 dockview 之后核对一遍**，一条命令的事（在 `plugins/shell` 里跑）：
+
+```powershell
+# 剔掉选择器带 .dockview- 的块（跟 build.ts 同口径）→ 扫剩下的裸引用 → 跟我们表里声明的比对
+node -e "const p=require('postcss'),f=require('fs');const r=p.parse(f.readFileSync(require.resolve('dockview-react/dist/styles/dockview.css'),'utf8'));r.walkRules(u=>{if(u.selectors.every(s=>s.includes('.dockview-')))u.remove()});const used=new Set([...r.toString().matchAll(/var\(\s*(--dv-[\w-]+)/g)].map(m=>m[1]));const mine=new Set([...f.readFileSync('src/client/dockview-theme.css','utf8').matchAll(/^\s*(--dv-[\w-]+)\s*:/gm)].map(m=>m[1]));console.log('用到',used.size,'个，我们定义了',mine.size,'个');console.log('缺:',[...used].filter(v=>!mine.has(v)))"
+```
+
+口径要跟 `build.ts` 对齐：它裁的是**所有** `.dockview-`，不只是 `.dockview-theme-`
+（`.dockview-spaced` 那个 modifier 也在里头）。按「只裁 theme」的口径数出来是 62，
+那个数跟产物对不上。
+
+**没做成构建期守卫**，写过一版又砍了（90 行，核心 22 行）。判据是准入第二关：dockview 钉在
+8.2.0、没有升级计划，这条防的是「将来某次升级」，典型的「将来可能要」。而且「静默塌陷」
+这个说法要打折——**升级是个有意动作**，做的人总会开一次应用，标签条高度没了那种当场看得
+见；真藏得住的只有拖放指示器颜色这类要特定交互才出现的。那 22 行随时能写回来。
+
+### 8.2.0 里标签之间那条分隔线，它自己的规则是死的
+
+`--dv-tab-divider-color` 我们接了 `--border`，实机量下来 `::before` 的 `content` 是 `none`
+——**线根本没画**。而规则明明在产物里（不是被我们裁掉的）：
+
+```css
+.dv-tabs-container.dv-horizontal .dv-tab:not(:first-child)::before { content: " "; … }
+```
+
+问题在选择器：**标签条的方向类早改成了 `dv-tabs-container-vertical`**（水平态干脆不挂
+modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。那三条分隔线规则
+匹配不上任何 DOM，**它自带 18 套主题里那些 `--dv-tab-divider-color` 也就一起空转了**。
+是上游的 bug，跟我们裁不裁表无关。
+
+我们的形态是**矩形分割**——标签紧贴、方角，非活动标签跟标签条底同色，全靠这条线划开。
+所以照它原本的意图重写了一遍，只换成能命中的选择器（`.dv-tab` 的 `position: relative`
+在基础规则里，不用我们给）。
+
+一般教训：**接了变量不等于那条规则会跑**。量的时候要量最终效果（`getComputedStyle(el,
+'::before').content`），不能只量变量读没读空——这次那 20 个变量一个都没读空，线却没有。
 
 ### `addPanel` 撞 id 是同步抛，而抛出去的后果比「少开一格」重
 

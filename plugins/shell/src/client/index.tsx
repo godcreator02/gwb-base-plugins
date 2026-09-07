@@ -34,14 +34,15 @@ const TOKENS = '@godcreator02/gwb-tokens'
 const PANES_COMMAND = 'shell.panes'
 
 /**
- * 主题类，**两个一起挂**：前者是 dockview 自带的一整套默认值（尺寸、圆角、z-index，
- * 那 60 多个跟颜色无关的变量），后者只覆盖配色、把它们接到令牌上。它俩特异性相同，
- * 我们那张表拼在 dockview 原表后面，所以覆盖生效。
+ * 主题类，**就我们自己这一个**。dockview 自带的 18 套一个不挂——`build.ts` 把那些块
+ * 整类裁掉了，产物里只剩它无条件生效的基础规则加我们那张 theme。
  *
- * **亮暗不靠换这个类**——值全是 `var(--…)`，令牌自己会跟着 `html.dark` 变，所以基底
- * 固定用 light 那套，dockview 内置的 dark 一次都用不上。
+ * 曾经挂过它的 `dockview-theme-light` 当基底、我们只覆盖配色。那样形状（35px 标签条、
+ * 全直角、零间距）永远是它的，改起来是在别人的主张上打补丁。现在整套归我们。
+ *
+ * **亮暗不靠换这个类**——配色全是 `var(--…)`，令牌跟着 `html.dark` 变。
  */
-const THEME_CLASSES = ['dockview-theme-light', 'dockview-theme-gwb']
+const THEME_CLASSES = ['dockview-theme-gwb']
 
 /**
  * **必须经 `theme` 选项交给 dockview**，光挂在 `<html>` 上没用：dockview 自己会把
