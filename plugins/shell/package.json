@@ -1,40 +1,55 @@
 {
   "name": "@godcreator02/gwb-shell",
-  "version": "0.0.1",
-  "description": "外壳：dockview 窗格井 + 导航 + 状态栏",
+  "version": "0.0.3",
+  "description": "外壳：dockview 窗格井 + 窗格注册服务",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "//exports": "两张 css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到。style.css 是 scope 过的（外壳自己的类），dockview.css 不 scope（dockview 原表 + 皮肤，它管的 .dv-* 不经我们的手，而且门户元素挂在 body 下）",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./client": "./dist/client.js",
+    "./style.css": "./dist/style.css",
+    "./dockview.css": "./dist/dockview.css",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src"
   ],
-  "//gwb": "第一刀先不声明 gwb.shell——声明了就跟 hello 撞成两个外壳,而渲染层遇到多条一律不挑。等第三刀真能画界面时再加,那时 hello 同步降级成窗格件",
   "gwb": {
-    "title": "外壳"
+    "title": "外壳",
+    "shell": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "三条都是 peer,分属两档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份）;词汇表包与 cli 件只 import type,但都出现在**导出的类型面**上——GwbContext 在构造函数签名里,cli 那条 `import type {}` 会留在 d.ts 里（它激活的 declare module 正是 ctx.gwbCli 这个名字）。dockview 与 react 系等第三刀真接线时才进来。三档判据见内核仓 CLAUDE.md",
+  "//deps": "peer 分两类。node 半那三条:cordis 是**运行时真 import**（Service 基类要 extends，而且必须是宿主那一份）;词汇表包与 cli 件只 import type，但都出现在**导出的类型面**上。浏览器半那两条共享包:件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思。dockview 是 dev——它**打进本束**，不走 importmap，外置成裸名就是运行期炸",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator02/gwb-plugin-api": ">=0.0.3",
     "@godcreator02/gwb-cli": ">=0.0.4",
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-shared-react": ">=0.0.2",
+    "@godcreator02/gwb-tokens": ">=0.0.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-plugin-api": "0.0.3",
     "@godcreator02/gwb-cli": "workspace:*",
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-shared-react": "workspace:*",
+    "@godcreator02/gwb-tokens": "workspace:*",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
     "cordis": "4.0.0-rc.9",
+    "dockview-react": "8.2.0",
+    "esbuild": "^0.27.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "^7.0.2"
   }
 }

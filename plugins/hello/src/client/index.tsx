@@ -3,35 +3,18 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Button } from '@/components/ui/button'
 
 /**
- * 浏览器半。验的是五样：裸名 import 经页面 importmap 解析得到、两张表都经 gwb://
- * 拿得到、scope 生效、亮暗切换当场变色而不重新构建任何东西，外加**窗格注册表过得了桥**
- * ——node 那半注册的那一格，经 `shell.panes` 这条命令原样到得了这边。
+ * 浏览器半——**一格窗格**（不再是整页外壳）。验的是五样：裸名 import 经页面 importmap
+ * 解析得到、自己那张表经 gwb:// 拿得到、scope 生效、亮暗切换当场变色而不重新构建任何
+ * 东西，外加**窗格注册表过得了桥**——node 那半注册的那一格，经 `shell.panes` 这条命令
+ * 原样到得了这边。
+ *
+ * **样式与 scope 属性都不归这儿管了**：外壳的 `PluginPane` 在 import 这个束之前就把
+ * `style.css` 注好、把 `data-gwb-plugin` 挂在容器上了。令牌表更是页面级的一份，
+ * 由外壳注。窗格件只管画自己那一格。
  */
 
-const SELF = '@godcreator02/gwb-hello'
-const TOKENS = '@godcreator02/gwb-tokens'
 /** 外壳交出来的取表命令。这儿不 import shell 的常量：那是 node 半的包,浏览器半不牵它 */
 const PANES_COMMAND = 'shell.panes'
-
-/** 取货地址的约定：`gwb://asset/plugins/<包名>/<exports 子路径>` */
-function assetUrl(pkg: string, sub: string): string {
-  return `gwb://asset/plugins/${pkg}/${sub}`
-}
-
-/**
- * 注一张表并**等它真到位**。只 append 是不够的：`<link>` 是异步取的，
- * 第一帧 DOM 完全可能落在表到位之前——那一瞬间是一堆没有样式的裸元素。
- */
-function loadStyle(href: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = href
-    link.onload = () => resolve()
-    link.onerror = () => reject(new Error(`样式表取不到：${href}`))
-    document.head.appendChild(link)
-  })
-}
 
 /** 注册表里一条过桥之后的样子。按形状收，不牵 shell 那个包的类型 */
 interface PaneRow {
@@ -71,11 +54,11 @@ function App({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
   }
 
   return (
-    <div className="min-h-screen space-y-6 p-8">
+    <div className="h-full space-y-6 overflow-auto p-8">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">gwb 验收件</h1>
         <p className="text-sm text-muted-foreground">
-          这一页的类名全由本件自己那张表提供，颜色取自共享的那份令牌。
+          这一格的类名全由本件自己那张表提供，颜色取自共享的那份令牌。
         </p>
       </div>
 
@@ -104,16 +87,21 @@ function App({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
   )
 }
 
-/** 内核交给外壳的那几样，这儿只用得着命令口 */
-interface ShellArgs {
+/**
+ * 外壳调 `mountPane` 时给的那几样。**按形状收**，不牵 shell 那个包的类型——那是 node
+ * 半的包，浏览器半不该为一个接口把它拖进来。
+ */
+interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
+  /** 这一格是本件的哪一格（注册时给的那个 id）。本件只注册了一格，所以还没用上 */
+  pane: { id: string }
 }
 
 /**
  * 取一次注册表。**取不到回 undefined 而不是空表**：拿空表顶上去的话，「命令没挂上」
  * 跟「一个件都没注册」在页面上长得一模一样。
  */
-async function fetchPanes(host: ShellArgs['host']): Promise<PaneRow[] | undefined> {
+async function fetchPanes(host: PaneArgs['host']): Promise<PaneRow[] | undefined> {
   try {
     const reply = (await host.call(PANES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
     if (reply.ok !== true || !Array.isArray(reply.data)) {
@@ -127,12 +115,7 @@ async function fetchPanes(host: ShellArgs['host']): Promise<PaneRow[] | undefine
   }
 }
 
-async function boot(args: ShellArgs, container: HTMLElement): Promise<Root> {
-  // 令牌表先注：件表里全是 var() 引用，值在那张表上。两张都等到位再渲染
-  await loadStyle(assetUrl(TOKENS, 'theme.css'))
-  await loadStyle(assetUrl(SELF, 'style.css'))
-  // 件的表整张 scope 在这个属性之下——容器上不挂它，一个类名都不生效
-  container.setAttribute('data-gwb-plugin', SELF)
+async function boot(args: PaneArgs, container: HTMLElement): Promise<Root> {
   const panes = await fetchPanes(args.host)
   const root = createRoot(container)
   root.render(<App panes={panes} />)
@@ -140,10 +123,13 @@ async function boot(args: ShellArgs, container: HTMLElement): Promise<Root> {
 }
 
 /**
- * 外壳那半的入口。**回一个 `{ dispose }`**：这个件被卸载时，页面上这棵 React 树
- * 得有人拆——渲染层眼下还不会调它，但契约面先立在这儿。
+ * 窗格件那半的入口。**导出名是 `mountPane` 不是 `bootShell`**——外壳占的是整页那个根，
+ * 窗格占的是井里一格，两个角色各用各的动词，单看导出名就知道自己是哪种件。
+ *
+ * **回一个 `{ dispose }`**：关掉这一格时外壳会调它，这棵 React 树得有人拆。拿不到
+ * 它外壳会当场报契约不符，不装作成功。
  */
-export function bootShell(args: ShellArgs, container: HTMLElement): { dispose(): void } {
+export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
   const mounted = boot(args, container).catch((err: unknown) => {
     container.textContent = `验收件起不来：${String(err)}`
     return undefined

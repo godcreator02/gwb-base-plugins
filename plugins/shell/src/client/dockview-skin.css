@@ -1,0 +1,52 @@
+/* ============================================================
+ * dockview 的皮肤：把它的 `--dv-*` 接到我们的令牌上。
+ *
+ * 这张表**不 scope**——它跟 dockview 原表拼成 `dist/dockview.css` 一起发出去。两个理由：
+ * 它管的 DOM 类名（`.dv-*`）不经我们的手，而且拖拽指示器、浮动组这些**门户元素挂在
+ * `body` 下**，包进 `:where([data-gwb-plugin=…])` 就一条都匹配不上。
+ *
+ * 用法是根元素上**同时挂两个类**：`dockview-theme-light`（dockview 自带的一整套默认值：
+ * 尺寸、圆角、z-index、那 60 多个跟颜色无关的变量）加这一个（只覆盖配色）。两者特异性
+ * 相同、这张表拼在后面，所以覆盖生效。
+ *
+ * **亮暗不靠换类**：值全是 `var(--…)`，令牌自己会跟着 `html.dark` 变，所以基底固定用
+ * light 那套。dockview 内置的 dark 主题因此一次都用不上。
+ * ============================================================ */
+
+.dockview-theme-gwb {
+  /* 井与标签条 */
+  --dv-group-view-background-color: var(--background);
+  --dv-tabs-and-actions-container-background-color: var(--muted);
+
+  /* 标签四态：组活不活 × 这一页显不显 */
+  --dv-activegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--background);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+
+  /* 分隔与边框 */
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-tab-divider-color: var(--border);
+  --dv-floating-border: 1px solid var(--border);
+  --dv-floating-group-border: 1px solid var(--border);
+
+  /* 拖动条：静止时透明，拖起来才显色（沿用 dockview 的手法） */
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--ring);
+
+  /* 交互反馈 */
+  --dv-icon-hover-background-color: var(--accent);
+  --dv-paneview-active-outline-color: var(--ring);
+  --dv-edge-dock-indicator-color: var(--primary);
+  --dv-drag-over-background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+  --dv-drag-over-border-color: var(--primary);
+
+  /* 滚动条 */
+  --dv-scrollbar-background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  --dv-tabs-container-scrollbar-color: var(--muted-foreground);
+}
