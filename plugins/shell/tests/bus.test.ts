@@ -123,4 +123,64 @@ describe('createBusRegistry：按条目分桶', () => {
     reg.acquire('x').emit('t')
     expect(heard).toEqual([undefined])
   })
+
+  /**
+   * **桶还活着的时候松手**——同一格开两份、关掉其中一份就是这个局面。
+   *
+   * 上面那条「最后一格 release 之后桶就没了」覆盖不到它：那儿桶整个消失，
+   * 听众摘没摘看不出来。一格一份的年代这个洞一直是遮住的。
+   */
+  it('松手的那一格，自己挂的听众要摘干净——桶还被别人撑着也一样', () => {
+    const reg = createBusRegistry()
+    const 走的 = reg.acquire('x')
+    const 留的 = reg.acquire('x')
+    const gone = spy()
+    const stay = spy()
+    走的.on('t', gone.listener)
+    留的.on('t', stay.listener)
+
+    走的.release()
+    留的.emit('t', 1)
+
+    // 关掉的那一格不该再收到——它的 React 树已经拆了
+    expect(gone.heard).toEqual([])
+    expect(stay.heard).toEqual([1])
+  })
+
+  it('自己先 off 再 release 不炸，别人挂的照旧', () => {
+    const reg = createBusRegistry()
+    const a = reg.acquire('x')
+    const b = reg.acquire('x')
+    const gone = spy()
+    const stay = spy()
+    const off = a.on('t', gone.listener)
+    off()
+    off()
+    b.on('t', stay.listener)
+    a.release()
+    b.emit('t', 7)
+    expect(gone.heard).toEqual([])
+    expect(stay.heard).toEqual([7])
+  })
+
+  /**
+   * 桶里那层是 `Set`，**按函数引用去重**：两格挂了同一个函数只存一份，谁先摘谁就把
+   * 它摘走了。实践上碰不着——每一格的听众是它自己那棵树的闭包——但这条语义得钉住，
+   * 免得将来有人往桶里放一个模块级的共享函数然后百思不解。
+   */
+  it('两格挂同一个函数引用时，桶里只有一份', () => {
+    const reg = createBusRegistry()
+    const a = reg.acquire('x')
+    const b = reg.acquire('x')
+    const { heard, listener } = spy()
+    a.on('t', listener)
+    b.on('t', listener)
+    b.emit('t', 1)
+    // 两次 on 同一个引用，只收到一条
+    expect(heard).toEqual([1])
+    a.release()
+    b.emit('t', 2)
+    // a 松手时把那唯一的一份带走了
+    expect(heard).toEqual([1])
+  })
 })

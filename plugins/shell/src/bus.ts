@@ -23,10 +23,15 @@
  * 由真正接线那一处的标注钉着。
  */
 export interface PaneBusHandle {
+  /**
+   * 往桶里发一条。**`release` 之后再发是静默的**（桶已经从注册表上摘了，这个句柄
+   * 手里那份没有听众）——外壳的清理顺序是「先让件 dispose、再 release」，所以件在
+   * 自己的 dispose 里喊一嗓子是有效的；无声的只有件把句柄泄漏到卸载之后的那种。
+   */
   emit(type: string, detail?: unknown): void
   /** 挂一个听众，回注销函数（摘两遍不炸） */
   on(type: string, listener: (detail: unknown) => void): () => void
-  /** 这一格不要了（幂等）；桶上最后一格松手时整个拆掉 */
+  /** 这一格不要了（幂等）：自己挂的听众逐条摘掉，桶上最后一格松手时整个拆掉 */
   release(): void
 }
 
@@ -65,6 +70,23 @@ export function createBusRegistry(): BusRegistry {
       const own = bucket
       own.refs += 1
       let released = false
+      /**
+       * 这一格自己挂了哪些听众。`release` 要照着它逐条摘——**桶不一定跟着这一格走**：
+       * 同一条条目还有别的格占着时桶留着，不摘的话这一格明明关掉了，它的回调还在
+       * 桶里收事件，往一棵已经拆掉的 React 树上打。
+       *
+       * 一格一份的年代这个洞是遮住的（最后一格松手时整个桶就没了），同一格能开两份
+       * 之后才露出来。
+       */
+      const mine = new Set<{ type: string; fn: (detail: unknown) => void }>()
+
+      /** 从桶里摘一条，空了连类型一起收掉 */
+      const drop = (type: string, fn: (detail: unknown) => void): void => {
+        const set = own.listeners.get(type)
+        if (set === undefined) return
+        set.delete(fn)
+        if (set.size === 0) own.listeners.delete(type)
+      }
 
       return {
         emit(type, detail) {
@@ -88,16 +110,21 @@ export function createBusRegistry(): BusRegistry {
             set = new Set()
             own.listeners.set(type, set)
           }
-          const bound = set
-          bound.add(listener)
+          set.add(listener)
+          const entry = { type, fn: listener }
+          mine.add(entry)
           return () => {
-            bound.delete(listener)
-            if (bound.size === 0) own.listeners.delete(type)
+            mine.delete(entry)
+            drop(type, listener)
           }
         },
         release() {
           if (released) return
           released = true
+          // 先摘自己挂的，再松手。顺序反过来的话桶可能已经拆了，摘了个寂寞——
+          // 而桶没拆的那种情况正是这几行要治的
+          for (const { type, fn } of mine) drop(type, fn)
+          mine.clear()
           own.refs -= 1
           // 只拆自己这个桶：条目关掉再开的话，新桶已经换了一份，别把它连坐
           if (own.refs <= 0 && buckets.get(scope) === own) buckets.delete(scope)
