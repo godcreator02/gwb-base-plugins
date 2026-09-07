@@ -3,12 +3,15 @@ import { createRoot, type Root } from 'react-dom/client'
 import { Button } from '@/components/ui/button'
 
 /**
- * 浏览器半。验的就是四样：裸名 import 经页面 importmap 解析得到、
- * 两张表都经 gwb:// 拿得到、scope 生效、亮暗切换当场变色而不重新构建任何东西。
+ * 浏览器半。验的是五样：裸名 import 经页面 importmap 解析得到、两张表都经 gwb://
+ * 拿得到、scope 生效、亮暗切换当场变色而不重新构建任何东西，外加**窗格注册表过得了桥**
+ * ——node 那半注册的那一格，经 `shell.panes` 这条命令原样到得了这边。
  */
 
 const SELF = '@godcreator02/gwb-hello'
 const TOKENS = '@godcreator02/gwb-tokens'
+/** 外壳交出来的取表命令。这儿不 import shell 的常量：那是 node 半的包,浏览器半不牵它 */
+const PANES_COMMAND = 'shell.panes'
 
 /** 取货地址的约定：`gwb://asset/plugins/<包名>/<exports 子路径>` */
 function assetUrl(pkg: string, sub: string): string {
@@ -30,7 +33,36 @@ function loadStyle(href: string): Promise<void> {
   })
 }
 
-function App(): ReactElement {
+/** 注册表里一条过桥之后的样子。按形状收，不牵 shell 那个包的类型 */
+interface PaneRow {
+  entryId: string
+  pkg: string
+  id: string
+  title: string
+  icon?: string
+}
+
+/** 表过来了没有：`undefined` 是还没到手 / 取不到，跟「表是空的」不是一回事 */
+function PaneTable({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
+  if (panes === undefined) {
+    return <p className="text-sm text-muted-foreground">窗格表取不到——看 console 那条错。</p>
+  }
+  if (panes.length === 0) {
+    return <p className="text-sm text-muted-foreground">注册表是空的：没有件注册过窗格。</p>
+  }
+  return (
+    <ul className="space-y-1 text-sm">
+      {panes.map((p) => (
+        <li key={`${p.entryId}:${p.id}`} className="font-mono">
+          {`plugin:${p.entryId}:${p.id}`} — {p.title}
+          {p.icon === undefined ? '' : ` (${p.icon})`} — <span className="text-muted-foreground">{p.pkg}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function App({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
   const [dark, setDark] = useState(false)
   const toggle = (): void => {
     const next = !dark
@@ -60,6 +92,11 @@ function App(): ReactElement {
         <p className="text-sm">这块是 bg-card——它跟页面底色差一档，换主题时两个一起变。</p>
       </div>
 
+      <div className="space-y-2 rounded-lg border bg-card p-4 text-card-foreground">
+        <p className="text-sm font-semibold">窗格注册表（{PANES_COMMAND}）</p>
+        <PaneTable panes={panes} />
+      </div>
+
       <Button variant="outline" onClick={toggle}>
         切到{dark ? '亮色' : '暗色'}
       </Button>
@@ -67,14 +104,38 @@ function App(): ReactElement {
   )
 }
 
-async function boot(container: HTMLElement): Promise<Root> {
+/** 内核交给外壳的那几样，这儿只用得着命令口 */
+interface ShellArgs {
+  host: { call: (command: string, args?: unknown) => Promise<unknown> }
+}
+
+/**
+ * 取一次注册表。**取不到回 undefined 而不是空表**：拿空表顶上去的话，「命令没挂上」
+ * 跟「一个件都没注册」在页面上长得一模一样。
+ */
+async function fetchPanes(host: ShellArgs['host']): Promise<PaneRow[] | undefined> {
+  try {
+    const reply = (await host.call(PANES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
+    if (reply.ok !== true || !Array.isArray(reply.data)) {
+      console.error(`[hello] ${PANES_COMMAND} 没回一张表：${reply.error ?? JSON.stringify(reply)}`)
+      return undefined
+    }
+    return reply.data as PaneRow[]
+  } catch (err) {
+    console.error(`[hello] ${PANES_COMMAND} 调不通：${String(err)}`)
+    return undefined
+  }
+}
+
+async function boot(args: ShellArgs, container: HTMLElement): Promise<Root> {
   // 令牌表先注：件表里全是 var() 引用，值在那张表上。两张都等到位再渲染
   await loadStyle(assetUrl(TOKENS, 'theme.css'))
   await loadStyle(assetUrl(SELF, 'style.css'))
   // 件的表整张 scope 在这个属性之下——容器上不挂它，一个类名都不生效
   container.setAttribute('data-gwb-plugin', SELF)
+  const panes = await fetchPanes(args.host)
   const root = createRoot(container)
-  root.render(<App />)
+  root.render(<App panes={panes} />)
   return root
 }
 
@@ -82,8 +143,8 @@ async function boot(container: HTMLElement): Promise<Root> {
  * 外壳那半的入口。**回一个 `{ dispose }`**：这个件被卸载时，页面上这棵 React 树
  * 得有人拆——渲染层眼下还不会调它，但契约面先立在这儿。
  */
-export function bootShell(_args: unknown, container: HTMLElement): { dispose(): void } {
-  const mounted = boot(container).catch((err: unknown) => {
+export function bootShell(args: ShellArgs, container: HTMLElement): { dispose(): void } {
+  const mounted = boot(args, container).catch((err: unknown) => {
     container.textContent = `验收件起不来：${String(err)}`
     return undefined
   })

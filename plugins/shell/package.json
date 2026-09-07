@@ -25,8 +25,16 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "第一刀零运行时依赖——搬进来的四个模块都是纯逻辑,零 DOM、零 react、零 import。dockview 与 react 系等第三刀真接线时才进来",
+  "//deps": "三条都是 peer,分属两档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份）;词汇表包与 cli 件只 import type,但都出现在**导出的类型面**上——GwbContext 在构造函数签名里,cli 那条 `import type {}` 会留在 d.ts 里（它激活的 declare module 正是 ctx.gwbCli 这个名字）。dockview 与 react 系等第三刀真接线时才进来。三档判据见内核仓 CLAUDE.md",
+  "peerDependencies": {
+    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-cli": ">=0.0.4",
+    "cordis": "^4.0.0-rc.9"
+  },
   "devDependencies": {
+    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-cli": "workspace:*",
+    "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
 }
