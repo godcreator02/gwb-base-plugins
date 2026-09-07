@@ -126,6 +126,28 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 所有包都补上 `"prepublishOnly": "pnpm build"`。
 
+---
+
+## 门禁
+
+### 两条 oxlint 误报，都出在「有意反常」的代码上
+
+搬 shell 那批纯逻辑时撞到两条。**规则本身没错，是这两处代码故意反着来**：
+
+{/* ref file="../plugins/shell/src/bus.ts" lines="72-79" */}
+
+- **`unicorn/no-useless-spread`** —— `for (const fn of [...set])` 那份拷贝是有意的：听众
+  收到事件后摘掉自己是常事，直接遍历活集合会漏掉或重复。规则看不出「遍历期间集合会被改」
+- **`unicorn/no-thenable`** —— 测试里 `describeHandle({ then() {} })` **故意**造一个
+  thenable，验的正是「碰上这种对象也认得出来」。规则防的是无意中把对象弄成 thenable
+
+两处都用 `// oxlint-disable-next-line <规则名>` 局部禁用，**而且注释里写清为什么**——
+只有 disable 没有理由的话，下一个人只会以为是图省事绕过去的。
+
+**不动全局配置**：内核仓 decisions 定 oxlint 时判过，白名单的真代价是「新规则永远进不来」。
+拿 111 条 correctness 去换这两条误报不划算。这也是那条决策头一回被真正检验：代价确实
+只是「几条误报要处置」。
+
 ### react 至今没有 ESM 出口，中间包躲不掉
 
 实测 react 19.2.8 的包清单：`exports` 里只有 `react-server` 与 `default`，`default` 指

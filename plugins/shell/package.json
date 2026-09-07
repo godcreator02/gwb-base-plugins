@@ -1,0 +1,32 @@
+{
+  "name": "@godcreator02/gwb-shell",
+  "version": "0.0.1",
+  "description": "外壳：dockview 窗格井 + 导航 + 状态栏",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "//gwb": "第一刀先不声明 gwb.shell——声明了就跟 hello 撞成两个外壳,而渲染层遇到多条一律不挑。等第三刀真能画界面时再加,那时 hello 同步降级成窗格件",
+  "gwb": {
+    "title": "外壳"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "第一刀零运行时依赖——搬进来的四个模块都是纯逻辑,零 DOM、零 react、零 import。dockview 与 react 系等第三刀真接线时才进来",
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
