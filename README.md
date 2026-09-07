@@ -2,13 +2,16 @@
 
 `gwb-kernel`（最小内核，单元 `26090705ymz`）的基础件仓。
 
-| 件        | 包名                           | 服务                | 状态       |
-| -------- | ---------------------------- | ----------------- | -------- |
-| cli      | `@godcreator02/gwb-cli`      | `ctx.gwbCli`      | 已发 0.0.3 |
-| hello    | `@godcreator02/gwb-hello`    | —                 | 已发，验收件   |
-| shell    | `@godcreator02/gwb-shell`    | —                 | 下一个      |
-| logger   | `@godcreator02/gwb-logger`   | —                 | 待做       |
-| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做       |
+| 件        | 包名                           | 服务                |
+| -------- | ---------------------------- | ----------------- |
+| cli      | `@godcreator02/gwb-cli`      | `ctx.gwbCli`      |
+| data     | `@godcreator02/gwb-data`     | `ctx.gwbData`     |
+| shell    | `@godcreator02/gwb-shell`    | `ctx.gwbShell`    |
+| hello    | `@godcreator02/gwb-hello`    | —（验收件）            |
+| logger   | `@godcreator02/gwb-logger`   | —                 |
+| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` |
+
+**各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
 
 `packages/` 下另有两个**共享包**（不是件，是件的依赖，跟件平级装进 home）：
 `@godcreator02/gwb-shared-react`（运行时环境）与 `@godcreator02/gwb-tokens`（设计令牌）。

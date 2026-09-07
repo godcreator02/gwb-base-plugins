@@ -109,6 +109,25 @@ devDependencies**。
 `instanceof` 对不上）。对照 `gwb-cli`——它只在 `apply` 的参数类型里用 cordis，那边是 dev。
 同一个包在两个件里档位不同，这正是三档判据要一条条判的原因。
 
+### 条目 id 自带 `home:` 前缀，别去掉它
+
+`fiber.entry.id` 取到的**不是** `hello`，是 **`home:hello`**——loader 把件的条目挂在
+`cordis:include` 那条下面，id 是走到它的全路径（内核那条 include 的 id 就叫 `home`）。
+
+**这条不是坏了之后查出来的**，是 `gwb-shell` 第二刀实机验时 CDP 探针的回执里当场看见的：
+窗格 id 本来按 `plugin:<entryId>:<窗格 id>` 设计成三段，实际拼出来是四段的
+`plugin:home:hello:main`。
+
+看着不好看，但**去掉那个前缀会坏，而且坏得没有现象**：`entryId` 要跟条目视图的 `id`
+一字不差，`liveness` 拿它去条目表里认这一格背后的件还在不在。改短了就一条都认不出——
+那不是「认不出」，是**认成别人**：`panePluginState` 找不到条目会判 `gone`，于是每一格
+在启动的头一帧都被当成「插件已卸载」关掉，而那是落盘的布局，关掉就没了。
+
+所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
+里取，那儿本来就分开存着。
+
+{/* ref file="../plugins/shell/src/openable.ts" lines="37-52" */}
+
 ---
 
 ## 发版

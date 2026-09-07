@@ -1,0 +1,109 @@
+---
+title: gwb-shell：外壳
+description: 窗格注册服务 ctx.gwbShell，件在 apply 里说「我有一格窗格」
+livedoc: none
+---
+
+# gwb-shell
+
+包名 `@godcreator02/gwb-shell`，服务 `ctx.gwbShell`。
+
+分四刀做，**眼下到第二刀**：注册服务通了，画界面（dockview）还没开始。四刀各是什么、
+到哪了，见[路线](/docs/roadmap)。
+
+## 它的面
+
+{/* ref file="../plugins/shell/src/index.ts" lines="26-37" */}
+
+件给的那三样，与服务替它填上的身份：
+
+{/* ref file="../plugins/shell/src/pane-registry.ts" lines="12-31" */}
+
+## 怎么用
+
+**注册一格**（在你的件里）：
+
+```ts
+export const inject = ['gwbShell']
+
+export function apply(ctx: GwbContext) {
+  ctx.gwbShell.registerPane({ id: 'main', title: '我这一格', icon: 'flask-conical' })
+}
+```
+
+`icon` 是 [lucide](https://lucide.dev) 的图标名，kebab-case。可以不给——画它是第四刀
+导航的事，这一刀只原样收下。
+
+**跟 `gwb-cli` 的 `register` 不一样，这儿不用自己包 `ctx.effect`**：件卸载时这一格
+自动从表上摘掉。`registerPane` 仍然回一个注销函数，那是给要提前摘的场景。
+
+**从界面取表**（在你的 client 束里）：
+
+```js
+const reply = await args.host.call('shell.panes')
+// { ok: true, data: [{ id, title, icon?, entryId, pkg }, …] }
+```
+
+## 身份不由件自己报
+
+`registerPane` 只收 `{ id, title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的
+fiber** 上取：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="69-84" */}
+
+靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
+（`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。
+
+这一点实机验时有过直接证据：`shell.panes` 的回执里 `entryId` 是 hello 的
+（`home:hello`）而不是 shell 自己的。`registerPane` 挂在 `this.ctx.effect` 上的自动
+收尾，靠的正是这同一点。
+
+**两样都要，不是只要包名**：同一个包挂两条条目是两份独立配置的实例，只有 `entryId`
+分得开它们。
+
+## 窗格 id 是个不透明的键
+
+`plugin:<entryId>:<窗格 id>`。实机长这样：**`plugin:home:hello:main`**——四段，
+因为 loader 把件的条目挂在 include 那条下面，`entryId` 自带 `home:` 前缀。
+
+那个前缀不能去掉，理由见[撞过的墙](/docs/walls)。要 `entryId` 或 `paneId` 就从面板的
+`params` 里取,那儿本来就分开存着,从来不必反解。
+
+## 为什么硬 inject 命令总线
+
+注册发生在 node 半，而排窗格的是浏览器半——表得过桥。而内核的 `dispatch` 除
+`kernel.info` 与 `kernel.install` 两条自省命令外**全部走 `ctx.gwbCli`**，内核本体
+不认识任何件的命令名。
+
+所以只有一条路：shell 自己注册一条 `shell.panes`。没有命令总线，注册表出不了这个
+进程，外壳就是个开不出任何东西的空井——那种时候不如不挂，cordis 会在日志里明说
+它在等谁。
+
+「内核的 `kernel.info` 顺手把窗格表带上」过不了准入判据第一关（内核零 UI 知识）。
+
+## 运行时注册让 openable 瘦了一圈
+
+母仓那份 `openable` 吃的是「条目表 × **包声明的** `gwb.panes`」，这份吃的是注册表
+快照。三样东西一起消失了：
+
+- **没有 join**——`pkg` 与 `entryId` 注册时就填好了
+- **没有过滤**——禁用的件根本没跑 `apply`、注册不进来；卸掉的件 effect 收尾时自己摘。
+  「在表里」就等于「该开得出来」，`!disabled && !shell` 那两条判断连同它们会出的错
+  一起没了
+- **没有 `canonicalPanelId`**——母仓那个函数整个是老布局兼容（盘上的格 id 少一段），
+  这条线没有那份历史
+
+{/* ref file="../plugins/shell/src/openable.ts" */}
+
+## 撞名与说不清自己是谁
+
+注册表本体的三条判据，都写进了测试：
+
+1. **一条条目一个命名空间**——键是 `entryId` + 窗格 id。同一个包的两条条目各注册一格
+   同名的，两条都在，这不叫撞名
+2. **撞名后来者赢，但要告警**——跟命令总线一个规矩，一个仓里两套撞名规则是无谓的
+   记忆负担
+3. **空 id / 空 title 抛错**，不是静默忽略——撞名是「两条都说得清，该听谁」，而空 id
+   是「这一格根本没说自己是谁」。让它进表只会在井里多出一格点不开的空白，而且回头
+   查不到源头。注册参数是件自己写死的常量，抛在它自己的 `apply` 里、日志指名道姓，
+   好查得多
