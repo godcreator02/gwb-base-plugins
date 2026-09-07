@@ -1,3 +1,3 @@
 {
-  "pages": ["overview", "roadmap", "cli", "shell", "skills", "mcp", "walls", "readme"]
+  "pages": ["overview", "roadmap", "cli", "shell", "logger", "skills", "mcp", "node-cli", "py-cli", "settings", "walls", "readme"]
 }

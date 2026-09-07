@@ -18,8 +18,10 @@ livedoc: none
 | **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.4**，第三刀半完成，见[它的页](/docs/shell) |
 | **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.2**，收集与查询验通，见[它的页](/docs/skills) |
 | **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.1**，最小可连通版，见[它的页](/docs/mcp) |
-| **logger** | `@godcreator02/gwb-logger` | — | 待做 |
-| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
+| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.0.1**，装进 home 验通，见[它的页](/docs/node-cli) |
+| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.2**，venv 建在 node_modules 里验通，见[它的页](/docs/py-cli) |
+| **logger** | `@godcreator02/gwb-logger` | — | **待做**，**前置全清空**（内核那轮日志通道已完成并实机验通），见[它的页](/docs/logger) |
+| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.1**，node 半验通（界面与插件启停是第二版），见[它的页](/docs/settings) |
 
 ## 共享包（`packages/`，不是件）
 
@@ -115,16 +117,54 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 `gwb-basics` 经 `skill.read` 读得到，验链路够了；接进 MCP 是为了让 agent **自己发现**它，
 没有真实压力之前不做。
 
-**`gwb-logger`**：母仓那 205 行 client 是干净的，可以搬（订阅实时 + 取历史段 + 按 `ts`
-归并去重 + 级别筛选）。它的 node 半**不要**——cordis logger 的出口归官方
-`plugin-logger-console`，落盘归内核。重做时去掉 `logBacklog?.()` 的可选链（新内核只有
-一版 preload）。
+**`gwb-logger`**：母仓那 205 行 client 大半可以搬（订阅实时 + 取历史段 + 归并去重 + 级别
+筛选 + 吸附底部）。要改的三处：归并的键换成内核发的 **`seq`**（母仓拿 `ts|name|msg` 拼
+字符串，同一毫秒里两句一样的话会被静默吃掉一句，四路合流之后那不是假想）、来源维度拆成
+「四路多选 + 来源名分组」两个控件、补一个搜索框。`logBacklog?.()` 那个可选链去掉——这条线
+只有一版 preload。
 
-需要内核先补**日志环形缓冲与 `logBacklog` 通道**——那条正在等这个件出现。
+**它的 node 半要，但只剩注册那两行。** 这一段原先写的是「node 半不要，cordis 的出口归官方
+`plugin-logger-console`」——**那句成立的前提是「只收 cordis 日志」**。如今要的是**四路一切**
+（件、宿主、主进程、渲染层），前提没了：官方那个件也撤了，出口收归内核自己的全量 exporter。
+而四路里三路只有内核够得着，连 cordis 那路的 exporter 都归宿主自己挂——**件挂 exporter 那条
+路上，件挂不上的那一刻它自己也不在场**，而那恰恰是最该看日志的时候。所以件这边只剩
+`registerPane` + `describeSelf`，两样都非得在 `apply` 里调不可，node 半因此还是得有。
 
-**`gwb-settings`**：范围要重新划。母仓那 981 行里，「插件启停/卸载」那半建立在 config 件
-的 `host.config.*` 之上，而**新内核有 loader**，直接用 `ctx.loader` 的
-`create`/`remove`/`update` 就行，**热挂卸是白得的、不用重启**。
+**明确不搬母仓那半**：件自己挂 cordis exporter（重复通道，日志页里两行）、件自己往数据目录
+落盘（跟内核那份分家，两份都不全）。
+
+**前置全部清空，随时可以动手。** shell 0.0.4 的 `registerPane` / `duplicable` / `mountPane`
+早就到位；**内核那一轮也做完并实机验通了**——四路结构化、2000 条环形缓冲、preload 的
+`gwb.logs.backlog()` / `gwb.logs.on()`（按批推）、`<home>/logs/` 按 2 MB 轮转。
+
+条目形状与通道名已经敲死，**照着写就行、别再改**（跨仓契约面，改一次就是破坏性变更）：
+
+```ts
+{ seq, ts, source, level, name, msg }   // source: plugin | host | main | renderer
+window.gwb.logs.backlog(): Promise<LogEntry[]>
+window.gwb.logs.on(cb: (batch: LogEntry[]) => void): () => void
+```
+
+内核那边验过的几条，件这边可以当成前提直接用：**窗口就绪之前的条目一条不丢**（宿主起步那
+几句 `seq` 是 1 起）、**宿主死了 backlog 仍取得到**、四路的 `level` 都是真的不是猜的。
+判据全文在内核仓的站上（`26090705ymz/gwb-kernel` 的「定过的事」，日志那六条）。
+
+它自己那页在[这儿](/docs/logger)。
+
+**`gwb-settings` 的第二版**：node 半的设置读写[已经做完了](/docs/settings)，还欠两块。
+
+**界面那半**——设置面板。`settings.all` 已经按界面要的形状交出去了（每行带
+`scope`/`section`/`key` 与 title/type，外加一个 `live` 标着「此刻还有件声明它吗」），
+窗格件照着排就行。
+
+**插件启停/卸载**。母仓那 981 行里这半建立在 config 件的 `host.config.*` 之上，而**新内核
+有 loader**，直接用 `ctx.loader` 的 `create`/`remove`/`update`，**热挂卸是白得的、不用重启**。
+定过不用官方的 `plugin-loader-webui`（它硬 peer 一个 webui，而 webui 要 server），判据见
+内核仓 decisions。
+
+**动手前先看内核仓 walls 里那几条**：`update` 改 config 是**整个重挂**、而且 `inject` 它的
+件跟着抖；写回 yml 会把用户手写的注释与空行全丢掉；没有文件监听；`remove` 疑似只认短 id；
+`create` 不传 `parent` 落不了盘。**后三条是读源码得出的、没实机撞过**，真用之前各验一次。
 
 **明确不抄**：`platform` 分区 + `window.confirm` 拦截（那个布尔不带任何特权，弹窗文案里的
 「兜底页」是母仓概念）、`settings.data.list` 那个目录统计器（跟「设置」没必然关系）。

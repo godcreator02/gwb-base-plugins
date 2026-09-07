@@ -1,6 +1,6 @@
 ---
 title: 总览：这个仓是什么
-description: gwb-kernel 的基础件仓——四个件、两条命名规矩、内核给的面就这么大
+description: gwb-kernel 的基础件仓——有哪些件、两条命名规矩、内核给的面就这么大
 livedoc: none
 ---
 
@@ -8,14 +8,23 @@ livedoc: none
 
 `gwb-kernel`（最小内核，单元 `26090705ymz`）的基础件仓。
 
-## 四个件
+## 件
 
-| 件 | 包名 | 服务 | 状态 |
+| 件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
-| cli | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.3** |
-| shell | `@godcreator02/gwb-shell` | — | 待做 |
-| logger | `@godcreator02/gwb-logger` | — | 待做 |
-| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
+| cli | `@godcreator02/gwb-cli` | `ctx.gwbCli` | 命令总线 |
+| data | `@godcreator02/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
+| shell | `@godcreator02/gwb-shell` | `ctx.gwbShell` | dockview 外壳 + 窗格注册 |
+| hello | `@godcreator02/gwb-hello` | — | 验收件兼样板，两格窗格 |
+| logger | `@godcreator02/gwb-logger` | — | 日志窗格 |
+| skills | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
+| mcp | `@godcreator02/gwb-mcp` | — | 开一个 MCP 口给 agent 连 |
+| node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
+| py-cli | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
+| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
+
+**状态与版本号只在[路线](/docs/roadmap)一处**——两处各记一份必然漂移，而这张表已经漂过
+一轮（`cli` 停在 0.0.3、`shell` 还写着「待做」，实际那时它已经发到 0.0.4 了）。
 
 `gwb-cli` 排第一不是随便定的：**内核的 `dispatch` 除两条自省命令外全走 `ctx.gwbCli`**，
 没有它，界面调不到任何 node 侧的能力。
