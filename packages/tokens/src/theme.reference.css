@@ -1,0 +1,41 @@
+/* ============================================================
+ * 令牌的**引用面**：只有 `@custom-variant` 与 `@theme inline` 映射，没有 `:root` / `.dark`
+ * 那两段值，也不 `@import 'tailwindcss'`、不 `@source`。
+ *
+ * 给谁用：件在自己的构建期编样式表时这么引——
+ *
+ *   @import '@godcreator02/gwb-tokens/theme.reference.css' theme(reference);
+ *
+ * 为什么跟声明面分成两个文件：`theme(reference)` 只拦得住 `@theme` 块的输出，**拦不住普通
+ * 规则**。把声明面一起引进去，每个件的表里就会多出一整份 `:root { --background: … }`，
+ * 跟页面上那张叠成两份真相。分开之后，映射让类名解析得出来（`bg-primary` → `var(--primary)`），
+ * 而值在运行时仍取页面那张表的变量——主题一致性不丢。
+ * ============================================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}

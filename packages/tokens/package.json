@@ -1,0 +1,25 @@
+{
+  "name": "@godcreator02/gwb-tokens",
+  "version": "0.0.1",
+  "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
+  "type": "module",
+  "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",
+  "exports": {
+    "./theme.css": "./lib/theme.css",
+    "./theme.reference.css": "./lib/theme.reference.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "scripts": {
+    "build": "node build.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "//deps": "tailwindcss 只是构建输入——preflight 那段样式从它的包里取出来拼进产物，运行期没人 import 它。件那边编自己的表时另有一份 tailwindcss，跟这里无关",
+  "devDependencies": {
+    "tailwindcss": "^4.3.0",
+    "typescript": "^7.0.2"
+  }
+}

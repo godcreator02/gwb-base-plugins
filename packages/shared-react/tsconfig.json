@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // 浏览器半的束：react-dom 的类型面要 DOM
+    "lib": ["ES2023", "DOM"],
+    // 产物由 esbuild 出（见 build.ts），tsc 只用来 typecheck
+    "noEmit": true
+  },
+  "include": ["src", "build.ts", "tests"]
+}

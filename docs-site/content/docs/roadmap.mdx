@@ -13,9 +13,22 @@ livedoc: none
 | 件 | 包名 | 服务 | 状态 |
 | --- | --- | --- | --- |
 | **cli** | `@godcreator02/gwb-cli` | `ctx.gwbCli` | **已发 0.0.3**，装进 home 验通 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.1**，验收件，将来被真外壳替掉 |
 | **shell** | `@godcreator02/gwb-shell` | — | 下一个 |
 | **logger** | `@godcreator02/gwb-logger` | — | 待做 |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 待做 |
+
+## 共享包（`packages/`，不是件）
+
+它们不挂在 cordis 上，是**件的依赖**，跟件平级装进 home。件写 `peerDependencies` 依赖它们。
+
+| 包 | 装什么 | 状态 |
+| --- | --- | --- |
+| **shared-react** | `@godcreator02/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.1** |
+| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.1** |
+
+样式构建线在 `tools/build-styles.ts`，**不做成包**——消费方只有仓内的件，做成包过不了
+准入判据第二关。件的 `build` 脚本直接调它。
 
 ## 下一个：`gwb-shell`
 

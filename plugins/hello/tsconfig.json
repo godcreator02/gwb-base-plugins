@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "lib",
+    "rootDir": "src"
+  },
+  // 浏览器半另有一份 tsconfig（jsx + DOM + 无 node 全局），产物走 esbuild 不走 tsc
+  "include": ["src/index.ts"]
+}
