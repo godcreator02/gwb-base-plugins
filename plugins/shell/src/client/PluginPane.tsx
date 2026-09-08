@@ -34,6 +34,7 @@ export function PluginPane({
   panelId,
   host,
   openPane,
+  setTitle,
 }: {
   /** 完整包名 */
   pluginKey: string
@@ -46,12 +47,16 @@ export function PluginPane({
   host: HostBridge
   /** 开本件另一格。entryId 已经由上层绑好，件报不出别人的 */
   openPane: ShellBridge['openPane']
+  /** 改这一格标签上的标题。绑的是这一份自己的 panel api，件改不到别人 */
+  setTitle: ShellBridge['setPaneTitle']
 }): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null)
   // **经 ref 转一道，不进依赖数组**：这个函数在面板组件里每轮渲染都是个新闭包，
   // 直接进依赖会让整个件被反复拆了重挂。件手上那个 shell 是挂载时给的一份
   const openPaneRef = useRef(openPane)
   openPaneRef.current = openPane
+  const setTitleRef = useRef(setTitle)
+  setTitleRef.current = setTitle
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -64,6 +69,7 @@ export function PluginPane({
     const bus = busRegistry.acquire(entryId)
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
+      setPaneTitle: (title) => setTitleRef.current(title),
       bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
     }
     setError(null)

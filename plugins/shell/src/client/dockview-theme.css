@@ -18,55 +18,66 @@
 
 .dockview-theme-gwb {
   /* ── 形状 ─────────────────────────────────────────────
-   * **矩形分割**：标签紧贴、方角、靠分隔线划开。井是一套分割布局，圆角会把「这两块是
-   * 挨着的」这层关系变模糊——一块块圆角卡片读起来是「几个独立的东西浮在底上」，
-   * 而它们其实是切出来的相邻区域。
+   * **每格是一张卡，浮在井上**——god-workbench 的壳件同款观感：卡 10px 圆角
+   * （tokens 的 --radius）、卡边一条 1px 描边线、卡与卡之间一道 8px 沟、井比卡暗
+   * 一档。**沟 = theme.gap（8），外圈环 = 壳根自己的 padding（8）**：margin 算术
+   * 精确（每格让出 margin×(n-1)/n，最后一格正好贴边）；环打在被 ResizeObserver 量
+   * contentRect 的壳元素上，天然不进 dockview 的尺寸账——两者露出来的全是井色。
+   * 见 .dockview-theme-gwb.dv-shell 那条的完整说明（内衬为什么不能打在中间层）。
    *
-   * 圆角留给**控件**（状态栏的按钮与菜单走 shadcn 那套 `--radius`），井里不用。
-   *
-   * 我们自己拿主意的是尺寸那几样：标签条 32px（比 dockview 的 35px 紧一档，跟状态栏的
-   * h-7 对得上）、字号 12px、内边距 10px。 */
+   * 标签是卡头上的**浅色圆角块**（6px，不是全圆）：活动页实底、非活动页透明幽灵，
+   * 四态底色与 hover 全交给自己的标签组件画（`GwbTab`），变量这边只管把 dockview
+   * 自带的底色让位成透明。尺寸照 DSH：标签条 32px、标签 26px（上下各让 3px）、
+   * 字号 13px。 */
   --dv-tabs-and-actions-container-height: 32px;
-  --dv-tabs-and-actions-container-font-size: 12px;
-  --dv-tab-font-size: 12px;
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-tab-font-size: 13px;
   --dv-tab-close-icon-size: 12px;
-  --dv-tab-border-radius: 0px;
-  --dv-tab-margin-block: 0px;
-  --dv-tab-margin-inline: 0px;
+  --dv-tab-border-radius: 6px;
+  --dv-tab-margin-block: 3px;
+  --dv-tab-margin-inline: 2px;
   --dv-tab-margin: var(--dv-tab-margin-block) var(--dv-tab-margin-inline);
-  --dv-border-radius: 0px;
-  --dv-spacing-padding: 0px;
-  --dv-sash-border-radius: 0px;
-  --dv-dropdown-border-radius: 0px;
+  --dv-border-radius: var(--radius);
+  --dv-spacing-padding: 4px;
+  --dv-sash-border-radius: 4px;
+  --dv-dropdown-border-radius: 8px;
   /* 标签条一行装不下时最多堆几行（多行标签是企业模块，这儿只是别让它读空） */
   --dv-max-tab-rows: 3;
   --dv-wrap-vertical-tab-height: auto;
   --dv-pinned-sticky-left: 0px;
 
   /* ── 井与标签条 ───────────────────────────────────── */
+  /* 井色：卡底下那层，比卡暗一档。color-mix 跟着令牌翻——亮色主题下自动成浅灰沟
+     （god-dsh-panes 的 --pw-well 同一款手法，那边注释原话：「暗色主题下更黑，
+     亮色主题下自动成浅灰沟」） */
+  --gwb-well: color-mix(in srgb, var(--background) 92%, black);
+  /* 组自己画卡底（基础规则把 --dv-group-view-background-color 涂在 .dv-groupview 上），
+     这里的角色是「卡」，跟井分两档 */
   --dv-group-view-background-color: var(--background);
-  --dv-tabs-and-actions-container-background-color: var(--muted);
+  /* 标签条跟卡底同色：标签块浮在卡头上，条自身不另起一层 */
+  --dv-tabs-and-actions-container-background-color: var(--background);
 
-  /* 标签四态：组活不活 × 这一页显不显 */
-  --dv-activegroup-visiblepanel-tab-background-color: var(--background);
-  --dv-activegroup-hiddenpanel-tab-background-color: var(--muted);
-  --dv-inactivegroup-visiblepanel-tab-background-color: var(--background);
-  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--muted);
-  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
-  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
-  --dv-inactivegroup-visiblepanel-tab-color: var(--muted-foreground);
-  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  /* 标签四态（组活不活 × 这一页显不显）**全部让位**：底色透明、字色继承。活动页的
+   * 实底 pill、幽灵态、hover 过渡由 GwbTab 自己的类画——dockview 只认得四个静态
+   * 组合，表达不了 hover，让它画一半只会打架 */
+  --dv-activegroup-visiblepanel-tab-background-color: transparent;
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-activegroup-visiblepanel-tab-color: inherit;
+  --dv-activegroup-hiddenpanel-tab-color: inherit;
+  --dv-inactivegroup-visiblepanel-tab-color: inherit;
+  --dv-inactivegroup-hiddenpanel-tab-color: inherit;
 
   /* ── 分隔与边框 ───────────────────────────────────── */
-  --dv-separator-border: var(--border);
+  /* 分隔线涂透明：组间那道 8px 沟本身就是分隔，再描一道就是把「留白分隔」跟
+   * 「画线分隔」两套手法叠在一起（god-workbench 原话）。sash 静止时本来就透明、
+   * hover 才亮色，见交互段 */
+  --dv-separator-border: transparent;
   --dv-paneview-header-border-color: var(--border);
-  /**
-   * 标签之间那条竖线。**矩形分割全靠它**：标签紧贴着排，而非活动标签跟标签条底
-   * 都是 `--muted`（同色），没有这条线两个非活动标签就连成一片了。
-   *
-   * 这个变量在别处也用（固定标签的下边线、溢出菜单的分隔、整格的 outline），
-   * 但**画标签之间那条线的规则要我们自己写**——见文件下半段。
-   */
+  /* 标签之间不再画分隔线——pill 靠间隙呼吸，竖线是方角贴脸年代的骨。但这个变量在
+   * 别处还活着（固定标签的下边线、溢出菜单的分隔、整格的 outline），守卫要求它
+   * 必须有值 */
   --dv-tab-divider-color: var(--border);
   --dv-floating-border: 1px solid var(--border);
   --dv-floating-group-border: 1px solid var(--border);
@@ -81,15 +92,18 @@
   --dv-icon-hover-background-color: var(--accent);
   --dv-paneview-active-outline-color: var(--ring);
   --dv-edge-dock-indicator-color: var(--primary);
-  --dv-drag-over-background-color: color-mix(in oklab, var(--primary) 22%, transparent);
+  /* 落点提示用中性灰，不用强调色——god-dsh-panes 的原话：用强调色画会让「往这儿放」
+     看起来像「这一格被选中了」 */
+  --dv-drag-over-background-color: color-mix(in oklab, var(--foreground) 12%, transparent);
   --dv-drag-over-border-color: var(--primary);
   --dv-drag-over-border: none;
   --dv-transition-duration: 150ms;
   --dv-overlay-z-index: 999;
 
-  /* ── 滚动条 ───────────────────────────────────────── */
-  --dv-scrollbar-background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
-  --dv-tabs-container-scrollbar-color: var(--muted-foreground);
+  /* ── 滚动条 ─────────────────────────────────────────
+   * 颜色与文件末尾那套全局滚动条同源：混 foreground，明暗自动翻 */
+  --dv-scrollbar-background-color: transparent;
+  --dv-tabs-container-scrollbar-color: color-mix(in srgb, var(--foreground) 20%, transparent);
 
   /* ── 浮动组 ───────────────────────────────────────── */
   --dv-floating-titlebar-height: 24px;
@@ -135,19 +149,35 @@
  * 被裁掉了。这几条是从那儿复刻过来的——只留我们这个形态用得上的，
  * edge-peek / 垂直标签条 / 多行标签那些跟着走。
  *
- * **眼下圆角与留白都是 0，所以这几条实际上是空转的。** 留着不是忘了删：它们是「圆角
- * 怎么落地」这件事的实现，有了它们，将来想给井加圆角只要改上面一个变量；没有的话得
- * 回头再从 dockview 那张原表里把这几条挖一遍。
- * ============================================================ */
+ * 组的卡圆角、透明边缝、井色这几条都是活的（见上）；标签块的圆角与外边距走变量，
+ * 见 `.dv-tab` 那条。 ============================================================ */
 
-/* 井的外圈留白 */
-.dockview-theme-gwb .dv-dockview {
-  padding: var(--dv-spacing-padding);
+/* 井：井色铺在壳根上，外圈环也打在这里——**壳是被 ResizeObserver 量 contentRect
+ * 的元素**，padding 按定义不进 contentRect，dockview 拿到的可用尺寸天然就是环内
+ * 尺寸（dockview 官方 .dockview-spaced 修饰类正是这个做法）。沟由 theme.gap 出，
+ * 环由这 8px 出，露出来的全是井色（god-workbench 的 .gwb-dv 同款）。
+ * **内衬绝不能打在 .dv-shell 与 .dv-grid-view 之间**：BaseGrid.layout 会把网格根
+ * 尺寸硬写成壳的 contentRect，中间任何 padding 都缩不掉它——溢出被 splitview 裁
+ * 掉（最右/最下描边线出画），还会顶出 .dv-view 的滚动条 */
+.dockview-theme-gwb.dv-shell {
+  background: var(--gwb-well);
+  padding: 8px;
 }
 
-/* 一格的圆角：容器裁一次，上下两端各自再圆一次——不然内容会溢出圆角 */
+/* 网格根打透：--dv-group-view-background-color 会同时涂网格根与每个组，不透的话
+ * 井色被它整个盖住、内衬挖出来的沟就看不见了（god-workbench skin.css 同一条）
+ */
+.dockview-theme-gwb .dv-grid-view {
+  background: transparent;
+}
+
+/* 一格 = 一张卡：1px 描边线画在容器本体、圆角靠 overflow 裁掉内容的方角。
+ * 卡底 --background，描边色 --border——明暗两套令牌自动翻 */
 .dockview-theme-gwb .dv-groupview {
+  border: 1px solid var(--border);
   border-radius: var(--dv-border-radius);
+  background: var(--background);
+  overflow: hidden;
 }
 .dockview-theme-gwb .dv-groupview .dv-tabs-and-actions-container {
   padding: 0 calc(var(--dv-border-radius) / 2);
@@ -161,41 +191,13 @@
 }
 
 /**
- * 标签的圆角走变量，**左右内边距只能写死**——dockview 的基础规则里那句
- * `padding: 0.25rem 0.5rem` 是字面值不是变量，而基础规则是裁不掉的那半。
+ * 标签的圆角与外边距走变量，**内边距只能写死归零**——dockview 的基础规则里那句
+ * `padding: 0.25rem 0.5rem` 是字面值不是变量，而基础规则是裁不掉的那半。标签块的
+ * 横向留白是 GwbTab 自己的事，槽位这边一寸都不占。
  */
 .dockview-theme-gwb .dv-tab {
   border-radius: var(--dv-tab-border-radius);
-  padding: 0 10px;
-}
-
-/**
- * 标签之间那条分隔线——**矩形分割的骨**，也是这张表里唯一一条「补 dockview 的漏」。
- *
- * 它自己有三条画这个的规则，选择器是 `.dv-tabs-container.dv-horizontal .dv-tab:not(:first-child)::before`。
- * **8.2.0 里那三条一条都匹配不上**：标签条的方向类早就改成了 `dv-tabs-container-vertical`
- * （水平态干脆不挂 modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view，
- * 分隔线的选择器没跟着改。它们自带的 18 套主题里那些 `--dv-tab-divider-color` 也就一起
- * 空转了——**这跟我们裁表无关，是它上游的 bug**，任何主题下都画不出来。
- *
- * 所以照着它原本的意图重写一遍，只换成能命中的选择器。`.dv-tab` 的
- * `position: relative` 在基础规则里，不用我们给。
- */
-.dockview-theme-gwb .dv-tabs-container .dv-tab:not(:first-child)::before {
-  content: ' ';
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 5;
-  pointer-events: none;
-  width: 1px;
-  height: 100%;
-  background-color: var(--dv-tab-divider-color);
-}
-/* 竖排标签条（边缘组）：轴换一下，线横过来 */
-.dockview-theme-gwb .dv-tabs-container-vertical .dv-tab:not(:first-child)::before {
-  width: 100%;
-  height: 1px;
+  padding: 0;
 }
 
 .dockview-theme-gwb .dv-sash {
@@ -215,7 +217,10 @@
 }
 
 /* 浮动组那一套 */
+/* 浮动组：边框让给里面那张卡自己画（group 现在自带 1px 描边，容器再描就是双框），
+ * 只留圆角与井外那套投影 */
 .dockview-theme-gwb .dv-resize-container {
+  border: none;
   border-radius: var(--dv-border-radius) !important;
 }
 .dockview-theme-gwb .dv-resize-container > .dv-grid-view {
@@ -235,4 +240,33 @@
  */
 .dark .dockview-theme-gwb {
   --dv-floating-box-shadow: 0 8px 32px oklch(0 0 0 / 0.55), 0 2px 8px oklch(0 0 0 / 0.4);
+}
+
+/* ============================================================
+ * 滚动条——**全局的**。这张表不 scope，正好管整页（件里的滚动容器一起吃到）。
+ * 照 DSH 那张参考图：细条、圆角胶囊滑块、**没有上下箭头**、轨道透明。箭头去掉
+ * 之后轨道两端不再被按钮占位，滑块能一路推到最顶和最底。
+ * 颜色混 foreground 不写死：暗色下浅灰、亮色下自动变深灰。
+ * ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--foreground) 20%, transparent);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--foreground) 35%, transparent);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

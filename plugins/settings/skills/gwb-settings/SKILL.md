@@ -1,30 +1,28 @@
 ---
 name: gwb-settings
-description: 要读或改这台工作台的设置时读。讲清 settings 三条命令的参数形状、home 与 machine 两个 scope 的分别、section 是什么，以及 machine 区里躺着凭据这件事。
+description: 要读或改这台工作台的设置时读。讲清 settings 命令的参数形状、section 是什么、值落在哪份文件。
 ---
 
 # 设置怎么读、怎么写
 
-设置项由各件**声明**（它说什么有什么），值落在两份 JSON 里。给你的是三条命令：
-`settings.all`、`settings.get`、`settings.set`。
+设置项由各件**声明**（它说什么有什么），值落在 `<home>/settings.json` **一份文件**里，
+跟 cordis.yml 并排。home 自持全部配置，没有机器级那份——跨 home 想共享就复制文件。
+
+给你的是四条命令：`settings.all`、`settings.get`、`settings.set`、`settings.delete`。
 
 ## 先 all 后 get
 
 **动手前先 `settings.all`**，不用参数。它回此刻所有的设置项，每条带：
 
-- `scope`：`home` 或 `machine`
 - `section`：**声明它的件那条条目的 id**——设置是按件分区的，这就是地址
 - `key`：项名
-- `value` / `default` / `type` / `title` / `description`：现值、默认值、和它自己的说明
+- `value` / `type` / `title` / `description`：现值和它自己的说明。没有 `default`——
+  默认值是声明方内部的事，不经命令暴露
+- `live`：此刻还有没有件声明着它。false 的多半是件停了或卸了，盘上的值还在
 
-`settings.get` 要 `{ "scope": "...", "section": "...", "key": "..." }`，按位置读一项。
+`settings.get` 要 `{ "section": "...", "key": "..." }`，按位置读一项。
 `settings.set` 同样的位置再加 `value`，写了就落盘（原子写，先临时文件再 rename）。
-
-## 两个 scope 的分别
-
-- **`home`**：跟着这个 home 走。换一个 home 就没有这个值——大部分设置在这
-- **`machine`**：全机一份，跨 home 共享。**里面躺着凭据**（比如本机 Verdaccio 的
-  token 那类）。读得到不代表该外传；写也要想清楚它会影响这台机器上所有 home
+`settings.delete` 同样的位置，抹掉值留下定义。
 
 ## 三条纪律
 

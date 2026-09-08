@@ -3,6 +3,10 @@
 `settings` / `mcp` / `skills` 三个件的浏览器半长什么样。**真 shadcn 组件、真令牌表、
 真 scope、假数据**——看到的就是搬进件之后的样子。
 
+另有一份**单文件效果图**：`logger-pane.html`（gwb-logger 的日志窗格，2026-09-08 视觉
+精修用）。跟这间 React 工程不是一个路数——零构建、双击能开、交互用原生 JS 全真实现，
+规矩照 26090620ufd 的 units-pane.html。已按它定稿落地进 `plugins/logger`（0.0.3）。
+
 ## 怎么看
 
 双击 `index.html`。不用起服务：束打成 iife、样式走 `<link>`，`file://` 直接能开。

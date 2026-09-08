@@ -146,7 +146,7 @@ function toEntryRow(entry: EntryView): EntryRow {
   return entry.label === undefined ? row : { ...row, label: entry.label }
 }
 
-/** 包那一层。**这一层没有任何操作**——不做卸包，要拿掉包用户自己去 home 里 pnpm remove */
+/** 包那一层。卸载是包级动作（`plugins.uninstall`），入口在窗格里，不在这张表的行上 */
 export interface PackageRow {
   pkg: string
   /** 表头上显示的名字。条目没写 name 时包名是空串，那时给一句话顶上 */

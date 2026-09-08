@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { FolderOpen, Moon, Plus, Sun } from 'lucide-react'
+import { FolderOpen, LayoutGrid, Moon, Plus, RefreshCw, Sun, TriangleAlert } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,24 +8,120 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import type { SavedLayout } from '../layout.js'
 import type { OpenableSpec } from '../openable.js'
 
 /**
  * 井底下那条。**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」。
  *
- * 三格：可开窗格的＋列表、home 路径、亮暗开关。
+ * 左起：布局菜单、可开窗格的＋列表、home 路径；右边：刷新、亮暗，布局没存上时再亮一格告警。
  */
 
-/** 一格的外观：状态栏上所有格共用，免得每处各写一套 */
-const CELL = 'flex h-full items-center gap-1 px-2 text-xs text-muted-foreground'
-const BUTTON = `${CELL} hover:bg-accent hover:text-accent-foreground cursor-default select-none`
+/** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
+const CELL = 'flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground'
+const BUTTON = `${CELL} cursor-default select-none hover:bg-accent hover:text-accent-foreground`
+
+/**
+ * 布局那一格：已存布局清单（点谁铺谁）＋ 存当前为布局（格子变输入框）＋ 重置。
+ * 存名字是内联输入，不是弹窗——跟这行状态栏的分量相称。
+ */
+function LayoutBar({
+  saved,
+  scopeRef,
+  onApply,
+  onSave,
+  onDelete,
+  onReset,
+}: {
+  saved: readonly SavedLayout[]
+  /** 外壳根那个元素。菜单 portal 要挂回它，理由同＋列表那条 */
+  scopeRef: HTMLElement | null
+  onApply: (row: SavedLayout) => void
+  onSave: (name: string) => void
+  onDelete: (id: string) => void
+  onReset: () => void
+}): ReactElement {
+  const [naming, setNaming] = useState<string | null>(null)
+
+  /** 提交存名。空名 / 纯空白不存——那不是一套布局的名字，是没起 */
+  const commit = (): void => {
+    if (naming === null) return
+    const name = naming.trim()
+    if (name !== '') onSave(name)
+    setNaming(null)
+  }
+
+  if (naming !== null) {
+    return (
+      <input
+        className="bg-background h-6 w-36 rounded-full px-2.5 text-xs text-foreground outline-none"
+        value={naming}
+        autoFocus
+        placeholder="布局名（Enter 存，Esc 弃）"
+        onChange={(e) => setNaming(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') setNaming(null)
+        }}
+        onBlur={commit}
+      />
+    )
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className={BUTTON} title="布局：存当前 / 打开已存的 / 重置">
+        <LayoutGrid className="size-3.5" />
+        布局
+      </DropdownMenuTrigger>
+      {/* container 少不了，理由见 scopeRef 那条 prop */}
+      <DropdownMenuContent align="start" side="top" container={scopeRef}>
+        <DropdownMenuLabel>已存的布局</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {saved.length === 0 ? (
+          <DropdownMenuItem disabled>还没有存过布局</DropdownMenuItem>
+        ) : (
+          saved.map((row) => (
+            <DropdownMenuItem key={row.id} onSelect={() => onApply(row)}>
+              <span className="flex-1">{row.name}</span>
+              <span
+                role="button"
+                tabIndex={-1}
+                className="hover:bg-accent ml-2 rounded px-1 text-[10px]"
+                title="删掉这套"
+                onClick={(e) => {
+                  // 别让这一下冒泡成「选中这一项」——那会走成应用这套布局
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onDelete(row.id)
+                }}
+              >
+                ✕
+              </span>
+            </DropdownMenuItem>
+          ))
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => setNaming('')}>存当前为布局…</DropdownMenuItem>
+        <DropdownMenuItem onSelect={onReset}>重置布局（铺回全部格）</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 export function StatusBar({
   specs,
   openIds,
   home,
   scopeRef,
+  savedLayouts,
+  saveFailed,
   onOpen,
+  onApplyLayout,
+  onSaveLayout,
+  onDeleteLayout,
+  onResetLayout,
+  onRetrySave,
 }: {
   /** 可开的窗格清单（已经滤掉导航那条） */
   specs: readonly OpenableSpec[]
@@ -38,7 +134,16 @@ export function StatusBar({
    * `[data-gwb-plugin="…gwb-shell"]` 那层 scope，菜单一个类名都不生效。
    */
   scopeRef: HTMLElement | null
+  /** 人起名存下来的布局清单 */
+  savedLayouts: readonly SavedLayout[]
+  /** 布局档最后一次落盘成没成。失败亮一格，点一下重试 */
+  saveFailed: boolean
   onOpen: (spec: OpenableSpec, duplicate: boolean) => void
+  onApplyLayout: (row: SavedLayout) => void
+  onSaveLayout: (name: string) => void
+  onDeleteLayout: (id: string) => void
+  onResetLayout: () => void
+  onRetrySave: () => void
 }): ReactElement {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   const toggleDark = (): void => {
@@ -49,7 +154,16 @@ export function StatusBar({
   }
 
   return (
-    <footer className="bg-card text-card-foreground flex h-7 flex-none items-stretch border-t text-xs">
+    <footer className="bg-card text-card-foreground flex h-8 flex-none items-center gap-0.5 border-t px-1 text-xs">
+      <LayoutBar
+        saved={savedLayouts}
+        scopeRef={scopeRef}
+        onApply={onApplyLayout}
+        onSave={onSaveLayout}
+        onDelete={onDeleteLayout}
+        onReset={onResetLayout}
+      />
+
       <DropdownMenu>
         <DropdownMenuTrigger className={BUTTON} title="打开一格窗格">
           <Plus className="size-3.5" />
@@ -99,6 +213,32 @@ export function StatusBar({
       </div>
 
       <span className="flex-1" />
+
+      {saveFailed && (
+        <button
+          type="button"
+          className={`${BUTTON} text-destructive`}
+          title="布局没存上——点一下立刻重试一次"
+          onClick={onRetrySave}
+        >
+          <TriangleAlert className="size-3.5" />
+          布局没存上
+        </button>
+      )}
+
+      {/* **整页 reload**，不是外壳内部重建：渲染层那条 boot 链（取注册表 → 取布局档 →
+          恢复）原样重跑，注册表过时这类「boot 后才变的事」全吃到；而内核那半与页面
+          加载无关（IPC 句柄在主进程启动时注册，宿主进程也活在那边），reload 对它就是
+          一次普通的重新连线 */}
+      <button
+        type="button"
+        className={BUTTON}
+        title="刷新界面：整页重跑——重取注册表、按档恢复布局（宿主进程不动）"
+        onClick={() => location.reload()}
+      >
+        <RefreshCw className="size-3.5" />
+        刷新
+      </button>
 
       <button type="button" className={BUTTON} onClick={toggleDark} title={dark ? '切到亮色' : '切到暗色'}>
         {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}

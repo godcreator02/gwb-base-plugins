@@ -11,7 +11,7 @@ import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-skills'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
 import { buildInstructions, skillResources, type SkillsSlot } from './skills.js'
-import { textResult, toolResult } from './tools.js'
+import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
 
 /**
  * MCP 桥：把命令面开给外部 agent（方向永远是 agent → 工作台）。
@@ -21,8 +21,11 @@ import { textResult, toolResult } from './tools.js'
  * - `/mcp` 是**无状态 streamableHTTP**：每请求现造一对 server + transport，随响应关闭。
  *   代价是发不出 list_changed 那类通知，正连着的 agent 要等下一次重连才知道
  *   工具面变了。认下——每请求一对是这道口的立身之本
- * - 工具面只有 `gwb_cli_list` / `gwb_cli_run` 两件：命令注册表随装了哪些件而变，
- *   没有一张固定清单，所以给的是「看清单」加「按名字调」，不是逐条门牌
+ * - **工具面就是命令注册表**：登记一条命令，就是一枚同名工具（`skill.list`→
+ *   `skill_list`）；件卸了，下一请求工具自动消失。**暴露什么由登记命令的件决定**，
+ *   mcp 一个门牌都不替别人开。参数统一装在 `args` 里——命令自己校验
+ * - 自留 `gwb_command_list` / `gwb_command_run` 两件兜**时差**：无状态端点发不了
+ *   list_changed，agent 连着时新装的件不长新工具，这两件是重连前够到新能力的唯一口
  * - **说明书（skill）也从这道口出**：`instructions` 点名此刻挂着的 skill（唯一的发现面），
  *   正文挂成 `skill://gwb/<名>/<文件>` resources。收的那头是 `gwb-skills` 件，局部注入
  *   接的——skills 件不在这儿时这道桥照开，只是 agent 读不到说明书
@@ -70,6 +73,7 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
       skills = undefined
     })
   })
+
   /**
    * 实际监听端口，listen 成功后回填。**端口现读不固化**：首选端口被占时真实端口是
    * 退让来的另一个，apply 时抓一个常量下来，连接串就会指向另一个 home 的宿主
@@ -134,10 +138,29 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
   }
 
   /**
-   * 现造一台 MCP server。**每请求一台**：工具面随此刻挂着的件变，抓一份下来就固化了。
-   *
-   * 写成箭头函数不是风格——`function` 声明会 hoist，TS 认为它可能在上面那句
+   * 所有工具共用的执行口：agent 的调用一律留痕，回执按形状翻译——CLI 运行器透传的
+   * 那份摊平（`stdout`/`exitCode` 在信封外的），其余走普通信封。写成箭头函数不是
+   * 风格——`function` 声明会 hoist，TS 认为它可能在上面那句
    * `if (cli === undefined) return` 之前就被调用，于是不给 `cli` 保留窄化
+   */
+  const runCommand = async (command: string, args: unknown): Promise<ToolResult> => {
+    const result = await cli.run(command, args)
+    // 这道口是露在外面的：agent 每次调用都得留痕。commands.run 记不了「是 agent
+    // 调的」——这一条补的正是来源
+    const error =
+      result !== null && typeof result === 'object' && 'error' in result
+        ? String((result as { error: unknown }).error)
+        : undefined
+    if (result !== null && typeof result === 'object' && (result as { ok?: unknown }).ok === true) {
+      log.info(`agent 调了 ${command}：成了`)
+    } else {
+      log.warn(`agent 调了 ${command}：没成（${error ?? '没说原因'}）`)
+    }
+    return isCliRunResult(result) ? cliRunResult(result) : toolResult(result)
+  }
+
+  /**
+   * 现造一台 MCP server。**每请求一台**：工具面随此刻挂着的件变，抓一份下来就固化了。
    */
   const buildServer = (): McpServer => {
     // 每请求现取:此刻挂着的 skill 当场进说明书,热挂的件不用等重连之外的动作
@@ -149,9 +172,17 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
       { instructions: buildInstructions(list) },
     )
 
+    /** 自留的两件兜时差。压名从它们开始占位，命令渲染出的工具名让路 */
+    const taken = new Set<string>(['gwb_command_list', 'gwb_command_run'])
+
     server.registerTool(
-      'gwb_cli_list',
-      { description: '列出这个 home 此刻有哪些命令（名字 + 描述 + 注册它的件）。命令随装了哪些件而变，没有固定清单。' },
+      'gwb_command_list',
+      {
+        description:
+          '一页看完这个 home 此刻登记的全部命令（名字 + 描述 + 登记的件）。' +
+          '每条命令平时就是一枚同名工具（skill.list→skill_list）；' +
+          '连接之后新装的件要等重连才长出新工具，那期间靠这枚按名调用。',
+      },
       () => {
         const commands = cli.list()
         log.info(`agent 列了一遍命令清单（${commands.length} 条）`)
@@ -160,32 +191,35 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
     )
 
     server.registerTool(
-      'gwb_cli_run',
+      'gwb_command_run',
       {
         description:
-          '按命令名调工作台的命令面（先用 gwb_cli_list 看有哪些）。' +
+          '按命令名调工作台的命令面（先用 gwb_command_list 看有哪些）。' +
           '命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
         inputSchema: {
-          command: z.string().describe('命令名，如 skill.list'),
+          command: z.string().describe('命令名，如 skill.read'),
           args: z.unknown().optional().describe('可选参数，命令自己校验'),
         },
       },
-      async ({ command, args }) => {
-        const result = await cli.run(command, args)
-        // 这道口是露在外面的：agent 每次调用都得留痕。commands.run 记不了「是 agent
-        // 调的」——这一条补的正是来源
-        const error =
-          result !== null && typeof result === 'object' && 'error' in result
-            ? String((result as { error: unknown }).error)
-            : undefined
-        if (result !== null && typeof result === 'object' && (result as { ok?: unknown }).ok === true) {
-          log.info(`agent 调了 ${command}：成了`)
-        } else {
-          log.warn(`agent 调了 ${command}：没成（${error ?? '没说原因'}）`)
-        }
-        return toolResult(result)
-      },
+      async ({ command, args }) => runCommand(command, args),
     )
+
+    // 注册表照搬：登记一条命令就是一枚同名工具。**暴露什么由登记命令的件决定**，
+    // mcp 不替任何人挑门牌；件停了/卸了，下一台 server 起来这份就没了
+    for (const command of cli.list()) {
+      const tool = toolNameOf(command.name, taken)
+      taken.add(tool)
+      server.registerTool(
+        tool,
+        {
+          description: `（${command.plugin} 件）${command.description}`,
+          inputSchema: {
+            args: z.unknown().optional().describe('参数整体放这里，形状见命令描述；命令自己校验'),
+          },
+        },
+        async ({ args }) => runCommand(command.name, args),
+      )
+    }
 
     // 说明书挂成 resources:主文件一条、附件各一条。正文回读走 skills 件的登记表,
     // **读不到就 throw**——回 JSON-RPC 错误好过骗对面「说明书是空的」

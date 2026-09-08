@@ -27,7 +27,7 @@ describe('mimeTypeOf', () => {
 describe('buildInstructions', () => {
   it('没有 skill 时只有固定那半,不留「本台支持 skill」的空话', () => {
     const text = buildInstructions([])
-    expect(text).toContain('gwb_cli_list')
+    expect(text).toContain('gwb_command_list')
     expect(text).not.toContain('skill://')
     expect(text).not.toContain('说明书')
   })

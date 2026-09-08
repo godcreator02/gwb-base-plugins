@@ -4,13 +4,11 @@ import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plug
 import type {} from '@godcreator02/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
-import { homeFile, looksRandom, machineFile } from './paths.js'
+import { homeFile, looksRandom } from './paths.js'
 import {
   createRegistry,
-  mergeFiles,
   type Owner,
   type SettingDef,
-  type SettingScope,
   type SettingsRegistry,
   type Slot,
 } from './registry.js'
@@ -18,7 +16,6 @@ import { readSettings, writeSettings } from './store.js'
 
 export type {
   SettingDef,
-  SettingScope,
   SettingType,
   SettingView,
   SettingsFile,
@@ -28,8 +25,8 @@ export type {
 export { SHARED_SECTION } from './paths.js'
 
 /**
- * 设置：件声明自己有哪些设置项，值落在两份 JSON 里——`<home>/settings.json` 跟着这个
- * home 走，`<userData>/machine.json` 全机一份。
+ * 设置：件声明自己有哪些设置项，值落在 `<home>/settings.json` 一份文件里，跟 cordis.yml
+ * 并排。**home 自持全部配置，没有机器级**——跨 home 想共享就复制文件。
  *
  * `ctx.gwbSettings` 交出来的那一格**自动绑定到取它的那个件**——件不报名字，也就没法
  * 报别人的名字去改别人的设置。靠的是 cordis `Service` 的机制：方法里的 `this.ctx` 是
@@ -42,6 +39,7 @@ const NAME = 'gwb-settings'
 export const ALL_COMMAND = 'settings.all'
 export const GET_COMMAND = 'settings.get'
 export const SET_COMMAND = 'settings.set'
+export const DELETE_COMMAND = 'settings.delete'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbSettings']` 才有 */
 export interface GwbSettingsApi {
@@ -61,11 +59,10 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
    * `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，派生对象上一读就炸。
    */
   private readonly registry: SettingsRegistry
-  private readonly files: Record<SettingScope, string>
+  private readonly file: string
   private readonly warn: (message: string) => void
   private readonly info: (message: string) => void
   private writeTask: ReturnType<typeof setTimeout> | undefined
-  private readonly pending = new Set<SettingScope>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbSettings')
@@ -73,10 +70,10 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     this.warn = (message: string): void => ctx.logger(NAME).warn(message)
     this.info = (message: string): void => ctx.logger(NAME).info(message)
     const dataDir = requireKernel(ctx).dataDir
-    this.files = { home: homeFile(dataDir), machine: machineFile(dataDir) }
+    this.file = homeFile(dataDir)
     this.registry = createRegistry(this.warn)
     // 读盘必须在构造函数里同步做完，理由见 store.ts 的 readSettings
-    this.registry.load(readSettings(this.files.home, this.warn), readSettings(this.files.machine, this.warn))
+    this.registry.load(readSettings(this.file, this.warn))
   }
 
   [Service.init](): void {
@@ -103,6 +100,17 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
         cli.register({ name: SET_COMMAND, description: '按位置写一项设置', plugin: NAME }, async (args) => {
           const raw = asRecord(args)
           await this.putAt(toSlot(raw), raw['value'])
+          return { ok: true }
+        }),
+      )
+      // 抹值跟写值走同一条「按位置」的路：删条目的界面要能顺手把那件的设置值擦干净，
+      // 不擦的话盘上留下一堆无主的值
+      ctx.effect(() =>
+        cli.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', plugin: NAME }, async (args) => {
+          const slot = toSlot(args)
+          this.registry.drop(slot)
+          await this.flush()
+          this.info(`设置 ${slot.section}.${slot.key} 已删`)
           return { ok: true }
         }),
       )
@@ -139,7 +147,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       )
     }
     const off = this.registry.define(owner, def)
-    this.scheduleWrite(def.scope ?? 'home')
+    this.scheduleWrite()
     // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘
     this.ctx.effect(() => off)
     return off
@@ -156,8 +164,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   async delete(key: string): Promise<void> {
     const slot = this.locateOwn(key, '删')
     this.registry.drop(slot)
-    await this.flush(slot.scope)
-    this.info(`设置 ${slot.section}.${slot.key}（${slot.scope}）已删`)
+    await this.flush()
+    this.info(`设置 ${slot.section}.${slot.key} 已删`)
   }
 
   /** 本件声明过这个 key 才动得了它。没声明就抛——写一项谁也不认识的东西进盘是静默事故 */
@@ -172,41 +180,31 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
 
   private async putAt(slot: Slot, value: unknown): Promise<void> {
     this.registry.put(slot, value)
-    await this.flush(slot.scope)
-    this.info(`设置 ${slot.section}.${slot.key}（${slot.scope}）已写`)
+    await this.flush()
+    this.info(`设置 ${slot.section}.${slot.key} 已写`)
   }
 
   /**
-   * 落一份盘。**日志里永远不打 value**——gwb-kernel.log 是落盘的，凭据进去就拿不出来。
+   * 落盘。**日志里永远不打 value**——gwb-kernel.log 是落盘的，凭据进去就拿不出来。
    * 写没写成得出声：直写路径过去把异常裸抛给调用方，调用方一吞，「没存上」就无声了
    */
-  private async flush(scope: SettingScope): Promise<void> {
-    const mine = this.registry.file(scope)
+  private async flush(): Promise<void> {
+    const mine = this.registry.file()
     try {
-      if (scope === 'home') {
-        await writeSettings(this.files.home, mine)
-        return
-      }
-      // machine.json 跨 home 共享，可能有另一个实例也在写。原子 rename 保证不写坏，
-      // 但会**丢更新**（A 读→B 读→A 写→B 写）。写前重读合并，把窗口缩到毫秒级
-      const disk = readSettings(this.files.machine, this.warn)
-      await writeSettings(this.files.machine, mergeFiles(disk, mine))
+      await writeSettings(this.file, mine)
     } catch (err: unknown) {
-      this.warn(`设置落盘失败（${scope}）：${String(err)}`)
+      this.warn(`设置落盘失败：${String(err)}`)
       throw err
     }
   }
 
   /** 元信息落盘要合批：每个件挂上都写一次的话，一次启动要写 N 遍 */
-  private scheduleWrite(scope: SettingScope): void {
-    this.pending.add(scope)
+  private scheduleWrite(): void {
     if (this.writeTask !== undefined) return
     this.writeTask = setTimeout(() => {
       this.writeTask = undefined
-      const scopes = [...this.pending]
-      this.pending.clear()
       // 失败 flush 自己 warn 过了，这儿只兜住不让它成为没人接的 rejection
-      void Promise.all(scopes.map((scope2) => this.flush(scope2))).catch(() => undefined)
+      void this.flush().catch(() => undefined)
     }, 0)
   }
 
@@ -225,15 +223,11 @@ function asRecord(args: unknown): Record<string, unknown> {
 /** 命令按位置定位，不经身份——界面不是一个件，没有身份可绑 */
 function toSlot(args: unknown): Slot {
   const raw = asRecord(args)
-  const scope = raw['scope']
   const section = raw['section']
   const key = raw['key']
-  if (scope !== 'home' && scope !== 'machine') {
-    throw new Error(`scope 只能是 home 或 machine，收到 ${JSON.stringify(scope)}`)
-  }
   if (typeof section !== 'string' || section === '') throw new Error('section 要是个非空字符串')
   if (typeof key !== 'string' || key === '') throw new Error('key 要是个非空字符串')
-  return { scope, section, key }
+  return { section, key }
 }
 
 declare module 'cordis' {

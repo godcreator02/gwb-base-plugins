@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-logger",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "日志窗格：件、宿主、主进程、渲染层四路汇成一条流水，级别/路/来源名/搜索四个维度筛",
   "type": "module",
   "main": "dist/index.js",

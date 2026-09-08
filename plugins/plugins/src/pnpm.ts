@@ -25,6 +25,16 @@ export interface PnpmResult {
   tail?: string
 }
 
+/** `runPnpmCapture` 的回执。不判 ok——退出码什么意思由调用方解释（`pnpm outdated` 用 1 当「有过期」） */
+export interface PnpmCaptureResult {
+  /** null 是进程没起来（pnpm 没了之类），原因在 stderrTail 里 */
+  exitCode: number | null
+  /** stdout 全文。outdated 的 JSON 在这儿，够放就够用 */
+  stdout: string
+  /** stderr 的最后几行——pnpm 把人话放在那儿 */
+  stderrTail: string
+}
+
 /** 取最后几行，两头的空行削掉。纯逻辑，单独测 */
 export function tailLines(text: string, max = TAIL_LINES): string {
   const lines = text.replace(/\r\n/g, '\n').split('\n')
@@ -92,6 +102,62 @@ export function runPnpm(opts: { pnpmCjs: string; cwd: string; args: readonly str
       done(null)
     })
     // close 而不是 exit：等两条管子都收完再回，不然尾巴可能缺最后一段——而原因正在那儿
+    proc.on('close', (code) => done(code))
+  })
+}
+
+/**
+ * 跑一趟 pnpm，把 stdout **整段**带回来。给 `pnpm outdated --json` 用——它的 JSON 在
+ * stdout 上，而且退出码 1 的意思是「存在过期包」，是结果不是失败，所以这儿不判 ok，
+ * 两样都原样交出去，解释权在调用方。
+ *
+ * spawn 绕法与 `runPnpm` 相同（`process.execPath` + pnpm.cjs + ELECTRON_RUN_AS_NODE，
+ * 理由在那边）。**不并进 `runPnpm`**：那个 成功时不留输出（装包日志几 MB 谁也不看），
+ * 这条留着全文——两头的取舍相反，合成一个函数两边都得将就。
+ */
+export function runPnpmCapture(opts: { pnpmCjs: string; cwd: string; args: readonly string[] }): Promise<PnpmCaptureResult> {
+  return new Promise((resolve) => {
+    const out: Buffer[] = []
+    const err: Buffer[] = []
+    // 防御一个上限，正常的一张 outdated 表离它远得很
+    const MAX_BYTES = 4_000_000
+    let outBytes = 0
+    let errBytes = 0
+
+    const proc = spawn(process.execPath, [opts.pnpmCjs, ...opts.args], {
+      cwd: opts.cwd,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: ELECTRON_AS_NODE },
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+
+    let settled = false
+    const done = (exitCode: number | null): void => {
+      if (settled) return
+      settled = true
+      resolve({
+        exitCode,
+        stdout: Buffer.concat(out).toString('utf8'),
+        stderrTail: tailLines(Buffer.concat(err).toString('utf8')),
+      })
+    }
+
+    proc.stdout?.on('data', (c: Buffer) => {
+      if (outBytes < MAX_BYTES) {
+        outBytes += c.length
+        out.push(c)
+      }
+    })
+    proc.stderr?.on('data', (c: Buffer) => {
+      errBytes += c.length
+      err.push(c)
+      // stderr 只留尾巴
+      while (errBytes > MAX_TAIL_BYTES * 4 && err.length > 1) errBytes -= err.shift()!.length
+    })
+    proc.on('error', (error) => {
+      err.push(Buffer.from(`${String(error)}\n`, 'utf8'))
+      done(null)
+    })
     proc.on('close', (code) => done(code))
   })
 }

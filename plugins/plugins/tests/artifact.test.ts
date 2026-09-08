@@ -92,9 +92,10 @@ describe.skipIf(!built)('产物', () => {
     expect(read(CLIENT)).toContain('data-slot')
   })
 
-  it('**包这一层没有卸包**：这个件根本没有 uninstall，界面上也不许凭空长出一颗', () => {
+  it('**卸载在界面上有入口**：`plugins.uninstall` 得打进 client 束——2026-09-08 起这个件做卸载了', () => {
     const client = read(CLIENT)
-    expect(client).not.toContain('plugins.uninstall')
-    expect(client).not.toContain('卸载')
+    // 只认 ASCII 标记：esbuild 默认把非 ASCII 转义成 \\uXXXX，中文在产物里搜不到
+    expect(client).toContain('plugins.uninstall')
+    expect(client).toContain('pnpm remove')
   })
 })

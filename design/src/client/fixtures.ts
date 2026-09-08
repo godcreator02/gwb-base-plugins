@@ -346,13 +346,13 @@ export interface McpTool {
 
 export const MCP_TOOLS: McpTool[] = [
   {
-    name: 'gwb_cli_list',
+    name: 'gwb_command_list',
     description: '列出这个 home 此刻有哪些命令（名字 + 描述 + 注册它的件）。命令随装了哪些件而变，没有固定清单。',
   },
   {
-    name: 'gwb_cli_run',
+    name: 'gwb_command_run',
     description:
-      '按命令名调工作台的命令面（先用 gwb_cli_list 看有哪些）。命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
+      '按命令名调工作台的命令面（先用 gwb_command_list 看有哪些）。命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
     params: [
       { name: 'command', type: 'string', required: true, description: '命令名，如 skill.list' },
       { name: 'args', type: 'unknown', required: false, description: '可选参数，命令自己校验' },

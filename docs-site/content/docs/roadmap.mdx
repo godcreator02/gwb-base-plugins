@@ -22,7 +22,7 @@ livedoc: none
 | **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.5**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
 | **logger** | `@godcreator02/gwb-logger` | — | **已发 0.0.2**，四路日志窗格实机验通，见[它的页](/docs/logger) |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.4**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
-| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.9**，装包/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单也退场，可装改 registry 检索（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill |
+| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.11**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill |
 | ~~**status**~~ | `@godcreator02/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
 
 ## 共享包（`packages/`，不是件）

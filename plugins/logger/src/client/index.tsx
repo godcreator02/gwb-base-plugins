@@ -11,9 +11,8 @@ import {
 } from './entries'
 import { ALL_SOURCES, countBySource, groupNames, matches, type FilterState } from './filter'
 import { PortalContainer } from './portal'
-import { Badge } from '@/components/ui/badge'
+import { ScrollText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -29,6 +28,11 @@ import {
  *
  * **日志不从 `args` 来**——`mountPane` 给的是 `{ host, shell, pane }`，而日志走的是页面的
  * 公共面 `window.gwb.logs`。外壳不该转发它：它凭什么认识「日志」。
+ *
+ * 版面是 2026-09-08 视觉精修后的样子（效果图 `design/logger-pane.html` 定稿）：
+ * 日志行 grid 定宽列齐头、error/warn 整行色调加左缘色条、级别分段控件带门限可视化、
+ * 路胶囊开关、吸附提示浮在右下角。行为语义没动：门限、多选路、复合键、seq 去重、
+ * 吸附 24px、2000 上限切尾、空态双文案。
  *
  * ⚠️ **这一格在收日志的路径上一个 `console` 都不许打。** 渲染层的 console 是四路之一：
  * 打一句 → 主进程收走 → 进缓冲 → 推回这儿 → 那条路上如果又打了一句，就是一变二、二变四，
@@ -46,17 +50,36 @@ const ALL_KEY = '*'
 
 const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', host: '宿主', main: '主', renderer: '渲' }
 
-const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I', debug: 'D' }
-
-/** 级别徽标的样子。只有 error 用 destructive——一行里颜色太多就没有重点了 */
-const LEVEL_BADGE: Record<LogLevel, { variant: 'destructive' | 'secondary' | 'outline'; className?: string }> = {
-  error: { variant: 'destructive' },
-  warn: { variant: 'secondary', className: 'text-amber-600 dark:text-amber-400' },
-  info: { variant: 'outline' },
-  debug: { variant: 'outline', className: 'opacity-60' },
+/**
+ * 四路的点色。**效果图定稿的自有色**，令牌表里还没有——要转正进 gwb-tokens 是另一件事。
+ * 用在两处：路胶囊上的小点、每行路标上的小点，让「筛选开关」和「流水行」用同一个颜色锚。
+ */
+const SOURCE_DOT: Record<LogSource, string> = {
+  plugin: 'oklch(0.623 0.214 259.815)',
+  host: 'oklch(0.746 0.13 195)',
+  main: 'oklch(0.75 0.13 70)',
+  renderer: 'oklch(0.72 0.14 330)',
 }
 
+const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I', debug: 'D' }
+
 const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', info: 'Info', debug: 'Debug' }
+
+/** 级别字母的颜色。只有 error/warn 有色，info/debug 退成灰——一行里颜色太多就没有重点了 */
+const LEVEL_TONE: Record<LogLevel, string> = {
+  error: 'text-destructive',
+  warn: 'text-amber-600 dark:text-amber-400',
+  info: 'text-muted-foreground opacity-70',
+  debug: 'text-muted-foreground opacity-40',
+}
+
+/** 整行色调：error/warn 淡色底加左缘色条（DevTools 那个路数），其余素底只留 hover */
+const ROW_TONE: Record<LogLevel, string> = {
+  error: 'bg-destructive/[0.08] shadow-[inset_2px_0_0_var(--destructive)] hover:bg-destructive/[0.14]',
+  warn: 'bg-amber-400/[0.07] shadow-[inset_2px_0_0_oklch(0.795_0.184_86.9)] hover:bg-amber-400/[0.12]',
+  info: 'hover:bg-accent',
+  debug: 'hover:bg-accent',
+}
 
 /** 外壳调 `mountPane` 时给的那几样。按形状收，不牵 shell 那个包的类型 */
 interface PaneArgs {
@@ -151,131 +174,165 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
     })
   }
 
+  const clearFilter = (): void => {
+    setFilter({ level: 'debug', sources: ALL_SOURCES, key: '', search: '' })
+  }
+
+  // 级别分段：选中挡实心，更严重的那几挡半亮——把「显示这一级及以上」画出来
+  const segTone = (l: LogLevel): string => {
+    if (filter.level === l) return 'bg-primary text-primary-foreground font-medium'
+    return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level)
+      ? 'bg-accent text-muted-foreground'
+      : 'text-muted-foreground hover:text-foreground'
+  }
+
   const filtering =
     filter.level !== 'debug' || filter.sources.size !== ALL_SOURCES.size || filter.key !== '' || filter.search !== ''
 
   return (
     // 门户组件（Select 的弹层）挂到这一格自己的容器下，不挂 body——见 ./portal
     <PortalContainer value={container}>
-    <div className="flex h-full flex-col bg-background text-foreground">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2">
-        <div className="flex items-center gap-1">
+    {/* relative 是吸附浮胶囊的定位参照：它必须挂在这层（窗格根），放进滚动容器的话
+        absolute+bottom 相对的是滚动内容，内容一长胶囊就漂出视口 */}
+    <div className="relative flex h-full flex-col bg-background text-foreground">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-2.5 py-1.5">
+        <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
           {LEVELS.map((l) => (
-            <Button
+            <button
               key={l}
-              size="sm"
-              variant={filter.level === l ? 'default' : 'outline'}
+              type="button"
               title={`显示 ${LEVEL_TEXT[l]} 及以上`}
               onClick={() => setFilter((f) => ({ ...f, level: l }))}
+              className={`rounded-md px-2.5 py-0.5 text-[11.5px] leading-5 ${segTone(l)}`}
             >
               {LEVEL_TEXT[l]}
-            </Button>
+            </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          {(['plugin', 'host', 'main', 'renderer'] as LogSource[]).map((s) => (
-            <Button
-              key={s}
-              size="sm"
-              variant={filter.sources.has(s) ? 'secondary' : 'ghost'}
-              title={`${SOURCE_LABEL[s]}这一路`}
-              className={filter.sources.has(s) ? '' : 'text-muted-foreground line-through'}
-              onClick={() => toggleSource(s)}
-            >
-              {SOURCE_LABEL[s]} {counts[s]}
-            </Button>
-          ))}
+        <div className="ml-1.5 flex items-center gap-1 border-l border-border py-0.5 pl-2.5">
+          {(['plugin', 'host', 'main', 'renderer'] as LogSource[]).map((s) => {
+            const on = filter.sources.has(s)
+            return (
+              <button
+                key={s}
+                type="button"
+                title={`${SOURCE_LABEL[s]}这一路`}
+                onClick={() => toggleSource(s)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] leading-5 ${
+                  on
+                    ? 'bg-secondary text-secondary-foreground hover:bg-accent'
+                    : 'text-muted-foreground opacity-55 hover:bg-accent hover:opacity-80'
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: SOURCE_DOT[s] }} />
+                {SOURCE_LABEL[s]} <span className="text-[10.5px] tabular-nums opacity-60">{counts[s]}</span>
+              </button>
+            )
+          })}
         </div>
 
-        <Select
-          value={filter.key === '' ? ALL_KEY : filter.key}
-          onValueChange={(v) => setFilter((f) => ({ ...f, key: v === ALL_KEY ? '' : v }))}
-        >
-          <SelectTrigger size="sm" className="w-44">
-            <SelectValue placeholder="全部来源" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_KEY}>全部来源</SelectItem>
-            {groups.map((g) => (
-              <SelectGroup key={g.source}>
-                <SelectLabel>{SOURCE_LABEL[g.source]}</SelectLabel>
-                {g.names.map((n) => (
-                  <SelectItem key={n} value={`${g.source}|${n}`}>
-                    {n}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="ml-1.5 flex min-w-0 flex-1 items-center gap-1.5 border-l border-border py-0.5 pl-2.5">
+          <Select
+            value={filter.key === '' ? ALL_KEY : filter.key}
+            onValueChange={(v) => setFilter((f) => ({ ...f, key: v === ALL_KEY ? '' : v }))}
+          >
+            <SelectTrigger size="sm" className="w-40 shrink-0">
+              <SelectValue placeholder="全部来源" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_KEY}>全部来源</SelectItem>
+              {groups.map((g) => (
+                <SelectGroup key={g.source}>
+                  <SelectLabel>{SOURCE_LABEL[g.source]}</SelectLabel>
+                  {g.names.map((n) => (
+                    <SelectItem key={n} value={`${g.source}|${n}`}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Input
-          type="search"
-          placeholder="搜索"
-          className="h-8 min-w-32 flex-1"
-          value={filter.search}
-          onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
-        />
+          <div className="flex h-8 min-w-32 flex-1 items-center gap-1.5 rounded-md border border-input px-2 focus-within:border-ring">
+            <Search size={12} className="shrink-0 opacity-50" aria-hidden />
+            <input
+              type="text"
+              placeholder="搜索 name 或消息"
+              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              value={filter.search}
+              onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
+            />
+          </div>
 
-        <Button
-          size="sm"
-          variant="ghost"
-          title="只清这一份视图，不动内核的缓冲，也不动日志文件。清完不会自己回来，重开这一格才会"
-          onClick={() => setEntries([])}
-        >
-          清屏
-        </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="shrink-0 text-muted-foreground"
+            title="只清这一份视图，不动内核的缓冲，也不动日志文件。清完不会自己回来，重开这一格才会"
+            onClick={() => setEntries([])}
+          >
+            清屏
+          </Button>
+        </div>
       </div>
 
-      <div ref={listRef} className="relative flex-1 overflow-auto" onScroll={() => {
+      <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={() => {
         const el = listRef.current
         if (el !== null) setStick(el.scrollHeight - el.scrollTop - el.clientHeight < STICK_SLACK)
       }}>
         {shown.map((e) => (
-          <div key={e.seq} className="flex items-start gap-2 px-3 py-0.5 font-mono text-xs hover:bg-accent/40">
-            <span className="shrink-0 tabular-nums text-muted-foreground">{clockOf(e.ts)}</span>
-            <Badge
-              variant={LEVEL_BADGE[e.level].variant}
-              className={`w-5 shrink-0 justify-center px-0 py-0 font-mono text-[10px] ${LEVEL_BADGE[e.level].className ?? ''}`}
-            >
-              {LEVEL_MARK[e.level]}
-            </Badge>
-            <span className="w-7 shrink-0 text-muted-foreground">{SOURCE_LABEL[e.source]}</span>
-            <span className="shrink-0 text-primary">{e.name}</span>
+          <div
+            key={e.seq}
+            className={`group grid grid-cols-[84px_16px_38px_minmax(72px,118px)_1fr] items-baseline gap-x-2.5 px-2.5 py-px font-mono text-[11.5px] leading-[1.5] ${ROW_TONE[e.level]}`}
+          >
+            <span className="tabular-nums text-muted-foreground opacity-75">{clockOf(e.ts)}</span>
+            <span className={`text-center font-semibold ${LEVEL_TONE[e.level]}`}>{LEVEL_MARK[e.level]}</span>
+            <span className="flex items-center gap-1">
+              <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: SOURCE_DOT[e.source] }} />
+              <span className="text-muted-foreground opacity-85">{SOURCE_LABEL[e.source]}</span>
+            </span>
+            <span className="truncate text-foreground/70 group-hover:text-foreground/90" title={e.name}>{e.name}</span>
             <span className="whitespace-pre-wrap break-all">{e.msg}</span>
           </div>
         ))}
 
         {shown.length === 0 && (
-          <div className="p-6 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center gap-2.5 py-14 text-sm text-muted-foreground">
+            <ScrollText size={26} className="opacity-25" aria-hidden />
             {/* 空态得分得清「一条都没有」和「被筛掉了」——后者带一颗清筛选 */}
             {entries.length === 0 ? (
               (failed === '' ? '还没有日志。' : failed)
             ) : (
-              <span className="inline-flex items-center gap-2">
-                {entries.length} 条都被筛掉了。
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setFilter({ level: 'debug', sources: ALL_SOURCES, key: '', search: '' })}
-                >
+              <>
+                <span>{entries.length} 条都被筛掉了。</span>
+                <Button size="sm" variant="secondary" onClick={clearFilter}>
                   清筛选
                 </Button>
-              </span>
+              </>
             )}
           </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-1 text-xs text-muted-foreground">
+      {!stick && (
+        <button
+          type="button"
+          onClick={() => setStick(true)}
+          className="absolute bottom-9 right-3.5 z-10 rounded-full border border-border bg-popover px-3 py-1 text-[11.5px] text-popover-foreground shadow-lg hover:bg-accent"
+        >
+          已暂停吸附 · 回到底部
+        </button>
+      )}
+
+      <div className="flex items-center justify-between gap-3 border-t border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
         <span>
           {filtering ? `${shown.length} / ${entries.length} 条` : `${entries.length} 条`}
           {entries.length >= CAP ? `（挂满 ${CAP}，更早的去日志文件翻）` : ''}
-          {stick ? '' : ' · 已暂停吸附，滚回底部恢复'}
         </span>
         {where !== null && (
-          <span className="truncate font-mono" title={`home：${where.home}`}>
+          <span className="truncate font-mono text-[10.5px] opacity-85" title={`home：${where.home}`}>
             {where.logDir === '' ? where.home : where.logDir}
           </span>
         )}

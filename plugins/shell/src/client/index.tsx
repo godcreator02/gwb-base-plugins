@@ -1,12 +1,15 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import {
   DockviewReact,
   type DockviewApi,
   type DockviewReadyEvent,
   type DockviewTheme,
+  type IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
+  type SerializedDockview,
 } from 'dockview-react'
+import { GwbTab } from './GwbTab.js'
 import { PluginPane } from './PluginPane.js'
 import { StatusBar } from './StatusBar.js'
 import { assetUrl, loadStyle } from './asset.js'
@@ -20,18 +23,61 @@ import {
   type OpenPlan,
 } from '../openable.js'
 import { PLUGIN_COMPONENT } from '../panels.js'
+import {
+  LAYOUT_GET_COMMAND,
+  LAYOUT_SAVE_COMMAND,
+  LAYOUT_VERSION,
+  parseLayoutDoc,
+  upsertSaved,
+  type LayoutDoc,
+  type SavedLayout,
+} from '../layout.js'
 import type { HostBridge, PaneRow, ShellArgs, ShellBridge } from './types.js'
 
 /**
  * 外壳的浏览器半：一口 dockview 窗格井，把注册表里的每一格开出来。
  *
- * 第三刀半到这儿——**没有导航、没有状态栏、布局不落盘**（那三样是第四刀）。所以默认
- * 布局就是「表里有几格开几格」，没有「上次摆成什么样」要恢复。
+ * 布局落盘（第四刀欠的那半）在这份里落地：井一变就防抖整档写进 gwbData 的 `layout`
+ * 档，重启回到上次的井；人还能把当前布局**起名存进清单**，日后点开哪套就铺哪套。
+ * 多桌面（一张桌面一口井、井常驻保活）做到 0.0.14 后撤回——现场与理由见文档站。
+ * 第四刀剩下的：导航。
  */
 
 const SELF = '@godcreator02/gwb-shell'
 const TOKENS = '@godcreator02/gwb-tokens'
 const PANES_COMMAND = 'shell.panes'
+
+/**
+ * 主题件的启动样式命令。**软契约**：命令名两边各存一份字符串，外壳不 import 主题件的
+ * 任何东西（那是 node 半的包，跟 hello 客户端不 import `shell.panes` 常量同一个道理）。
+ * theme 件没装时总线自己回「没有这条命令」，这儿静默跳过——外壳不因此少一根毫毛。
+ */
+const THEME_COMMAND = 'theme.startupCss'
+/** 页面上那张启动样式表的 id。主题件的编辑格预览时改的就是它 */
+const THEME_STYLE_ID = 'gwb-theme-style'
+
+/**
+ * 开机把用户的外观样式（字体覆盖 + 自定义 CSS）放进页面。
+ *
+ * **必须在三张表之后、首帧之前**：这张表要压过令牌的默认值，同特异性下靠文档序取胜，
+ * 所以它得是 head 里靠后的那张；而「重启后开机即生效」要求它赶在 createRoot 前落位。
+ * 表幂等（按 id 取，已存在就改内容）——热换外壳时新壳重注同一张，不重不漏。
+ */
+async function applyThemeStyle(host: HostBridge): Promise<void> {
+  try {
+    const reply = (await host.call(THEME_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
+    if (reply.ok !== true || typeof reply.data !== 'string' || reply.data.trim() === '') return
+    let el = document.getElementById(THEME_STYLE_ID)
+    if (el === null) {
+      el = document.createElement('style')
+      el.id = THEME_STYLE_ID
+      document.head.appendChild(el)
+    }
+    el.textContent = reply.data
+  } catch (err) {
+    console.warn(`[shell] 启动样式没取到（theme 件没装？）：${String(err)}`)
+  }
+}
 
 /**
  * 主题类，**就我们自己这一个**。dockview 自带的 18 套一个不挂——`build.ts` 把那些块
@@ -55,7 +101,18 @@ const THEME_CLASSES = ['dockview-theme-gwb']
 const GWB_THEME: DockviewTheme = {
   name: 'gwb',
   className: THEME_CLASSES.join(' '),
-  colorScheme: 'light',
+  // 跟默认深色对齐：boot 时给 <html> 挂 dark，令牌整套走暗的那半
+  colorScheme: 'dark',
+  // **沟 = gap: 8**。margin 算术是精确的（每个可见格让出 margin×(n-1)/n，最后一格
+  // 右边正好贴容器边，实测零溢出）。外圈环走 .dv-shell 自身的 padding（见
+  // dockview-theme.css 的 .dockview-theme-gwb.dv-shell）——它挂在被 ResizeObserver
+  // 量 contentRect 的元素上，padding 天然不算进可用尺寸（dockview 官方
+  // .dockview-spaced 同一机制）。内衬绝不能打在 .dv-shell 与 .dv-grid-view 之间：
+  // BaseGrid.layout 会把网格根硬写成壳的 contentRect 尺寸，中间任何 padding 都会
+  // 溢出裁边 + 触发 .dv-view 的滚动条。
+  gap: 8,
+  // 拖拽落点用整块高亮，不用细线——卡是填色的，fill 才看得清
+  dndTabIndicator: 'fill',
 }
 
 /**
@@ -68,6 +125,15 @@ const GWB_THEME: DockviewTheme = {
  */
 let hostBridge: HostBridge | undefined
 
+/** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
+const SAVE_DEBOUNCE_MS = 400
+
+/**
+ * 拆树前要抢着 flush 一次的钩子。跟 `hostBridge` 一样住模块级：`bootShell` 的 dispose
+ * 够得着，而 App 内部的函数出不了那层闭包
+ */
+let flushLayoutSave: (() => void) | undefined
+
 interface PluginParams {
   pluginKey: string
   entryId: string
@@ -79,20 +145,33 @@ function takenIn(api: DockviewApi): (id: string) => boolean {
   return (id) => api.getPanel(id) !== undefined
 }
 
+/** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
+const TAB_COMPONENT = 'gwb-tab'
+
+/**
+ * 面板 params：件的识别三件套 + 标签要的图标名。图标走 params 是借道——dockview
+ * 没给图标留位子，而 GwbTab 只拿得到面板 params 与 api。它本来就是格的静态属性，
+ * 将来布局落盘时跟着 params 走也无妨。
+ */
+function panelParams(spec: OpenableSpec): Record<string, unknown> {
+  return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
+}
+
 /**
  * 开一格：算出这一份的实例 id 再 `addPanel`。
  *
  * **`addPanel` 撞已存在的 id 是同步抛 Error**（dockview 的 `_doAddPanel` 头一句就是
  * 这个守卫），所以 id 必须先算好——不能指望它回一个「已经有了」。`taken` 问的是
- * dockview 当下真有哪些格，因此第四刀恢复落盘布局之后再开也不会撞。
+ * dockview 当下真有哪些格，因此恢复存档布局之后再开也不会撞。
  */
 function addInstance(api: DockviewApi, spec: OpenableSpec): void {
   const { id, ordinal } = uniquePanelId(spec.id, takenIn(api))
   api.addPanel({
     id,
     component: spec.component,
+    tabComponent: TAB_COMPONENT,
     title: titleForOrdinal(spec.title, ordinal),
-    params: spec.params,
+    params: panelParams(spec),
   })
 }
 
@@ -140,8 +219,9 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
   api.addPanel({
     id: plan.id,
     component: plan.spec.component,
+    tabComponent: TAB_COMPONENT,
     title: plan.title,
-    params: plan.spec.params,
+    params: panelParams(plan.spec),
     // **重复那份摆到右边**：不给 position 的话它落进当前 group 当兄弟 tab，
     // 一开就把第一份盖住了——而「两份同时看得见」正是多实例唯一能眼见为实的地方
     ...(plan.id === plan.spec.id ? {} : { position: { direction: 'right' as const } }),
@@ -150,7 +230,7 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
 
 /**
  * 面板组件表。**必须是模块级常量**：dockview 拿它的引用做比对，每轮渲染换一个新对象
- * 会让它把所有格拆了重建。
+ * 会让它把所有格拆了重建。标签表同理——同一个理由，同一个待遇。
  */
 const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> = {
   [PLUGIN_COMPONENT]: (props: IDockviewPanelProps) => {
@@ -183,21 +263,100 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
         panelId={props.api.id}
         host={hostBridge}
         openPane={openPane}
+        setTitle={(title) => props.api.setTitle(title)}
       />
     )
   },
 }
 
-function App({ specs, home, root }: { specs: OpenableSpec[]; home: string; root: HTMLElement }): ReactElement {
+/** 标签一律走自己的 pill 组件：图标 + 标题 + 关闭叉，形状与四态见 GwbTab 头注 */
+const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeaderProps>> = {
+  [TAB_COMPONENT]: GwbTab,
+}
+
+function App({
+  specs,
+  home,
+  root,
+  initialDoc,
+}: {
+  specs: OpenableSpec[]
+  home: string
+  root: HTMLElement
+  /** 盘上的档。null = 第一次开机（或档废了），走默认铺格 */
+  initialDoc: LayoutDoc | null
+}): ReactElement {
   // 井外面那条状态栏要用 api（开格）与「此刻开着哪些」（标已开），而 api 只在 onReady
   // 的回调里出现——接住它
   const [api, setApi] = useState<DockviewApi | null>(null)
   const [openIds, setOpenIds] = useState<string[]>([])
+  /** 人起名存下来的布局清单，档里那半 */
+  const [saved, setSaved] = useState<SavedLayout[]>(initialDoc?.saved ?? [])
+  const [saveFailed, setSaveFailed] = useState(false)
 
-  const onReady = (event: DockviewReadyEvent): void => {
+  // 回调读的都走 ref：防抖保存醒来时要读「当下」，不能读进闭包那一刻的旧账
+  const apiRef = useRef(api)
+  apiRef.current = api
+  const savedRef = useRef(saved)
+  savedRef.current = saved
+  const timerRef = useRef<number | undefined>(undefined)
+
+  const flushSave = useCallback((): void => {
+    window.clearTimeout(timerRef.current)
+    if (hostBridge === undefined) return
+    // **整档为写单位**：current 问井自己（活着的那份才是真相），saved 用清单原文。
+    // 迟到的旧定时器走不到这儿——schedule 每次重排，醒来的一定是最新这份
+    const live = apiRef.current
+    const doc: LayoutDoc = {
+      v: LAYOUT_VERSION,
+      current: live === null ? null : (live.toJSON() as unknown as Record<string, unknown>),
+      saved: savedRef.current,
+    }
+    void hostBridge.call(LAYOUT_SAVE_COMMAND, doc).then(
+      (reply) => {
+        const typed = reply as { ok?: boolean; error?: string }
+        setSaveFailed(typed.ok !== true)
+        if (typed.ok !== true) console.error(`[shell] 布局没存上：${typed.error ?? '没说原因'}`)
+      },
+      (err: unknown) => {
+        setSaveFailed(true)
+        console.error(`[shell] 布局没存上：${String(err)}`)
+      },
+    )
+  }, [])
+
+  const scheduleSave = useCallback((): void => {
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(flushSave, SAVE_DEBOUNCE_MS)
+  }, [flushSave])
+
+  // 拆树前抢一把 flush（bootShell 的 dispose 经模块级钩子够到它）
+  useEffect(() => {
+    flushLayoutSave = flushSave
+    return () => {
+      flushLayoutSave = undefined
+    }
+  }, [flushSave])
+
+  const openDefaults = (target: DockviewApi): void => {
     // 走跟 openPane 同一条路：算唯一 id 再开。裸 addPanel 的话，specs 里万一出现
     // 两条同 id，第二条会同步抛、异常冲出 onReady，**整口井起不来**而不是少开一格
-    for (const spec of specs) addInstance(event.api, spec)
+    for (const spec of specs) addInstance(target, spec)
+  }
+
+  const onReady = (event: DockviewReadyEvent): void => {
+    const current = initialDoc?.current ?? null
+    if (current !== null) {
+      try {
+        event.api.fromJSON(current as unknown as SerializedDockview)
+      } catch (err) {
+        // 上次的井恢复不了（存档坏了 / dockview 升了版本）：回默认，不拦外壳起
+        console.warn(`[shell] 上次的布局恢复不了，回默认：${String(err)}`)
+        openDefaults(event.api)
+      }
+    } else {
+      openDefaults(event.api)
+    }
     setApi(event.api)
   }
 
@@ -205,27 +364,69 @@ function App({ specs, home, root }: { specs: OpenableSpec[]; home: string; root:
     if (api === null) return
     const sync = (): void => setOpenIds(api.panels.map((p) => p.id))
     sync()
-    // 布局落盘将来订的是同一个事件
-    const sub = api.onDidLayoutChange(sync)
+    // 两个用途一个事件：状态栏的「已开」跟着新，布局落盘也订它
+    const sub = api.onDidLayoutChange(() => {
+      sync()
+      scheduleSave()
+    })
     return () => sub.dispose()
-  }, [api])
+  }, [api, scheduleSave])
+
+  /** 点开哪套已存布局，就把哪套铺回井上。变化照常走防抖落盘（current 跟着换） */
+  const applySaved = (row: SavedLayout): void => {
+    if (api === null) return
+    try {
+      api.fromJSON(row.layout as unknown as SerializedDockview)
+    } catch (err) {
+      // 只报不回默认：人点名要的是这一套，铺不回去得让他知道是这套的存档坏了，
+      // 而不是悄悄换回默认布局装没事
+      console.warn(`[shell] 布局「${row.name}」铺不回去（存档是坏的？）：${String(err)}`)
+    }
+  }
+
+  /** 把此刻的井起名存进清单。**同名覆盖**（名字就是钥匙），空名不存 */
+  const saveCurrent = (name: string): void => {
+    if (api === null || name === '') return
+    setSaved((prev) => upsertSaved(prev, name, api.toJSON() as unknown as Record<string, unknown>))
+    scheduleSave()
+  }
+
+  const removeSaved = (id: string): void => {
+    setSaved((prev) => prev.filter((s) => s.id !== id))
+    scheduleSave()
+  }
+
+  /** 重置：清掉井，照「表里有几格开几格」重铺。逐格关，**不走 `api.clear()`**——它内部
+   * 账对不上时会抛（母仓撞过），而这儿用不着它：关完重开，id 查重问的是当下真有哪些 */
+  const resetLayout = (): void => {
+    if (api === null) return
+    for (const panel of api.panels) api.removePanel(panel)
+    openDefaults(api)
+  }
 
   // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html。
   // 井那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕
   return (
     <div className="fixed inset-0 flex flex-col">
       <div className="min-h-0 flex-1">
-        <DockviewReact components={COMPONENTS} onReady={onReady} theme={GWB_THEME} />
+        <DockviewReact components={COMPONENTS} tabComponents={TAB_COMPONENTS} onReady={onReady} theme={GWB_THEME} />
       </div>
       <StatusBar
         specs={specs}
         openIds={openIds}
         home={home}
         scopeRef={root}
+        savedLayouts={saved}
+        saveFailed={saveFailed}
         onOpen={(spec, duplicate) => {
           if (api === null) return
           openSpec(api, spec, duplicate)
         }}
+        onApplyLayout={applySaved}
+        onSaveLayout={saveCurrent}
+        onDeleteLayout={removeSaved}
+        onResetLayout={resetLayout}
+        onRetrySave={() => flushSave()}
       />
     </div>
   )
@@ -249,6 +450,29 @@ async function fetchPanes(host: HostBridge): Promise<PaneRow[]> {
   }
 }
 
+/**
+ * 取盘上的布局档。**取不到 / 取不回一律回 null**：第一次开机本来就没有档（`readDoc`
+ * 对没有的文档回 undefined，**这不是错、不出声**）；data 件没装时这条命令回不了 ok
+ * ——外壳照样起，只是不带记忆，落盘那条也会一样失败（状态栏会亮「布局没存上」）。
+ * 档认不出（人手改坏、多桌面时代的 v1、将来升了版本）也走 null，当没有。
+ */
+async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
+  try {
+    const reply = (await host.call(LAYOUT_GET_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
+    if (reply.ok !== true) {
+      console.warn(`[shell] ${LAYOUT_GET_COMMAND} 没回档：${reply.error ?? '命令不在（data 件没装？）'}`)
+      return null
+    }
+    if (reply.data === undefined || reply.data === null) return null
+    const doc = parseLayoutDoc(reply.data)
+    if (doc === null) console.warn('[shell] 盘上的布局档认不出，当没有处理（回默认布局）')
+    return doc
+  } catch (err) {
+    console.error(`[shell] ${LAYOUT_GET_COMMAND} 调不通：${String(err)}`)
+    return null
+  }
+}
+
 async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   hostBridge = args.host
   // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张不 scope
@@ -258,19 +482,32 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
     loadStyle(assetUrl(SELF, 'dockview.css')),
     loadStyle(assetUrl(SELF, 'style.css')),
   ])
+  // 第四样：用户自己的外观样式（gwb-theme 件的字体覆盖 + 自定义 CSS）。它要压过令牌
+  // 默认值，所以排在这三张 link 之后；theme 没装时这儿是个空操作
+  await applyThemeStyle(args.host)
   document.documentElement.classList.add(...THEME_CLASSES)
+  // 深色是默认态：令牌的 .dark 那套在这儿挂上，状态栏的开关之后随时摘。dispose 不摘
+  // ——亮暗是页面级选择，热换外壳时新壳 boot 会再挂，这头摘了反而闪一下亮色
+  document.documentElement.classList.add('dark')
   // 外壳自己的表 scope 在这个属性之下。井里每一格的件容器另挂它自己的那个
   root.setAttribute('data-gwb-plugin', SELF)
 
   const panes = await fetchPanes(args.host)
-  // 第三刀半没有导航,把它从表里滤掉——listOpenable 排的第一条是导航那格,而画它的组件
+  // 导航还没有,把它从表里滤掉——listOpenable 排的第一条是导航那格,而画它的组件
   // 第四刀才有。留着的话 dockview 会拿不到 'nav' 组件
   const specs = listOpenable(panes).filter((s) => s.component === PLUGIN_COMPONENT)
-  console.log(`[shell] 开 ${specs.length} 格：${specs.map((s) => s.id).join('、') || '（表是空的）'}`)
+  // 档赶在首帧之前到手——先铺默认再跳恢复，闪的那一下藏不住
+  const initialDoc = await fetchLayoutDoc(args.host)
+  console.log(
+    `[shell] 表里 ${specs.length} 格可开：${specs.map((s) => s.id).join('、') || '（表是空的）'}；` +
+      (initialDoc === null
+        ? '没有档，从默认布局起'
+        : `按档恢复（存着 ${initialDoc.saved.length} 套布局）`),
+  )
 
   const reactRoot = createRoot(root)
   // root 传下去是给状态栏那个菜单的 portal 用的——挂 body 上就出了 scope
-  reactRoot.render(<App specs={specs} home={args.home} root={root} />)
+  reactRoot.render(<App specs={specs} home={args.home} root={root} initialDoc={initialDoc} />)
   return reactRoot
 }
 
@@ -285,6 +522,8 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
   })
   return {
     dispose() {
+      // 布局还有没落盘的那半拍，拆树前抢着写一把——赶不上也就丢最后 400ms 的挪动
+      flushLayoutSave?.()
       // 挂载是异步的：dispose 可能赶在它之前，所以接在同一条链上而不是拿个变量去猜
       void mounted.then((reactRoot) => reactRoot?.unmount())
       document.documentElement.classList.remove(...THEME_CLASSES)

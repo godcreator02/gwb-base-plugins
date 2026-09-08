@@ -11,6 +11,13 @@
 :root {
   --radius: 0.625rem;
 
+  /* 字体。默认系统栈——应用不替用户挑字体；改这里一份值，所有件当场跟着变，
+     跟颜色同一个道理。主题件（gwb-theme）往页面上注的覆盖写的就是这两个名字 */
+  --gwb-font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', 'Noto Color Emoji';
+  --gwb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -32,11 +39,13 @@
 }
 
 .dark {
-  --background: oklch(0.141 0.005 285.823);
+  /* 背景两档是照 god-dsh-panes 那副皮调的：井（页面底）#151518 一档，浮起来的卡
+     #1d1d20 一档——纯黑底上没有任何东西能「浮」出来 */
+  --background: oklch(0.19 0.005 286.033);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
+  --card: oklch(0.23 0.006 286.033);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
+  --popover: oklch(0.23 0.006 286.033);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.92 0.004 286.32);
   --primary-foreground: oklch(0.21 0.006 285.885);
@@ -62,5 +71,7 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    /* 字体的全局落点：dockview、件的裸 HTML 这些不经 Tailwind 工具类的 DOM 全靠继承 */
+    font-family: var(--gwb-font-sans);
   }
 }

@@ -2,11 +2,15 @@ import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
 import type {} from '@godcreator02/gwb-commands'
+// 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
+import type {} from '@godcreator02/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
+import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, parseLayoutDoc } from './layout.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
 export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
+export type { SavedLayout, LayoutDoc } from './layout.js'
 
 /**
  * node 半：窗格注册服务。件在自己的 `apply` 里说「我有一格窗格」，浏览器那半经
@@ -25,6 +29,8 @@ export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
 /** 浏览器半取表的两条命令。注册与调用两处同吃这两个常量 */
 export const PANES_COMMAND = 'shell.panes'
 export const PLUGINS_COMMAND = 'shell.plugins'
+/** 布局档的两条命令。常量本体住 `layout.ts`（那是个纯模块，浏览器半 import 它不带 cordis） */
+export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
@@ -49,8 +55,11 @@ export interface GwbShellApi {
 }
 
 export default class GwbShell extends Service implements GwbShellApi {
-  /** 没有命令总线就不挂——inject 是 cordis 的等待机制，不是建议 */
-  static inject = ['gwbCommands']
+  /**
+   * 两个都是硬等待——inject 是 cordis 的等待机制，不是建议。没有命令总线，注册表出不了
+   * 这个进程；没有 data 件，布局档没地方落，布局就活不过一次重启。
+   */
+  static inject = ['gwbCommands', 'gwbData']
 
   /**
    * 注册表本体。**用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份
@@ -89,7 +98,27 @@ export default class GwbShell extends Service implements GwbShellApi {
         () => this.plugentry.list(),
       ),
     )
-    this.ctx.logger('gwb-shell').info(`窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}`)
+    this.ctx.effect(() =>
+      cli.register(
+        { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单），没存过回 null', plugin: 'gwb-shell' },
+        () => this.ctx.gwbData.readDoc(LAYOUT_DOC),
+      ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局档', plugin: 'gwb-shell' },
+        (args) => {
+          // 存这头也过一遍形状：浏览器半自己的 bug 拼出坏档，不该有资格盖掉盘上那份好的
+          const doc = parseLayoutDoc(args)
+          if (doc === null) return { ok: false, error: '布局档形状不对，不落盘' }
+          // registry.run 会 await 这个 promise，落盘的成败进回执
+          return this.ctx.gwbData.writeDoc(LAYOUT_DOC, doc).then(() => undefined)
+        },
+      ),
+    )
+    this.ctx.logger('gwb-shell').info(
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}`,
+    )
   }
 
   /**

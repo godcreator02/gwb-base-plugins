@@ -6,7 +6,6 @@ import {
   entrySection,
   homeFile,
   looksRandom,
-  machineFile,
   SHARED_SECTION,
 } from '../src/paths.js'
 
@@ -29,8 +28,7 @@ describe('设置名', () => {
 })
 
 describe('分区名', () => {
-  it('包名与条目 id 的末段照收', () => {
-    expect(() => assertSection('@godcreator02/gwb-hello')).not.toThrow()
+  it('条目 id 的末段照收', () => {
     expect(() => assertSection('hello')).not.toThrow()
   })
 
@@ -80,24 +78,11 @@ describe('条目 id 换分区名', () => {
   })
 })
 
-describe('两份文件的落点', () => {
+describe('落点', () => {
   const dataDir = path.join('C:', 'u', 'gwb-kernel', 'homes', 'default')
 
-  it('home 那份跟 cordis.yml 并排', () => {
+  it('settings.json 跟 cordis.yml 并排——home 自持全部配置', () => {
     expect(homeFile(dataDir)).toBe(path.join(dataDir, 'settings.json'))
-  })
-
-  it('机器级那份跟 homes 并列，不在 home 里', () => {
-    expect(machineFile(dataDir)).toBe(path.join('C:', 'u', 'gwb-kernel', 'machine.json'))
-  })
-
-  it('换个 home 名，机器级那份还是同一个文件', () => {
-    const other = path.join('C:', 'u', 'gwb-kernel', 'homes', 'test-2609071530')
-    expect(machineFile(other)).toBe(machineFile(dataDir))
-  })
-
-  it('父目录不叫 homes 就抛——内核改了排布，别把凭据写进意外的地方', () => {
-    expect(() => machineFile(path.join('C:', 'u', 'gwb-kernel', 'home'))).toThrow(/homes/)
   })
 })
 

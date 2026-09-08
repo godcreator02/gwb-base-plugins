@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-tokens",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
   "type": "module",
   "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",
@@ -13,6 +13,10 @@
     "dist",
     "src"
   ],
+  "//gwb.shared": "空声明也是声明：标记这个包是**页面级共享基础设施**（只出 theme.css，没有裸名可给）。内核收进 kernel.info 的 sharedPkgs，插件面板据此把它归进「共享包」栏目，不再跟待挂条目的件混在一处",
+  "gwb": {
+    "shared": {}
+  },
   "scripts": {
     "build": "node build.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",

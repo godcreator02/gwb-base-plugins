@@ -15,6 +15,11 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* 字体。运行时变量带 gwb 前缀，避开跟 Tailwind 自己的 theme 键 --font-sans 同名——
+     inline 映射后 font-sans / font-mono 两个工具类解析到的就是页面那张表的值 */
+  --font-sans: var(--gwb-font-sans);
+  --font-mono: var(--gwb-font-mono);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

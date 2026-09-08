@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 /**
  * skill 那一面在 MCP 上的表达，从端点实现里抽出以便测试。
  *
@@ -8,8 +10,12 @@
  *   客户端不会自己去 `resources/list`——不在这段里点名的 skill，等于不存在
  * - `resources`：正文的载体，agent 照 instructions 给的 URI 来读
  *
- * 所以这段文字的分寸是：**每份 skill 一行，说清什么时候该读它**，正文一个字不放。
+ * 所以动态那半的分寸是：**每份 skill 一行，说清什么时候该读它**，正文一个字不放。
  * 它是每个连上来的 agent 都要吃的固定成本，skill 一多就变成一页废话。
+ *
+ * 固定那半（工作台自我说明）是一份真的 markdown——包根 `instructions.md`，模块加载时
+ * 读一次：能当 markdown 写、预览、格式化，而不是源码里一串引号（跟内核仓 home-readme
+ * 的待遇一个理）。动态那半（此刻挂着的 skill 清单）才归这份 .ts 拼。
  *
  * 只搬了形状、没搬旧线的实现：旧仓那份依赖 `@godcreator02/gwb-platform` 的类型，
  * 这儿按本仓的依赖纪律**本地收窄声明**——mcp 只消费 list/read，不欠 skills 件一个依赖。
@@ -36,42 +42,27 @@ const SCHEME_HOST = 'skill://gwb'
 /** 主文件的名字。collect 那头也认这个，两处对得上 */
 const ENTRY = 'SKILL.md'
 
-/** 一份 skill 里某个文件的 URI */
-export function skillUri(skillName: string, file: string): string {
-  return `${SCHEME_HOST}/${skillName}/${file}`
-}
+/**
+ * 包根那份说明，模块加载时读一次——部署期就定死的文字，不值得每请求重读。
+ * dist/ 与 src/（vitest）两种运行位向上跳一级都是包根，指到的是同一份。
+ */
+const INSTRUCTIONS_BASE: string = readFileSync(new URL('../instructions.md', import.meta.url), 'utf8').trimEnd()
 
-/** 按扩展名给 mimeType；认不出的当纯文本 */
-export function mimeTypeOf(file: string): string {
-  const dot = file.lastIndexOf('.')
-  const ext = dot === -1 ? '' : file.slice(dot).toLowerCase()
-  if (ext === '.md') return 'text/markdown'
-  if (ext === '.json') return 'application/json'
-  if (ext === '.yml' || ext === '.yaml') return 'application/yaml'
-  return 'text/plain'
+/** 工作台自我说明的固定那半：包根 instructions.md 原样 */
+export function baseInstructions(): string {
+  return INSTRUCTIONS_BASE
 }
-
-/** 工作台自我说明的固定那半：agent 一连上来就该知道的几句 */
-const BASE = [
-  'god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台，一切功能皆插件。',
-  '一个 home 就是一套独立的世界（插件集、端口、数据各自分家），你连上的是其中一个。',
-  '',
-  '怎么干活：',
-  '- 先 gwb_cli_list 看这个 home 此刻有哪些命令——命令随装了哪些件而变，没有一张固定清单',
-  '- 再 gwb_cli_run 按名字调。工具就这两件：看清单、按名字调，能力全在命令那一侧',
-  '- 命令自身失败（不存在、参数不对）回的是 isError 的结果文本，不是协议错误，照常往下读',
-].join('\n')
 
 /**
  * 拼 server instructions。
  *
- * 没有 skill 时只有固定那半——**不留一句「本工作台支持 skill」的空话**：agent 读了
+ * 没有 skill 时只有固定那半——**不留一句「本台支持 skill」的空话**：agent 读了
  * 也无处可去，只是白占上下文。
  */
 export function buildInstructions(skills: readonly SkillView[]): string {
-  if (skills.length === 0) return BASE
+  if (skills.length === 0) return INSTRUCTIONS_BASE
   const lines = [
-    BASE,
+    INSTRUCTIONS_BASE,
     '',
     `这个 home 的插件带了 ${skills.length} 份说明书（skill），讲的是多步流程、调用顺序与踩过的坑。`,
     '下面哪一条对得上手头的活，**动手前先把它的 URI 读出来**（resources/read）：',
@@ -120,4 +111,19 @@ export function skillResources(skills: readonly SkillView[]): SkillResource[] {
     }
   }
   return out
+}
+
+/** 按扩展名给 mimeType；认不出的当纯文本 */
+export function mimeTypeOf(file: string): string {
+  const dot = file.lastIndexOf('.')
+  const ext = dot === -1 ? '' : file.slice(dot).toLowerCase()
+  if (ext === '.md') return 'text/markdown'
+  if (ext === '.json') return 'application/json'
+  if (ext === '.yml' || ext === '.yaml') return 'application/yaml'
+  return 'text/plain'
+}
+
+/** 一份 skill 里某个文件的 URI */
+export function skillUri(skillName: string, file: string): string {
+  return `${SCHEME_HOST}/${skillName}/${file}`
 }

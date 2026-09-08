@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-settings",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "设置：件声明自己有哪些设置项，值落在两份 JSON 里——本 home 一份、全机一份",
   "type": "module",
   "main": "dist/index.js",

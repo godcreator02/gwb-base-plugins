@@ -37,6 +37,11 @@ export interface ShellBridge {
    * 得在注册时声明过 `duplicable`。认不出 paneId 就什么都不做。
    */
   openPane(paneId: string, options?: { duplicate?: boolean }): void
+  /**
+   * 改**这一格**标签上的标题。dockview 的 `setTitle` 转了一道——原文格把标签改成
+   * 当前文件名就是走这里。初始标题归 `registerPane`，这里只管运行时改。
+   */
+  setPaneTitle(title: string): void
   /** 格间小总线。桶按条目分，所以同一条条目的几格（含重复实例）在同一个桶里 */
   bus: {
     emit(type: string, detail?: unknown): void

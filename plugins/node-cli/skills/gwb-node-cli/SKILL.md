@@ -6,12 +6,12 @@ description: 要跑这个 home 里登记的 node 命令行工具时读。讲清 
 # node CLI 怎么跑
 
 件把自己编译出来的命令行工具登记给 `gwb-node-cli`，每条登记的 CLI **同时就是命令总线上
-的一条命令**——不用单独的工具，`gwb_cli_run` 按名字调就是了。
+的一条命令**——不用单独的工具，`gwb_command_run` 按名字调就是了。
 
 ## 先看有哪些
 
 `node-cli.list` 回此刻登记的 CLI：名字、描述、登记它的件。**每条 CLI 的名字就是命令名**，
-直接 `gwb_cli_run` 传它。
+直接 `gwb_command_run` 传它。
 
 ## 怎么传参数
 

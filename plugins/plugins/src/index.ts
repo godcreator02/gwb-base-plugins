@@ -10,7 +10,10 @@ import type {} from '@godcreator02/gwb-skills'
 import { readHomeDependencies } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
-import { locatePnpm, runPnpm } from './pnpm.js'
+import { locatePnpm, runPnpm, runPnpmCapture } from './pnpm.js'
+import { parseOutdated, type UpdateInfo } from './outdated.js'
+import { isGwbLine, parseSearch, type SearchRow } from './search.js'
+import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
 
 export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './inventory.js'
@@ -22,12 +25,17 @@ export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './invent
  * loader 写进 `cordis.yml`——**装了包不加条目等于什么都没发生**，而 home 里还躺着一批
  * 永远不该有条目的共享包。
  *
- * **没有 uninstall。** 不做卸包：要拿掉一个包，用户自己去 home 里 `pnpm remove`。
- * 这边只把条目删掉（`removeEntry`），包留着——删包比留着危险得多，而留着的包在
- * `list()` 里看得见、加得回来。
+ * **卸载（`uninstall`）= 条目与包一起走人**，设置与数据留盘。第一版刻意不做卸载
+ * （「删包比留着危险」），2026-09-08 推翻——装卸检升都齐了、独缺「拿掉」，而危险那半
+ * 有解：先摘条目后卸包，pnpm 失败报一句不回滚（改判记在件仓文档站 decisions）。只摘
+ * 一条条目、包留着，走 `removeEntry`——两个动作分工，不是同一个的两种写法。
  *
- * 界面那半是**一格窗格**（`installed`，见 `src/client/`）：两层——包 → 条目，操作全在
- * 条目那一层。「装」不在这一格，那是市场件的事。
+ * 界面那半是一格窗格（`installed`，见 `src/client/`），**「已装」与「可装」两段**：
+ * 已装是包 → 条目两层，操作全在条目那一层；可装是 **registry 检索**（`search`，npm 标准
+ * 协议、基址从 pnpm 配置来——装从哪来搜就到哪去；原先是一份手工白名单，2026-09-08 一天
+ * 内两改：先随市场件并入，同日白名单也退了场），「装」这个动作也归这个件（`install`）。
+ * 外加查新版本（`outdated`）与升到最新（`update`，**不建条目**——条目引的是包名，包换
+ * 版本条目原样有效）。
  */
 
 const NAME = 'gwb-plugins'
@@ -42,8 +50,8 @@ const FACE = { title: '插件', icon: 'puzzle' }
 const LABELS_DOC = 'labels'
 
 /**
- * pnpm 装在哪。**`scope: 'machine'`**——pnpm 是整台机器装的一份东西，不是每个 home
- * 各配一个；填在 home 级的话换个 home 就得重填一遍。
+ * pnpm 装在哪。**home 级**——设置没有机器级，home 自持全部配置；换个 home 重填一次，
+ * 或者把旧 home 的 settings.json 里那一行抄过去。
  */
 const PNPM_PATH_KEY = 'pnpm-path'
 
@@ -54,6 +62,10 @@ export const REMOVE_ENTRY_COMMAND = 'plugins.remove-entry'
 export const ENABLE_COMMAND = 'plugins.enable'
 export const DISABLE_COMMAND = 'plugins.disable'
 export const SET_LABEL_COMMAND = 'plugins.set-label'
+export const OUTDATED_COMMAND = 'plugins.outdated'
+export const UPDATE_COMMAND = 'plugins.update'
+export const SEARCH_COMMAND = 'plugins.search'
+export const UNINSTALL_COMMAND = 'plugins.uninstall'
 
 /** 装机的回执 */
 export interface InstallResult {
@@ -61,6 +73,46 @@ export interface InstallResult {
   pkg: string
   /** 装成了才有：新加的那条条目的完整 entryId */
   entryId?: string
+  /** 没成时的一句话 */
+  error?: string
+  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  tail?: string
+}
+
+/** 查新版本的回执 */
+export interface OutdatedReceipt {
+  ok: boolean
+  /** 成了才有：包名 → 版本差距。**空对象 = 全都最新**，跟「没查成」分得开 */
+  updates?: Record<string, UpdateInfo>
+  /** 没成时的一句话 */
+  error?: string
+}
+
+/** 更新的回执。样式照 `InstallResult`，只是没有条目可回 */
+export interface UpdateResult {
+  ok: boolean
+  pkg: string
+  /** 没成时的一句话 */
+  error?: string
+  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  tail?: string
+}
+
+/** 检索的回执 */
+export interface SearchReceipt {
+  ok: boolean
+  /** 成了才有：registry 上 `@godcreator02/gwb-*` 的全部。**空数组 = 源上一个都没有**，跟「没查成」分得开 */
+  packages?: SearchRow[]
+  /** 没成时的一句话 */
+  error?: string
+}
+
+/** 卸载的回执 */
+export interface UninstallResult {
+  ok: boolean
+  pkg: string
+  /** 成了才有：这次跟着包一起摘掉的条目（裸 id），给界面报数用 */
+  removedEntries?: string[]
   /** 没成时的一句话 */
   error?: string
   /** pnpm 没成时它输出的最后几行——原因就在那儿 */
@@ -98,6 +150,37 @@ export interface GwbPluginsApi {
    * 跳过」的判断：同一个包挂多条条目本来就是合法形态，替调用方猜意图只会猜错。
    */
   install(pkg: string, spec?: string): Promise<InstallResult>
+  /**
+   * 查 home 里已装的包哪些有新版本。**不抛**——找不到 pnpm、输出认不出来，都收敛成一份
+   * `ok: false` 的回执：界面上它只是一句安静的话，不该闹成一场事故。
+   */
+  outdated(): Promise<OutdatedReceipt>
+  /**
+   * 把一个已装的包升到最新（`pnpm add <pkg>@latest`）。**与 install 唯一的差别是不建条目**
+   * ——条目引的是包名，包换版本条目原样有效。**跑着的 fiber 还持旧代码，重启内核后才
+   * 换成新的**，调用方（界面）得把这句带到。
+   *
+   * 包没装（调用方写错了的事）当场抛；pnpm 没成收敛成 `ok: false` 的回执带尾巴。
+   */
+  update(pkg: string): Promise<UpdateResult>
+  /**
+   * 列 registry 上 `@godcreator02/gwb-*` 的全部（npm 标准检索协议，`/-/v1/search`）。
+   *
+   * **registry 基址从 pnpm 配置解析**——装从哪来，搜就到哪去；这儿不认识任何具体的源。
+   * **不抛**：解析不出基址、网络没成、响应认不出，都收敛成 `ok: false` 的一句话。
+   */
+  search(): Promise<SearchReceipt>
+  /**
+   * 卸载一个包：先把它在 `cordis.yml` 里的**全部条目**摘掉（fiber 随条目当场卸下），
+   * 再 `pnpm remove` 掉包本身。设置与数据留在盘上——重装回来还是那份。
+   *
+   * **顺序是先摘条目后卸包**：反过来的话，条目会引着一个不在 home 里的包，`list()` 里
+   * 出现一排 ghost。**pnpm 失败不回滚**：条目已摘是正当落点（包进「已装、没挂条目」
+   * 那一区看得见、重试加条目就行），回执带尾巴。
+   *
+   * 包没装（调用方写错了的事）当场抛；摘条目与 pnpm 那两步的「没成」收敛成回执。
+   */
+  uninstall(pkg: string): Promise<UninstallResult>
   /** 给已装的包再加一条条目。回新条目的完整 entryId。包没装、id 撞了都抛 */
   addEntry(pkg: string, id?: string, config?: unknown): Promise<string>
   /** 删一条条目。**不删包**——包留在 home 里，`list()` 里还看得见 */
@@ -138,6 +221,9 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
    * `package.json`，后写的会把前一条加进去的依赖抹掉——而且一声不吭。
    */
   private chain: Promise<unknown> = Promise.resolve()
+
+  /** registry 基址的缓存。解析一次用到底——一个 home 活着的时候换源的概率，趋近于重开一个 home */
+  private registry: string | undefined
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPlugins')
@@ -193,7 +279,6 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
         key: PNPM_PATH_KEY,
         title: 'pnpm 路径',
         type: 'string',
-        scope: 'machine',
         description:
           '装机用哪份 pnpm。不填就自动找（只认 npm 全局装出来的布局）；corepack、volta、standalone 装的要手填 pnpm.cjs 的绝对路径。',
       })
@@ -248,6 +333,32 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
       on(SET_LABEL_COMMAND, '改一条条目的显示名（给空串就是抹掉）', async (args) => {
         const raw = asRecord(args)
         return this.setLabel(text(raw, 'entryId'), label(raw))
+      })
+
+      on(OUTDATED_COMMAND, '查已装的包哪些有新版本（pnpm outdated，不联网到公网）', async () => {
+        const result = await this.outdated()
+        if (result.ok) return { ok: true, data: result }
+        return { ok: false, error: result.error ?? '没说原因' }
+      })
+
+      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目；跑着的件重启内核后才换新）', async (args) => {
+        const result = await this.update(text(asRecord(args), 'pkg'))
+        if (result.ok) return { ok: true, data: result }
+        const tail = result.tail === undefined ? '' : `\n${result.tail}`
+        return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
+      })
+
+      on(SEARCH_COMMAND, '列 registry 上 @godcreator02/gwb-* 的全部（装从哪条源来，搜就到哪去）', async () => {
+        const result = await this.search()
+        if (result.ok) return { ok: true, data: result }
+        return { ok: false, error: result.error ?? '没说原因' }
+      })
+
+      on(UNINSTALL_COMMAND, '卸载一个包：它的全部条目与包一起拿掉，设置与数据留盘（只删一条条目走 plugins.remove-entry）', async (args) => {
+        const result = await this.uninstall(text(asRecord(args), 'pkg'))
+        if (result.ok) return { ok: true, data: result }
+        const tail = result.tail === undefined ? '' : `\n${result.tail}`
+        return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
       })
     })
   }
@@ -304,6 +415,139 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     }
   }
 
+  /**
+   * 查 home 里已装的包哪些有新版本（`pnpm outdated --json`）。
+   *
+   * **退出码 1 是「存在过期包」，是结果不是失败**；0 且 stdout 为空才是「全都最新」。
+   * 与 install 共用同一条串行队列——它只读不写，排队等一等无妨，省得另想一套并发故事。
+   */
+  async outdated(): Promise<OutdatedReceipt> {
+    const found = locatePnpm(this.pnpmPath())
+    if (!found.ok) return { ok: false, error: found.error }
+
+    const run = await this.queue(() =>
+      runPnpmCapture({ pnpmCjs: found.cjs, cwd: this.home, args: ['outdated', '--json'] }),
+    )
+    // pnpm 的「人话」都在 stderr 上，两条失败路都把它带上
+    const say = (message: string): string =>
+      run.stderrTail === '' ? message : `${message}\n${run.stderrTail}`
+    if (run.exitCode === null) return { ok: false, error: say(`pnpm 起不来（退出码 ${String(run.exitCode)}）`) }
+    if (run.exitCode !== 0 && run.exitCode !== 1) {
+      return { ok: false, error: say(`pnpm outdated 没成（退出码 ${String(run.exitCode)}）`) }
+    }
+    const updates = parseOutdated(run.stdout)
+    if (updates === undefined) {
+      return { ok: false, error: say('pnpm outdated 的输出认不出来（要的是一份 JSON）——pnpm 大版本间形状可能变了') }
+    }
+    return { ok: true, updates }
+  }
+
+  async update(pkg: string): Promise<UpdateResult> {
+    // 调用方写错了的事当场抛；下面每一条「没成」都是正当结果，收敛成回执
+    assertPkgName(pkg)
+    const deps = await readHomeDependencies(this.home)
+    if (deps[pkg] === undefined) {
+      throw new Error(`home 里没装 ${pkg}，谈不上更新。装走 ${INSTALL_COMMAND}。`)
+    }
+
+    const found = locatePnpm(this.pnpmPath())
+    if (!found.ok) {
+      this.warn(`升不了 ${pkg}：${found.error}`)
+      return { ok: false, pkg, error: found.error }
+    }
+
+    this.info(`用 ${found.cjs}（${found.from === 'setting' ? '设置里填的' : 'PATH 里找到的'}）把 ${pkg} 升到最新`)
+    const run = await this.queue(() => runPnpm({ pnpmCjs: found.cjs, cwd: this.home, args: ['add', `${pkg}@latest`] }))
+    if (!run.ok) {
+      const error = `pnpm add ${pkg}@latest 没成（退出码 ${String(run.exitCode)}）`
+      this.warn(`${error}\n${run.tail ?? ''}`)
+      return run.tail === undefined ? { ok: false, pkg, error } : { ok: false, pkg, error, tail: run.tail }
+    }
+
+    // 条目不动（引的是包名，包换版本条目原样有效）。跑着的 fiber 还持旧代码，重启才换
+    this.info(`${pkg} 升到最新了。跑着的件还持旧代码，重启内核后才换成新的`)
+    return { ok: true, pkg }
+  }
+
+  /**
+   * registry 基址：装从哪来，搜就到哪去。**从 pnpm 的配置解析**（scope 条目，退全全局
+   * `registry`，再退 npm 官方源）——跟 install/outdated 走的是同一份配置，这儿不认识任何
+   * 具体的源。解析一次缓存到底；解不出来回 undefined，调用方给一句人话。
+   */
+  private async registryBase(): Promise<string | undefined> {
+    if (this.registry !== undefined) return this.registry
+    const found = locatePnpm(this.pnpmPath())
+    if (!found.ok) return undefined
+    for (const key of ['@godcreator02:registry', 'registry']) {
+      const run = await this.queue(() => runPnpmCapture({ pnpmCjs: found.cjs, cwd: this.home, args: ['config', 'get', key] }))
+      const value = run.stdout.trim()
+      if (run.exitCode === 0 && /^https?:\/\//.test(value)) {
+        this.registry = value.endsWith('/') ? value : `${value}/`
+        this.info(`检索跟装走同一条源：${this.registry}（pnpm config 的 ${key}）`)
+        return this.registry
+      }
+    }
+    return undefined
+  }
+
+  async search(): Promise<SearchReceipt> {
+    const base = await this.registryBase()
+    if (base === undefined) {
+      const found = locatePnpm(this.pnpmPath())
+      return {
+        ok: false,
+        error: found.ok ? '解析不出 registry 地址（pnpm config 里没配）。装包走哪条源，检索就跟到哪。' : found.error,
+      }
+    }
+    // text 钉在 scope 上：列的就是这条线的全家，筛选（gwb- 前缀）在解析后做
+    const url = `${base}-/v1/search?text=${encodeURIComponent('@godcreator02')}&size=250`
+    try {
+      // 宿主是 Electron 当 node 使，Node 18 起 fetch 是全局的
+      const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+      if (!response.ok) return { ok: false, error: `registry 回了 ${String(response.status)}（${url}）` }
+      const rows = parseSearch(await response.text())
+      if (rows === undefined) {
+        return { ok: false, error: '检索响应认不出来（要的是 npm registry 的 search JSON）。' }
+      }
+      return { ok: true, packages: rows.filter((row) => isGwbLine(row.pkg)) }
+    } catch (err: unknown) {
+      return { ok: false, error: `检索没成（10 秒没等到，或源够不着）：${String(err)}` }
+    }
+  }
+
+  async uninstall(pkg: string): Promise<UninstallResult> {
+    // 调用方写错了的事当场抛；下面每一条「没成」都是正当结果，收敛成回执
+    assertPkgName(pkg)
+    const deps = await readHomeDependencies(this.home)
+    if (deps[pkg] === undefined) {
+      throw new Error(`home 里没装 ${pkg}，谈不上卸载。只删条目走 ${REMOVE_ENTRY_COMMAND}。`)
+    }
+
+    // 第一步：摘条目。逐条 tree.remove——它一次做两件事（写回 yml、当场卸 fiber），
+    // 依赖这个包的其他件会随 fiber 一起被 cordis 摘下、停在「没挂上」那一档
+    const ids = entriesForPackage(this.tree.store, pkg)
+    for (const id of ids) this.tree.remove(id)
+
+    // 第二步：卸包。排在既有串行队列里，与 install/update 同一条
+    const found = locatePnpm(this.pnpmPath())
+    if (!found.ok) {
+      this.warn(`卸不了 ${pkg}：条目已摘（${ids.length} 条），${found.error}`)
+      return { ok: false, pkg, removedEntries: ids, error: found.error }
+    }
+    const run = await this.queue(() => runPnpm({ pnpmCjs: found.cjs, cwd: this.home, args: ['remove', pkg] }))
+    if (!run.ok) {
+      // 不回滚：条目已摘是正当落点，包进「已装、没挂条目」那一区看得见、重试挂条目就行
+      const error = `pnpm remove ${pkg} 没成（退出码 ${String(run.exitCode)}）。条目已摘 ${ids.length} 条，包还在 home 里`
+      this.warn(`${error}\n${run.tail ?? ''}`)
+      return run.tail === undefined
+        ? { ok: false, pkg, removedEntries: ids, error }
+        : { ok: false, pkg, removedEntries: ids, error, tail: run.tail }
+    }
+
+    this.info(`${pkg} 卸载了：${ids.length} 条条目摘掉，包从 home 移除。设置与数据留在盘上`)
+    return { ok: true, pkg, removedEntries: ids }
+  }
+
   async addEntry(pkg: string, id?: string, config?: unknown): Promise<string> {
     assertPkgName(pkg)
     const deps = await readHomeDependencies(this.home)
@@ -321,7 +565,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     this.tree.remove(id)
     // 显示名留着不抹：id 是确定性的，同一个包装回来还是这个 id，那时旧名字正好接上——
     // 跟设置和数据一个规矩（删条目不删它的设置与数据）
-    this.info(`条目 ${id} 已删（包没动，要拿掉包自己去 home 里 pnpm remove）`)
+    this.info(`条目 ${id} 已删（只删这一条，包没动；要连包一起拿掉走 ${UNINSTALL_COMMAND}）`)
   }
 
   async enable(entryId: string): Promise<void> {

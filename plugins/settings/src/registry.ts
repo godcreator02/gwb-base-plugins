@@ -5,10 +5,7 @@ import { assertKey, assertSection, entrySection, SHARED_SECTION } from './paths.
 
 export type SettingType = 'string' | 'number' | 'boolean' | 'secret'
 
-/** 不写就是 home：跟着这个 home 走。machine：全机一份，跨 home */
-export type SettingScope = 'home' | 'machine'
-
-/** 一项设置的自述。件在 apply 里声明 */
+/** 一项设置的自述。件在 apply 里声明。**没有机器级**——home 自持全部配置 */
 export interface SettingDef {
   /** kebab-case */
   key: string
@@ -16,8 +13,6 @@ export interface SettingDef {
   title: string
   /** 界面照它挑控件；`secret` 只影响显示打码，**存储照样明文** */
   type: SettingType
-  /** 不写就是 home */
-  scope?: SettingScope
   /** 写 true 进公共区，别的件不用 define 就读得到 */
   shared?: boolean
   description?: string
@@ -36,10 +31,7 @@ export interface StoredSetting {
 /** 一份文件：分区 → 设置名 → 那一项 */
 export type SettingsFile = Record<string, Record<string, StoredSetting>>
 
-/**
- * 调用方是谁。**两样都要**：机器级按包名分区（跨 home 稳定），home 级按 entryId 分区
- * （同一个包挂两条时分得开）。entryId 是全的（`home:hello`），落盘的分区名取它的末段。
- */
+/** 调用方是谁。落盘的分区名取 entryId 的末段 */
 export interface Owner {
   entryId: string
   pkg: string
@@ -47,7 +39,6 @@ export interface Owner {
 
 /** 一项设置在盘上的位置 */
 export interface Slot {
-  scope: SettingScope
   section: string
   key: string
 }
@@ -63,8 +54,8 @@ export interface SettingView extends Slot {
 }
 
 export interface SettingsRegistry {
-  /** 把盘上读来的两份装进来。只在构造时调一次 */
-  load(home: SettingsFile, machine: SettingsFile): void
+  /** 把盘上读来的这份装进来。只在构造时调一次 */
+  load(home: SettingsFile): void
   define(owner: Owner, def: SettingDef): () => void
   get(owner: Owner, key: string): unknown
   /** 算出这一项该往哪写。没声明过回 undefined */
@@ -74,7 +65,7 @@ export interface SettingsRegistry {
   put(slot: Slot, value: unknown): void
   drop(slot: Slot): void
   /** 内存里的那一份，给落盘用 */
-  file(scope: SettingScope): SettingsFile
+  file(): SettingsFile
   all(): SettingView[]
 }
 
@@ -88,17 +79,20 @@ function defKey(owner: Owner, key: string): string {
   return `${entrySection(owner.entryId)}\u0000${key}`
 }
 
-/** 一项声明落在哪一格。home 级那档取条目 id 的末段，见 `entrySection` */
+/** 一项声明落在哪一格：共享项进公共区，其余按条目 id 的末段（见 `entrySection`） */
 function slotOf(owner: Owner, def: SettingDef): Slot {
-  const scope = def.scope ?? 'home'
-  const section = def.shared === true ? SHARED_SECTION : scope === 'machine' ? owner.pkg : entrySection(owner.entryId)
-  return { scope, section, key: def.key }
+  const section = def.shared === true ? SHARED_SECTION : entrySection(owner.entryId)
+  return { section, key: def.key }
 }
 
 function viewKey(slot: Slot): string {
-  return `${slot.scope}\u0000${slot.section}\u0000${slot.key}`
+  return `${slot.section}\u0000${slot.key}`
 }
 
+/**
+ * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
+ * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
+ */
 /**
  * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
  * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
@@ -127,35 +121,22 @@ export function toSettingsFile(raw: unknown, warn: (message: string) => void, wh
   return out
 }
 
-/**
- * 盘上那份打底，内存这份盖上去。
- * `machine.json` 跨 home 共享，可能有另一个实例也在写，写前要这么并一次。
- */
-export function mergeFiles(disk: SettingsFile, mine: SettingsFile): SettingsFile {
-  const out: SettingsFile = {}
-  for (const [section, items] of Object.entries(disk)) out[section] = { ...items }
-  for (const [section, items] of Object.entries(mine)) out[section] = { ...out[section], ...items }
-  return out
-}
-
 export function createRegistry(warn: (message: string) => void): SettingsRegistry {
   const defs = new Map<string, { owner: Owner; def: SettingDef }>()
-  const files: Record<SettingScope, SettingsFile> = { home: {}, machine: {} }
+  let files: SettingsFile = {}
 
   /** 读一格的值。缺席与「设成了 undefined」在这儿是同一件事 */
-  const valueAt = (slot: Slot): unknown => files[slot.scope][slot.section]?.[slot.key]?.value
+  const valueAt = (slot: Slot): unknown => files[slot.section]?.[slot.key]?.value
 
   return {
-    load(home, machine) {
-      files.home = home
-      files.machine = machine
+    load(home) {
+      files = home
     },
 
     define(owner, def) {
       assertKey(def.key)
       // 分区名算一遍就是校验：id 不合规、段数超了都在这儿抛——抛在动表之前
       assertSection(entrySection(owner.entryId))
-      assertSection(owner.pkg)
       // 空 title 是「这一项没说自己是谁」，让它进表只会在界面上多一格没标签的框
       if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)
 
@@ -167,7 +148,7 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
       // 元信息落进内存表：件挂着时**代码是权威**，盘上那份被覆盖。值不动
       const slot = slotOf(owner, def)
-      const section = (files[slot.scope][slot.section] ??= {})
+      const section = (files[slot.section] ??= {})
       section[def.key] = {
         ...section[def.key],
         title: def.title,
@@ -188,10 +169,8 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
         return found === undefined ? record.def.default : found
       }
       // 没声明过，那多半是在读别的件声明进公共区的项——凭据就是这么跨件共享的
-      const shared = files.home[SHARED_SECTION]?.[key]?.value
+      const shared = files[SHARED_SECTION]?.[key]?.value
       if (shared !== undefined) return shared
-      const machineShared = files.machine[SHARED_SECTION]?.[key]?.value
-      if (machineShared !== undefined) return machineShared
       warn(`${owner.entryId} 读了一项谁也没声明过的设置：${key}`)
       return undefined
     },
@@ -206,20 +185,20 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     },
 
     put(slot, value) {
-      const section = (files[slot.scope][slot.section] ??= {})
+      const section = (files[slot.section] ??= {})
       section[slot.key] = { ...section[slot.key], value }
     },
 
     drop(slot) {
-      const stored = files[slot.scope][slot.section]?.[slot.key]
+      const stored = files[slot.section]?.[slot.key]
       if (stored === undefined) return
       // 抹掉值，定义还在——get 因此回落到 default
       const { value: _dropped, ...rest } = stored
-      files[slot.scope][slot.section]![slot.key] = rest
+      files[slot.section]![slot.key] = rest
     },
 
-    file(scope) {
-      return files[scope]
+    file() {
+      return files
     },
 
     all() {
@@ -227,12 +206,10 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
       for (const { owner, def } of defs.values()) live.add(viewKey(slotOf(owner, def)))
 
       const out: SettingView[] = []
-      for (const scope of ['home', 'machine'] as const) {
-        for (const [section, items] of Object.entries(files[scope])) {
-          for (const [key, stored] of Object.entries(items)) {
-            const slot: Slot = { scope, section, key }
-            out.push({ ...slot, ...stored, live: live.has(viewKey(slot)) })
-          }
+      for (const [section, items] of Object.entries(files)) {
+        for (const [key, stored] of Object.entries(items)) {
+          const slot: Slot = { section, key }
+          out.push({ ...slot, ...stored, live: live.has(viewKey(slot)) })
         }
       }
       return out

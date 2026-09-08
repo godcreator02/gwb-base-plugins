@@ -278,7 +278,7 @@
     "../plugins/skills/src/index.ts:39-51": {
       "kind": "git",
       "blob": "b15979905760ebe37fc175439f22a8bbafa02c76",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         39,
         51
@@ -288,7 +288,7 @@
     "../plugins/skills/src/index.ts:148-159": {
       "kind": "git",
       "blob": "b15979905760ebe37fc175439f22a8bbafa02c76",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         148,
         159
@@ -301,7 +301,7 @@
     "../plugins/skills/src/index.ts:102-113": {
       "kind": "git",
       "blob": "b15979905760ebe37fc175439f22a8bbafa02c76",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         102,
         113
@@ -313,7 +313,7 @@
     "../plugins/node-cli/src/run.ts:26-44": {
       "kind": "git",
       "blob": "47a9bd3588c1c2f6cbc1ec0315b124d9debaeacd",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         26,
         44
@@ -323,7 +323,7 @@
     "../plugins/node-cli/src/registry.ts:10-16": {
       "kind": "git",
       "blob": "5bb574d5786ef56d6a52a9316725b6164f2baaee",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         10,
         16
@@ -333,7 +333,7 @@
     "../plugins/node-cli/src/registry.ts:19-37": {
       "kind": "git",
       "blob": "5bb574d5786ef56d6a52a9316725b6164f2baaee",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         19,
         37
@@ -345,7 +345,7 @@
     "../plugins/py-cli/src/bootstrap.ts:70-92": {
       "kind": "git",
       "blob": "9ebec998660b8167392cbf7b2748dcb938c51c59",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         70,
         92
@@ -355,7 +355,7 @@
     "../plugins/py-cli/src/registry.ts:19-45": {
       "kind": "git",
       "blob": "337c6e83abe5a2565158dd919311fcd110109c63",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         19,
         45
@@ -389,7 +389,7 @@
     "../plugins/logger/src/index.ts:18-27": {
       "kind": "git",
       "blob": "70a8914b5bc9c400dd22547de61bc8f2db3aaf21",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         18,
         27
@@ -401,7 +401,7 @@
     "../plugins/commands/src/registry.ts:3-16": {
       "kind": "git",
       "blob": "a4900d1f1923c3135b60098eb02343bb8ebaaad3",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "commit": "c653919a59cb58c719f9e2bcdf1403ce134bd62a",
       "lines": [
         3,
         16

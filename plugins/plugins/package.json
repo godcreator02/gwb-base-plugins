@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-plugins",
-  "version": "0.0.4",
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包、加条目、启停、改显示名，外加一格「已装的件」窗格",
+  "version": "0.0.11",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -51,6 +51,7 @@
     "cn": "^0.2.5",
     "cordis": "4.0.0-rc.9",
     "esbuild": "^0.27.0",
+    "lucide-react": "^1.41.0",
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",

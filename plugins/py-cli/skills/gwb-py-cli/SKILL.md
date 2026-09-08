@@ -6,7 +6,7 @@ description: 要跑这个 home 里登记的 python 命令行工具时读。讲�
 # python CLI 怎么跑
 
 python 那半跟 node 那半同一个玩法：件在包里带一个 python 项目，登记给 `gwb-py-cli`，
-每条登记的 CLI **就是命令总线上的一条命令**，`gwb_cli_run` 按名字调。
+每条登记的 CLI **就是命令总线上的一条命令**，`gwb_command_run` 按名字调。
 
 ## 先看有哪些
 

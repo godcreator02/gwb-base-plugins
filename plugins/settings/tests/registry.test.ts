@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRegistry, mergeFiles, toSettingsFile, type Owner } from '../src/registry.js'
+import { createRegistry, toSettingsFile, type Owner } from '../src/registry.js'
 
 const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator02/gwb-alice' }
 const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator02/gwb-bob' }
@@ -9,7 +9,7 @@ const alice2: Owner = { entryId: 'home:alice-2', pkg: '@godcreator02/gwb-alice' 
 function fresh(): { reg: ReturnType<typeof createRegistry>; warn: ReturnType<typeof vi.fn> } {
   const warn = vi.fn()
   const reg = createRegistry(warn)
-  reg.load({}, {})
+  reg.load({})
   return { reg, warn }
 }
 
@@ -50,43 +50,21 @@ describe('声明与读写', () => {
 })
 
 describe('落在哪一格', () => {
-  it('不写 scope 就是 home，按条目 id 的末段分区', () => {
+  it('按条目 id 的末段分区', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
-    expect(reg.locate(alice, 'level')).toEqual({ scope: 'home', section: 'alice', key: 'level' })
+    expect(reg.locate(alice, 'level')).toEqual({ section: 'alice', key: 'level' })
   })
 
-  it('machine 按包名分区——entryId 是 home 局部的，跨不了 home', () => {
-    const { reg } = fresh()
-    reg.define(alice, { key: 'license', title: '许可证', type: 'string', scope: 'machine' })
-    expect(reg.locate(alice, 'license')).toEqual({
-      scope: 'machine',
-      section: '@godcreator02/gwb-alice',
-      key: 'license',
-    })
-  })
-
-  it('shared 落公共区，两档都一样', () => {
+  it('shared 落公共区', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'theme', title: '主题', type: 'string', shared: true })
-    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', scope: 'machine', shared: true })
+    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', shared: true })
     expect(reg.locate(alice, 'theme')?.section).toBe('*')
-    expect(reg.locate(alice, 'api-key')).toEqual({ scope: 'machine', section: '*', key: 'api-key' })
+    expect(reg.locate(alice, 'api-key')).toEqual({ section: '*', key: 'api-key' })
   })
 
-  it('同一个包挂两条:home 级各存各的，机器级共享一份', () => {
-    const { reg } = fresh()
-    reg.define(alice, { key: 'level', title: '级别', type: 'string' })
-    reg.define(alice2, { key: 'level', title: '级别', type: 'string' })
-    expect(reg.locate(alice, 'level')?.section).toBe('alice')
-    expect(reg.locate(alice2, 'level')?.section).toBe('alice-2')
-
-    reg.define(alice, { key: 'license', title: '许可证', type: 'string', scope: 'machine' })
-    reg.define(alice2, { key: 'license', title: '许可证', type: 'string', scope: 'machine' })
-    expect(reg.locate(alice, 'license')).toEqual(reg.locate(alice2, 'license'))
-  })
-
-  it('两条条目各存各的值，互不覆盖', () => {
+  it('同一个包挂两条:各存各的，互不覆盖', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
     reg.define(alice2, { key: 'level', title: '级别', type: 'string' })
@@ -100,7 +78,7 @@ describe('落在哪一格', () => {
 describe('跨件共享', () => {
   it('件 B 不用 define 也读得到件 A 声明进公共区的——凭据就靠这条', () => {
     const { reg, warn } = fresh()
-    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', scope: 'machine', shared: true })
+    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', shared: true })
     reg.put(reg.locate(alice, 'api-key')!, 'sk-ant-xxx')
     expect(reg.get(bob, 'api-key')).toBe('sk-ant-xxx')
     expect(warn).not.toHaveBeenCalled()
@@ -182,7 +160,7 @@ describe('元信息：代码是权威，盘上是快照', () => {
   it('件挂上时用代码里的 title 覆盖盘上那份，值不动', () => {
     const warn = vi.fn()
     const reg = createRegistry(warn)
-    reg.load({ alice: { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } }, {})
+    reg.load({ alice: { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } })
     reg.define(alice, { key: 'level', title: '代码里的新标题', type: 'string' })
     const row = reg.all().find((v) => v.key === 'level')
     expect(row?.title).toBe('代码里的新标题')
@@ -200,35 +178,11 @@ describe('元信息：代码是权威，盘上是快照', () => {
     expect(row?.value).toBe('debug')
   })
 
-  it('all 两份一起交出去，带着各自的位置', () => {
+  it('all 一份全交出去，带着各自的位置', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
-    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', scope: 'machine', shared: true })
-    expect(reg.all().map((v) => `${v.scope}/${v.section}/${v.key}`).sort()).toEqual([
-      'home/alice/level',
-      'machine/*/api-key',
-    ])
-  })
-})
-
-describe('并份:machine.json 跨 home 共享，写前要并一次', () => {
-  it('盘上有而内存没有的分区留着——那多半是另一个 home 写的', () => {
-    const disk = { '@a': { x: { value: 1 } }, '@b': { y: { value: 2 } } }
-    const mine = { '@a': { x: { value: 9 } } }
-    expect(mergeFiles(disk, mine)).toEqual({ '@a': { x: { value: 9 } }, '@b': { y: { value: 2 } } })
-  })
-
-  it('同一分区里，盘上多出来的那一项也留着', () => {
-    const disk = { '*': { a: { value: 1 }, b: { value: 2 } } }
-    const mine = { '*': { a: { value: 9 } } }
-    expect(mergeFiles(disk, mine)).toEqual({ '*': { a: { value: 9 }, b: { value: 2 } } })
-  })
-
-  it('并出来的是新对象，不动传进来的两份', () => {
-    const disk = { '@a': { x: { value: 1 } } }
-    const mine = { '@a': { x: { value: 9 } } }
-    mergeFiles(disk, mine)
-    expect(disk['@a']!['x']!.value).toBe(1)
+    reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', shared: true })
+    expect(reg.all().map((v) => `${v.section}/${v.key}`).sort()).toEqual(['*/api-key', 'alice/level'])
   })
 })
 
