@@ -7,3 +7,7 @@ dist/
 .venv/
 __pycache__/
 *.pyc
+
+# ZCode 与 .claude/skills 共享用的 junction（本机重建：cmd /c mklink /J .agents\skills <仓根>\.claude\skills）
+# git 把 junction 当普通目录递归，不挡住就会把 skills 再复制一份进库
+.agents/
