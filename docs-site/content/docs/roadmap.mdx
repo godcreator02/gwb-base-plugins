@@ -14,16 +14,16 @@ livedoc: none
 | --- | --- | --- | --- |
 | **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.0.2**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
 | **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.3**，落盘验通；写失败从此 error 出声 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.14**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger` |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.10**，第三刀半完成，见[它的页](/docs/shell)；窗格/报名的 info 日志在仓里待发 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.0.20**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger` |
+| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.0.16**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航 |
 | **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.3**，收集与查询验通，见[它的页](/docs/skills) |
 | **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.3**，instructions + `skill://` resources 接通 skills，agent 调用逐条留痕，见[它的页](/docs/mcp) |
 | **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.0.4**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
 | **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.5**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
 | **logger** | `@godcreator02/gwb-logger` | — | **已发 0.0.2**，四路日志窗格实机验通，见[它的页](/docs/logger) |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.4**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
-| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.4**，装包/条目/启停/显示名，启停改名出声；自带一份 `gwb-plugins` skill |
-| **market** | `@godcreator02/gwb-market` | —（不 provide） | **已发 0.0.1**，白名单 + 装机窗格（装的动作跨件调 `plugins.install`） |
+| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.9**，装包/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单也退场，可装改 registry 检索（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill |
+| ~~**status**~~ | `@godcreator02/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
 
 ## 共享包（`packages/`，不是件）
 
@@ -57,7 +57,8 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 | **三** | dockview 骨架 + 开一格插件窗格 | **完成**，实机验通 |
 | **三半** | 一个件多格、同一格开多份、`args.shell` 落地 | **完成**，实机验通 |
 | **四·状态栏** | ＋列表 / home / 亮暗，外加外壳身份改运行时 | **完成**，实机验通 |
-| **四·其余** | 布局落盘（`ctx.gwbData`）+ 导航 | 待做 |
+| **四·布局落盘** | 井自动存档＋起名存布局选着开，档落 `ctx.gwbData` | **完成**，实机验通 |
+| **四·导航** | 常驻侧边栏 | 待做（＋列表顶掉了主要用途，真需要再做） |
 
 **各刀交出的面与判据见[它自己那页](/docs/shell)。**
 
@@ -73,30 +74,34 @@ esbuild `alias`，三处的 `@/` 都指 `src/client`。新件照抄即可。
 - **四·状态栏**：井外面那条。**＋列表顶掉了导航的主要用途**（母仓导航干的主要就是这件事），
   所以导航从「第四刀的一部分」降级成「真需要常驻侧边栏时再说」。顺带把外壳身份也搬去
   运行时了——包清单里如今只剩 `gwb.shared`，而那个是**硬的**（共享包不是件、没有运行时）
+- **四·布局落盘**：一口井，自动存档（400ms 防抖整档重拼）＋起名存布局、点开哪套铺哪套
+  （同名覆盖）。档是 gwbData 的 `layout` 单文档。「重置布局」与「布局没存上」告警两格
+  状态栏一并补上。**多桌面试到 0.0.14 撤回**——现场与理由见[定过的事](/docs/decisions)
 
 ## 剩下那部分要用的东西
 
-**母仓那几条 dockview 工程细节，用掉两条，剩三条**：
+**母仓那几条 dockview 工程细节，用掉三条，剩两条**：
 
 | 细节 | 状态 | 为什么 |
 | --- | --- | --- |
 | 面板组件表必须是**模块级常量** | **已用** | 换引用会让 dockview 重建全部格 |
-| 订 `onDidLayoutChange` | **已用**（状态栏的「已开」靠它） | 布局落盘订的是同一个事件 |
-| 首帧门 | **不需要** | 数据在 `createRoot` 之前就取齐了，压根没有「还没到手」的那一帧 |
+| 订 `onDidLayoutChange` | **已用**（「已开」与布局落盘都靠它） | 落盘订的就是这个事件 |
+| 布局落盘 400ms 防抖 | **已用** | 一阵拖拽合并成一次写；整档重拼，迟到的定时器写不坏账 |
+| 首帧门 | **不需要** | 数据在 `createRoot` 之前就取齐了（布局档也是），压根没有「还没到手」的那一帧 |
 | 导航定宽 `constraints` **必须去重** | 待用 | 不去重的话 `setConstraints` 自己触发 `onDidLayoutChange` 无限递归、占死主线程 |
 | 默认布局里 `setSize` 等第二格落位 | 待用 | 眼下不摆多列 |
-| 布局落盘 400ms 防抖（`ctx.setTimeout`） | 待用 | 还不落盘 |
 
-**布局落盘落地之后**，状态栏还能补两格（母仓有、我们暂时给不了的）：「重置布局」与
-「布局没存上」的告警。
+状态栏欠的那两格（「重置布局」「布局没存上」）随布局落盘一起补上了——前者进了桌面
+pill 的右键菜单（按桌面算），后者只在落盘失败时亮。
 
 **`liveness` 的输入将来要换**。它现在按「条目表」判一格背后的件是 live / idle / gone，
 而第三刀根本没接它——运行时注册已经隐含了「件活着」，注册表里没有的格本来就开不出来。
 但**热卸一个件**时：件卸载 → effect 收尾 → 注册表摘掉那格 → **dockview 里那格还开着**。
 那时要关掉它，判据的来源是**注册表变了**而不是条目表变了。第四刀真接它时按这个形状改。
 
-**渲染层还不感知任何变化**：`bootShell` 取一次注册表就完了，件后来挂上/卸掉界面都不知道。
-第四刀要么加事件推送，要么在导航上给一颗刷新。
+**渲染层感知变化的现状**：boot 取一次注册表就完了，件后来挂上/卸掉界面不知道——
+**手动出路已给**：状态栏「刷新」整页重跑，重取注册表。事件推送（件一变界面自己跟着变）
+仍是将来的事，真需要再说。
 
 **明确不抄**：老布局兼容（约 60 行 + 5 个双分支）、母仓插件名硬编码（`console` 特判、
 六个图标名的花名册）、CDP 探针驱动面、状态栏里的母仓品牌、`void host` 那个半吊子契约

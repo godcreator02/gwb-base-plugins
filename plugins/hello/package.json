@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.0.14",
+  "version": "0.0.20",
   "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表、「几格各画各的」与「同一格开两份互不干扰」，外加自带一 node 一 python 两条 CLI",
   "type": "module",
   "main": "dist/index.js",
@@ -40,7 +40,8 @@
     "@godcreator02/gwb-tokens": ">=0.0.2",
     "@godcreator02/gwb-skills": ">=0.0.1",
     "@godcreator02/gwb-node-cli": ">=0.0.2",
-    "@godcreator02/gwb-py-cli": ">=0.0.3"
+    "@godcreator02/gwb-py-cli": ">=0.0.3",
+    "@godcreator02/gwb-commands": ">=0.0.2"
   },
   "//peerDependenciesMeta": "这三条是**可选的** peer,别的几条不是。区别就是 inject 的两种写法:data 与 shell 在 `export const inject` 里（缺了整个件不挂），skills 与两条 CLI 走 ctx.inject 开子 fiber（没装那些件,这个件照常画窗格,只是说明书没处挂、两颗按钮置灰）。**为什么明知不是硬依赖还要声明 peer**:cordis 对服务不做任何版本校验（契约面就是一个裸字符串名),peer 的 range 是这条链上唯一的版本校验点——那也是它唯一的作用,见文档站",
   "peerDependenciesMeta": {
@@ -63,6 +64,7 @@
     "@godcreator02/gwb-data": "workspace:*",
     "@godcreator02/gwb-shell": "workspace:*",
     "@godcreator02/gwb-tokens": "workspace:*",
+    "@godcreator02/gwb-commands": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",

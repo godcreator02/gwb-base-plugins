@@ -122,6 +122,6 @@ describe('那两条 CLI 的形状', () => {
     // 配套的另一半:注册那段必须在 ctx.inject 的回调里,不能进 export const inject。
     // cordis 的 inject 全是硬依赖,「可选」靠的就是这一句开出来的子 fiber
     expect(index).toMatch(/ctx\.inject\(\['gwbNodeCli', 'gwbPyCli'\]/)
-    expect(index).toMatch(/export const inject = \['gwbData', 'gwbShell'\]/)
+    expect(index).toMatch(/export const inject = \['gwbData', 'gwbShell', 'gwbCommands'\]/)
   })
 })

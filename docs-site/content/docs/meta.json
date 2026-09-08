@@ -1,3 +1,17 @@
 {
-  "pages": ["overview", "roadmap", "commands", "shell", "logger", "skills", "mcp", "node-cli", "py-cli", "settings", "walls", "readme"]
+  "pages": [
+    "overview",
+    "roadmap",
+    "commands",
+    "shell",
+    "logger",
+    "skills",
+    "mcp",
+    "node-cli",
+    "py-cli",
+    "settings",
+    "decisions",
+    "walls",
+    "readme"
+  ]
 }

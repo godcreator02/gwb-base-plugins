@@ -7,6 +7,7 @@ import type {} from '@godcreator02/gwb-shell'
 import type {} from '@godcreator02/gwb-skills'
 import type {} from '@godcreator02/gwb-node-cli'
 import type {} from '@godcreator02/gwb-py-cli'
+import type {} from '@godcreator02/gwb-commands'
 
 /**
  * node 半：拿 data 件存一份计数，每次启动 +1；往外壳注册**两格**窗格、报一下自己叫什么；
@@ -31,7 +32,7 @@ const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const NODE_CLI_ENTRY = path.join(PACKAGE_ROOT, 'dist', 'cli.js')
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
-export const inject = ['gwbData', 'gwbShell']
+export const inject = ['gwbData', 'gwbShell', 'gwbCommands']
 
 interface Probe {
   runs?: number
@@ -49,18 +50,37 @@ export function apply(ctx: GwbContext): void {
   ctx.gwbShell.describeSelf({ title: '验收件', icon: 'flask-conical' })
   log.info('注册了两格（main、counter）并报了名字')
 
+  // 读盘 +1、写盘、回新值。启动探针与 hello.bump 命令走同一条路
+  const report = async (): Promise<Probe> => {
+    const before = (await ctx.gwbData.readDoc('probe')) as Probe | undefined
+    const runs = (before?.runs ?? 0) + 1
+    // 本地时间，sv-SE 的格式正好是「YYYY-MM-DD HH:mm:ss」；toISOString 是 UTC，看着像少了八小时
+    const at = new Date().toLocaleString('sv-SE')
+    await ctx.gwbData.writeDoc('probe', { runs, at })
+    return { runs, at }
+  }
+
   // 这条链上的错必须有出口:apply 是同步的,里头的 async 一旦静默 reject,
   // 现象就是「件挂上了但什么都没发生」——查起来毫无线索
   void (async () => {
     log.info(`gwbData = ${typeof ctx.gwbData}，dir = ${ctx.gwbData?.dir ?? '取不到'}`)
-    const before = (await ctx.gwbData.readDoc('probe')) as Probe | undefined
-    const runs = (before?.runs ?? 0) + 1
-    await ctx.gwbData.writeDoc('probe', { runs, at: new Date().toISOString() })
-    log.info(`data 通了：这是第 ${runs} 次启动（上次 ${before?.at ?? '无'}）`)
+    const probe = await report()
+    log.info(`data 通了：这是第 ${probe.runs} 次启动`)
     log.info(`home=${requireKernel(ctx).dataDir}`)
   })().catch((err: unknown) => {
     log.error(`data 探针失败：${err instanceof Error ? err.stack : String(err)}`)
   })
+
+  // 探针数据的取数口。窗格那半与 agent（经 MCP）都走这两条：读回上次写的值就说明
+  // 真的落了盘。register 不用自己包 effect：内部挂在调用方的 effect 上了
+  const cli = ctx.gwbCommands
+  // inject 保证了它在，这句只是把类型收窄
+  if (cli !== undefined) {
+    cli.register({ name: 'hello.probe', description: '读启动探针文档', plugin: name }, async () =>
+      ctx.gwbData.readDoc('probe'),
+    )
+    cli.register({ name: 'hello.bump', description: '启动次数 +1，写盘回新值', plugin: name }, () => report())
+  }
 
   // 说明书那一格。**局部注入,不写进 export const inject**:写进去,这个件在没装
   // skills 件的 home 里就整个挂不上了——而说明书不是它能不能干活的前提。
