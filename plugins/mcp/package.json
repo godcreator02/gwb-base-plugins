@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-mcp",
   "version": "0.1.0",
-  "description": "MCP 桥：命令注册表照搬成工具面（登记即暴露），外加 command_list/run 兜时差；token 鉴权",
+  "description": "MCP 桥：命令注册表照搬成工具面（登记即暴露），外加 command_list/run 兜时差；token 鉴权。0.1 对应单进程内核：报给客户端的版本号改成本件自己的（内核没有 appVersion 了）",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,17 +27,17 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.5.4"
   },
-  "//peerDependencies": "词汇表包是运行时 import（requireKernel 与 isRecord 都是真函数）。cli 与 data 两件写 peer 的理由不是类型面，是 **inject 那两个服务**——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home（同 gwb-hello）",
+  "//peerDependencies": "词汇表包是运行时 import（auth.ts 里那个 isRecord 是真函数）。cli 与 data 两件写 peer 的理由不是类型面，是 **inject 那两个服务**——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home（同 gwb-hello）",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）",
   "peerDependencies": {
     "@godcreator02/gwb-commands": ">=0.0.1",
     "@godcreator02/gwb-data": ">=0.0.1",
-    "@godcreator02/gwb-plugin-api": ">=0.0.3"
+    "@godcreator02/gwb-plugin-api": ">=0.1.0"
   },
   "devDependencies": {
     "@godcreator02/gwb-commands": "workspace:*",
     "@godcreator02/gwb-data": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-plugin-api": "0.1.0",
     "@godcreator02/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"

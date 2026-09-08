@@ -2,7 +2,7 @@
  * 「可装」那段的纯逻辑：检索结果与已装索引的对账、搜索框的本地筛、汇总。
  * 不碰 DOM、**也不碰网络**——网络那半在 node 半（`plugins.search`），这儿只管拿到手之后的事。
  *
- * **不 import node 半的类型**：检索结果跨 fd3 过来，本来就得当 `unknown` 收窄一次；
+ * **不 import node 半的类型**：检索结果跨 IPC 过来，本来就得当 `unknown` 收窄一次；
  * node 半的 `search.ts` 里有一份同形的 `SearchRow`，两边各认各的（跟 `rows.ts` 对
  * `PackageView` 的规矩同一款）。
  */

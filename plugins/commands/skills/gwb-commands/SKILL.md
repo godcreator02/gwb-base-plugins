@@ -32,8 +32,9 @@ description: 动手调命令之前读。讲清 {ok,data} 信封怎么拆、失�
 
 - `gwb_command_list` 回的每条命令带 `plugin` 字段——它是登记这条命令的件的名字。
   「这条命令是干嘛的」看 description，「这条命令归谁管」看 plugin
-- `kernel.info` 是内核的自省口，不经过总线也调得到：回 home 目录、日志目录、
-  每条条目的挂载状态（`ok` 字段）、谁是外壳。**件挂没挂上看它**，别猜
+- **内核没有自省口**（单进程内核里 `kernel.info` 那条已经没了）：想知道此刻有哪些件、
+  挂上没有，问 `plugins.list`——它每条条目带 `active`。谁是外壳、注册了哪些窗格，
+  问 `shell.plugins` 与 `shell.panes`。**件挂没挂上看这些，别猜**
 
 ## 装了新件之后
 

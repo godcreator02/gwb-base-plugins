@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readEntries, reconcile, toDependencies, toLabels, type EntrySnapshot } from '../src/inventory.js'
+import { readEntries, reconcile, toDependencies, toLabels, toShared, type EntrySnapshot } from '../src/inventory.js'
 
 interface FakeEntry {
   key: string
@@ -33,6 +33,33 @@ describe('home 的 package.json 收窄', () => {
   it('没有 dependencies、不是对象、null 一律当空表——不抛', () => {
     for (const bad of [{}, { dependencies: [] }, null, 'nope', undefined]) {
       expect(toDependencies(bad)).toEqual({})
+    }
+  })
+})
+
+describe('共享包声明收窄', () => {
+  it('声明了几个裸名就报几个', () => {
+    expect(toShared({ gwb: { shared: { react: './react', 'react-dom': './react-dom' } } })).toEqual([
+      'react',
+      'react-dom',
+    ])
+  })
+
+  /**
+   * **这两条分得开才有意义**：`undefined` 是「这就是个普通的件」，空数组是「我是共享包，
+   * 只是不提供裸名」（gwb-tokens 只出一张令牌表）。界面按前者把包归进「装了没挂条目」那
+   * 一区，按后者归进「共享包」——混成一档就是在界面上诬告 gwb-tokens「你没启用」
+   */
+  it('空声明是共享包，没有 gwb.shared 不是', () => {
+    expect(toShared({ gwb: { shared: {} } })).toEqual([])
+    expect(toShared({ gwb: {} })).toBeUndefined()
+    expect(toShared({})).toBeUndefined()
+  })
+
+  it('值不是字符串的那格丢掉；整份坏了当没有——不抛', () => {
+    expect(toShared({ gwb: { shared: { react: './react', bad: 3, '': './x' } } })).toEqual(['react'])
+    for (const bad of [null, 'nope', undefined, { gwb: { shared: [] } }]) {
+      expect(toShared(bad)).toBeUndefined()
     }
   })
 })

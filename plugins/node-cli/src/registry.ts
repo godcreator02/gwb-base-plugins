@@ -9,9 +9,9 @@ import path from 'node:path'
 /** 默认给一分钟 */
 export const DEFAULT_TIMEOUT_MS = 60_000
 /**
- * 上限钉死 110 秒。**内核那条 fd3 命令通道是 120 秒硬超时**：超了它把 pending 摘掉,
- * 宿主再回也没人接,调用方看到的是内核那句「命令超时」——不是这儿给的 timedOut 回执,
- * 更没有 spillPath。留 10 秒余量,保证超时永远由这边先报。
+ * 上限钉死 110 秒。**这条线原来卡的是内核那条 120 秒硬超时的 fd3 通道**；单进程内核里
+ * 件与桥同进程、没有那道闸了,但这个上限留着：一条 CLI 跑过两分钟还不回,人要的是一句
+ * timedOut 加一份 spillPath,不是一个永远不回的 promise。
  */
 export const MAX_TIMEOUT_MS = 110_000
 

@@ -71,6 +71,22 @@ export function toDependencies(raw: unknown): Record<string, string> {
   return out
 }
 
+/**
+ * 一个包的清单里 `gwb.shared` 那格收窄成裸名数组。
+ *
+ * **没有这个字段回 undefined，有但是空对象回空数组**——两者的意思不一样：前者是「这就是
+ * 个普通的件」，后者是「我是共享包，只是不提供裸名」（`gwb-tokens` 就是这种，它只出一张
+ * 令牌表）。界面按「是不是共享包」分栏，靠的正是这条区别。
+ */
+export function toShared(raw: unknown): string[] | undefined {
+  if (!isRecord(raw)) return undefined
+  const gwb = raw['gwb']
+  if (!isRecord(gwb)) return undefined
+  const shared = gwb['shared']
+  if (!isRecord(shared)) return undefined
+  return Object.keys(shared).filter((bare) => bare !== '' && typeof shared[bare] === 'string')
+}
+
 /** 本件自己那份 labels 文档收窄成 裸 id → 显示名。坏的那格丢掉，不废掉整份 */
 export function toLabels(raw: unknown): Record<string, string> {
   if (!isRecord(raw)) return {}

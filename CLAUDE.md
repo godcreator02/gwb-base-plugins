@@ -1,13 +1,40 @@
 # gwb-base-plugins
 
-`gwb-kernel`（最小内核，`D:\unitfolders\26090705ymz\gwb-kernel`）的基础件仓。第一批四件：
+**单进程内核 `gwb-kernel-min`（`D:\unitfolders\26090705ymz\gwb-kernel-min`，单元
+`26090705ymz`）的件仓。** 十二件全在 0.1.0。
+
+## 2026-09-09：换了内核，换了契约
+
+**旧内核 `gwb-kernel` 退役**——宿主子进程、fd3、`gwb://`、`kernel.info`、内核那条日志管道，
+全都不在了。这个仓从 0.1.0 起对着 `gwb-kernel-min` 与**词汇表 0.1**
+（`@godcreator02/gwb-plugin-api@0.1.0`）。变的就这几处：
+
+| 从前 | 现在 |
+| --- | --- |
+| 内核按 `exports` 表解析 `gwb://asset/plugins/<包>/client` | **窗格件注册时自报地址**：`registerPane({ …, client, style })`，值从自己的 `import.meta.url` 算成 `file://` |
+| 内核挑「谁是外壳」并 boot 它 | 外壳自己 `requireKernel(ctx).setShell(new URL('./client.js', import.meta.url).href)`；开机要的 home 与样式表走 `shell.env` |
+| 日志四路汇总在内核，页面订 `window.gwb.logs` | **日志件自己是管道**：挂 cordis exporter 收三路（件 / 内核 / 渲染层）、自己缓冲、`gwbKernel.emit` 推；页面订 `window.gwb.on` 认自己的记号 |
+| `kernel.info` 报 `shared` / `sharedPkgs` | **没有自省命令**。importmap 仍由内核扫各包的 `gwb.shared` 拼；件管理自己读 home 的 `node_modules`，命令是 `plugins.shared` |
+| `gwbKernel.appVersion` / `install(specs)` / `kernel.install` | **都没有了**。要版本号读自己包的 `package.json`；装包走 `plugins.install` |
+
+`commands` / `node-cli` / `py-cli` / `data` / `settings` / `skills` 六件源码一行没动——
+契约面小的好处。判据与验的读数见文档站 `decisions` 那条 2026-09-09。
+
+## 十二件
 
 | 件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
-| commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核的 dispatch 除两条自省命令外全走它 |
-| shell | `@godcreator02/gwb-shell` | — | dockview 外壳,占整页 |
-| logger | `@godcreator02/gwb-logger` | — | 日志窗格 |
+| commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核收到什么就原样派给它 |
+| shell | `@godcreator02/gwb-shell` | `ctx.gwbShell` | dockview 外壳,占整页;窗格注册表 |
+| logger | `@godcreator02/gwb-logger` | — | 日志件:管道 + 一格窗格 |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
+| data | `@godcreator02/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
+| skills | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
+| theme | `@godcreator02/gwb-theme` | — | 外观:字体与自定义 CSS,一格窗格 |
+| plugins | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | 管包与条目,一格窗格 |
+| mcp | `@godcreator02/gwb-mcp` | — | MCP 桥,命令面开给外部 agent |
+| node-cli / py-cli | `@godcreator02/gwb-node-cli` / `-py-cli` | `ctx.gwbNodeCli` / `ctx.gwbPyCli` | 两个 CLI 运行器 |
+| hello | `@godcreator02/gwb-hello` | — | 验收件,两格窗格 + 两条 CLI |
 
 ## 两条命名规矩
 
@@ -16,19 +43,22 @@
 
 **服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-commands` → `ctx.gwbCommands`）。cordis 官方件
 的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。判据与理由在内核仓的
-`CLAUDE.md`。
+`AGENTS.md`。
 
 ## 内核给的面就这么大
 
 - **`ctx.gwbKernel`**（永不撤销，用 `requireKernel(ctx)` 取，**不写进 `inject`**）：
-  `dataDir` / `appVersion` / `install(specs)` / `emit(payload)`
+  `dataDir` / `emit(payload)` / `setShell(url) → 撤销函数`。**就这三样。**
 - **`ctx.loader`**：条目树。改条目就是热挂卸——`create` / `remove` / `update` / `store`。
   自己所在的那棵树是 `ctx.fiber.entry?.parent?.tree`
-- **两条内核命令**：`kernel.info`（自省）、`kernel.install`（装机）
-- **`gwb://asset/plugins/<包名>/client.js`**：界面那半由这条 URL 交给页面
+- **一条内核命令都没有**：`gwb:command` 收到什么就原样派给 `ctx.gwbCommands`
+- **页面的公共面 `window.gwb`**：`command(name, args)` / `on(cb)` / `onShell(cb)`
+- **件跑在 Electron 主进程里**，所以 `import('electron')` 是件够得着的——开窗、菜单、
+  托盘、对话框全归件
 
-契约包 `@godcreator02/gwb-plugin-api` 只有五个名字（`GwbContext` / `GwbKernelApi` /
-`GwbResult` / `requireKernel` / `isRecord`）——**内核的面本来就这么小**，别指望有更多。
+契约包 `@godcreator02/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
+`GwbResult` / `GwbWindowApi` / `ShellBoot` / `requireKernel` / `isRecord`）——**内核的面本来
+就这么小**，别指望有更多。正本在 `gwb-kernel-min/packages/plugin-api/src/index.ts`。
 
 ## 母仓那批是参考，不是模板
 
@@ -52,7 +82,8 @@
 | `gwb-doc` | 写文档、写注释、动 livedoc 引用之前（**正本在内核仓**,这份是路标) |
 | `gwb-decide` | 遇到技术选型之前——推完**交给用户拍板,不自己定**（**正本在内核仓**) |
 
-**先读内核仓的 `CLAUDE.md`**（准入判据两道关、服务命名、依赖三档、内核四件事)。
-那份是这条线的正本,这里只写件仓自己的事。
+**先读内核仓 `gwb-kernel-min` 的 `AGENTS.md`**（内核只做六件事、契约面、件在新契约下长什么样;
+准入判据两道关、服务命名、依赖三档沿用退役那份 `gwb-kernel/AGENTS.md`）。
+那些是这条线的正本,这里只写件仓自己的事。
 
 路线在文档站的 `roadmap` 页。

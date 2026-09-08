@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * 产物守卫。这个件有两半，两半的规矩不一样：
  *
- * - **node 半**（`dist/*.js`，tsc 出的）：相对 import 带扩展名、除 cordis 外不许有裸名
+ * - **node 半**（`dist/*.js`，tsc 出的）：相对 import 带扩展名、裸名只许 cordis 与词汇表包
  * - **浏览器半**（`dist/client.js`，esbuild 打的）：**只许**那四个共享名漏出去——它们由
  *   页面 importmap 解析到共享包。多漏一个（比如 dockview 被误配成 external）就是运行期
  *   一句 `Failed to resolve module specifier`，而那要开到窗格才看得见
@@ -66,11 +66,12 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('node 半：裸名只许 cordis——Service 基类必须是宿主那一份', () => {
+  it('node 半：裸名只许 cordis 与词汇表包——Service 基类必须是宿主那一份，requireKernel 是真函数', () => {
+    const allowed = new Set(['cordis', '@godcreator02/gwb-plugin-api'])
     const bare: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:') && spec !== 'cordis') bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:') && !allowed.has(spec)) bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])

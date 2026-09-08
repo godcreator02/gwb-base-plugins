@@ -5,7 +5,8 @@
  * 契约页上，这儿按形状收。跟 hello 的 client 同一个规矩——浏览器半不牵 node 那边的包。
  */
 
-export const SOURCES = ['plugin', 'host', 'main', 'renderer'] as const
+/** 三路：件、内核（含 loader）、渲染层 console。单进程内核之后宿主与主进程是同一个 */
+export const SOURCES = ['plugin', 'kernel', 'renderer'] as const
 export type LogSource = (typeof SOURCES)[number]
 
 /** 从严重到不严重。门限筛选靠这个顺序 */

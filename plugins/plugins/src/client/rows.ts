@@ -1,7 +1,7 @@
 /**
  * `plugins.list` 回的那份 → 渲染用的两层行。纯逻辑，不碰 DOM。
  *
- * **不 import node 半的类型**：这份数据跨 fd3 过来，本来就得当 `unknown` 收窄一次；
+ * **不 import node 半的类型**：这份数据跨 IPC 过来，本来就得当 `unknown` 收窄一次；
  * 正本在 `src/inventory.ts`，这儿按形状收（跟 logger 的 `entries.ts` 同一个规矩）。
  *
  * 两层结构不是排版偏好：**一个包能挂多条条目**——`name` 是「装哪个包」，`id` 才是身份，

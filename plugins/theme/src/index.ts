@@ -31,6 +31,10 @@ export const CUSTOM_CSS_KEY = 'custom-css'
 /** 缺哪个都不挂：没有设置存不了，没有命令总线出不了进程——inject 是等待机制，不是建议 */
 export const inject = ['gwbSettings', 'gwbCommands']
 
+/** 浏览器半与样式表的地址，注册窗格时报给外壳。dist/ 下三个文件是邻居，从本模块算 */
+const CLIENT_URL = new URL('./client.js', import.meta.url).href
+const STYLE_URL = new URL('./style.css', import.meta.url).href
+
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
@@ -119,7 +123,13 @@ export function apply(ctx: GwbContext): void {
   // 外壳在才报窗格。嵌套注入：cordis 的 inject 全是硬依赖，「可选」靠的就是这句开出来的
   // 子 fiber——缺服务时它自己永远 PENDING，而本件照常挂上
   ctx.inject(['gwbShell'], (scoped) => {
-    scoped.gwbShell.registerPane({ id: 'appearance', title: '外观', icon: 'palette' })
+    scoped.gwbShell.registerPane({
+      id: 'appearance',
+      title: '外观',
+      icon: 'palette',
+      client: CLIENT_URL,
+      style: STYLE_URL,
+    })
     scoped.gwbShell.describeSelf({ title: '外观', icon: 'palette' })
   })
 

@@ -127,8 +127,8 @@ importers:
   plugins/commands:
     devDependencies:
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.2
-        version: 0.0.2(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -142,8 +142,8 @@ importers:
   plugins/data:
     devDependencies:
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -163,8 +163,8 @@ importers:
         specifier: workspace:*
         version: link:../node-cli
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-py-cli':
         specifier: workspace:*
         version: link:../py-cli
@@ -180,6 +180,9 @@ importers:
       '@godcreator02/gwb-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -210,9 +213,12 @@ importers:
 
   plugins/logger:
     devDependencies:
+      '@godcreator02/gwb-commands':
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-shared-react':
         specifier: workspace:*
         version: link:../../packages/shared-react
@@ -222,6 +228,9 @@ importers:
       '@godcreator02/gwb-tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -234,6 +243,9 @@ importers:
       cn:
         specifier: ^0.2.5
         version: 0.2.5
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
       esbuild:
         specifier: ^0.27.0
         version: 0.27.7
@@ -269,8 +281,8 @@ importers:
         specifier: workspace:*
         version: link:../data
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -287,11 +299,14 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -308,8 +323,8 @@ importers:
         specifier: workspace:*
         version: link:../data
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -365,11 +380,14 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -383,8 +401,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -404,8 +422,8 @@ importers:
         specifier: workspace:*
         version: link:../data
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-shared-react':
         specifier: workspace:*
         version: link:../../packages/shared-react
@@ -413,8 +431,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tokens
       '@types/node':
-        specifier: ^26.4.1
-        version: 26.4.1
+        specifier: ^24.0.0
+        version: 24.13.3
       '@types/react':
         specifier: 19.2.18
         version: 19.2.18
@@ -458,8 +476,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -473,8 +491,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator02/gwb-plugin-api':
-        specifier: 0.0.3
-        version: 0.0.3(cordis@4.0.0-rc.9)
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
       '@godcreator02/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -914,13 +932,8 @@ packages:
   '@fumari/image-size@0.1.0':
     resolution: {integrity: sha512-x2o9u6P8uKUK15B8XgEoRhR3PgLoLSbQKK6FUCd14JzumEw+e8FXZPelij/dZ4VQVMp4r61VD3DcvSo3aEhLAA==}
 
-  '@godcreator02/gwb-plugin-api@0.0.2':
-    resolution: {integrity: sha512-BCPHClXqadvd+upF6Hm3iRbFQzDPcMIlrua40tqpGHSlGpdaoDfhuqfYmgXYDaKr3O2GM8JFh9FgrVqIZBRWmg==}
-    peerDependencies:
-      cordis: ^4.0.0-rc.9
-
-  '@godcreator02/gwb-plugin-api@0.0.3':
-    resolution: {integrity: sha512-jqXKi7O/DPJhTWJ4HofWO7D9fa4SdZmaS4x6lpXFKHYAQzfcz9oeFCRelJRH7V5M3SDodNKhcTACESs//bXJyQ==}
+  '@godcreator02/gwb-plugin-api@0.1.0':
+    resolution: {integrity: sha512-lHcK2jaE+dKjNcF7obgZUP3UKP6MWU9G6TJDLyRSSk8HrH4vaHldy9LX1PlL1Z7CAehPaJPlf55wXG/8YRIiyA==}
     peerDependencies:
       cordis: ^4.0.0-rc.9
 
@@ -4367,11 +4380,7 @@ snapshots:
 
   '@fumari/image-size@0.1.0': {}
 
-  '@godcreator02/gwb-plugin-api@0.0.2(cordis@4.0.0-rc.9)':
-    dependencies:
-      cordis: 4.0.0-rc.9
-
-  '@godcreator02/gwb-plugin-api@0.0.3(cordis@4.0.0-rc.9)':
+  '@godcreator02/gwb-plugin-api@0.1.0(cordis@4.0.0-rc.9)':
     dependencies:
       cordis: 4.0.0-rc.9
 

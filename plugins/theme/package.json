@@ -1,18 +1,16 @@
 {
   "name": "@godcreator02/gwb-theme",
-  "version": "0.0.2",
-  "description": "外观件：正文字体、等宽字体、自定义样式表。启动样式经 theme.startupCss 交给外壳在首帧前注入；「外观」那格现场改现场看",
+  "version": "0.1.0",
+  "description": "外观件：正文字体、等宽字体、自定义样式表。启动样式经 theme.startupCss 交给外壳在首帧前注入；「外观」那格现场改现场看。0.1 对应单进程内核：注册窗格时自报浏览器半与样式表的 file:// 地址",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "//exports": "./style.css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到",
+  "//exports": "只剩主入口。**内核不再读 exports 表**：浏览器半与样式表的地址由 node 半从 import.meta.url 算成 file://，注册窗格时报给外壳",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./client": "./dist/client.js",
-    "./style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
   "files": [
@@ -26,7 +24,7 @@
   },
   "//peer": "被 inject 的件写 peer，>= 号不写 ^（caret 在 0.0.x 锁死 patch）。shared-react 与 tokens 是浏览器半的口粮（react 系经 importmap、工具类的 var() 值经页面那张令牌表）——home 里没它们界面那半跑不起来，跟 shell/logger 同一判据。外壳是嵌套注入的**可选**依赖：没装外壳本件照常挂，启动样式照常全局生效，只是没有窗格",
   "peerDependencies": {
-    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-plugin-api": ">=0.1.0",
     "@godcreator02/gwb-commands": ">=0.0.2",
     "@godcreator02/gwb-settings": ">=0.0.4",
     "@godcreator02/gwb-shared-react": ">=0.0.2",
@@ -40,7 +38,7 @@
   },
   "//deps": "react 系走页面 importmap（外置），types 与构建线（esbuild / tailwind 经 tools 的共享脚本）全在 dev——打进本束的算 dev",
   "devDependencies": {
-    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-plugin-api": "0.1.0",
     "@godcreator02/gwb-commands": "workspace:*",
     "@godcreator02/gwb-settings": "workspace:*",
     "@godcreator02/gwb-shell": "workspace:*",

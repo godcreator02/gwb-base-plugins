@@ -105,7 +105,12 @@ const SETTINGS_ALL = 'settings.all'
 const SETTINGS_SET = 'settings.set'
 const SETTINGS_DELETE = 'settings.delete'
 const SHELL_PLUGINS = 'shell.plugins'
-const KERNEL_INFO = 'kernel.info'
+/**
+ * 共享包那张表。以前问的是内核的 `kernel.info`——单进程内核没有那条自省命令了，改成问
+ * 本件的 node 半：它去 home 的 node_modules 里逐包读 `gwb.shared`，跟内核算 importmap 时
+ * 扫的是同一批声明
+ */
+const SHARED = 'plugins.shared'
 const OUTDATED = 'plugins.outdated'
 const UPDATE = 'plugins.update'
 const UNINSTALL = 'plugins.uninstall'
@@ -558,12 +563,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   const [checking, setChecking] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
-    // 三份表**各取各的、各败各的**——设置件没装时插件管理照样能用，只是展开区空着
-    const [list, settings, faces, kernel] = await Promise.allSettled([
+    // 四份表**各取各的、各败各的**——设置件没装时插件管理照样能用，只是展开区空着
+    const [list, settings, faces, shared] = await Promise.allSettled([
       args.host.call(LIST),
       args.host.call(SETTINGS_ALL),
       args.host.call(SHELL_PLUGINS),
-      args.host.call(KERNEL_INFO),
+      args.host.call(SHARED),
     ])
     if (list.status === 'fulfilled') {
       const result = asResult(list.value)
@@ -586,35 +591,18 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       const result = asResult(faces.value)
       if (result.ok) setFaces(acceptFaces(result.data))
     }
-    if (kernel.status === 'fulfilled') {
-      const result = asResult(kernel.value)
-      if (result.ok && isRecord(result.data)) {
-        // sharedPkgs 是内核给的声明方清单；旧内核没有这个字段时，从 shared 表的 pkg 反推
-        const direct = result.data['sharedPkgs']
-        const sharedMap = result.data['shared']
-        if (Array.isArray(direct)) {
-          setSharedPkgs(new Set(direct.filter((v): v is string => typeof v === 'string')))
-        } else if (isRecord(sharedMap)) {
-          setSharedPkgs(
-            new Set(
-              Object.values(sharedMap)
-                .filter(isRecord)
-                .map((v) => v['pkg'])
-                .filter((v): v is string => typeof v === 'string'),
-            ),
-          )
+    if (shared.status === 'fulfilled') {
+      const result = asResult(shared.value)
+      // 形状是 { packages: { 包名 → 它提供的裸名 } }。**空数组也算共享包**：gwb-tokens 只出
+      // 一张令牌表、一个裸名都不提供，可它照样不该出现在「装了没挂条目」那一区里
+      const packages = isRecord(result.data) ? result.data['packages'] : undefined
+      if (result.ok && isRecord(packages)) {
+        const providedMap: Record<string, string[]> = {}
+        for (const [pkg, bares] of Object.entries(packages)) {
+          providedMap[pkg] = Array.isArray(bares) ? bares.filter((v): v is string => typeof v === 'string') : []
         }
-        // 共享包各自提供的裸名，展示用
-        if (isRecord(sharedMap)) {
-          const providedMap: Record<string, string[]> = {}
-          for (const [bare, info] of Object.entries(sharedMap)) {
-            if (!isRecord(info)) continue
-            const pkg = info['pkg']
-            if (typeof pkg !== 'string') continue
-            ;(providedMap[pkg] ??= []).push(bare)
-          }
-          setProvided(providedMap)
-        }
+        setSharedPkgs(new Set(Object.keys(providedMap)))
+        setProvided(providedMap)
       }
     }
   }, [args.host])

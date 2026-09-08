@@ -32,7 +32,7 @@ describe('级别是门限，不是等值', () => {
 
 describe('路是多选', () => {
   it('关掉一路，那一路就不显示', () => {
-    const f = { ...base, sources: new Set(['plugin', 'host'] as const) }
+    const f = { ...base, sources: new Set(['plugin', 'kernel'] as const) }
     expect(matches(at({ source: 'plugin' }), f)).toBe(true)
     expect(matches(at({ source: 'renderer' }), f)).toBe(false)
   })
@@ -45,11 +45,11 @@ describe('路是多选', () => {
 
 describe('来源名用复合键', () => {
   it('不同路的同名不撞在一起', () => {
-    const hostInstall = at({ source: 'host', name: 'install' })
+    const kernelInstall = at({ source: 'kernel', name: 'install' })
     const pluginInstall = at({ source: 'plugin', name: 'install' })
-    expect(keyOf(hostInstall)).not.toBe(keyOf(pluginInstall))
-    const f = { ...base, key: keyOf(hostInstall) }
-    expect(matches(hostInstall, f)).toBe(true)
+    expect(keyOf(kernelInstall)).not.toBe(keyOf(pluginInstall))
+    const f = { ...base, key: keyOf(kernelInstall) }
+    expect(matches(kernelInstall, f)).toBe(true)
     expect(matches(pluginInstall, f)).toBe(false)
   })
 
@@ -74,11 +74,11 @@ describe('搜索', () => {
 
 describe('四个维度是「与」', () => {
   it('全都得满足', () => {
-    const e = at({ source: 'host', level: 'error', name: 'host', msg: '起不来' })
-    expect(matches(e, { level: 'error', sources: new Set(['host'] as const), key: 'host|host', search: '起' })).toBe(
+    const e = at({ source: 'kernel', level: 'error', name: 'kernel', msg: '起不来' })
+    expect(matches(e, { level: 'error', sources: new Set(['kernel'] as const), key: 'kernel|kernel', search: '起' })).toBe(
       true,
     )
-    expect(matches(e, { level: 'error', sources: new Set(['host'] as const), key: 'host|host', search: '别的' })).toBe(
+    expect(matches(e, { level: 'error', sources: new Set(['kernel'] as const), key: 'kernel|kernel', search: '别的' })).toBe(
       false,
     )
   })
@@ -86,24 +86,24 @@ describe('四个维度是「与」', () => {
 
 describe('给界面的两份汇总', () => {
   it('数每一路各多少条', () => {
-    const got = countBySource([at({ source: 'plugin' }), at({ source: 'plugin' }), at({ source: 'main' })])
-    expect(got).toEqual({ plugin: 2, host: 0, main: 1, renderer: 0 })
+    const got = countBySource([at({ source: 'plugin' }), at({ source: 'plugin' }), at({ source: 'renderer' })])
+    expect(got).toEqual({ plugin: 2, kernel: 0, renderer: 1 })
   })
 
   it('来源名按路分组、组内排序、去重', () => {
     const got = groupNames([
-      at({ source: 'host', name: 'stdin' }),
+      at({ source: 'kernel', name: 'stdin' }),
       at({ source: 'plugin', name: 'gwb-shell' }),
-      at({ source: 'host', name: 'host' }),
+      at({ source: 'kernel', name: 'kernel' }),
       at({ source: 'plugin', name: 'gwb-shell' }),
     ])
     expect(got).toEqual([
       { source: 'plugin', names: ['gwb-shell'] },
-      { source: 'host', names: ['host', 'stdin'] },
+      { source: 'kernel', names: ['kernel', 'stdin'] },
     ])
   })
 
   it('没有的路不出现在分组里', () => {
-    expect(groupNames([at({ source: 'main', name: 'gwb' })])).toEqual([{ source: 'main', names: ['gwb'] }])
+    expect(groupNames([at({ source: 'renderer', name: 'gwb' })])).toEqual([{ source: 'renderer', names: ['gwb'] }])
   })
 })

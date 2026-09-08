@@ -25,7 +25,7 @@ describe('判形', () => {
   })
 
   it('source 与 level 只认那两张表里的', () => {
-    expect(isLogEntry({ ...at(1), source: 'kernel' })).toBe(false)
+    expect(isLogEntry({ ...at(1), source: 'host' })).toBe(false)
     expect(isLogEntry({ ...at(1), level: 'trace' })).toBe(false)
   })
 

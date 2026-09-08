@@ -26,15 +26,16 @@ import {
 /**
  * 浏览器半：一格日志窗格。
  *
- * **日志不从 `args` 来**——`mountPane` 给的是 `{ host, shell, pane }`，而日志走的是页面的
- * 公共面 `window.gwb.logs`。外壳不该转发它：它凭什么认识「日志」。
+ * **实时那段不从 `args` 来**——`mountPane` 给的是 `{ host, shell, pane }`，而实时行走的是
+ * 页面的公共面 `window.gwb.on`：node 半经 `gwbKernel.emit` 推，载荷上带自己的记号 `t`。
+ * 外壳不该转发它：它凭什么认识「日志」。历史段与脚注那两条才走 `args.host` 的命令。
  *
  * 版面是 2026-09-08 视觉精修后的样子（效果图 `design/logger-pane.html` 定稿）：
  * 日志行 grid 定宽列齐头、error/warn 整行色调加左缘色条、级别分段控件带门限可视化、
  * 路胶囊开关、吸附提示浮在右下角。行为语义没动：门限、多选路、复合键、seq 去重、
  * 吸附 24px、2000 上限切尾、空态双文案。
  *
- * ⚠️ **这一格在收日志的路径上一个 `console` 都不许打。** 渲染层的 console 是四路之一：
+ * ⚠️ **这一格在收日志的路径上一个 `console` 都不许打。** 渲染层的 console 是三路之一：
  * 打一句 → 主进程收走 → 进缓冲 → 推回这儿 → 那条路上如果又打了一句，就是一变二、二变四，
  * 界面当场冻死。取表失败那种一次性的、非循环路径上的，走界面显示，也别打 console。
  */
@@ -48,18 +49,22 @@ const STICK_SLACK = 24
 /** 「全部来源」那一项的值。Radix 的 SelectItem **不收空串**，得给它一个真值 */
 const ALL_KEY = '*'
 
-const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', host: '宿主', main: '主', renderer: '渲' }
+const SOURCE_LABEL: Record<LogSource, string> = { plugin: '件', kernel: '核', renderer: '渲' }
 
 /**
- * 四路的点色。**效果图定稿的自有色**，令牌表里还没有——要转正进 gwb-tokens 是另一件事。
+ * 三路的点色。**效果图定稿的自有色**，令牌表里还没有——要转正进 gwb-tokens 是另一件事。
  * 用在两处：路胶囊上的小点、每行路标上的小点，让「筛选开关」和「流水行」用同一个颜色锚。
  */
 const SOURCE_DOT: Record<LogSource, string> = {
   plugin: 'oklch(0.623 0.214 259.815)',
-  host: 'oklch(0.746 0.13 195)',
-  main: 'oklch(0.75 0.13 70)',
+  kernel: 'oklch(0.746 0.13 195)',
   renderer: 'oklch(0.72 0.14 330)',
 }
+
+/** 内核事件口上认自己那条的记号，跟 node 半的 EVENT 是同一个字符串 */
+const EVENT = 'gwb-logger'
+const BACKLOG_COMMAND = 'logger.backlog'
+const WHERE_COMMAND = 'logger.where'
 
 const LEVEL_MARK: Record<LogLevel, string> = { error: 'E', warn: 'W', info: 'I', debug: 'D' }
 
@@ -94,15 +99,12 @@ interface PaneArgs {
   pane: { id: string; instance: string }
 }
 
-/** 页面的公共面。同样按形状收——条目的正本钉在内核仓的契约页上 */
+/** 页面的公共面。同样按形状收——正本钉在内核的词汇表包上。实时那一路走 on，历史段走本件的命令 */
 declare global {
   interface Window {
     gwb: {
       command<T = unknown>(command: string, args?: unknown): Promise<T>
-      logs: {
-        backlog(): Promise<unknown>
-        on(cb: (batch: unknown) => void): () => void
-      }
+      on(cb: (payload: unknown) => void): () => void
     }
   }
 }
@@ -127,11 +129,22 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
       setEntries((prev) => mergeEntries(prev, acceptEntries(batch), CAP))
     }
     // **先订阅、后取历史**：反过来的话，订阅生效与历史截止之间那一瞬推来的条目会漏掉。
-    // 两段交叠的部分靠 seq 去重挡住
-    const off = window.gwb.logs.on(take)
-    window.gwb.logs.backlog().then(take, (err: unknown) => {
-      if (alive) setFailed(`历史段取不到：${String(err)}`)
+    // 两段交叠的部分靠 seq 去重挡住。事件口上什么件的事件都有，只认带自己记号的
+    const off = window.gwb.on((payload) => {
+      if (payload === null || typeof payload !== 'object') return
+      const p = payload as { t?: unknown; line?: unknown }
+      if (p.t === EVENT) take([p.line])
     })
+    args.host.call(BACKLOG_COMMAND).then(
+      (res) => {
+        const r = res as { ok?: boolean; data?: unknown; error?: string }
+        if (r.ok === true) take(r.data)
+        else if (alive) setFailed(`历史段取不到：${r.error ?? '没说原因'}`)
+      },
+      (err: unknown) => {
+        if (alive) setFailed(`历史段取不到：${String(err)}`)
+      },
+    )
     return () => {
       alive = false
       off()
@@ -140,10 +153,10 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
 
   useEffect(() => {
     let alive = true
-    args.host.call('kernel.info').then(
+    args.host.call(WHERE_COMMAND).then(
       (res) => {
-        const data = (res as { data?: { dataDir?: string; logDir?: string } }).data
-        if (alive && data !== undefined) setWhere({ home: data.dataDir ?? '', logDir: data.logDir ?? '' })
+        const data = (res as { data?: { home?: string; logFile?: string } }).data
+        if (alive && data !== undefined) setWhere({ home: data.home ?? '', logDir: data.logFile ?? '' })
       },
       () => {
         /* 脚注上少两行路径而已，不值得打断什么 */
@@ -211,7 +224,7 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
         </div>
 
         <div className="ml-1.5 flex items-center gap-1 border-l border-border py-0.5 pl-2.5">
-          {(['plugin', 'host', 'main', 'renderer'] as LogSource[]).map((s) => {
+          {(['plugin', 'kernel', 'renderer'] as LogSource[]).map((s) => {
             const on = filter.sources.has(s)
             return (
               <button

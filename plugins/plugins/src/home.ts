@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { toDependencies } from './inventory.js'
+import { toDependencies, toShared } from './inventory.js'
 
 /** home 那份 `package.json`。收窄与对账的纯逻辑在 `inventory.ts` */
 
@@ -29,4 +29,32 @@ export async function readHomeDependencies(homeDir: string): Promise<Record<stri
   } catch {
     return {}
   }
+}
+
+/**
+ * home 里哪些包是**共享包**，各自提供哪些裸名。
+ *
+ * 这份数据以前从内核的 `kernel.info` 拿；单进程内核没有那条自省命令了，改成这个件自己
+ * 去盘上读——扫的是内核算 importmap 时扫的同一批清单（home 的 dependencies，逐包读
+ * `gwb.shared`），所以两边看到的是同一件事。读不动的包**跳过不报错**：正在装的那一瞬间
+ * 清单可能是半份，而少标一个「共享包」的代价远小于整格画不出来。
+ */
+export async function readSharedPackages(homeDir: string): Promise<Record<string, string[]>> {
+  const out: Record<string, string[]> = {}
+  for (const pkg of Object.keys(await readHomeDependencies(homeDir))) {
+    let text: string
+    try {
+      text = await fs.promises.readFile(path.join(homeDir, 'node_modules', ...pkg.split('/'), MANIFEST), 'utf8')
+    } catch {
+      continue
+    }
+    let bares: string[] | undefined
+    try {
+      bares = toShared(JSON.parse(text))
+    } catch {
+      continue
+    }
+    if (bares !== undefined) out[pkg] = bares
+  }
+  return out
 }

@@ -1,9 +1,10 @@
 import http from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { createRequire } from 'node:module'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
-import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
+import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands 与 gwbData
 import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
@@ -16,7 +17,7 @@ import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type 
 /**
  * MCP 桥：把命令面开给外部 agent（方向永远是 agent → 工作台）。
  *
- * - **自己起 `node:http`**。渲染层走 `gwb://` 自定义协议，只有外部 agent 需要真 HTTP，
+ * - **自己起 `node:http`**。渲染层走内核那条 IPC 桥，只有外部 agent 需要真 HTTP，
  *   而这个 server 上眼下就只有本件一个客户——真出现第二个要开口的件，那时再把它拆出去
  * - `/mcp` 是**无状态 streamableHTTP**：每请求现造一对 server + transport，随响应关闭。
  *   代价是发不出 list_changed 那类通知，正连着的 agent 要等下一次重连才知道
@@ -41,6 +42,20 @@ export const inject = ['gwbCommands', 'gwbData']
 /** 首选端口。被占（多 home 同时开的常态）就退让到系统分配的那个 */
 const DEFAULT_PORT = 2870
 
+/**
+ * 报给 MCP 客户端的版本号：**本件自己的**。以前报的是内核的 `kernel.appVersion`，
+ * 词汇表 0.1 里没有那个字段了——而报「桥是哪一版」本来也比报「宿主是哪一版」更贴题，
+ * 工具面是这个件渲染出来的。读不出来就 0.0.0，不为一个版本号让整座桥起不来
+ */
+function ownVersion(): string {
+  try {
+    const manifest = createRequire(import.meta.url)('../package.json') as { version?: unknown }
+    return typeof manifest.version === 'string' ? manifest.version : '0.0.0'
+  } catch {
+    return '0.0.0'
+  }
+}
+
 /** 写一份 JSON 应答：带 content-length，no-store */
 function sendJson(res: ServerResponse, code: number, value: unknown): void {
   const text = JSON.stringify(value)
@@ -54,7 +69,7 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
 
 export function apply(ctx: GwbContext, config?: { port?: number }): void {
   const log = ctx.logger(name)
-  const kernel = requireKernel(ctx)
+  const version = ownVersion()
   const cli = ctx.gwbCommands
   // inject 保证了它在，这句只是把类型收窄
   if (cli === undefined) return
@@ -166,7 +181,7 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
     // 每请求现取:此刻挂着的 skill 当场进说明书,热挂的件不用等重连之外的动作
     const list = skills?.list() ?? []
     const server = new McpServer(
-      { name: 'gwb', version: kernel.appVersion ?? '0.0.0' },
+      { name: 'gwb', version },
       // instructions 是 skill 唯一的发现面:客户端不会自己 resources/list,
       // 不在这段里点名的 skill 等于不存在
       { instructions: buildInstructions(list) },
@@ -254,9 +269,9 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
 
   const server = http.createServer((req, res) => {
     /**
-     * **这里的 promise 必须有人接住**。一旦漏成没人管的 rejection，Node 会直接终止
-     * 宿主进程——而宿主日志走 fd3，未捕获异常压根不经过它，死得一个字都没有。
-     * 旧线真炸过：一发错 token 的请求让宿主 code=1 退出，日志停在「启动完成」
+     * **这里的 promise 必须有人接住**。漏成没人管的 rejection，整个工作台就靠内核那条
+     * `process.on('unhandledRejection')` 兜着——它只记不退，可这一条本来就该在这儿接住，
+     * 请求方等着一份回执。旧线上真炸过：一发错 token 的请求让宿主 code=1 退出
      */
     void handle(req, res).catch((err: unknown) => {
       if (!res.headersSent) sendJson(res, 500, { error: 'internal' })

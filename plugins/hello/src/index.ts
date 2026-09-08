@@ -30,6 +30,9 @@ const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
  * 而且必须是绝对路径，相对路径运行器当场拒
  */
 const NODE_CLI_ENTRY = path.join(PACKAGE_ROOT, 'dist', 'cli.js')
+/** 浏览器半与样式表的地址，注册窗格时报给外壳。dist/ 下三个文件是邻居，从本模块算 */
+const CLIENT_URL = new URL('./client.js', import.meta.url).href
+const STYLE_URL = new URL('./style.css', import.meta.url).href
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
 export const inject = ['gwbData', 'gwbShell', 'gwbCommands']
@@ -44,9 +47,16 @@ export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
   // 注册在 apply 里,同步的。身份不用报——服务从 fiber 上认。也不用自己包 effect,
   // 本件卸载时这两格自动从表上摘掉
-  ctx.gwbShell.registerPane({ id: 'main', title: '验收件', icon: 'flask-conical' })
+  ctx.gwbShell.registerPane({ id: 'main', title: '验收件', icon: 'flask-conical', client: CLIENT_URL, style: STYLE_URL })
   // **声明 duplicable 的那一格**:它每一份自己一个本地计数,开两份互不干扰
-  ctx.gwbShell.registerPane({ id: 'counter', title: '计数器', icon: 'hash', duplicable: true })
+  ctx.gwbShell.registerPane({
+    id: 'counter',
+    title: '计数器',
+    icon: 'hash',
+    duplicable: true,
+    client: CLIENT_URL,
+    style: STYLE_URL,
+  })
   ctx.gwbShell.describeSelf({ title: '验收件', icon: 'flask-conical' })
   log.info('注册了两格（main、counter）并报了名字')
 

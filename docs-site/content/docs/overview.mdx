@@ -43,14 +43,22 @@ livedoc: none
 ## 内核给的面就这么大
 
 - **`ctx.gwbKernel`**（永不撤销，用 `requireKernel(ctx)` 取，**不写进 `inject`**）：
-  `dataDir` / `appVersion` / `install(specs)` / `emit(payload)`
+  `dataDir` / `emit(payload)` / `setShell(url) → 撤销函数`。**就这三样。**
 - **`ctx.loader`**：条目树。改条目就是热挂卸——`create` / `remove` / `update` / `store`。
   自己所在的那棵树是 `ctx.fiber.entry?.parent?.tree`
-- **两条内核命令**：`kernel.info`（自省）、`kernel.install`（装机）
-- **`gwb://asset/plugins/<包名>/client.js`**：界面那半由这条 URL 交给页面
+- **一条内核命令都没有**：`gwb:command` 收到什么就原样派给 `ctx.gwbCommands`
+- **页面的公共面 `window.gwb`**：`command(name, args)` / `on(cb)` / `onShell(cb)`
+- **窗格件自报浏览器半的地址**：`registerPane({ …, client, style })`，值从自己的
+  `import.meta.url` 算成 `file://`；内核不认识任何包名与导出名
+- **件跑在 Electron 主进程里**，`import('electron')` 是件够得着的
 
-契约包 `@godcreator02/gwb-plugin-api` 只有五个名字（`GwbContext` / `GwbKernelApi` /
-`GwbResult` / `requireKernel` / `isRecord`）。**内核的面本来就这么小**，别指望有更多。
+契约包 `@godcreator02/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
+`GwbResult` / `GwbWindowApi` / `ShellBoot` / `requireKernel` / `isRecord`）。**内核的面本来
+就这么小**，别指望有更多。
+
+> ⚠️ 这一段 2026-09-09 换过一次：件仓从旧内核 `gwb-kernel` 迁到单进程内核 `gwb-kernel-min`
+> 与词汇表 0.1。本站其余页面里凡提到 `gwb://`、`kernel.info`、fd3、宿主子进程的段落
+> **还没跟上**，读到时以这一段与 `decisions` 里 2026-09-09 那条为准。
 
 ## 一个件长什么样
 

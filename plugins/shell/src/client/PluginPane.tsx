@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { assetUrl, clientUrl, loadStyle } from './asset.js'
+import { loadStyle } from './asset.js'
+import { fetchPanes } from './panes.js'
 import { describeHandle, pickDispose, pickMountPane } from '../mount-handle.js'
 import { createBusRegistry } from '../bus.js'
 import type { HostBridge, ShellBridge } from './types.js'
@@ -8,7 +9,7 @@ import type { HostBridge, ShellBridge } from './types.js'
  * 一格插件窗格：`mountPane` 契约的外壳这一侧。
  *
  * 契约是 `mountPane({ host, shell, pane }, container) => { dispose() }`。件的 `client.js`
- * 经 `gwb://` 动态 import，件源码里的 react 裸名由页面 importmap 解析到共享包——
+ * 按注册表里那条 `file://` 地址动态 import（件注册时自报的），件源码里的 react 裸名由内核注的 importmap 解析到共享包——
  * 所以件之间拿到的是同一份 React 实例。
  *
  * **样式与模块在同一个 effect 里**：件的表要先注、而且要**等它真到位**再 import，
@@ -77,11 +78,15 @@ export function PluginPane({
 
     void (async () => {
       try {
+        // 地址在注册表里，件注册时从自己的 import.meta.url 算好报上来的。每次开格现取：表是会变的
+        const row = (await fetchPanes(host)).find((r) => r.entryId === entryId && r.id === paneId)
+        if (row === undefined) throw new Error(`注册表里没有条目 ${entryId} 的窗格 ${paneId}——件卸了？`)
+        if (row.client === undefined) throw new Error(`${pluginKey} 注册窗格 ${paneId} 时没报浏览器半的地址（client）`)
         // 表取不到不是错——件可以没有样式表。取到了才等它到位
-        await loadStyle(assetUrl(pluginKey, 'style.css'))
+        if (row.style !== undefined) await loadStyle(row.style)
         if (disposed) return
         // 动态 import 回来的是 any，先落成 unknown 再按契约取
-        const mod: unknown = await import(/* @vite-ignore */ clientUrl(pluginKey))
+        const mod: unknown = await import(/* @vite-ignore */ row.client)
         if (disposed) return
         const mountPane = pickMountPane(mod)
         if (mountPane === undefined) {

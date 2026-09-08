@@ -6,8 +6,8 @@ livedoc: none
 
 # gwb-commands
 
-**没有这个件，界面调不到任何 node 侧的能力**——内核的 `dispatch` 除 `kernel.info` 与
-`kernel.install` 两条自省命令外，全部走 `ctx.gwbCommands`。
+**没有这个件，界面调不到任何 node 侧的能力**——内核一条命令名都不认识，`gwb:command`
+收到什么就原样派给 `ctx.gwbCommands`；没装这个件就是一句「认不出」。
 
 包名 `@godcreator02/gwb-commands`，服务 `ctx.gwbCommands`。产物 4 个文件、零运行时依赖。
 
@@ -45,8 +45,8 @@ args.host.call('mine.hello', { n: 7 }).then((res) => {
 })
 ```
 
-整条链路是：界面 → IPC → 主进程 → fd3 → 内核 `dispatch` → `ctx.gwbCommands` → 你的 handler
-→ 原路回。
+整条链路是：界面 → IPC（`gwb:command`）→ 主进程里的 `ctx.gwbCommands` → 你的 handler
+→ 原路回。件与桥同一个进程，中间没有第三跳。
 
 ## 回执的形状
 

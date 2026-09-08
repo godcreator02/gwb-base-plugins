@@ -7,7 +7,7 @@ import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-shell'
 import type {} from '@godcreator02/gwb-skills'
-import { readHomeDependencies } from './home.js'
+import { readHomeDependencies, readSharedPackages } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
 import { locatePnpm, runPnpm, runPnpmCapture } from './pnpm.js'
@@ -46,6 +46,10 @@ const PANE_ID = 'installed'
 /** 窗格与自述共用一份显示名与图标（lucide 的名字，kebab-case） */
 const FACE = { title: '插件', icon: 'puzzle' }
 
+/** 浏览器半与样式表的地址，注册窗格时报给外壳。dist/ 下三个文件是邻居，从本模块算 */
+const CLIENT_URL = new URL('./client.js', import.meta.url).href
+const STYLE_URL = new URL('./style.css', import.meta.url).href
+
 /** 显示名落在本件自己的数据里，一份 裸 id → label 的文档 */
 const LABELS_DOC = 'labels'
 
@@ -66,6 +70,7 @@ export const OUTDATED_COMMAND = 'plugins.outdated'
 export const UPDATE_COMMAND = 'plugins.update'
 export const SEARCH_COMMAND = 'plugins.search'
 export const UNINSTALL_COMMAND = 'plugins.uninstall'
+export const SHARED_COMMAND = 'plugins.shared'
 
 /** 装机的回执 */
 export interface InstallResult {
@@ -140,6 +145,13 @@ interface SettingsSlot {
 export interface GwbPluginsApi {
   /** 已装的包 → 它们各自的条目。两边都不丢，判据见 `reconcile` */
   list(): Promise<PluginPackageView[]>
+  /**
+   * home 里哪些包是共享包（清单里有 `gwb.shared`），各自提供哪些裸名。
+   *
+   * 界面用它把共享包从「装了没挂条目」那一区里摘出来——共享包不是件，永远不该有条目。
+   * 内核算浏览器半 importmap 时扫的是同一批声明。
+   */
+  shared(): Promise<Record<string, string[]>>
   /**
    * `pnpm add` 进 home，成了再自动加一条条目（**默认启用**）。
    *
@@ -300,6 +312,11 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
 
       on(LIST_COMMAND, 'home 里装了哪些包，各自在 cordis.yml 里有哪些条目', () => this.list())
 
+      on(SHARED_COMMAND, 'home 里哪些包是共享包（清单里有 gwb.shared），各自提供哪些裸名', async () => ({
+        ok: true,
+        data: { packages: await this.shared() },
+      }))
+
       on(INSTALL_COMMAND, 'pnpm add 一个包进 home，再自动加一条条目', async (args) => {
         const raw = asRecord(args)
         const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
@@ -372,7 +389,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
   private wireShell(): void {
     this.own.inject(['gwbShell'], (ctx) => {
       // 两条都不用自己包 ctx.effect：件卸载时表上那两条自动摘掉
-      ctx.gwbShell.registerPane({ id: PANE_ID, ...FACE })
+      ctx.gwbShell.registerPane({ id: PANE_ID, ...FACE, client: CLIENT_URL, style: STYLE_URL })
       ctx.gwbShell.describeSelf(FACE)
     })
   }
@@ -380,6 +397,10 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
   async list(): Promise<PluginPackageView[]> {
     const deps = await readHomeDependencies(this.home)
     return reconcile(deps, readEntries(this.tree.store), this.labels)
+  }
+
+  async shared(): Promise<Record<string, string[]>> {
+    return readSharedPackages(this.home)
   }
 
   async install(pkg: string, spec?: string): Promise<InstallResult> {

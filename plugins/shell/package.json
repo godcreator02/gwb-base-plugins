@@ -1,37 +1,35 @@
 {
   "name": "@godcreator02/gwb-shell",
-  "version": "0.0.16",
-  "description": "外壳：dockview 窗格井 + 窗格注册服务",
+  "version": "0.1.0",
+  "description": "外壳：dockview 窗格井 + 窗格注册服务。0.1 起对应单进程内核：自己把页面根要过来（setShell）、样式表地址自己算，窗格件自报浏览器半地址",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "//exports": "两张 css 必须在这儿列出来——内核的 gwb:// 只认 exports 表，不在表里的文件它一概解析不到。style.css 是 scope 过的（外壳自己的类），dockview.css 不 scope（dockview 原表 + 皮肤，它管的 .dv-* 不经我们的手，而且门户元素挂在 body 下）",
+  "//exports": "只剩主入口。**内核不再读 exports 表**：浏览器半与两张样式表的地址由 node 半从 import.meta.url 算成 file://，随 setShell 与 shell.env 交出去",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./client": "./dist/client.js",
-    "./style.css": "./dist/style.css",
-    "./dockview.css": "./dist/dockview.css",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src"
   ],
-  "//gwb": "**整段没有了**:这个件是外壳,而「我是外壳」这件事靠 provide gwbShell 服务说,不靠包清单——内核看的就是「谁 provide 了它」。包清单里如今只剩 gwb.shared 有人读,而那个是硬的(共享包不是件、没有运行时)",
+  "//gwb": "**整段没有**:这个件是外壳,而「我是外壳」这件事靠 node 半调 kernel.setShell 说,不靠包清单。清单里只剩共享包的 gwb.shared 有人读（内核扫它拼 importmap），这个件不是共享包",
   "scripts": {
     "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "peer 分两类。node 半那四条:cordis 是**运行时真 import**（Service 基类要 extends，而且必须是宿主那一份）;词汇表包与 commands 件只 import type，但都出现在**导出的类型面**上；data 件不一样——类型不出现在导出面（layout.ts 的形状才是），但服务是硬 inject 的运行时前提，跟 commands 同一档待遇。浏览器半那两条共享包:件的浏览器半靠 home 里有它们才跑得起来（react 系经 importmap、令牌表经 gwb://），而 peer 正是「宿主环境得提供这个」的意思。dockview 是 dev——它**打进本束**，不走 importmap，外置成裸名就是运行期炸",
+  "//deps": "peer 分两类。node 半那四条:cordis 是**运行时真 import**（Service 基类要 extends，而且必须是宿主那一份）;词汇表包也是运行时 import（requireKernel 是真函数）;commands 与 data 是硬 inject 的运行时前提。浏览器半那两条共享包:件的浏览器半靠 home 里有它们才跑得起来（react 系经**内核注的** importmap、令牌表经 file://），而 peer 正是「宿主环境得提供这个」的意思。dockview 是 dev——它**打进本束**，不走 importmap，外置成裸名就是运行期炸",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
     "@godcreator02/gwb-commands": ">=0.0.1",
     "@godcreator02/gwb-data": ">=0.0.1",
-    "@godcreator02/gwb-plugin-api": ">=0.0.3",
+    "@godcreator02/gwb-plugin-api": ">=0.1.0",
     "@godcreator02/gwb-shared-react": ">=0.0.2",
     "@godcreator02/gwb-tokens": ">=0.0.2",
     "cordis": "^4.0.0-rc.9"
@@ -39,10 +37,10 @@
   "devDependencies": {
     "@godcreator02/gwb-commands": "workspace:*",
     "@godcreator02/gwb-data": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.0.3",
+    "@godcreator02/gwb-plugin-api": "0.1.0",
     "@godcreator02/gwb-shared-react": "workspace:*",
     "@godcreator02/gwb-tokens": "workspace:*",
-    "@types/node": "^26.4.1",
+    "@types/node": "^24.0.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "cn": "^0.2.5",

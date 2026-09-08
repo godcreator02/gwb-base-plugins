@@ -27,7 +27,7 @@ export interface FilterState {
   search: string
 }
 
-export const ALL_SOURCES: ReadonlySet<LogSource> = new Set(['plugin', 'host', 'main', 'renderer'])
+export const ALL_SOURCES: ReadonlySet<LogSource> = new Set(['plugin', 'kernel', 'renderer'])
 
 export const EMPTY_FILTER: FilterState = {
   level: LEVELS[LEVELS.length - 1]!,
@@ -54,7 +54,7 @@ export function matches(entry: LogEntry, f: FilterState): boolean {
 
 /** 数一下每一路各有多少条。路那排 toggle 上要显示，**数的是筛选之前的全量** */
 export function countBySource(entries: readonly LogEntry[]): Record<LogSource, number> {
-  const out: Record<LogSource, number> = { plugin: 0, host: 0, main: 0, renderer: 0 }
+  const out: Record<LogSource, number> = { plugin: 0, kernel: 0, renderer: 0 }
   for (const e of entries) out[e.source] += 1
   return out
 }
@@ -70,7 +70,7 @@ export function groupNames(entries: readonly LogEntry[]): { source: LogSource; n
     }
     set.add(e.name)
   }
-  const order: LogSource[] = ['plugin', 'host', 'main', 'renderer']
+  const order: LogSource[] = ['plugin', 'kernel', 'renderer']
   return order
     .filter((s) => bySource.has(s))
     .map((source) => ({ source, names: [...bySource.get(source)!].sort() }))

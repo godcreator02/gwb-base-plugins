@@ -1,5 +1,7 @@
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import { Service } from 'cordis'
-import type { GwbContext } from '@godcreator02/gwb-plugin-api'
+import { requireKernel, type GwbContext, type GwbKernelApi } from '@godcreator02/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
 import type {} from '@godcreator02/gwb-commands'
 // 同一个道理，给 ctx 加上 gwbData：布局档经它落进 home
@@ -20,7 +22,7 @@ export type { SavedLayout, LayoutDoc } from './layout.js'
  * cordis 下件挂上时它的 node 半就在跑了，注册发生在 `apply` 里，而 `client.js` 仍然
  * 是点了才动态 import——动态注册一分懒加载都没牺牲。
  *
- * **为什么表要经命令过桥**：内核的 fd3 派发除两条自省命令外一律走 `ctx.gwbCommands`，
+ * **为什么表要经命令过桥**：内核那条命令桥一律派给 `ctx.gwbCommands`，
  * 内核本体不认识任何件的命令名。所以这个件硬 `inject` 命令总线：没有它，注册表出不了
  * 这个进程，外壳就是个开不出任何东西的空井——那种时候不如不挂，cordis 会在日志里
  * 明说它在等谁。
@@ -31,6 +33,33 @@ export const PANES_COMMAND = 'shell.panes'
 export const PLUGINS_COMMAND = 'shell.plugins'
 /** 布局档的两条命令。常量本体住 `layout.ts`（那是个纯模块，浏览器半 import 它不带 cordis） */
 export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
+
+/**
+ * 浏览器半开机问一次的环境：home 与三张样式表的 `file://` 地址。**由 node 半算**：本包的从
+ * `import.meta.url` 算，令牌表按包解析。importmap 不在这儿——那是内核的事（浏览器半的取址），
+ * 页面注完表才 import 本件的浏览器半。
+ */
+export const ENV_COMMAND = 'shell.env'
+
+export interface ShellEnv {
+  home: string
+  /** 按序加载：令牌表、dockview 表、本件自己的表 */
+  styles: string[]
+}
+
+const nodeRequire = createRequire(import.meta.url)
+const fileUrl = (spec: string): string => pathToFileURL(nodeRequire.resolve(spec)).href
+
+function shellEnv(home: string): ShellEnv {
+  return {
+    home,
+    styles: [
+      fileUrl('@godcreator02/gwb-tokens/theme.css'),
+      new URL('./dockview.css', import.meta.url).href,
+      new URL('./style.css', import.meta.url).href,
+    ],
+  }
+}
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
@@ -70,9 +99,12 @@ export default class GwbShell extends Service implements GwbShellApi {
   private readonly plugentry: PluginRegistry
   /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
   private readonly info: (message: string) => void
+  /** 内核那三个名字。构造时取——那时 this.ctx 还是提供方自己的 */
+  private readonly kernel: GwbKernelApi
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbShell')
+    this.kernel = requireKernel(ctx)
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
     const logger = ctx.logger('gwb-shell')
     const warn = (message: string): void => logger.warn(message)
@@ -116,8 +148,15 @@ export default class GwbShell extends Service implements GwbShellApi {
         },
       ),
     )
+    const env = shellEnv(this.kernel.dataDir)
+    this.ctx.effect(() =>
+      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）', plugin: 'gwb-shell' }, () => env),
+    )
+    // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
+    const entry = new URL('./client.js', import.meta.url).href
+    this.ctx.effect(() => this.kernel.setShell(entry))
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 

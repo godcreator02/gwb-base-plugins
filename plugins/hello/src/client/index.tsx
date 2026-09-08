@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 /**
  * 浏览器半——**两格窗格**（不再是整页外壳）。`mountPane` 按 `args.pane.id` 分派。
  *
- * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经 gwb:// 拿得到、
+ * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经注册时自报的 `file://` 地址拿得到、
  * scope 生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**，
  * 外加**跑得起本件自带的那两条 CLI**（一 node 一 python）并把回执显出来。
  *

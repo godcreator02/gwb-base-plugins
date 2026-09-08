@@ -12,7 +12,8 @@ import {
 import { GwbTab } from './GwbTab.js'
 import { PluginPane } from './PluginPane.js'
 import { StatusBar } from './StatusBar.js'
-import { assetUrl, loadStyle } from './asset.js'
+import { loadStyle } from './asset.js'
+import { fetchPanes } from './panes.js'
 import {
   listOpenable,
   planOpen,
@@ -32,7 +33,7 @@ import {
   type LayoutDoc,
   type SavedLayout,
 } from '../layout.js'
-import type { HostBridge, PaneRow, ShellArgs, ShellBridge } from './types.js'
+import type { HostBridge, ShellArgs, ShellBridge } from './types.js'
 
 /**
  * 外壳的浏览器半：一口 dockview 窗格井，把注册表里的每一格开出来。
@@ -44,8 +45,6 @@ import type { HostBridge, PaneRow, ShellArgs, ShellBridge } from './types.js'
  */
 
 const SELF = '@godcreator02/gwb-shell'
-const TOKENS = '@godcreator02/gwb-tokens'
-const PANES_COMMAND = 'shell.panes'
 
 /**
  * 主题件的启动样式命令。**软契约**：命令名两边各存一份字符串，外壳不 import 主题件的
@@ -433,24 +432,6 @@ function App({
 }
 
 /**
- * 取一次注册表。**取不到回空表并记一条错**：外壳照样画出空井，因为「一个件都没注册」
- * 本来就是合法状态，而井在不在跟表取没取到是两回事。
- */
-async function fetchPanes(host: HostBridge): Promise<PaneRow[]> {
-  try {
-    const reply = (await host.call(PANES_COMMAND)) as { ok?: boolean; data?: unknown; error?: string }
-    if (reply.ok !== true || !Array.isArray(reply.data)) {
-      console.error(`[shell] ${PANES_COMMAND} 没回一张表：${reply.error ?? JSON.stringify(reply)}`)
-      return []
-    }
-    return reply.data as PaneRow[]
-  } catch (err) {
-    console.error(`[shell] ${PANES_COMMAND} 调不通：${String(err)}`)
-    return []
-  }
-}
-
-/**
  * 取盘上的布局档。**取不到 / 取不回一律回 null**：第一次开机本来就没有档（`readDoc`
  * 对没有的文档回 undefined，**这不是错、不出声**）；data 件没装时这条命令回不了 ok
  * ——外壳照样起，只是不带记忆，落盘那条也会一样失败（状态栏会亮「布局没存上」）。
@@ -477,11 +458,7 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   hostBridge = args.host
   // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张不 scope
   // （它管的 DOM 类名不经我们的手，而且门户元素在 body 下）、外壳自己那张 scope 过
-  await Promise.all([
-    loadStyle(assetUrl(TOKENS, 'theme.css')),
-    loadStyle(assetUrl(SELF, 'dockview.css')),
-    loadStyle(assetUrl(SELF, 'style.css')),
-  ])
+  await Promise.all(args.styles.map((href) => loadStyle(href)))
   // 第四样：用户自己的外观样式（gwb-theme 件的字体覆盖 + 自定义 CSS）。它要压过令牌
   // 默认值，所以排在这三张 link 之后；theme 没装时这儿是个空操作
   await applyThemeStyle(args.host)
@@ -511,10 +488,7 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   return reactRoot
 }
 
-/**
- * 外壳这一半的入口。**回一个 `{ dispose }`**：这个件被卸载时，页面上这棵树得有人拆。
- * 渲染层眼下还不会调它，但契约面先立在这儿。
- */
+/** 内核 import 本模块后调的是默认导出（见文件末尾），它问完环境再调这个。**回一个 `{ dispose }`**：热换外壳时页面上这棵树得有人拆 */
 export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void } {
   const mounted = boot(args, root).catch((err: unknown) => {
     root.textContent = `外壳起不来：${String(err)}`
@@ -533,6 +507,49 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
       // 不判身份的话旧句柄会把新外壳的那份清掉,全井的件当场报「缺 params」——
       // 而外壳没有 bug,是 dispose 越了界
       if (hostBridge === args.host) hostBridge = undefined
+    },
+  }
+}
+
+/** 页面的公共面里本件用得着的一条。按形状收，正本在内核的词汇表包 */
+declare global {
+  interface Window {
+    gwb: { command(command: string, args?: unknown): Promise<unknown> }
+  }
+}
+
+/** node 半登记的那条环境命令。各存一份字符串，浏览器半不 import node 半 */
+const ENV_COMMAND = 'shell.env'
+
+/**
+ * 内核契约的那一个默认导出：拿走 `#root`，回 `{ dispose }`。
+ * 环境（home、样式表地址）问 node 半的 `shell.env`；importmap 内核在 import 本模块之前已经注好，
+ * 所以本文件顶层的 react 裸名解析得到。
+ */
+export default function mountShell(root: HTMLElement): { dispose(): void } {
+  let inner: { dispose(): void } | undefined
+  let disposed = false
+  ;(async () => {
+    const reply = (await window.gwb.command(ENV_COMMAND)) as {
+      ok?: boolean
+      data?: { home: string; styles: string[] }
+      error?: string
+    }
+    if (reply.ok !== true || reply.data === undefined) {
+      throw new Error(`${ENV_COMMAND} 没回环境：${reply.error ?? '没说原因'}`)
+    }
+    if (disposed) return
+    inner = bootShell(
+      { host: { call: (command, args) => window.gwb.command(command, args) }, home: reply.data.home, styles: reply.data.styles },
+      root,
+    )
+  })().catch((err: unknown) => {
+    root.textContent = `外壳起不来：${String(err)}`
+  })
+  return {
+    dispose() {
+      disposed = true
+      inner?.dispose()
     },
   }
 }

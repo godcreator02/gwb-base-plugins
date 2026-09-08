@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * 产物守卫。这个件有两半，两半的规矩不一样：
  *
- * - **node 半**（`dist/index.js`，tsc 出的）：相对 import 带扩展名、不许有裸名
+ * - **node 半**（`dist/index.js`，tsc 出的）：相对 import 带扩展名、裸名只许词汇表包
  * - **浏览器半**（`dist/client.js`，esbuild 打的）：**只许**那四个共享名漏出去——它们由
  *   页面 importmap 解析到共享包。多漏一个就是运行期一句
  *   `Failed to resolve module specifier`，而那要开到窗格才看得见
@@ -53,11 +53,11 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('node 半：一个裸名都不许有——它只注册两条，没有运行时依赖', () => {
+  it('node 半：裸名只许词汇表包——requireKernel 是真函数，别的一条都没有', () => {
     const bare: string[] = []
     for (const file of nodeHalf) {
       for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:')) bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:') && spec !== '@godcreator02/gwb-plugin-api') bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])
@@ -73,8 +73,8 @@ describe.skipIf(!built)('产物', () => {
     expect(css).toContain(':where([data-gwb-plugin="@godcreator02/gwb-logger"])')
   })
 
-  it('**没把 window.gwb 换成 args**：日志走页面公共面，外壳不转发它', () => {
-    expect(read(CLIENT)).toContain('window.gwb.logs')
+  it('**没把 window.gwb 换成 args**：实时行走页面公共面 window.gwb.on，外壳不转发它', () => {
+    expect(read(CLIENT)).toContain('window.gwb.on')
   })
 
   it('radix 打进了本束——外置成裸名就是运行期一句 Failed to resolve', () => {

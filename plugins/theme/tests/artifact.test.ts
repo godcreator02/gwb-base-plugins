@@ -65,6 +65,25 @@ describe.skipIf(!built)('产物', () => {
   })
 })
 
+describe('注册窗格时自报地址', () => {
+  const source = fs.readFileSync(path.resolve(here, '../src/index.ts'), 'utf8')
+
+  /**
+   * 新契约（词汇表 0.1）：**内核不再读 exports 表**，也没有 `gwb://`。件注册窗格时自报
+   * 浏览器半与样式表的 `file://` 地址，从自己的 `import.meta.url` 算。漏了这两个字段的
+   * 症状是「格开出来是一句错」，而那要点开那一格才看得见——所以钉在这儿。
+   */
+  it('两个地址都从 import.meta.url 算', () => {
+    expect(source).toContain("new URL('./client.js', import.meta.url).href")
+    expect(source).toContain("new URL('./style.css', import.meta.url).href")
+  })
+
+  it('registerPane 把两个地址都报上去了', () => {
+    expect(source).toContain('client: CLIENT_URL')
+    expect(source).toContain('style: STYLE_URL')
+  })
+})
+
 describe('包清单', () => {
   const manifest = JSON.parse(fs.readFileSync(path.resolve(here, '../package.json'), 'utf8')) as {
     exports?: Record<string, unknown>
@@ -72,11 +91,6 @@ describe('包清单', () => {
     peerDependencies?: Record<string, string>
     peerDependenciesMeta?: Record<string, { optional?: boolean }>
   }
-
-  it('client 与 style.css 都在 exports 表里——gwb:// 只认这张表', () => {
-    expect(manifest.exports?.['./client']).toBeDefined()
-    expect(manifest.exports?.['./style.css']).toBeDefined()
-  })
 
   it('dist 和 src 都进了 files——client 的守卫要照着 src 扫', () => {
     expect(manifest.files).toContain('dist')

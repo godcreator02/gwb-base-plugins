@@ -9,6 +9,37 @@ livedoc: none
 按 `gwb-decide` 的规矩：选型推完交人拍板，拍板之后记进这页。只记关系**件**的选型；
 关系**规则**的（命名、依赖判据、内核该不该做某事）归内核仓的站。
 
+## 2026-09-09：全部件迁到单进程内核的 0.1 契约
+
+**定**：这个仓从今天起对着**单进程内核** `gwb-kernel-min`（单元 `26090705ymz`）与
+**词汇表 0.1**（`@godcreator02/gwb-plugin-api@0.1.0`）。十二件一起发 0.1.0。
+**旧内核 `gwb-kernel` 退役**——它那套（宿主子进程、fd3、`gwb://`、`kernel.info`）不再是
+这些件的运行环境。
+
+契约变了这几处，件那边一一对应：
+
+| 从前（旧内核） | 现在（0.1 契约） | 谁改了 |
+| --- | --- | --- |
+| 内核按 `exports` 表解析 `gwb://asset/plugins/<包>/client` | 件注册窗格时自报 `client` / `style` 的 `file://` 地址，从自己的 `import.meta.url` 算 | 窗格件全体（shell 的注册表加两个字段） |
+| 内核挑「谁是外壳」并 boot 它 | 外壳 node 半自己 `kernel.setShell(本包的 client.js)`；开机要的 home 与三张样式表走新命令 `shell.env` | shell |
+| 日志管道在内核（四路汇总、缓冲、`window.gwb.logs`） | 日志件自己挂 cordis exporter 收三路（件 / 内核 / 渲染层）、自己缓冲、经 `gwbKernel.emit` 推；页面订 `window.gwb.on` | logger |
+| `kernel.info` 报 `shared` / `sharedPkgs` | importmap 还是内核拼（扫 home 里各包的 `gwb.shared`），但**没有自省命令**：件管理改自己读 home 的 `node_modules`，开了一条 `plugins.shared` | plugins |
+| `gwbKernel.appVersion` | 没有了。MCP 桥报给客户端的版本改成**本件自己的** | mcp |
+| `gwbKernel.install(specs)` / `kernel.install` | 没有了。装包一直就是 `plugins.install` 走 pnpm | 无（本仓从没用过内核那条） |
+
+**共享包的声明面没动**：`gwb.shared` 还是提供方在自己清单里声明，内核只搬运。所以
+`gwb-shared-react`（0.0.2）与 `gwb-tokens`（0.0.5）这一轮不发版。
+
+**依据**：不是「顺手升级」——旧内核已经不再是这些件跑的地方，件仓不跟上就是一整仓对着
+一个没人再起的宿主写代码。改动面也确实只有上表那几处：`commands` / `node-cli` / `py-cli` /
+`data` / `settings` / `skills` 六件**一行源码都没动**，只换了依赖来源与版本号——契约面本来
+就小，这是它小的好处。
+
+**验的方式**：十二件从本机 registry 装进 `gwb-kernel-min` 的一个隔离 home，起内核经 CDP
+取证：五格窗格全部自报了 `client` 与 `style`、十二条条目全 `active`、`hello.node` 与
+`hello.python` 退出码 0、`plugins.shared` 认出两个共享包、`mcp.info` 回连接串、页面
+`console.log` 一句 800 毫秒内出现在日志格里。
+
 ## 2026-09-08：状态格机制整个下架，件各画各的窗格
 
 **定**：`gwb-status` 与整条状态格机制（`registerCell` / `mountCell` / `status.cells` /
