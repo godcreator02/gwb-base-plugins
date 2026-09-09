@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>两张子集表叠在同一层里</title>
+    <style>
+      /*
+       * 自足的一页：不引任何外部脚本与字体，**不画自己的背景色**（站的底色透上来），
+       * 线条与文字用两套主题下都读得清的中性色。高度写死，跟嵌它的 iframe 对齐。
+       *
+       * 图里不出现任何具体的类名、路径、函数名——它画的是**机制的形状**：
+       * 谁先谁后、在哪一步被盖掉、哪一步没有报错。具体名字留在正文里、由引用钉住。
+       */
+      :root {
+        --ink: #24242a;
+        --dim: #6b6b76;
+        --line: #b9b9c4;
+        --soft: rgba(120, 120, 140, 0.12);
+        --hit: #c2410c;
+        --ok: #15803d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e6e6ec;
+          --dim: #9a9aa6;
+          --line: #55555f;
+          --soft: rgba(160, 160, 190, 0.14);
+          --hit: #fb923c;
+          --ok: #4ade80;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        height: 420px;
+        overflow: hidden;
+        color: var(--ink);
+        font: 13px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+      }
+      .wrap {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 14px;
+      }
+
+      .caption {
+        min-height: 34px;
+        font-size: 13.5px;
+      }
+      .caption b {
+        font-weight: 600;
+      }
+      .caption .n {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+        margin-right: 6px;
+      }
+
+      .stage {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        min-height: 0;
+        /* 高度是写死的（跨文档量不到内容高度），窄屏下留一个泄压阀，别把内容硬裁掉 */
+        overflow: auto;
+      }
+      @media (max-width: 560px) {
+        .stage {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .col {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+      }
+      .col > h4 {
+        margin: 0;
+        font-size: 11.5px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--dim);
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        opacity: 0.25;
+        transition: opacity 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+      }
+      .card.on {
+        opacity: 1;
+      }
+      .card .who {
+        font-weight: 600;
+        min-width: 3.2em;
+      }
+      .tag {
+        display: inline-block;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 6px;
+        line-height: 1.7;
+        font-variant-numeric: tabular-nums;
+      }
+      .tag.two {
+        border-style: dashed;
+      }
+
+      /* 同一层：规则按文档序自上而下排 */
+      .layer {
+        border: 1px dashed var(--line);
+        border-radius: 6px;
+        padding: 7px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        flex: 1;
+        min-height: 0;
+      }
+      .layer > .lbl {
+        font-size: 11px;
+        color: var(--dim);
+      }
+      .rule {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 3px 6px;
+        border-radius: 4px;
+        opacity: 0.2;
+        transition: opacity 0.3s ease, background 0.3s ease, color 0.3s ease;
+      }
+      .rule.on {
+        opacity: 1;
+      }
+      .rule.win {
+        background: var(--soft);
+        color: var(--hit);
+        font-weight: 600;
+      }
+      .rule.dead {
+        text-decoration: line-through;
+        opacity: 0.45;
+      }
+      .rule .ord {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+        min-width: 1.4em;
+      }
+
+      .result {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 30px;
+        font-size: 12.5px;
+      }
+      .box {
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 3px 6px;
+        transition: padding 0.35s ease, border-color 0.35s ease;
+      }
+      .box.reset {
+        border-color: var(--hit);
+        padding: 3px 14px;
+      }
+      .quiet {
+        color: var(--ok);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .quiet.on {
+        opacity: 1;
+      }
+
+      .legend {
+        font-size: 11.5px;
+        color: var(--dim);
+      }
+
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 3px 11px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--soft);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .dots {
+        margin-left: auto;
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="caption"><span class="n" id="num"></span><span id="cap"></span></p>
+
+      <div class="stage">
+        <div class="col">
+          <h4>两个件各写各的</h4>
+          <div class="card" id="a-src">
+            <span class="who">件甲</span>
+            <span class="tag">①</span>
+            <span class="tag two">②</span>
+          </div>
+          <div class="card" id="b-src">
+            <span class="who">件乙</span>
+            <span class="tag">①</span>
+          </div>
+
+          <h4 style="margin-top: 4px">按需编译出的两张表</h4>
+          <div class="card" id="a-sheet">
+            <span class="who">甲的表</span>
+            <span class="tag">①</span>
+            <span class="tag two">②</span>
+          </div>
+          <div class="card" id="b-sheet">
+            <span class="who">乙的表</span>
+            <span class="tag">①</span>
+            <span style="color: var(--dim)">乙没写过②</span>
+          </div>
+        </div>
+
+        <div class="col">
+          <h4>叠进同一层，按加载先后排</h4>
+          <div class="layer">
+            <span class="lbl">同层、同权重 → 排在后面的赢</span>
+            <div class="rule" id="r1"><span class="ord">1</span><span class="tag">①</span><span>甲的</span></div>
+            <div class="rule" id="r2"><span class="ord">2</span><span class="tag two">②</span><span>甲的</span></div>
+            <div class="rule" id="r3"><span class="ord">3</span><span class="tag">①</span><span>乙的</span></div>
+          </div>
+          <div class="result">
+            <span>甲的元素：</span>
+            <span class="box" id="box">②改过的样子</span>
+            <span class="quiet" id="quiet">构建绿、运行期零报错</span>
+          </div>
+          <p class="legend">①＝一条基础规则；②＝只改写它一部分的规则。两个件都用得上①。</p>
+        </div>
+      </div>
+
+      <div class="bar">
+        <button id="prev">上一步</button>
+        <button id="next">下一步</button>
+        <button id="replay">重播</button>
+        <span class="dots" id="dots"></span>
+      </div>
+    </div>
+
+    <script>
+      // 不自动循环：读者常常要停在某一步看。只有「上一步 / 下一步 / 重播」。
+      const steps = [
+        {
+          cap: '两个件各写各的类。<b>甲</b>用了①和②（②只改写①的一部分），<b>乙</b>只用了①。',
+          on: ['a-src', 'b-src'],
+        },
+        {
+          cap: '编译器<b>按需出规则</b>：你用到哪条编哪条。于是每张表都是全集的<b>一个子集，而且各是各的子集</b>——乙的表里根本没有②。',
+          on: ['a-src', 'b-src', 'a-sheet', 'b-sheet'],
+        },
+        {
+          cap: '两张表落进<b>同一层</b>。层内没有先后之分，只有加载的先后：甲先注，乙后注。',
+          on: ['a-src', 'b-src', 'a-sheet', 'b-sheet'],
+          rules: ['on', 'on', 'on'],
+        },
+        {
+          cap: '同层、同权重，胜负只看<b>文档序</b>——乙的①排在甲的②<b>后面</b>。',
+          on: ['a-src', 'b-src', 'a-sheet', 'b-sheet'],
+          rules: ['on', 'on', 'on win'],
+        },
+        {
+          cap: '于是甲的元素被乙那条①<b>整个重置</b>回基础值，甲写的②丢了。而<b>没有任何一处报错</b>：两张表都编得对、都加载成功了，只是撞在了一起。',
+          on: ['a-src', 'b-src', 'a-sheet', 'b-sheet'],
+          rules: ['on', 'on dead', 'on win'],
+          reset: true,
+          quiet: true,
+        },
+        {
+          cap: '所以隔离是<b>必需的</b>，不是洁癖。让每个件的类名<b>从源头就唯一</b>之后，两张表里再没有同名的规则——规则仍然全页有效，但只可能匹配到本件画出来的元素，撞不上了。',
+          on: ['a-src', 'b-src', 'a-sheet', 'b-sheet'],
+          rules: ['on', 'on', 'on'],
+          renamed: true,
+        },
+      ]
+
+      const ids = ['a-src', 'b-src', 'a-sheet', 'b-sheet']
+      const ruleIds = ['r1', 'r2', 'r3']
+      const $ = (id) => document.getElementById(id)
+      let i = 0
+
+      function render() {
+        const s = steps[i]
+        $('cap').innerHTML = s.cap
+        $('num').textContent = `${i + 1} / ${steps.length}`
+        $('dots').textContent = '●'.repeat(i + 1) + '○'.repeat(steps.length - i - 1)
+        for (const id of ids) $(id).className = 'card' + (s.on.includes(id) ? ' on' : '')
+        ruleIds.forEach((id, k) => {
+          $(id).className = 'rule' + ((s.rules && s.rules[k]) ? ' ' + s.rules[k] : '')
+        })
+        $('box').className = 'box' + (s.reset ? ' reset' : '')
+        $('box').textContent = s.reset ? '被重置回①的样子' : '②改过的样子'
+        $('quiet').className = 'quiet' + (s.quiet ? ' on' : '')
+        // 最后一步：把两个件的规则改成各带各的名字，同名消失
+        const mark = s.renamed
+        document.querySelectorAll('#b-sheet .tag, #r3 .tag').forEach((el) => {
+          el.textContent = mark ? '乙①' : '①'
+        })
+        document.querySelectorAll('#a-sheet .tag, #r1 .tag, #r2 .tag').forEach((el, k) => {
+          el.textContent = mark ? (el.classList.contains('two') ? '甲②' : '甲①') : el.classList.contains('two') ? '②' : '①'
+        })
+        if (mark) {
+          $('box').textContent = '②改过的样子'
+          $('box').className = 'box'
+        }
+        $('prev').disabled = i === 0
+        $('next').disabled = i === steps.length - 1
+      }
+
+      $('prev').onclick = () => {
+        if (i > 0) i--
+        render()
+      }
+      $('next').onclick = () => {
+        if (i < steps.length - 1) i++
+        render()
+      }
+      $('replay').onclick = () => {
+        i = 0
+        render()
+      }
+      render()
+    </script>
+  </body>
+</html>
