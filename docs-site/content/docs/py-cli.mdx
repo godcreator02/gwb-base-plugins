@@ -123,6 +123,18 @@ export function apply(ctx: GwbContext) {
 
 登记时顺手发起一次守卫，**但不挡着 `apply` 往下走**——首次可能要下一个 python 解释器。
 
+### 按次给 cwd
+
+跟 [node 那半](/docs/node-cli)一样：`run(name, extraArgs?, opts?: { cwd?: string })`，
+总线镜像认 `{ args, cwd }`（给一串仍当 `args`）。优先级：按次给的 > 登记时给的 >
+`<packageRoot>/py`。按次的 cwd 必须是存在的目录的绝对路径，不合规不抛、不起进程也
+**不跑守卫**，回 `{ ok: false, error }`：
+
+@@livedoc ref ../plugins/py-cli/src/index.ts:213-224 @@
+
+校验那份纯函数 `invoke.ts` 是 node 那半的副本，跟 `run.ts` 同一个待遇——改一处就得改另一处。
+挂进总线的描述由运行器补上参数形状那一句，件只写自己那半。
+
 自带一条 `py-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
 验收归消费方件，样板是 `plugins/hello`。超时的上限同 node 那半，110 秒。
 

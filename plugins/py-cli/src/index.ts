@@ -6,12 +6,15 @@ import type {} from '@godcreator02/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
 import { ensureVenv, venvPaths, type BootstrapResult } from './bootstrap.js'
+import { checkCwd, parseInvocation } from './invoke.js'
 import { createRegistry, type PyCliRegistry, type PyCliSpec, type RegisteredPyCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
 
 export type { PyCliSpec, RegisteredPyCli } from './registry.js'
 export type { CliRunResult, CliStream } from './run.js'
 export type { BootstrapResult, VenvPaths } from './bootstrap.js'
+export type { CwdCheck, Invocation } from './invoke.js'
+export { checkCwd, parseInvocation } from './invoke.js'
 export { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './registry.js'
 export { STAMP_NAME, venvPaths } from './bootstrap.js'
 
@@ -38,6 +41,23 @@ const PLUGIN_NAME = 'gwb-py-cli'
  */
 const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
 
+/**
+ * 每条登记进总线的命令，描述末尾都带这一句：agent 只看描述就得知道参数怎么给。
+ * 写在这儿而不是让每个消费方件自己写，是因为形状是运行器定的，件只定它自己那半
+ */
+const INVOKE_SHAPE =
+  '参数 { args?: string[], cwd?: string }：args 追加在固定参数后（直接给一串也当 args）；' +
+  'cwd 要是存在的目录的绝对路径，缺省落在包根的 py/ 下'
+
+/** 一次调用被拒（cwd 不合规之类）：没起进程，回一句说清要什么的话 */
+export interface CliRunRefused {
+  ok: false
+  error: string
+}
+
+/** `run` 回的两种：跑过了（进程回执）或没跑（被拒） */
+export type CliRunOutcome = CliRunResult | CliRunRefused
+
 /** 消费方拿到的那一格。写 `inject: ['gwbPyCli']` 才有 */
 export interface GwbPyCliApi {
   /**
@@ -56,18 +76,17 @@ export interface GwbPyCliApi {
   register(spec: PyCliSpec): () => void
   /** 此刻表里有哪些条,按登记先后 */
   list(): RegisteredPyCli[]
-  /** 跑一条。跑之前守卫过一遍,所以 venv 没了会当场重建。没这条命令时抛 */
-  run(name: string, extraArgs?: readonly string[]): Promise<CliRunResult>
+  /**
+   * 跑一条。跑之前守卫过一遍,所以 venv 没了会当场重建。`opts.cwd` 是**按次**给的工作目录，
+   * 必须是存在的目录的绝对路径，不合规**不抛**、回 `{ ok: false, error }`（`spec.cwd` 仍是缺省）。
+   * 没这条命令时抛
+   */
+  run(name: string, extraArgs?: readonly string[], opts?: { cwd?: string }): Promise<CliRunOutcome>
 }
 
-/** 总线那头递来的参数：给一串就是追加参数,给 `{ args: [...] }` 也认,别的忽略 */
-function toExtraArgs(args?: unknown): string[] {
-  if (Array.isArray(args)) return args.map(String)
-  if (typeof args === 'object' && args !== null && 'args' in args) {
-    const inner = (args as { args?: unknown }).args
-    if (Array.isArray(inner)) return inner.map(String)
-  }
-  return []
+/** 挂进总线的描述：件写的那半在前，运行器定的参数形状在后 */
+function describeCommand(description: string | undefined): string {
+  return description === undefined || description === '' ? INVOKE_SHAPE : `${description}。${INVOKE_SHAPE}`
 }
 
 export default class GwbPyCli extends Service implements GwbPyCliApi {
@@ -106,7 +125,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     if (cli === undefined) return
 
     this.own.effect(() =>
-      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI', plugin: PLUGIN_NAME }, () =>
+      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI。无参数', plugin: PLUGIN_NAME }, () =>
         this.registry.list(),
       ),
     )
@@ -168,9 +187,10 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const record = this.registry.get(spec.name)!
     const cli = this.own.gwbCommands
-    const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', plugin }, (args) =>
-      this.run(spec.name, toExtraArgs(args)),
-    )
+    const offCli = cli?.register({ name: spec.name, description: describeCommand(spec.description), plugin }, (args) => {
+      const invocation = parseInvocation(args)
+      return this.invoke(spec.name, invocation.args, invocation.cwd)
+    })
     const dispose = (): void => {
       off()
       offCli?.()
@@ -186,17 +206,28 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     return this.registry.list()
   }
 
-  async run(name: string, extraArgs: readonly string[] = []): Promise<CliRunResult> {
+  async run(name: string, extraArgs: readonly string[] = [], opts?: { cwd?: string }): Promise<CliRunOutcome> {
+    return this.invoke(name, extraArgs, opts?.cwd)
+  }
+
+  /** `run` 与总线那条路同吃这一处。`cwdRaw` 是没收窄过的——总线递来什么都得先过 `checkCwd` */
+  private async invoke(name: string, extraArgs: readonly string[], cwdRaw: unknown): Promise<CliRunOutcome> {
     const found = this.registry.get(name)
     if (found === undefined) throw new Error(`没有这条 python CLI：${name}`)
-    return this.runRecord(found, extraArgs)
+    // 按次的 cwd 不合规就不起进程、也不跑守卫：错误文本就是文档,回去让调用方读
+    const perCall = checkCwd(cwdRaw)
+    if (!perCall.ok) {
+      this.warn(`${name} 没跑：${perCall.error}`)
+      return { ok: false, error: perCall.error }
+    }
+    return this.runRecord(found, extraArgs, perCall.cwd)
   }
 
   /**
    * 真正跑一条。**先守卫再跑**——幂等，已就绪时只是三次 fs 调用；venv 被外力抹掉时
    * 当场重建。自愈就是这一句，没有单独的重试路径。
    */
-  private async runRecord(record: RegisteredPyCli, extraArgs: readonly string[]): Promise<CliRunResult> {
+  private async runRecord(record: RegisteredPyCli, extraArgs: readonly string[], cwd: string | undefined): Promise<CliRunResult> {
     const ready = await this.ensureReady(record)
     if (!ready.ready) {
       // register 时那趟守卫有日志,run 时这道重验过去静默抛——venv 坏了的现场得留一句
@@ -215,7 +246,8 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     const result = await runProcess({
       command,
       args: [...prefix, ...record.args, ...extraArgs],
-      cwd: record.cwd ?? paths.projectDir,
+      // 按次给的 > 登记时给的 > 那个 python 项目目录
+      cwd: cwd ?? record.cwd ?? paths.projectDir,
       env: { ...PY_ENV, ...record.env },
       timeoutMs: record.timeoutMs,
     })

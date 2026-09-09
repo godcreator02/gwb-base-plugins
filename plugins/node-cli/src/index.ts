@@ -5,11 +5,14 @@ import type { GwbContext } from '@godcreator02/gwb-plugin-api'
 import type {} from '@godcreator02/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
+import { checkCwd, parseInvocation } from './invoke.js'
 import { createRegistry, type NodeCliRegistry, type NodeCliSpec, type RegisteredNodeCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
 
 export type { NodeCliSpec, RegisteredNodeCli } from './registry.js'
 export type { CliRunResult, CliStream } from './run.js'
+export type { CwdCheck, Invocation } from './invoke.js'
+export { checkCwd, parseInvocation } from './invoke.js'
 export { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './registry.js'
 
 /**
@@ -35,6 +38,23 @@ const PLUGIN_NAME = 'gwb-node-cli'
  */
 const ELECTRON_AS_NODE = { ELECTRON_RUN_AS_NODE: '1' }
 
+/**
+ * 每条登记进总线的命令，描述末尾都带这一句：agent 只看描述就得知道参数怎么给。
+ * 写在这儿而不是让每个消费方件自己写，是因为形状是运行器定的，件只定它自己那半
+ */
+const INVOKE_SHAPE =
+  '参数 { args?: string[], cwd?: string }：args 追加在固定参数后（直接给一串也当 args）；' +
+  'cwd 要是存在的目录的绝对路径，缺省落在那个 js 自己旁边'
+
+/** 一次调用被拒（cwd 不合规之类）：没起进程，回一句说清要什么的话 */
+export interface CliRunRefused {
+  ok: false
+  error: string
+}
+
+/** `run` 回的两种：跑过了（进程回执）或没跑（被拒） */
+export type CliRunOutcome = CliRunResult | CliRunRefused
+
 /** 消费方拿到的那一格。写 `inject: ['gwbNodeCli']` 才有 */
 export interface GwbNodeCliApi {
   /**
@@ -46,18 +66,17 @@ export interface GwbNodeCliApi {
   register(spec: NodeCliSpec): () => void
   /** 此刻表里有哪些条,按登记先后 */
   list(): RegisteredNodeCli[]
-  /** 跑一条。`extraArgs` 追加在 spec 的固定参数后面。没这条命令时抛 */
-  run(name: string, extraArgs?: readonly string[]): Promise<CliRunResult>
+  /**
+   * 跑一条。`extraArgs` 追加在 spec 的固定参数后面；`opts.cwd` 是**按次**给的工作目录，
+   * 必须是存在的目录的绝对路径，不合规**不抛**、回 `{ ok: false, error }`（`spec.cwd` 仍是缺省）。
+   * 没这条命令时抛
+   */
+  run(name: string, extraArgs?: readonly string[], opts?: { cwd?: string }): Promise<CliRunOutcome>
 }
 
-/** 总线那头递来的参数：给一串就是追加参数,给 `{ args: [...] }` 也认,别的忽略 */
-function toExtraArgs(args?: unknown): string[] {
-  if (Array.isArray(args)) return args.map(String)
-  if (typeof args === 'object' && args !== null && 'args' in args) {
-    const inner = (args as { args?: unknown }).args
-    if (Array.isArray(inner)) return inner.map(String)
-  }
-  return []
+/** 挂进总线的描述：件写的那半在前，运行器定的参数形状在后 */
+function describeCommand(description: string | undefined): string {
+  return description === undefined || description === '' ? INVOKE_SHAPE : `${description}。${INVOKE_SHAPE}`
 }
 
 export default class GwbNodeCli extends Service implements GwbNodeCliApi {
@@ -98,7 +117,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     if (cli === undefined) return
 
     this.own.effect(() =>
-      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', plugin: PLUGIN_NAME }, () =>
+      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI。无参数', plugin: PLUGIN_NAME }, () =>
         this.registry.list(),
       ),
     )
@@ -128,10 +147,10 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     const off = this.registry.register(plugin, spec)
     this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const cli = this.own.gwbCommands
-    const offCli = cli?.register(
-      { name: spec.name, description: spec.description ?? '', plugin },
-      (args) => this.run(spec.name, toExtraArgs(args)),
-    )
+    const offCli = cli?.register({ name: spec.name, description: describeCommand(spec.description), plugin }, (args) => {
+      const invocation = parseInvocation(args)
+      return this.invoke(spec.name, invocation.args, invocation.cwd)
+    })
     const dispose = (): void => {
       off()
       offCli?.()
@@ -146,17 +165,28 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     return this.registry.list()
   }
 
-  async run(name: string, extraArgs: readonly string[] = []): Promise<CliRunResult> {
+  async run(name: string, extraArgs: readonly string[] = [], opts?: { cwd?: string }): Promise<CliRunOutcome> {
+    return this.invoke(name, extraArgs, opts?.cwd)
+  }
+
+  /** `run` 与总线那条路同吃这一处。`cwdRaw` 是没收窄过的——总线递来什么都得先过 `checkCwd` */
+  private async invoke(name: string, extraArgs: readonly string[], cwdRaw: unknown): Promise<CliRunOutcome> {
     const found = this.registry.get(name)
     if (found === undefined) throw new Error(`没有这条 node CLI：${name}`)
+    // 按次的 cwd 不合规就不起进程：错误文本就是文档,回去让调用方读
+    const perCall = checkCwd(cwdRaw)
+    if (!perCall.ok) {
+      this.warn(`${name} 没跑：${perCall.error}`)
+      return { ok: false, error: perCall.error }
+    }
     // 起跑与收尾都出声:一条子进程从生到死,日志里得能对上账
     this.info(`跑 ${name}（追加 ${extraArgs.length} 个参数,时限 ${found.timeoutMs}ms）`)
     const result = await runProcess({
       command: process.execPath,
       args: [found.entry, ...found.args, ...extraArgs],
-      // 不给就落在那个 js 自己旁边。**不继承宿主的 cwd**——那是内核的目录,跟这条命令毫无关系,
-      // 而且随内核怎么起而变。要确定的工作目录就自己给 cwd
-      cwd: found.cwd ?? path.dirname(found.entry),
+      // 按次给的 > 登记时给的 > 那个 js 自己旁边。**不继承宿主的 cwd**——那是内核的目录,
+      // 跟这条命令毫无关系,而且随内核怎么起而变。要确定的工作目录就自己给
+      cwd: perCall.cwd ?? found.cwd ?? path.dirname(found.entry),
       env: { ...ELECTRON_AS_NODE, ...found.env },
       timeoutMs: found.timeoutMs,
     })

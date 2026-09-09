@@ -65,7 +65,35 @@ export function apply(ctx: GwbContext) {
 ```js
 await window.gwb.command('mine.build', ['--watch'])   // 一串就是追加参数
 await window.gwb.command('mine.build', { args: ['--watch'] })  // 这么写也认
+await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj' })  // 按次给工作目录
 ```
+
+总线那头递来的参数怎么认，是一个纯函数：
+
+@@livedoc ref ../plugins/node-cli/src/invoke.ts:17-29 @@
+
+挂进总线的描述由运行器补上参数形状那一句（`{ args?: string[], cwd?: string }`），件只写
+自己那半——形状是运行器定的，agent 只看描述就得知道怎么给。
+
+## 按次给 cwd
+
+`spec.cwd` 是登记时定的缺省，而一条 CLI 常常要**对着某个目录**跑（构建某个工程、扫某个
+仓）。所以 `run(name, extraArgs?, opts?: { cwd?: string })` 第三个参数按次给，总线镜像
+认 `{ args, cwd }`。优先级：按次给的 > 登记时给的 > `entry` 旁边。
+
+按次的 cwd **必须是存在的目录的绝对路径**，不合规**不抛**、不起进程，回
+`{ ok: false, error }`——错误文本就是文档，agent 读一遍就知道该给什么：
+
+@@livedoc ref ../plugins/node-cli/src/invoke.ts:33-49 @@
+
+三种拒法各说各的：不是字符串、相对路径（这儿不知道该相对于谁——跟 `entry` 那条判据一样）、
+不存在或不是目录。`isDirectory` 留了个口子给测试塞假的，真跑时问盘。
+
+服务面的 `run` 与总线那条路同吃这一处收窄：
+
+@@livedoc ref ../plugins/node-cli/src/index.ts:172-181 @@
+
+于是 `run` 回的是 `CliRunOutcome`——跑过了是进程回执，没跑是那句拒绝。调用方照旧只看 `ok`。
 
 自带一条 `node-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
 验收归消费方件；`plugins/hello` 就是那个样板，它自带的 `src/cli.ts` 编译成 `dist/cli.js`
