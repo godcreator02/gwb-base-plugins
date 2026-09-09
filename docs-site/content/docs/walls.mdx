@@ -188,7 +188,7 @@ id 现在要当目录名与分区名用，比包名危险，于是跟文档名�
 `gwb-settings` 的 `entrySection`）。十几行纯逻辑，为它新建一个共享包过不了准入判据第二关；
 两边注释里互相点名，改一处就得改另一处。**下一处要用到它的件出现时，这个判断要重看。**
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="62-94" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="52-84" */}
 
 ### 没手写 id 的条目，数据每次启动新建一份
 
@@ -530,7 +530,7 @@ TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@god
 同一个 URL 里紧挨着的 `style.css` 反而是对的（那条 exports 键就叫 `./style.css`），
 两条并排更容易看漏。
 
-{/* ref file="../plugins/shell/src/client/asset.ts" lines="1-18" */}
+{/* ref file="../plugins/shell/src/client/asset.ts" lines="1-5" */}
 
 ---
 
@@ -826,7 +826,7 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="136-142" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="154-160" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
 
@@ -857,3 +857,24 @@ SDK 的 streamable HTTP 要求 POST 同时带 `application/json` **与** `text/e
 
 `pnpm add` 显式装一次这两个包就好。**node 半的件完全不受影响**，所以验无界面的件时
 这条红字可以先放着——但别把它当成自己刚写的那个件的问题。
+
+### 停用条目不等于命令注销：登记命令不包 `effect`，名字就留在表里
+
+2026-09-09 从一个连着 default home 的 Claude Code 会话做热更实验：`plugins.disable` 停掉
+hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 `hello.node` 与
+`hello.python`**，`hello.probe` / `hello.bump` 还在，直接调回的是
+`Error: cannot get required service "gwbData" in inactive context`。
+
+两对命令的差别只在登记的写法。前一对经运行器登记，运行器内部替调用方挂在它的 effect 上；
+后一对是 hello 自己直接 `cli.register`，**没包 `ctx.effect`**——`register` 回的注销函数
+没人调，条目停了、fiber 灭了、表上的名字还在：
+
+{/* ref file="../plugins/hello/src/index.ts" lines="89-92" */}
+
+症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
+「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是
+`c.effect(() => c.gwbCommands.register(…))`），样板件自己漏了。修法一行，还没修。
+
+同一次实验顺带验了桥那头：无状态桥发不出 `list_changed`，Claude Code 的顶层工具清单在命令表
+变化后**不刷新**（停用期间 `hello_node` 那枚工具一直在），只有 `gwb_command_list` /
+`gwb_command_run` 看得到真相——那是它们存在的理由，见 [mcp](/docs/mcp)。
