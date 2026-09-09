@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-plugins",
-  "version": "0.2.1",
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）。0.2 起样式走 Tailwind 前缀围栏（类名一律 plugins: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：下拉与两个确认框照 radix 默认 portal 到 body 也有样式，那层 portal 上下文连同两处手改一起退场",
+  "version": "0.3.0",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）。0.2 起样式走 Tailwind 前缀围栏（类名一律 plugins: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：下拉与两个确认框照 radix 默认 portal 到 body 也有样式，那层 portal 上下文连同两处手改一起退场。0.3.0 加 plugins.update-all 一键热升，不重启：一趟 pnpm add 把全部过期包升到精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载；窗格上「全部更新」按钮配确认框",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

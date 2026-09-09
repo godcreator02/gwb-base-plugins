@@ -1,8 +1,9 @@
 import { Service } from 'cordis'
 import { isRecord, requireKernel, type GwbContext, type GwbResult } from '@godcreator02/gwb-plugin-api'
-// 四条空 import 只为激活对方的 `declare module 'cordis'`——它们给 ctx 加上那四个名字。
-// 四个件在这儿**都是可选的**，所以都走嵌套注入、都写 dev
-import type {} from '@godcreator02/gwb-commands'
+// 这几条 type import 只为激活对方的 `declare module 'cordis'`——它们给 ctx 加上那几个名字
+// （commands 那条另带一个类型：一键热升要攥着总线的引用）。这些件在这儿**都是可选的**，
+// 所以都走嵌套注入、都写 dev
+import type { GwbCommands } from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-shell'
@@ -15,6 +16,7 @@ import { parseOutdated, type UpdateInfo } from './outdated.js'
 import { isGwbLine, parseSearch, type SearchRow } from './search.js'
 import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
+import { fiberStateOf, planUpdateAll, settleFiber, type PlannedEntry } from './update-all.js'
 
 export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './inventory.js'
 
@@ -36,7 +38,18 @@ export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './invent
  * 内两改：先随市场件并入，同日白名单也退了场），「装」这个动作也归这个件（`install`）。
  * 外加查新版本（`outdated`）与升到最新（`update`，**不建条目**——条目引的是包名，包换
  * 版本条目原样有效）。
+ *
+ * **一键热升（`updateAll`）= 一趟 pnpm 升完全部过期包，再逐条停用→启用重挂，不重启。**
+ * 计划（谁升、谁重挂、谁最后）是 `update-all.ts` 里的纯函数；这儿只按计划执行。升级与
+ * 重挂必须在**同一条命令**里做完：pnpm 会删旧版本目录，中间留一条命令的窗口，旧件读盘
+ * 就读空。本件自己那条条目排最后、回执之后才动——处理器里停用自己等于把回执一起拔掉。
  */
+
+/** 停用/启用之后等 fiber 把手头的事做完，最多等这么久。到点就走，读到什么状态报什么 */
+const SETTLE_MS = 5_000
+
+/** 外壳的整页重载命令。**按名探**，不 import 外壳的常量——那会把 shell 变成运行时依赖 */
+const SHELL_RELOAD_COMMAND = 'shell.reload'
 
 const NAME = 'gwb-plugins'
 
@@ -68,6 +81,7 @@ export const DISABLE_COMMAND = 'plugins.disable'
 export const SET_LABEL_COMMAND = 'plugins.set-label'
 export const OUTDATED_COMMAND = 'plugins.outdated'
 export const UPDATE_COMMAND = 'plugins.update'
+export const UPDATE_ALL_COMMAND = 'plugins.update-all'
 export const SEARCH_COMMAND = 'plugins.search'
 export const UNINSTALL_COMMAND = 'plugins.uninstall'
 export const SHARED_COMMAND = 'plugins.shared'
@@ -97,6 +111,49 @@ export interface OutdatedReceipt {
 export interface UpdateResult {
   ok: boolean
   pkg: string
+  /** 没成时的一句话 */
+  error?: string
+  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  tail?: string
+}
+
+/** 一键热升里一条条目的去向 */
+export interface RemountedEntry {
+  /** 裸 id */
+  id: string
+  /**
+   * `remounted`：停用再启用，重 import 了新版本；`skipped`：本来就停用，保持停用；
+   * `deferred`：本件自己那条，回执发出之后才重挂；`failed`：动条目树时抛了，`state` 里是那句错
+   */
+  action: 'remounted' | 'skipped' | 'deferred' | 'failed'
+  /** 重挂之后 fiber 到哪一步（ACTIVE / PENDING / FAILED…）。skipped 是 disabled，deferred 是动手前的状态 */
+  state: string
+}
+
+/** 一键热升里升了的一个包 */
+export interface UpdatedPackage {
+  pkg: string
+  from: string
+  to: string
+  /** 它的全部条目各自的去向 */
+  entries: RemountedEntry[]
+}
+
+/** 一键热升的回执 */
+export interface UpdateAllResult {
+  ok: boolean
+  /** 升了的包。pnpm 没成时是空的——一个包都没升、一条条目都没动 */
+  updated: UpdatedPackage[]
+  /** 本件自己在升级清单里：它那条条目回执之后才重挂，重挂完再整页重载 */
+  selfDeferred: boolean
+  /**
+   * 整页重载做没做：`done` 是 `shell.reload` 已经跑过；`deferred` 是等本件自己重挂完再跑；
+   * `unavailable` 是命令表里没有它（或它没成），界面要手动刷新——原因在 `note` 里。
+   * 没升任何包、或者没成，就没有这一格
+   */
+  reload?: 'done' | 'deferred' | 'unavailable'
+  /** 值得说一声的：全都最新、only 里点了名却不在清单里的、界面要手动刷新 */
+  note?: string
   /** 没成时的一句话 */
   error?: string
   /** pnpm 没成时它输出的最后几行——原因就在那儿 */
@@ -176,6 +233,18 @@ export interface GwbPluginsApi {
    */
   update(pkg: string): Promise<UpdateResult>
   /**
+   * 一键热升：`outdated()` 拿清单 → **一趟** `pnpm add a@x b@y …`（精确版本）→ 升了的每个包
+   * 的每条条目**各自**停用再启用（重 import 新版本；本来就停用的跳过）→ `shell.reload`
+   * 整页重载。**不重启内核。** `only` 给了就只升点名的那几个。
+   *
+   * **本件自己排最后、回执之后才重挂**（`selfDeferred: true`）：处理器里停用自己，回执就
+   * 没了。那时整页重载也跟着推迟到自己重挂完之后（`reload: 'deferred'`）。
+   *
+   * **不抛**（`only` 里包名不合规这种调用方写错了的事除外）：查不出清单、找不到 pnpm、
+   * pnpm 没成，都收敛成 `ok: false` 的回执；pnpm 没成时一条条目都不动。
+   */
+  updateAll(only?: readonly string[]): Promise<UpdateAllResult>
+  /**
    * 列 registry 上 `@godcreator02/gwb-*` 的全部（npm 标准检索协议，`/-/v1/search`）。
    *
    * **registry 基址从 pnpm 配置解析**——装从哪来，搜就到哪去；这儿不认识任何具体的源。
@@ -218,11 +287,18 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
   private readonly tree: EntryTreeLike
   private readonly warn: (message: string) => void
   private readonly info: (message: string) => void
+  /**
+   * 那只 logger 本身。上面两个每次都经 `ctx.logger()` 取，而一键热升里「自己最后」那段
+   * 跑在本件的 fiber 已经拆掉之后——那时 ctx 上什么都不能碰，只能拿早就攥在手里的这只
+   */
+  private readonly log: { info(message: string): void; warn(message: string): void }
 
   /** 数据件在才有。不在就退化成「只显示 id」，`setLabel` 回一句「没装数据件」 */
   private labelStore: LabelStore | undefined
   /** 设置件在才有。不在就跳过设置那一路，pnpm 只走自动查找 */
   private settings: SettingsSlot | undefined
+  /** 命令总线在才有。一键热升拿它探 `shell.reload`、跑 `shell.reload`——包括本件自己重挂之后那一下 */
+  private cli: GwbCommands | undefined
   /** 裸 id → 显示名。内存里这份是权威，盘上那份是它的副本 */
   private labels: Record<string, string> = {}
   /** 头一份 labels 读完没有。setLabel 要等它——不等的话第一次改名会被读盘那一下盖回去 */
@@ -245,6 +321,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
     this.warn = (message: string): void => ctx.logger(NAME).warn(message)
     this.info = (message: string): void => ctx.logger(NAME).info(message)
+    this.log = ctx.logger(NAME)
   }
 
   [Service.init](): void {
@@ -306,6 +383,10 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
       const cli = ctx.gwbCommands
       // inject 保证了它在，这句只是把类型收窄
       if (cli === undefined) return
+      this.cli = cli
+      ctx.effect(() => () => {
+        this.cli = undefined
+      })
       const on = (name: string, description: string, handler: (args?: unknown) => unknown): void => {
         ctx.effect(() => cli.register({ name, description, plugin: NAME }, handler))
       }
@@ -358,12 +439,23 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目；跑着的件重启内核后才换新）。参数 { pkg }', async (args) => {
+      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugins.update-all）。参数 { pkg }', async (args) => {
         const result = await this.update(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
         return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
       })
+
+      on(
+        UPDATE_ALL_COMMAND,
+        '一键热升，不重启：一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
+        async (args) => {
+          const result = await this.updateAll(onlyList(args))
+          if (result.ok) return { ok: true, data: result }
+          const tail = result.tail === undefined ? '' : `\n${result.tail}`
+          return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
+        },
+      )
 
       on(SEARCH_COMMAND, '列 registry 上 @godcreator02/gwb-* 的全部（装从哪条源来，搜就到哪去）。无参数', async () => {
         const result = await this.search()
@@ -486,8 +578,103 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     }
 
     // 条目不动（引的是包名，包换版本条目原样有效）。跑着的 fiber 还持旧代码，重启才换
-    this.info(`${pkg} 升到最新了。跑着的件还持旧代码，重启内核后才换成新的`)
+    this.info(`${pkg} 升到最新了。跑着的件还持旧代码，重启内核后才换成新的（要热生效走 ${UPDATE_ALL_COMMAND}）`)
     return { ok: true, pkg }
+  }
+
+  async updateAll(only?: readonly string[]): Promise<UpdateAllResult> {
+    // 调用方写错了的事当场抛；下面每一条「没成」都是正当结果，收敛成回执
+    for (const pkg of only ?? []) assertPkgName(pkg)
+    const bare = (extra?: string): UpdateAllResult => ({ ok: false, updated: [], selfDeferred: false, ...(extra === undefined ? {} : { error: extra }) })
+
+    const checked = await this.outdated()
+    if (!checked.ok || checked.updates === undefined) return bare(checked.error ?? '查不出过期清单')
+
+    const plan = planUpdateAll(checked.updates, this.tree.store, ownEntryId(this.own), only)
+    const notes: string[] = []
+    if (plan.ignored.length > 0) notes.push(`only 里这几个不在过期清单里，没动：${plan.ignored.join('、')}`)
+    if (plan.packages.length === 0) {
+      return { ok: true, updated: [], selfDeferred: false, note: ['全都最新', ...notes].join('；') }
+    }
+
+    const found = locatePnpm(this.pnpmPath())
+    if (!found.ok) {
+      this.warn(`升不了：${found.error}`)
+      return bare(found.error)
+    }
+    // 一趟装完：pnpm 是读-改-写 home 的 package.json，逐包起进程跟并发 install 一样会互相盖
+    this.info(`用 ${found.cjs}（${found.from === 'setting' ? '设置里填的' : 'PATH 里找到的'}）一趟装 ${plan.pnpmArgs.slice(1).join(' ')}`)
+    const run = await this.queue(() => runPnpm({ pnpmCjs: found.cjs, cwd: this.home, args: plan.pnpmArgs }))
+    if (!run.ok) {
+      const error = `pnpm ${plan.pnpmArgs.join(' ')} 没成（退出码 ${String(run.exitCode)}）。一个包都没升、一条条目都没动`
+      this.warn(`${error}\n${run.tail ?? ''}`)
+      return run.tail === undefined ? bare(error) : { ...bare(error), tail: run.tail }
+    }
+
+    // 从这儿起旧版本目录已经没了：升了的每条条目都得在**这条命令里**重挂，不留窗口
+    const updated: UpdatedPackage[] = []
+    let deferred: PlannedEntry | undefined
+    for (const pkg of plan.packages) {
+      const entries: RemountedEntry[] = []
+      for (const entry of pkg.entries) {
+        if (entry.self && !entry.disabled) {
+          deferred = entry
+          entries.push({ id: entry.id, action: 'deferred', state: fiberStateOf(this.tree.store[entry.id]) })
+          continue
+        }
+        entries.push(await this.remount(entry))
+      }
+      updated.push({ pkg: pkg.pkg, from: pkg.from, to: pkg.to, entries })
+    }
+    const summary = updated.map((p) => `${p.pkg} ${p.from} → ${p.to}`).join('，')
+    const cli = this.cli
+
+    if (deferred === undefined) {
+      const reload = await reloadVia(cli)
+      if (reload.note !== undefined) notes.push(reload.note)
+      this.info(`一键热升完成：${summary}${reload.reload === 'done' ? '；界面已整页重载' : ''}`)
+      return { ok: true, updated, selfDeferred: false, reload: reload.reload, ...noteOf(notes) }
+    }
+
+    /**
+     * **自己最后，而且在回执之后。** 处理器里停用自己，await 链随 fiber 一起拆掉，回执永远
+     * 到不了调用方。所以先把回执交出去，下一个宏任务再动手——那时命令的应答早已发出。
+     * 闭包**只持 tree、id、总线的引用与那只 logger**：本件这条 fiber 拆掉之后 ctx 上的
+     * 东西一样都不能碰（取服务会「inactive context」）；`this` 上别的方法也不进来
+     */
+    const tree = this.tree
+    const id = deferred.id
+    const log = this.log
+    setTimeout(() => {
+      void remountEntry(tree, id)
+        .then((state) => {
+          log.info(`本件自己（${id}）重挂了：${state}`)
+          return reloadVia(cli)
+        })
+        .then((reload) => {
+          if (reload.note !== undefined) log.warn(reload.note)
+        })
+        .catch((err: unknown) => {
+          log.warn(`本件自己（${id}）重挂没成：${String(err)}`)
+        })
+    }, 0)
+    const canReload = hasCommand(cli, SHELL_RELOAD_COMMAND)
+    if (!canReload) notes.push(`命令表里没有 ${SHELL_RELOAD_COMMAND}，界面要手动刷新`)
+    this.info(`一键热升：${summary}；本件自己（${id}）回执之后重挂${canReload ? '，随后整页重载' : ''}`)
+    return { ok: true, updated, selfDeferred: true, reload: canReload ? 'deferred' : 'unavailable', ...noteOf(notes) }
+  }
+
+  /** 按计划重挂一条：本来就停用的跳过（保持停用），动树时抛了收成 failed */
+  private async remount(entry: PlannedEntry): Promise<RemountedEntry> {
+    if (entry.disabled) return { id: entry.id, action: 'skipped', state: 'disabled' }
+    try {
+      const state = await remountEntry(this.tree, entry.id)
+      this.info(`条目 ${entry.id} 重挂了：${state}`)
+      return { id: entry.id, action: 'remounted', state }
+    } catch (err: unknown) {
+      this.warn(`条目 ${entry.id} 重挂没成：${String(err)}`)
+      return { id: entry.id, action: 'failed', state: String(err) }
+    }
   }
 
   /**
@@ -702,6 +889,56 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     this.chain = next.catch(() => undefined)
     return next
   }
+}
+
+/**
+ * 停用 → 等旧 fiber 拆完 → 启用（`_init` 重新 `tree.import`，拿到新版本）→ 等新 fiber 起完，
+ * 回它的状态。**等旧的拆完再启用**：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
+ * 不等它，而 Service 件的 provide 是在卸载那趟里撤的——不等就启用，新 fiber 起来时旧服务
+ * 可能还没撤，cordis 会报「service has been registered」
+ */
+async function remountEntry(tree: EntryTreeLike, id: string): Promise<string> {
+  const old = fiberOf(tree.store[id])
+  await tree.update(id, { disabled: true })
+  await settleFiber(old, SETTLE_MS)
+  await tree.update(id, { disabled: null })
+  const entry = tree.store[id]
+  await settleFiber(fiberOf(entry), SETTLE_MS)
+  return fiberStateOf(entry)
+}
+
+function fiberOf(entry: unknown): unknown {
+  return isRecord(entry) ? entry['fiber'] : undefined
+}
+
+function hasCommand(cli: GwbCommands | undefined, name: string): boolean {
+  return cli !== undefined && cli.list().some((command) => command.name === name)
+}
+
+/** 经命令总线跑 `shell.reload`。没有总线、表里没这条、跑了没成，都收成「界面要手动刷新」 */
+async function reloadVia(cli: GwbCommands | undefined): Promise<{ reload: 'done' | 'unavailable'; note?: string }> {
+  if (!hasCommand(cli, SHELL_RELOAD_COMMAND) || cli === undefined) {
+    return { reload: 'unavailable', note: `命令表里没有 ${SHELL_RELOAD_COMMAND}（外壳没装或版本太旧），界面要手动刷新` }
+  }
+  const result = await cli.run(SHELL_RELOAD_COMMAND)
+  if (result.ok) return { reload: 'done' }
+  return { reload: 'unavailable', note: `${SHELL_RELOAD_COMMAND} 没成（${result.error ?? '没说原因'}），界面要手动刷新` }
+}
+
+/** 回执里 `note` 那一格：没话说就没有这一格 */
+function noteOf(notes: readonly string[]): { note?: string } {
+  return notes.length === 0 ? {} : { note: notes.join('；') }
+}
+
+/** `plugins.update-all` 的参数：不传、传空对象都是「全升」；给了 only 就得是非空字符串数组 */
+function onlyList(args: unknown): string[] | undefined {
+  if (args === undefined || args === null) return undefined
+  const only = asRecord(args)['only']
+  if (only === undefined || only === null) return undefined
+  if (!Array.isArray(only) || only.some((item) => typeof item !== 'string' || item === '')) {
+    throw new Error('only 给了就要是个非空字符串数组，比如 { "only": ["@godcreator02/gwb-hello"] }')
+  }
+  return only as string[]
 }
 
 /** 命令按参数对象调，不经身份——界面不是一个件，没有身份可绑 */

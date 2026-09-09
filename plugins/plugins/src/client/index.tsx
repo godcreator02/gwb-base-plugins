@@ -45,6 +45,7 @@ import {
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
+import { describeUpdateAll } from './update-all'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,7 +83,9 @@ import {
  * - `shell.plugins`：件自己 describe 的显示名与图标，认不出就回退
  *
  * 另有 `plugins.outdated` 查新版本：窗格挂上自动查一次，「检查更新」随时重查；查出来的
- * 按包名 join 到条目卡上。没有事件推送，所以每次操作完把该重取的都重取一遍。
+ * 按包名 join 到条目卡上。有过期包时「全部更新」才亮——先在格内列 `from → to` 确认，再调
+ * `plugins.update-all` 一键热升（不重启），回执贴上来；页面随后会被 `shell.reload` 整页重载，
+ * 所以那之前 busy 态一直挂着。没有事件推送，所以每次操作完把该重取的都重取一遍。
  */
 
 const PANE_ID = 'installed'
@@ -112,7 +115,11 @@ const SHELL_PLUGINS = 'shell.plugins'
 const SHARED = 'plugins.shared'
 const OUTDATED = 'plugins.outdated'
 const UPDATE = 'plugins.update'
+const UPDATE_ALL = 'plugins.update-all'
 const UNINSTALL = 'plugins.uninstall'
+
+/** 本件自己的包名。一键热升的确认框要说一声「这一格会先关再开」 */
+const OWN_PKG = '@godcreator02/gwb-plugins'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -560,6 +567,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   /** outdated 的表。null 是「还没查到」——跟「查到了、全都最新」（空对象）分得开 */
   const [updates, setUpdates] = useState<Record<string, UpdateInfo> | null>(null)
   const [checking, setChecking] = useState(false)
+  /** 一键热升的确认框开着；`updatingAll` 是点了确认、命令还没回来（或回来了、页面正等着被重载） */
+  const [askingUpdateAll, setAskingUpdateAll] = useState(false)
+  const [updatingAll, setUpdatingAll] = useState(false)
 
   const refresh = useCallback(async (): Promise<void> => {
     // 四份表**各取各的、各败各的**——设置件没装时插件管理照样能用，只是展开区空着
@@ -834,9 +844,42 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
   /** 升一个包到最新。run 自己会重取表；再把 outdated 重查一遍，让「有新版」徽标跟上 */
   const updatePkg = (pkg: string): void => {
-    void run(UPDATE, { pkg }, `${pkg} 升到最新了。跑着的件重启内核后才换成新的`).then(() => {
+    void run(UPDATE, { pkg }, `${pkg} 升到最新了。跑着的件重启内核后才换成新的（要热生效点「全部更新」）`).then(() => {
       void checkOutdated(false)
     })
+  }
+
+  /** 过期清单，按包名排——确认框里列的、「全部更新」亮不亮，都看它 */
+  const outdatedRows = useMemo(
+    () => Object.entries(updates ?? {}).sort(([a], [b]) => a.localeCompare(b)),
+    [updates],
+  )
+
+  /**
+   * 一键热升。回执贴到 notice 上；**reload 在路上时 busy 不撤**——页面随时会被 `shell.reload`
+   * 整页重载（自己也升了的话先是这一格关掉再开），撤了只会让人在最后一帧点到什么。
+   * 没在路上（命令表里没 shell.reload、或者没成）才照常重取表、撤 busy
+   */
+  const updateAll = async (): Promise<void> => {
+    setBusy(true)
+    setUpdatingAll(true)
+    let reloading = false
+    try {
+      const view = describeUpdateAll(asResult(await args.host.call(UPDATE_ALL)))
+      reloading = view.reloading
+      setNotice({ ok: view.ok, text: view.text })
+    } catch (err: unknown) {
+      setNotice({ ok: false, text: String(err) })
+    }
+    setAskingUpdateAll(false)
+    if (reloading) return
+    setUpdatingAll(false)
+    try {
+      await refresh()
+      await checkOutdated(false)
+    } finally {
+      setBusy(false)
+    }
   }
 
   const removeEntry = async (): Promise<void> => {
@@ -977,6 +1020,21 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           onClick={() => void checkOutdated(true)}
         >
           {checking ? '查着…' : '检查更新'}
+        </Button>
+        {/* 有过期包才亮：没查过（null）与查了全新（空表）都是灰的 */}
+        <Button
+          size="sm"
+          variant={outdatedRows.length > 0 ? 'secondary' : 'ghost'}
+          title={
+            outdatedRows.length > 0
+              ? `一键热升 ${outdatedRows.length} 个包：一趟 pnpm add，逐条停用→启用重挂新版本，不重启，最后整页重载`
+              : '没有过期的包'
+          }
+          disabled={checking || busy || outdatedRows.length === 0}
+          onClick={() => setAskingUpdateAll(true)}
+        >
+          {updatingAll ? '升级中…' : '全部更新'}
+          {!updatingAll && outdatedRows.length > 0 ? ` ${outdatedRows.length}` : ''}
         </Button>
         <Button size="icon-sm" variant="ghost" title="重新取一遍" disabled={busy} onClick={() => void refresh()}>
           <RotateCw />
@@ -1290,6 +1348,44 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               onClick={() => void removeEntry()}
             >
               删条目
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 一键热升：先把 from → to 列出来让人看一眼再动手，照卸载确认框的做法。升级中不许关（onOpenChange 不收） */}
+      <AlertDialog open={askingUpdateAll} onOpenChange={(v) => !v && !updatingAll && setAskingUpdateAll(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>全部更新 {outdatedRows.length} 个包？</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="plugins:space-y-2">
+                <p>
+                  一趟 <code className="plugins:font-mono">pnpm add</code> 把下面这些升到 registry 上的最新版，再把它们的每条条目
+                  停用→启用重挂成新版本（本来就停用的保持停用），**不重启内核**；升完整页重载。
+                </p>
+                {outdatedRows.some(([pkg]) => pkg === OWN_PKG) && (
+                  <p className="plugins:text-amber-600 plugins:dark:text-amber-400">
+                    插件管理件自己也在清单里：回执发出之后这一格会先关再开，随后整页重载。
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="plugins:max-h-64 plugins:divide-y plugins:divide-border plugins:overflow-auto plugins:rounded-md plugins:border plugins:border-border">
+            {outdatedRows.map(([pkg, info]) => (
+              <div key={pkg} className="plugins:flex plugins:items-baseline plugins:justify-between plugins:gap-3 plugins:px-3 plugins:py-1.5 plugins:font-mono plugins:text-xs">
+                <span className="plugins:min-w-0 plugins:truncate">{pkg}</span>
+                <span className="plugins:shrink-0 plugins:text-muted-foreground">
+                  {info.current} → <span className="plugins:text-foreground">{info.latest}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updatingAll}>算了</AlertDialogCancel>
+            <AlertDialogAction disabled={updatingAll} onClick={() => void updateAll()}>
+              {updatingAll ? '升级中，完成后界面会自动重载…' : '全部更新'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

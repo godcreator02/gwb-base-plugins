@@ -1,12 +1,12 @@
 ---
 name: gwb-plugins
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、以及装完之后必须重新 gwb_command_list。
+description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、发完新版本怎么一键热升（update-all，不重启）、以及装完之后必须重新 gwb_command_list。
 ---
 
 # 插件怎么装、怎么管、怎么升
 
 这个 home 里装了哪些件、各自挂没挂上、谁有新版本、源上还有什么可装，归 `gwb-plugins`
-管。十一条命令，都走 `gwb_command_run`。
+管。十二条命令，都走 `gwb_command_run`。
 
 ## 先分清两层：包 与 条目
 
@@ -42,8 +42,22 @@ home，**然后自动加一条条目（默认启用）**，回执里带新条目
 
 - 它跑 `pnpm add <pkg>@latest`，**不建条目**——条目引的是包名，包换版本条目原样有效。
   别拿 install 当升级用：那会给同一个包再挂一条条目
-- **跑着的件还持旧代码，重启内核后才换成新的**——升完该说的这句要说
+- **跑着的件还持旧代码，重启内核后才换成新的**——升完该说的这句要说；要热生效走下面的
+  `plugins.update-all`
 - 包没装它当场抛；pnpm 没成回 `ok: false` 带尾巴
+
+## 一键热升：plugins.update-all（发完新版本就调它，不重启）
+
+不带参数直接调（或 `{ "only": ["@godcreator02/gwb-xxx"] }` 只升点名的）。它一条命令做完
+三件事：`plugins.outdated` 拿清单 → **一趟** `pnpm add` 把全部过期包升到清单上的精确版本 →
+升了的每个包的**每条条目**停用再启用（loader 重新 import，跑的就是新版本；本来就停用的
+保持停用）→ `shell.reload` 整页重载界面。
+
+- 回执 `{ updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }`：
+  `action` 是 remounted / skipped / deferred / failed，`state` 是重挂后 fiber 到哪一步（ACTIVE 才算真起来了）
+- **升到 `gwb-plugins` 自己**（`selfDeferred: true`）：它那条条目在回执发出之后才重挂，别等它出现在 `entries` 里 remounted
+- **升到 `gwb-mcp` 自己**：这条命令的回执会丢（桥随件重挂，连接断了）。重连之后 `plugins.list` 核对版本与 active，再 `gwb_command_list` 一遍
+- pnpm 没成回 `ok: false` 带尾巴，**一个包都没升、一条条目都没动**；`note` 里有话就读（全都最新、only 里点了名却不在清单里的、界面要手动刷新）
 
 ## 拆：remove-entry 与 uninstall 的分工
 
