@@ -489,6 +489,23 @@ for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
 东西，但它的 React 状态、总线监听全都还活着——「切走再切回来，计数还在」是对的，
 「切走的那一格收不到总线事件」则是错的。
 
+### 【未决】dockview 的标签经 CDP 一次都点不动，连真鼠标事件也不行
+
+2026-09-09 验前缀围栏时撞上的，**至今没有结论，先记在这儿别让它烂掉**。
+
+上面两条给的招（dispatch `pointerdown/mousedown/pointerup/mouseup`、反复点到成功为止）
+这一次**一次都没成**。换成 CDP `Input` 域发**真鼠标点击**——那是浏览器自己合成的、
+`isTrusted` 为真的事件——**同样切不动**。两个方向对称地试过（A→B 与 B→A），
+四发事件的 `target` 每次都落在 `.dv-tab` 上，坐标没打偏，活动标签就是不换。
+
+最后是走状态栏的「打开窗格」菜单，靠那条 focus 的路才切过去的——取证因此没有卡住。
+
+**没验的那一半**：真人拿鼠标点能不能切，没人试过。所以现在说不出这是 dockview 的问题、
+CDP 的问题，还是这一版外壳的问题。
+
+**跟这次的 diff 无关**：`GwbTab.tsx` 一行没动，前缀围栏也不碰标签条。哪天真人点也切不动，
+再当成一条真的墙来查。
+
 ---
 
 ## gwb:// 取货
@@ -695,6 +712,47 @@ plugins/logger/@/components/ui/button.tsx   ← 四个组件全落这儿
 CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 dev」要挪到 devDependencies
 ——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个件的人多下一份用不上的包。
 
+### new-york 的组件满是 `animate-in`，样式入口不引 `tw-animate-css` 它们静默为空
+
+`animate-in` / `fade-in-0` / `zoom-in-95` / `slide-in-from-*` 这一族**不是 Tailwind 自带的**，
+出自 `tw-animate-css` 那个包。而 shadcn 的 new-york 风格从 `dropdown-menu` 到 `dialog`
+到处在用它们——样式入口里没引这个包，Tailwind 就**一个字节都不生成**：类名照写、构建照绿、
+菜单永远不动画。
+
+**没有任何一处会报错**，因为「编不出规则」在 Tailwind 眼里跟「这不是个类名」是同一回事
+（同一条性质在换成前缀围栏之后另有一副面孔，见[定过的事](/docs/decisions)那条 2026-09-09）。
+
+**现状的 scope 方案件一直如此，没人报过**——`tools/build-styles.ts` 拼的输入里也没有这一行，
+所以那些件的菜单本来就是硬切的。是写 hello 那份独立样式入口时逐条问「这行不引会怎样」
+才发现的，不是撞出来的。
+
+写清在样式入口的头注里，跟另外三条 import 一起，一条都不能省：
+
+{/* ref file="../plugins/hello/src/client/styles.css" lines="20-23" */}
+
+### CSS 头注里写 `--tw-enter-*` 那个 `*/` 会提前闭合注释，报的错完全不指根因
+
+跟本页上面那条「块注释里出现 `*/`」是**同一个坑的 CSS 版**，但症状换了一副更难认的面孔。
+
+`tw-animate-css` 带出来的是十七个 `--tw-enter-…` `--tw-exit-…` 的 `@property`。头注里想把
+这批变量名用通配写出来，写成 `--tw-enter-*`、后面紧跟一个 `/`，**那个 `*/` 当场关掉了
+`/* … */`**，注释的后半段变成了真 CSS。
+
+报出来的是一句
+
+```
+Could not resolve value for theme function: theme(reference)
+```
+
+——**它指的是文件开头那几行 import，跟真正出事的地方隔着整段注释**。第一反应会去查
+`theme(reference)` 是不是写错了、令牌包的映射面是不是没装上，而那儿一点问题都没有。
+
+修法跟 TS 那条一样：把通配的 `*` 换成省略号，别让 `*` 挨着 `/`：
+
+{/* has file="../plugins/hello/src/client/styles.css" text="--tw-enter-…" */}
+
+**判据**：往块注释里写 glob、通配、路径样式的东西之前，先看一眼里头有没有 `*/`——
+这条对 TS 和 CSS 一样成立，而 CSS 这边的报错更不指路。
 
 ---
 

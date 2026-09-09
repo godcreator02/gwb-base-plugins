@@ -188,6 +188,19 @@
         142
       ],
       "hash": "8a4441536ba72358a30418d8e0de608ac7cd91c718e4955447f566c490342253"
+    },
+    "../plugins/hello/src/client/styles.css:20-23": {
+      "kind": "git",
+      "blob": "bc776ce8b33a73b2dec0f04e267739ee71862907",
+      "commit": "00cf0e88c3ec427599e0d4b25f913292248c062b",
+      "lines": [
+        20,
+        23
+      ],
+      "hash": "254dd27a52f107df0998188c0867ecae579046f241834e895d38789e7fd628a9"
+    },
+    "has ../plugins/hello/src/client/styles.css \"--tw-enter-…\"": {
+      "kind": "has"
     }
   },
   "content/docs/shell.mdx": {
@@ -230,6 +243,16 @@
         110
       ],
       "hash": "c9b85085177166efa4084a94ecc9b504b2e547d5c07392656483c6e6478fce6c"
+    },
+    "../plugins/shell/src/client/PluginPane.tsx:127-137": {
+      "kind": "git",
+      "blob": "b084b62f0ce875d996f378b6ded490569e12d675",
+      "commit": "00cf0e88c3ec427599e0d4b25f913292248c062b",
+      "lines": [
+        127,
+        137
+      ],
+      "hash": "ee3a0ccb35d8e89a4c6fa2b7bea010e2bd73ba8fd3d370091c3f04c864f41cab"
     }
   },
   "content/docs/mcp.mdx": {

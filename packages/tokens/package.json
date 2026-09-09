@@ -4,6 +4,7 @@
   "description": "设计令牌：亮暗两套语义变量 + preflight。页面加载声明面，件在构建期引映射面",
   "type": "module",
   "//exports": "两份 css 职责不同：theme.css 是**声明面**，页面加载一次（已拼好，浏览器直接吃）；theme.reference.css 是**映射面**，只在件的构建期按 theme(reference) 引，原样发出去",
+  "//prefix": "**映射面是唯一的送值通道，别指望全局声明能穿过去。** Tailwind 4 的 prefix(<短名>) 会把**内置主题变量名也改掉**：件带 prefix(hello) 编出来的 spacing 是 var(--hello-spacing, 0.25rem),不是 var(--spacing)。走 theme(reference) 时那个名字永远不声明、落到括号里的默认值,所以没坏——但它意味着**在页面上全局声明一份 Tailwind 的默认主题变量去影响所有件是行不通的**:每个件的前缀不同,名字对不上。语义令牌（--primary / --card 这些）不受这条影响,因为它们是我们自己的名字、经 @theme inline 的映射面进到件里,值仍在运行时读页面那张声明面表。件的围栏为什么换成前缀,见文档站 decisions 那条 2026-09-09",
   "exports": {
     "./theme.css": "./dist/theme.css",
     "./theme.reference.css": "./dist/theme.reference.css",
