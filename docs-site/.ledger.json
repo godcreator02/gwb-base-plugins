@@ -286,43 +286,103 @@
     }
   },
   "content/docs/mcp.mdx": {
-    "../plugins/mcp/src/index.ts:142-206": {
+    "../plugins/mcp/src/endpoint.ts:72-80": {
       "kind": "git",
-      "blob": "ae49a04760378f3fb2e8942c78ecdbf9f09fae0d",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "blob": "6273b6a0a63650bb1b853c3bdb02ddaed172c7d3",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
       "lines": [
-        142,
-        206
+        72,
+        80
       ],
-      "hash": "1bbf7675bd2a3d2cd0b2efb80b4f33a009fc684da2decde35e8571ad28298e7f"
+      "hash": "a487db672de35c3048135475e3951231d7861bfd007d84f56576913422a1ae79"
     },
-    "../plugins/mcp/src/index.ts:208-219": {
+    "../plugins/mcp/src/index.ts:349-369": {
       "kind": "git",
-      "blob": "ae49a04760378f3fb2e8942c78ecdbf9f09fae0d",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
       "lines": [
-        208,
-        219
+        349,
+        369
+      ],
+      "hash": "ee784cc5fef805ffe2656c2ccf6d7599e888ed5473b71702cb1d78453eba9afd"
+    },
+    "../plugins/mcp/src/endpoint.ts:50-58": {
+      "kind": "git",
+      "blob": "6273b6a0a63650bb1b853c3bdb02ddaed172c7d3",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        50,
+        58
+      ],
+      "hash": "4fc373fced178552d7bd5fe02bef59cd4a83e183e70ade3fc97dbc59a68f4943"
+    },
+    "../plugins/mcp/src/index.ts:306-321": {
+      "kind": "git",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        306,
+        321
+      ],
+      "hash": "85a8aea5bfa50a402bae3fb45cee0553580717694085d6dee1b7bef0dcc4c137"
+    },
+    "../plugins/mcp/src/index.ts:179-254": {
+      "kind": "git",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        179,
+        254
+      ],
+      "hash": "8fa59dc17efb1120575c50e97139b84ac6da7a7d5e9b954c9d17000dea6c9e9e"
+    },
+    "../plugins/mcp/src/index.ts:256-267": {
+      "kind": "git",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        256,
+        267
       ],
       "hash": "33b614dd31b6311555e6c01f0a1cb655ae325cd774ae6c4c7b3d59e5da266e5d"
     },
-    "../plugins/mcp/src/index.ts:112-134": {
+    "../plugins/mcp/instructions.md:all": {
       "kind": "git",
-      "blob": "ae49a04760378f3fb2e8942c78ecdbf9f09fae0d",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "blob": "407932b02871996904d5f28676c67616987eee49",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
       "lines": [
-        112,
-        134
+        1,
+        21
+      ],
+      "hash": "71b700cb0c44995f255406394a02c4fbcc82be8b08c1b86b30b8582cc95378c9"
+    },
+    "../plugins/mcp/src/skills.ts:56-77": {
+      "kind": "git",
+      "blob": "741933b1c7902d8fdf0c76cd83ac8037faa68953",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        56,
+        77
+      ],
+      "hash": "e5948037552f51876bc72dcebfbe4f53f60f337d62498454c05ebd55d99d6817"
+    },
+    "../plugins/mcp/src/index.ts:130-152": {
+      "kind": "git",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
+      "lines": [
+        130,
+        152
       ],
       "hash": "01ac8fcd7950bed7454f6001084919c31adc0beff2a1cfd7c624622b0b2a261f"
     },
-    "../plugins/mcp/src/index.ts:91-105": {
+    "../plugins/mcp/src/index.ts:109-123": {
       "kind": "git",
-      "blob": "ae49a04760378f3fb2e8942c78ecdbf9f09fae0d",
-      "commit": "a445a94c49a9efe04863d65d662aa82a0ce69ff9",
+      "blob": "d8087bf4efc1baeebd90330a8c4592c3b6a730d8",
+      "commit": "f38839b9944c39f66990b5d375b8950a549aa63a",
       "lines": [
-        91,
-        105
+        109,
+        123
       ],
       "hash": "fa5361dcf26fab5a19548484517a5293f3e1f4f6f8a74d87aea2921759ea4ddf"
     }
