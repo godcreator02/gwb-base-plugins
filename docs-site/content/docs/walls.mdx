@@ -229,6 +229,34 @@ PENDING，父件照常挂上。hello 给 `gwbSkills` 与两条 CLI 用的都是�
 `undefined`，那个 while 一次都不进。**别拿它当「加载完成」信号**：写探针时 `await
 ctx.plugin(x)` 之后立刻去调 `x` 提供的服务，服务可能压根还不在。
 
+### `typeof` 一个类是 `function`，按「是对象」判它等于不存在
+
+`shell.reload` 0.2.2 与 0.2.3 实机都回「不在 Electron 主进程里」，而探针（electron.exe 跑，
+应用目录外与 `node_modules/.pnpm` 下两个位置）证明 `import('electron')` 的命名空间与 `default`
+上都有 `BrowserWindow`，`createRequire` 也拿得到。根因在取法：`BrowserWindow` 是一个**类**，
+`typeof` 是 `'function'`，而那句 `isRecord(bw)` 只认 `typeof === 'object'`——于是 `getAllWindows`
+永远 undefined。0.2.3 以为是 ESM 的 `default` 挂法，改错了地方；0.2.4 才对：对象或函数都往下取。
+
+{/* ref file="../plugins/shell/src/reload.ts" lines="56-67" */}
+
+**判据**：凡是按形状收窄一个「可能是类」的东西（`BrowserWindow`、`Service` 子类、任何构造器），
+`isRecord` 那种「是对象」的守卫要配上 `typeof === 'function'`；而且**报错要说清是哪一层没认出**
+——「没有 X.y」三个字分不开「X 不在」和「X 在但 y 不在」，这次多绕一版就是这么来的。
+
+### 【未决】外壳热换时渲染层报四条 `removeChild` NotFoundError——功能没坏，日志脏
+
+2026-09-09 实机用 `plugins.update-all` 只升 shell（0.2.2 → 0.2.3）：外壳热重挂成功，页面
+import 了新入口、重开了 10 格，**但切换那一瞬渲染层连报四条**
+`Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.`
+
+**现场推断，未证实**：内核页面根的 `onShell` 里先调旧外壳的 `dispose`、再 `root.textContent = ''`
+把根清空；而 React 的卸载是异步分批的，旧树在根已经被清空之后才去 `removeChild`，节点早就不
+在那棵树上了。只是推断——没有拿到堆栈对应到具体那一行。
+
+**根因未查，这次不修**：功能没坏（新外壳起来了、格都在），只是日志脏。**下一次动外壳热换
+（内核页面根的换壳顺序、或外壳的 `dispose`）时先查这条**：让 dispose 那侧真的等 React 卸完
+（`root.unmount()` 之后再清容器），或者页面根不再手动清空容器。
+
 ---
 
 ## 发版

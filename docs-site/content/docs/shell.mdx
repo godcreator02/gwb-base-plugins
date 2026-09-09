@@ -274,10 +274,11 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 
 - **取窗口列表抽成可注入的 deps**。测试里没有 electron，纯逻辑那半（没窗口怎么答、有几扇就
   reload 几扇）喂一份假的就能测；真机那份 `electronWindows()` 不在 Electron 里就 reject
-- **从命名空间取 API 先看 `default`**（`windowsOf`）。electron 是 CJS 包，ESM 里 `import()`
-  回的命名空间把整个 API 挂在 `default` 上，顶层没有 `BrowserWindow`——0.2.2 直接从命名空间取，
-  实机回的是「不在 Electron 主进程里」，0.2.3 修的就是这一条；`default` 不是对象才退回命名
-  空间本身
+- **`BrowserWindow` 是一个类，`typeof` 是 `'function'`**（`windowsOf`）。0.2.2 / 0.2.3 两版
+  按「是对象」判它再取 `getAllWindows`，实机回的都是「不在 Electron 主进程里」——而探针证明
+  命名空间与 `default` 上都有它。0.2.3 以为根因是 ESM 的 `default`，改错了地方；0.2.4 才修对：
+  对象或函数都往下取。「先看 `default`」那步留着（两处都挂，不吃亏），但它不是根因。
+  记在[撞过的墙](/docs/walls)
 - **说明符走变量**，不让 tsc 去解析 `electron` 这个模块——本包不依赖它的类型（那要把整个
   electron 装进件的 devDependencies，只为一个方法名），运行时它就在主进程里
 
