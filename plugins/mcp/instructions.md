@@ -9,6 +9,7 @@ god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台�
 - 顶层工具清单在你连着时不刷新（这道口无状态，发不出 list_changed）：新装的件经 gwb_command_run 够到
 
 这台工作台鼓励你在干活途中完善它自己——改件、发版、装回 home 都在预期之内。
+发完新版本调 plugins.update-all 一键热升（不重启）；升到 mcp 自己时这条回执会丢，重连后用 plugins.list 核对。
 不用问就能做：
 - 修已有命令的 bug
 - 补或改件带的 SKILL.md
