@@ -119,19 +119,19 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
   const working = busyPkg !== '' || busy
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-        <div className="relative min-w-40 flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+    <div className="plugins:flex plugins:h-full plugins:flex-col">
+      <div className="plugins:flex plugins:flex-wrap plugins:items-center plugins:gap-2 plugins:border-b plugins:border-border plugins:px-3 plugins:py-2">
+        <div className="plugins:relative plugins:min-w-40 plugins:flex-1">
+          <Search className="plugins:pointer-events-none plugins:absolute plugins:top-1/2 plugins:left-2 plugins:size-3.5 plugins:-translate-y-1/2 plugins:text-muted-foreground" />
           <Input
             type="search"
-            className="h-8 pl-7"
+            className="plugins:h-8 plugins:pl-7"
             placeholder="筛这条线，如 log、theme"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="plugins:shrink-0 plugins:text-xs plugins:text-muted-foreground">
           {rows === null
             ? '查 registry…'
             : `${String(summary.total)} 个 gwb 件 · 已装 ${String(summary.installed)}${
@@ -150,8 +150,8 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
       </div>
 
       {done !== '' && (
-        <div className="flex items-start gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-          <span className="flex-1 whitespace-pre-wrap break-all">{done}</span>
+        <div className="plugins:flex plugins:items-start plugins:gap-2 plugins:border-b plugins:border-border plugins:px-3 plugins:py-2 plugins:text-xs plugins:text-muted-foreground">
+          <span className="plugins:flex-1 plugins:whitespace-pre-wrap plugins:break-all">{done}</span>
           <Button size="xs" variant="ghost" onClick={() => setDone('')}>
             知道了
           </Button>
@@ -159,15 +159,15 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
       )}
 
       {loadError !== '' && (
-        <div className="border-b border-border px-3 py-2">
-          <p className="text-sm text-destructive">查不到 registry，下面空着不是没有件。</p>
-          <p className="mt-1 whitespace-pre-wrap break-all text-xs text-destructive">{loadError}</p>
+        <div className="plugins:border-b plugins:border-border plugins:px-3 plugins:py-2">
+          <p className="plugins:text-sm plugins:text-destructive">查不到 registry，下面空着不是没有件。</p>
+          <p className="plugins:mt-1 plugins:whitespace-pre-wrap plugins:break-all plugins:text-xs plugins:text-destructive">{loadError}</p>
         </div>
       )}
 
-      <div className="flex-1 overflow-auto">
+      <div className="plugins:flex-1 plugins:overflow-auto">
         {rows !== null && shown.length === 0 && (
-          <p className="p-6 text-sm text-muted-foreground">
+          <p className="plugins:p-6 plugins:text-sm plugins:text-muted-foreground">
             {query.trim() === ''
               ? 'registry 上这条线一个 gwb 件都没有。'
               : `这条线上没有匹配「${query.trim()}」的（共 ${String(summary.total)} 个）。清单外的包名，直接用上面那个「直接装包名」。`}
@@ -175,24 +175,24 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
         )}
 
         {shown.map((row) => (
-          <div key={row.pkg} className="border-b border-border px-3 py-2">
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-sm break-all">{row.pkg}</span>
+          <div key={row.pkg} className="plugins:border-b plugins:border-border plugins:px-3 plugins:py-2">
+            <div className="plugins:flex plugins:items-baseline plugins:gap-2">
+              <span className="plugins:font-mono plugins:text-sm plugins:break-all">{row.pkg}</span>
               {row.version !== undefined && (
-                <span className="shrink-0 font-mono text-xs text-muted-foreground" title="registry 上的最新版">
+                <span className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-muted-foreground" title="registry 上的最新版">
                   {row.version}
                 </span>
               )}
-              <span className="flex-1" />
+              <span className="plugins:flex-1" />
 
               {readOnly ? null : row.installed ? (
                 // **已装的灰掉、写「已装」，不给「再装一份」按钮**：多数件是服务提供方，
                 // 第二条条目会抛 service ... has been registered 根本挂不上
-                <span className="flex items-baseline gap-2">
-                  {row.spec !== undefined && <span className="font-mono text-xs text-muted-foreground">{row.spec}</span>}
+                <span className="plugins:flex plugins:items-baseline plugins:gap-2">
+                  {row.spec !== undefined && <span className="plugins:font-mono plugins:text-xs plugins:text-muted-foreground">{row.spec}</span>}
                   <Badge
                     variant="outline"
-                    className="opacity-60"
+                    className="plugins:opacity-60"
                     title="这个包在 home 里了。要给它多挂一条条目，去「已装」那段走 plugins.add-entry"
                   >
                     已装
@@ -212,12 +212,12 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
             </div>
 
             {row.description !== undefined && (
-              <p className="mt-0.5 text-xs text-muted-foreground">{row.description}</p>
+              <p className="plugins:mt-0.5 plugins:text-xs plugins:text-muted-foreground">{row.description}</p>
             )}
 
             {/* 失败就地显示**全文**：pnpm 输出的尾巴就在这里头，截一半等于没有 */}
             {failed[row.pkg] !== undefined && (
-              <pre className="mt-1 rounded-md bg-destructive/10 p-2 text-xs whitespace-pre-wrap break-all text-destructive">
+              <pre className="plugins:mt-1 plugins:rounded-md plugins:bg-destructive/10 plugins:p-2 plugins:text-xs plugins:whitespace-pre-wrap plugins:break-all plugins:text-destructive">
                 {failed[row.pkg]}
               </pre>
             )}

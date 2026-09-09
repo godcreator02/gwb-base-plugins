@@ -5,7 +5,6 @@ import { cn } from "cn"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
-import { usePortalContainer } from "@/portal"
 
 function AlertDialog({
   ...props
@@ -24,15 +23,8 @@ function AlertDialogTrigger({
 function AlertDialogPortal({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
-  // **本仓改过这一行**：默认弹层挂在 body 下，而件的样式表整张 scope 在
-  // data-gwb-plugin 之下——挂出去就一条规则都匹配不上。见 @/portal
-  const container = usePortalContainer()
   return (
-    <AlertDialogPrimitive.Portal
-      data-slot="alert-dialog-portal"
-      container={container}
-      {...props}
-    />
+    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
   )
 }
 
@@ -44,10 +36,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        // **本仓把 fixed 换成 absolute**：窗格是井里的一格，一格里的确认框不该把
-        // 整个窗口锁住（旁边那几格还在干别的事）。参照系是容器最近的 positioned
-        // 祖先——所以件在 mountPane 里要给自己那个容器加一句 position:relative
-        "absolute inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "plugins:fixed plugins:inset-0 plugins:z-50 plugins:bg-black/50 plugins:data-[state=closed]:animate-out plugins:data-[state=closed]:fade-out-0 plugins:data-[state=open]:animate-in plugins:data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -69,8 +58,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          // fixed → absolute 的理由同 overlay
-          "group/alert-dialog-content absolute top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 data-[size=sm]:max-w-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[size=default]:sm:max-w-lg",
+          "plugins:group/alert-dialog-content plugins:fixed plugins:top-[50%] plugins:left-[50%] plugins:z-50 plugins:grid plugins:w-full plugins:max-w-[calc(100%-2rem)] plugins:translate-x-[-50%] plugins:translate-y-[-50%] plugins:gap-4 plugins:rounded-lg plugins:border plugins:bg-background plugins:p-6 plugins:shadow-lg plugins:duration-200 plugins:data-[size=sm]:max-w-xs plugins:data-[state=closed]:animate-out plugins:data-[state=closed]:fade-out-0 plugins:data-[state=closed]:zoom-out-95 plugins:data-[state=open]:animate-in plugins:data-[state=open]:fade-in-0 plugins:data-[state=open]:zoom-in-95 plugins:data-[size=default]:sm:max-w-lg",
           className
         )}
         {...props}
@@ -87,7 +75,7 @@ function AlertDialogHeader({
     <div
       data-slot="alert-dialog-header"
       className={cn(
-        "grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-6 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
+        "plugins:grid plugins:grid-rows-[auto_1fr] plugins:place-items-center plugins:gap-1.5 plugins:text-center plugins:has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] plugins:has-data-[slot=alert-dialog-media]:gap-x-6 plugins:sm:group-data-[size=default]/alert-dialog-content:place-items-start plugins:sm:group-data-[size=default]/alert-dialog-content:text-left plugins:sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
         className
       )}
       {...props}
@@ -103,7 +91,7 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        "plugins:flex plugins:flex-col-reverse plugins:gap-2 plugins:group-data-[size=sm]/alert-dialog-content:grid plugins:group-data-[size=sm]/alert-dialog-content:grid-cols-2 plugins:sm:flex-row plugins:sm:justify-end",
         className
       )}
       {...props}
@@ -119,7 +107,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "text-lg font-semibold sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "plugins:text-lg plugins:font-semibold plugins:sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className
       )}
       {...props}
@@ -134,7 +122,7 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("plugins:text-sm plugins:text-muted-foreground", className)}
       {...props}
     />
   )
@@ -148,7 +136,7 @@ function AlertDialogMedia({
     <div
       data-slot="alert-dialog-media"
       className={cn(
-        "mb-2 inline-flex size-16 items-center justify-center rounded-md bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8",
+        "plugins:mb-2 plugins:inline-flex plugins:size-16 plugins:items-center plugins:justify-center plugins:rounded-md plugins:bg-muted plugins:sm:group-data-[size=default]/alert-dialog-content:row-span-2 plugins:*:[svg:not([class*=size-])]:size-8",
         className
       )}
       {...props}

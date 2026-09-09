@@ -7,9 +7,9 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-        "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
-        "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+        "plugins:h-9 plugins:w-full plugins:min-w-0 plugins:rounded-md plugins:border plugins:border-input plugins:bg-transparent plugins:px-3 plugins:py-1 plugins:text-base plugins:shadow-xs plugins:transition-[color,box-shadow] plugins:outline-none plugins:selection:bg-primary plugins:selection:text-primary-foreground plugins:file:inline-flex plugins:file:h-7 plugins:file:border-0 plugins:file:bg-transparent plugins:file:text-sm plugins:file:font-medium plugins:file:text-foreground plugins:placeholder:text-muted-foreground plugins:disabled:pointer-events-none plugins:disabled:cursor-not-allowed plugins:disabled:opacity-50 plugins:md:text-sm plugins:dark:bg-input/30",
+        "plugins:focus-visible:border-ring plugins:focus-visible:ring-[3px] plugins:focus-visible:ring-ring/50",
+        "plugins:aria-invalid:border-destructive plugins:aria-invalid:ring-destructive/20 plugins:dark:aria-invalid:ring-destructive/40",
         className
       )}
       {...props}

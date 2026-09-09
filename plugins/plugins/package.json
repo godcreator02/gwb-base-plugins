@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-plugins",
-  "version": "0.1.0",
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）",
+  "version": "0.2.0",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）。0.2 起样式走 Tailwind 前缀围栏（类名一律 plugins: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：下拉与两个确认框照 radix 默认 portal 到 body 也有样式，那层 portal 上下文连同两处手改一起退场",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -19,14 +19,16 @@
     "skills"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node build.ts && node ../../tools/build-styles.ts",
+    "//build": "样式那一步不再走 tools/build-styles.ts（那条是选择器 scope 方案）。前缀方案下件自己就是一个完整的 Tailwind 入口：`tailwindcss` 这个 bin 由 @tailwindcss/cli 提供，输入是 src/client/styles.css，扫描面由那份 css 里的 @source 说了算",
+    "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
   "//deps": "peer 四条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）;两个共享包是**浏览器半跑起来的前提**——react 系经内核注的 importmap 解析到 gwb-shared-react,令牌表由外壳注。三档判据见内核仓 CLAUDE.md",
   "//devDeps": "commands / data / settings / shell 四条都是 **dev**:在这儿全是空 `import type {}`（只为激活对方的 declare module）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选**的——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、窗格开不出来。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾。**shell 这条跟 logger 件不一样**:logger 把 shell 写成 peer,因为那个件除了一格窗格什么都不做、没有外壳就该挂不上;这个件反过来,服务面与命令面才是主体,窗格是可选的那一层",
-  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖,但**打进本束**——它们不在 importmap 里,外置成裸名就是运行期炸,所以按本仓判据算 dev",
+  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖,但**打进本束**——它们不在 importmap 里,外置成裸名就是运行期炸,所以按本仓判据算 dev。0.2 起 components.json 的 tailwind.prefix 填 plugins,CLI 拉下来的组件类名自带 `plugins:`;alert-dialog 与 dropdown-menu 那两处「把窗格容器透给 Portal」的手改**已经撤掉**,两个组件现在是官方原样——围栏在类名里,弹层挂 body 也有样式。cn 对 plugins:h-9 / plugins:h-8 这类带前缀的冲突合并本来就对,不用为前缀配任何东西",
+  "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：件自己编自己那张表（`tailwindcss` 这个 bin 出自 cli 包）,版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出,下拉与确认框从来不动画。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖,但 pnpm 的严格布局下这个件解析不到,所以显式写一条。四条都只在构建/测试期用,运行期没人 import,所以是 dev",
   "//peerRange": "写 >= 不写 ^:caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）,共享包一升版消费方就不匹配了",
   "peerDependencies": {
     "@godcreator02/gwb-plugin-api": ">=0.1.0",
@@ -43,6 +45,8 @@
     "@godcreator02/gwb-shell": "workspace:*",
     "@godcreator02/gwb-skills": "workspace:*",
     "@godcreator02/gwb-tokens": "workspace:*",
+    "@tailwindcss/cli": "^4.3.0",
+    "@tailwindcss/node": "^4.3.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "class-variance-authority": "^0.7.1",
@@ -53,6 +57,8 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "tailwindcss": "^4.3.0",
+    "tw-animate-css": "^1.4.0",
     "typescript": "^7.0.2"
   }
 }

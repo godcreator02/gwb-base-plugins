@@ -4,19 +4,19 @@ import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+  "plugins:inline-flex plugins:w-fit plugins:shrink-0 plugins:items-center plugins:justify-center plugins:gap-1 plugins:overflow-hidden plugins:rounded-full plugins:border plugins:border-transparent plugins:px-2 plugins:py-0.5 plugins:text-xs plugins:font-medium plugins:whitespace-nowrap plugins:transition-[color,box-shadow] plugins:focus-visible:border-ring plugins:focus-visible:ring-[3px] plugins:focus-visible:ring-ring/50 plugins:aria-invalid:border-destructive plugins:aria-invalid:ring-destructive/20 plugins:dark:aria-invalid:ring-destructive/40 plugins:[&>svg]:pointer-events-none plugins:[&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        default: "plugins:bg-primary plugins:text-primary-foreground plugins:[a&]:hover:bg-primary/90",
         secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+          "plugins:bg-secondary plugins:text-secondary-foreground plugins:[a&]:hover:bg-secondary/90",
         destructive:
-          "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
+          "plugins:bg-destructive plugins:text-white plugins:focus-visible:ring-destructive/20 plugins:dark:bg-destructive/60 plugins:dark:focus-visible:ring-destructive/40 plugins:[a&]:hover:bg-destructive/90",
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+          "plugins:border-border plugins:text-foreground plugins:[a&]:hover:bg-accent plugins:[a&]:hover:text-accent-foreground",
+        ghost: "plugins:[a&]:hover:bg-accent plugins:[a&]:hover:text-accent-foreground",
+        link: "plugins:text-primary plugins:underline-offset-4 plugins:[a&]:hover:underline",
       },
     },
     defaultVariants: {

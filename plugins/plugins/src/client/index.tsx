@@ -43,7 +43,6 @@ import {
   slotKey,
   type SettingRow,
 } from './settings'
-import { PortalContainer } from './portal'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
 import { Badge } from '@/components/ui/badge'
@@ -215,7 +214,7 @@ function SettingField({
     return (
       <Input
         type="number"
-        className="h-8 w-32 text-right tabular-nums"
+        className="plugins:h-8 plugins:w-32 plugins:text-right plugins:tabular-nums"
         value={typeof value === 'number' ? String(value) : ''}
         onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
       />
@@ -223,10 +222,10 @@ function SettingField({
   }
   if (row.type === 'secret') {
     return (
-      <div className="flex items-center gap-1">
+      <div className="plugins:flex plugins:items-center plugins:gap-1">
         <Input
           type={bare ? 'text' : 'password'}
-          className="h-8 w-56 font-mono text-xs"
+          className="plugins:h-8 plugins:w-56 plugins:font-mono plugins:text-xs"
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -243,7 +242,7 @@ function SettingField({
   }
   return (
     <Input
-      className="h-8 w-56"
+      className="plugins:h-8 plugins:w-56"
       placeholder="（空）"
       value={typeof value === 'string' ? value : ''}
       onChange={(e) => onChange(e.target.value)}
@@ -262,29 +261,29 @@ function SettingLine({
   onChange: (next: unknown) => void
 }): ReactElement {
   return (
-    <div className="flex items-start justify-between gap-4 px-3 py-2">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">{row.title ?? row.key}</span>
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">{row.key}</code>
+    <div className="plugins:flex plugins:items-start plugins:justify-between plugins:gap-4 plugins:px-3 plugins:py-2">
+      <div className="plugins:min-w-0 plugins:flex-1">
+        <div className="plugins:flex plugins:items-center plugins:gap-2">
+          <span className="plugins:text-sm">{row.title ?? row.key}</span>
+          <code className="plugins:rounded plugins:bg-muted plugins:px-1 plugins:py-0.5 plugins:font-mono plugins:text-[10px] plugins:text-muted-foreground">{row.key}</code>
           {row.live === false && (
-            <Badge variant="outline" className="px-1 py-0 text-[10px]" title="此刻没有件声明它——件停着或者已经卸了">
+            <Badge variant="outline" className="plugins:px-1 plugins:py-0 plugins:text-[10px]" title="此刻没有件声明它——件停着或者已经卸了">
               无主
             </Badge>
           )}
           {row.type === 'secret' && (
             <Badge
               variant="outline"
-              className="px-1 py-0 text-[10px] text-amber-600 dark:text-amber-500"
+              className="plugins:px-1 plugins:py-0 plugins:text-[10px] plugins:text-amber-600 plugins:dark:text-amber-500"
               title="secret 只影响显示打码，盘上存的是明文"
             >
               明文落盘
             </Badge>
           )}
         </div>
-        {row.description !== undefined && <p className="mt-0.5 text-xs text-muted-foreground">{row.description}</p>}
+        {row.description !== undefined && <p className="plugins:mt-0.5 plugins:text-xs plugins:text-muted-foreground">{row.description}</p>}
       </div>
-      <div className="shrink-0 pt-0.5">
+      <div className="plugins:shrink-0 plugins:pt-0.5">
         <SettingField row={row} value={value} onChange={onChange} />
       </div>
     </div>
@@ -356,53 +355,53 @@ function EntryCard({
   const title = entry.label ?? face?.title ?? entry.id
 
   return (
-    <Collapsible open={open} onOpenChange={onToggleOpen} className="border-b border-border last:border-b-0">
-      <div className={cn('flex items-center gap-3 px-3 py-2.5 hover:bg-accent/40', entry.disabled && 'opacity-60')}>
+    <Collapsible open={open} onOpenChange={onToggleOpen} className="plugins:border-b plugins:border-border plugins:last:border-b-0">
+      <div className={cn('plugins:flex plugins:items-center plugins:gap-3 plugins:px-3 plugins:py-2.5 plugins:hover:bg-accent/40', entry.disabled && 'plugins:opacity-60')}>
         {/* 展开热区只包住左半——右半有开关和菜单，点它们不该顺带展开 */}
-        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none">
-          <ChevronRight className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')} />
-          <Icon className="size-4 shrink-0 text-muted-foreground" />
+        <CollapsibleTrigger className="plugins:flex plugins:min-w-0 plugins:flex-1 plugins:items-center plugins:gap-3 plugins:text-left plugins:outline-none">
+          <ChevronRight className={cn('plugins:size-4 plugins:shrink-0 plugins:text-muted-foreground plugins:transition-transform', open && 'plugins:rotate-90')} />
+          <Icon className="plugins:size-4 plugins:shrink-0 plugins:text-muted-foreground" />
           {/*
             两行的分工：第一行**只放认件用得着的三样**（名字、未保存、状态），第二行放
             身份（裸 id）与包名。id 是身份，日志和 yml 里出现的是它，label 只是给人看的皮
           */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-medium">{title}</span>
+          <div className="plugins:min-w-0 plugins:flex-1">
+            <div className="plugins:flex plugins:items-center plugins:gap-2">
+              <span className="plugins:truncate plugins:text-sm plugins:font-medium">{title}</span>
               {dirtyCount > 0 && (
-                <Badge className="shrink-0 border-0 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400">
+                <Badge className="plugins:shrink-0 plugins:border-0 plugins:bg-amber-500/15 plugins:px-1.5 plugins:py-0 plugins:text-[10px] plugins:text-amber-600 plugins:dark:text-amber-400">
                   未保存
                 </Badge>
               )}
-              <Badge variant={badge.variant} className="shrink-0 px-1.5 py-0 text-[10px]">
+              <Badge variant={badge.variant} className="plugins:shrink-0 plugins:px-1.5 plugins:py-0 plugins:text-[10px]">
                 {badge.text}
               </Badge>
               {update !== undefined && (
                 <Badge
                   variant="outline"
-                  className="shrink-0 border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
+                  className="plugins:shrink-0 plugins:border-amber-500/40 plugins:px-1.5 plugins:py-0 plugins:text-[10px] plugins:text-amber-600 plugins:dark:text-amber-400"
                   title={`home 里是 ${update.current}，registry 上最新是 ${update.latest}`}
                 >
                   有新版 {update.current} → {update.latest}
                 </Badge>
               )}
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="min-w-0 truncate font-mono text-xs text-muted-foreground" title={entry.entryId}>
+            <div className="plugins:flex plugins:items-baseline plugins:gap-2">
+              <span className="plugins:min-w-0 plugins:truncate plugins:font-mono plugins:text-xs plugins:text-muted-foreground" title={entry.entryId}>
                 {entry.id}
               </span>
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
+              <span className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-muted-foreground">
                 {card.pkg}
                 {card.spec !== undefined ? `@${card.spec}` : ''}
               </span>
               {card.settings.length > 0 && (
-                <span className="shrink-0 text-xs text-muted-foreground">· {card.settings.length} 项设置</span>
+                <span className="plugins:shrink-0 plugins:text-xs plugins:text-muted-foreground">· {card.settings.length} 项设置</span>
               )}
             </div>
           </div>
         </CollapsibleTrigger>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="plugins:flex plugins:shrink-0 plugins:items-center plugins:gap-1">
           {onUpdate !== undefined && (
             <Button
               size="xs"
@@ -444,10 +443,10 @@ function EntryCard({
 
       {/* 改名行在头部下面、折叠区外面——收着的时候也要能改名 */}
       {editing && (
-        <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+        <div className="plugins:flex plugins:items-center plugins:gap-2 plugins:border-t plugins:border-border plugins:px-3 plugins:py-2">
           <Input
             autoFocus
-            className="h-7 w-56 text-xs"
+            className="plugins:h-7 plugins:w-56 plugins:text-xs"
             placeholder="空着保存就是抹掉显示名"
             value={labelValue}
             onChange={(e) => onRenameChange(e.target.value)}
@@ -466,21 +465,21 @@ function EntryCard({
       )}
 
       <CollapsibleContent>
-        <div className="border-t border-border bg-muted/30">
+        <div className="plugins:border-t plugins:border-border plugins:bg-muted/30">
           {/* 挂不上的原因人话先说——attention 的两态（没挂上、停了还在跑）都是最该被看见的 */}
           {entry.attention && (
-            <div className="flex items-start gap-2 border-b border-border px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
-              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+            <div className="plugins:flex plugins:items-start plugins:gap-2 plugins:border-b plugins:border-border plugins:px-3 plugins:py-2 plugins:text-xs plugins:text-amber-600 plugins:dark:text-amber-400">
+              <TriangleAlert className="plugins:mt-0.5 plugins:size-3.5 plugins:shrink-0" />
               <span>{entry.hint}</span>
             </div>
           )}
           {card.settings.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-muted-foreground">
+            <p className="plugins:px-3 plugins:py-3 plugins:text-xs plugins:text-muted-foreground">
               这件没声明设置项。
               {entry.state !== 'active' && '（件挂上了才会声明——没挂上时这里多半是空的）'}
             </p>
           ) : (
-            <div className="divide-y divide-border">
+            <div className="plugins:divide-y plugins:divide-border">
               {card.settings.map((s) => {
                 const slot = slotKey(s)
                 return (
@@ -495,11 +494,11 @@ function EntryCard({
             </div>
           )}
           {dirtyCount > 0 && (
-            <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+            <div className="plugins:flex plugins:items-center plugins:gap-2 plugins:border-t plugins:border-border plugins:px-3 plugins:py-2">
               {saveError !== undefined ? (
-                <span className="flex-1 text-xs break-all whitespace-pre-wrap text-destructive">{saveError}</span>
+                <span className="plugins:flex-1 plugins:text-xs plugins:break-all plugins:whitespace-pre-wrap plugins:text-destructive">{saveError}</span>
               ) : (
-                <span className="flex-1 text-xs text-muted-foreground">
+                <span className="plugins:flex-1 plugins:text-xs plugins:text-muted-foreground">
                   改了 {dirtyCount} 项，还没存盘
                 </span>
               )}
@@ -929,12 +928,12 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
   // ── 画─────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full flex-col bg-background text-foreground">
+    <div className="plugins:flex plugins:h-full plugins:flex-col plugins:bg-background plugins:text-foreground">
       {/* 直接装包名的框摆在段切换之上：清单外的、第三方的件，两段里都走它 */}
-      <div className="border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
+      <div className="plugins:border-b plugins:border-border plugins:px-3 plugins:py-2">
+        <div className="plugins:flex plugins:items-center plugins:gap-2">
           <Input
-            className="h-8 flex-1 font-mono text-xs"
+            className="plugins:h-8 plugins:flex-1 plugins:font-mono plugins:text-xs"
             placeholder="直接装包名，如 @godcreator02/gwb-hello（可带版本 @scope/name@^1.0）"
             value={installInput}
             onChange={(e) => setInstallInput(e.target.value)}
@@ -950,11 +949,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
       {notice !== null && (
         <div
-          className={`flex items-start gap-2 border-b border-border px-3 py-2 text-xs ${
-            notice.ok ? 'text-muted-foreground' : 'text-destructive'
+          className={`plugins:flex plugins:items-start plugins:gap-2 plugins:border-b plugins:border-border plugins:px-3 plugins:py-2 plugins:text-xs ${
+            notice.ok ? 'plugins:text-muted-foreground' : 'plugins:text-destructive'
           }`}
         >
-          <span className="flex-1 whitespace-pre-wrap break-all">{notice.text}</span>
+          <span className="plugins:flex-1 plugins:whitespace-pre-wrap plugins:break-all">{notice.text}</span>
           <Button size="xs" variant="ghost" onClick={() => setNotice(null)}>
             知道了
           </Button>
@@ -962,14 +961,14 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       )}
 
       {/* 「已装」与「可装」两段。刷新按钮两段共用——可装那段的「装没装」吃同一份表 */}
-      <div className="flex items-center gap-1 border-b border-border px-3 py-1.5">
+      <div className="plugins:flex plugins:items-center plugins:gap-1 plugins:border-b plugins:border-border plugins:px-3 plugins:py-1.5">
         <Button size="sm" variant={tab === 'installed' ? 'secondary' : 'ghost'} onClick={() => setTab('installed')}>
           已装
         </Button>
         <Button size="sm" variant={tab === 'market' ? 'secondary' : 'ghost'} onClick={() => setTab('market')}>
           可装
         </Button>
-        <span className="flex-1" />
+        <span className="plugins:flex-1" />
         <Button
           size="sm"
           variant="ghost"
@@ -988,24 +987,24 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
         <MarketTab host={args.host} installed={marketIndex} busy={busy} onChanged={refresh} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-border px-3 py-2">
-            <div className="relative min-w-40 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <div className="plugins:flex plugins:flex-wrap plugins:items-center plugins:gap-x-2 plugins:gap-y-2 plugins:border-b plugins:border-border plugins:px-3 plugins:py-2">
+            <div className="plugins:relative plugins:min-w-40 plugins:flex-1">
+              <Search className="plugins:pointer-events-none plugins:absolute plugins:top-1/2 plugins:left-2 plugins:size-3.5 plugins:-translate-y-1/2 plugins:text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="搜件名、包名、设置项"
-                className="h-8 pl-7"
+                className="plugins:h-8 plugins:pl-7"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="flex items-center gap-1">
+            <div className="plugins:flex plugins:items-center plugins:gap-1">
               {(['all', 'on', 'off', 'bad'] as Filter[]).map((f) => (
                 <Button
                   key={f}
                   size="sm"
                   variant={filter === f ? 'secondary' : 'ghost'}
-                  className={cn(f === 'bad' && badCount > 0 && filter !== f && 'text-destructive')}
+                  className={cn(f === 'bad' && badCount > 0 && filter !== f && 'plugins:text-destructive')}
                   onClick={() => setFilter(f)}
                 >
                   {FILTER_LABEL[f]}
@@ -1015,11 +1014,11 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto">
-            {listError !== '' && <p className="p-6 text-sm whitespace-pre-wrap text-destructive">{listError}</p>}
+          <div className="plugins:flex-1 plugins:overflow-auto">
+            {listError !== '' && <p className="plugins:p-6 plugins:text-sm plugins:whitespace-pre-wrap plugins:text-destructive">{listError}</p>}
 
             {listError === '' && rows !== null && cards.length === 0 && (
-              <p className="p-6 text-sm text-muted-foreground">home 里一个件都没挂。</p>
+              <p className="plugins:p-6 plugins:text-sm plugins:text-muted-foreground">home 里一个件都没挂。</p>
             )}
 
             {shown.map((card) => (
@@ -1064,8 +1063,8 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             ))}
 
             {shown.length === 0 && cards.length > 0 && (
-              <div className="p-6 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-2">
+              <div className="plugins:p-6 plugins:text-sm plugins:text-muted-foreground">
+                <span className="plugins:inline-flex plugins:items-center plugins:gap-2">
                   {cards.length} 条条目都被筛掉了。
                   <Button
                     size="sm"
@@ -1086,34 +1085,34 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               让人以为件还在。只在没筛选的时候出现——筛选中的清单应该是纯粹的
             */}
             {search === '' && filter === 'all' && orphans.length > 0 && (
-              <Collapsible open={orphansOpen} onOpenChange={setOrphansOpen} className="border-t border-border">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left outline-none hover:bg-accent/40">
+              <Collapsible open={orphansOpen} onOpenChange={setOrphansOpen} className="plugins:border-t plugins:border-border">
+                <CollapsibleTrigger className="plugins:flex plugins:w-full plugins:items-center plugins:gap-2 plugins:px-3 plugins:py-2 plugins:text-left plugins:outline-none plugins:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('size-4 text-muted-foreground transition-transform', orphansOpen && 'rotate-90')}
+                    className={cn('plugins:size-4 plugins:text-muted-foreground plugins:transition-transform', orphansOpen && 'plugins:rotate-90')}
                   />
-                  <span className="text-sm text-muted-foreground">无主的设置</span>
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  <span className="plugins:text-sm plugins:text-muted-foreground">无主的设置</span>
+                  <Badge variant="outline" className="plugins:px-1.5 plugins:py-0 plugins:text-[10px]">
                     {orphans.length}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">盘上有值，此刻没有件认领</span>
+                  <span className="plugins:text-xs plugins:text-muted-foreground">盘上有值，此刻没有件认领</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="divide-y divide-border bg-muted/30">
+                  <div className="plugins:divide-y plugins:divide-border plugins:bg-muted/30">
                     {orphans.map((s) => (
-                      <div key={slotKey(s)} className="flex items-center justify-between gap-4 px-3 py-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{s.title ?? s.key}</span>
-                            <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <div key={slotKey(s)} className="plugins:flex plugins:items-center plugins:justify-between plugins:gap-4 plugins:px-3 plugins:py-2">
+                        <div className="plugins:min-w-0">
+                          <div className="plugins:flex plugins:items-center plugins:gap-2">
+                            <span className="plugins:text-sm">{s.title ?? s.key}</span>
+                            <code className="plugins:rounded plugins:bg-muted plugins:px-1 plugins:py-0.5 plugins:font-mono plugins:text-[10px] plugins:text-muted-foreground">
                               {s.section}/{s.key}
                             </code>
                           </div>
-                          {s.description !== undefined && <p className="mt-0.5 text-xs text-muted-foreground">{s.description}</p>}
+                          {s.description !== undefined && <p className="plugins:mt-0.5 plugins:text-xs plugins:text-muted-foreground">{s.description}</p>}
                         </div>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="shrink-0 text-destructive"
+                          className="plugins:shrink-0 plugins:text-destructive"
                           title="把这一格从盘上抹掉"
                           onClick={() =>
                             void run(
@@ -1133,29 +1132,29 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             )}
 
             {sharedRows.length > 0 && (
-              <Collapsible open={sharedOpen} onOpenChange={setSharedOpen} className="border-t border-border">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left outline-none hover:bg-accent/40">
+              <Collapsible open={sharedOpen} onOpenChange={setSharedOpen} className="plugins:border-t plugins:border-border">
+                <CollapsibleTrigger className="plugins:flex plugins:w-full plugins:items-center plugins:gap-2 plugins:px-3 plugins:py-2 plugins:text-left plugins:outline-none plugins:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('size-4 text-muted-foreground transition-transform', sharedOpen && 'rotate-90')}
+                    className={cn('plugins:size-4 plugins:text-muted-foreground plugins:transition-transform', sharedOpen && 'plugins:rotate-90')}
                   />
-                  <span className="text-sm text-muted-foreground">共享包</span>
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  <span className="plugins:text-sm plugins:text-muted-foreground">共享包</span>
+                  <Badge variant="outline" className="plugins:px-1.5 plugins:py-0 plugins:text-[10px]">
                     {sharedRows.length}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">页面级基础设施，没有条目也不会有</span>
+                  <span className="plugins:text-xs plugins:text-muted-foreground">页面级基础设施，没有条目也不会有</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="divide-y divide-border bg-muted/30">
+                  <div className="plugins:divide-y plugins:divide-border plugins:bg-muted/30">
                     {sharedRows.map((row) => (
-                      <div key={row.pkg} className="flex items-center justify-between gap-4 px-3 py-2">
-                        <div className="min-w-0">
-                          <div className="flex items-baseline gap-2">
-                            <span className="min-w-0 truncate font-mono text-xs">{row.pkg}</span>
+                      <div key={row.pkg} className="plugins:flex plugins:items-center plugins:justify-between plugins:gap-4 plugins:px-3 plugins:py-2">
+                        <div className="plugins:min-w-0">
+                          <div className="plugins:flex plugins:items-baseline plugins:gap-2">
+                            <span className="plugins:min-w-0 plugins:truncate plugins:font-mono plugins:text-xs">{row.pkg}</span>
                             {row.spec !== undefined && (
-                              <span className="shrink-0 font-mono text-xs text-muted-foreground">{row.spec}</span>
+                              <span className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-muted-foreground">{row.spec}</span>
                             )}
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
+                          <p className="plugins:mt-0.5 plugins:text-xs plugins:text-muted-foreground">
                             {provided[row.pkg]?.length
                               ? `页面 importmap 提供 ${provided[row.pkg]?.join('、')}`
                               : '页面级基础设施，没有可挂的窗格'}
@@ -1163,7 +1162,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         </div>
                         {updates?.[row.pkg] !== undefined && (
                           <span
-                            className="shrink-0 font-mono text-xs text-amber-600 dark:text-amber-400"
+                            className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-amber-600 plugins:dark:text-amber-400"
                             title={`home 里是 ${updates[row.pkg]!.current}，registry 上最新是 ${updates[row.pkg]!.latest}`}
                           >
                             有新版 → {updates[row.pkg]!.latest}
@@ -1177,35 +1176,35 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             )}
 
             {pendingRows.length > 0 && (
-              <Collapsible open={noEntryOpen} onOpenChange={setNoEntryOpen} className="border-t border-border">
-                <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left outline-none hover:bg-accent/40">
+              <Collapsible open={noEntryOpen} onOpenChange={setNoEntryOpen} className="plugins:border-t plugins:border-border">
+                <CollapsibleTrigger className="plugins:flex plugins:w-full plugins:items-center plugins:gap-2 plugins:px-3 plugins:py-2 plugins:text-left plugins:outline-none plugins:hover:bg-accent/40">
                   <ChevronRight
-                    className={cn('size-4 text-muted-foreground transition-transform', noEntryOpen && 'rotate-90')}
+                    className={cn('plugins:size-4 plugins:text-muted-foreground plugins:transition-transform', noEntryOpen && 'plugins:rotate-90')}
                   />
-                  <span className="text-sm text-muted-foreground">已装、没挂条目的插件</span>
-                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                  <span className="plugins:text-sm plugins:text-muted-foreground">已装、没挂条目的插件</span>
+                  <Badge variant="outline" className="plugins:px-1.5 plugins:py-0 plugins:text-[10px]">
                     {pendingRows.length}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">装了还没往 cordis.yml 挂条目的件在这</span>
+                  <span className="plugins:text-xs plugins:text-muted-foreground">装了还没往 cordis.yml 挂条目的件在这</span>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="divide-y divide-border bg-muted/30">
+                  <div className="plugins:divide-y plugins:divide-border plugins:bg-muted/30">
                     {pendingRows.map((row) => (
-                      <div key={row.pkg} className="flex items-center justify-between gap-4 px-3 py-2">
-                        <div className="min-w-0">
-                          <div className="flex items-baseline gap-2">
-                            <span className="min-w-0 truncate font-mono text-xs">{row.pkg}</span>
+                      <div key={row.pkg} className="plugins:flex plugins:items-center plugins:justify-between plugins:gap-4 plugins:px-3 plugins:py-2">
+                        <div className="plugins:min-w-0">
+                          <div className="plugins:flex plugins:items-baseline plugins:gap-2">
+                            <span className="plugins:min-w-0 plugins:truncate plugins:font-mono plugins:text-xs">{row.pkg}</span>
                             {row.spec !== undefined && (
-                              <span className="shrink-0 font-mono text-xs text-muted-foreground">{row.spec}</span>
+                              <span className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-muted-foreground">{row.spec}</span>
                             )}
                           </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground" title={row.noteHint}>
+                          <p className="plugins:mt-0.5 plugins:text-xs plugins:text-muted-foreground" title={row.noteHint}>
                             {row.note}
                           </p>
                         </div>
                         {updates?.[row.pkg] !== undefined && (
                           <span
-                            className="shrink-0 font-mono text-xs text-amber-600 dark:text-amber-400"
+                            className="plugins:shrink-0 plugins:font-mono plugins:text-xs plugins:text-amber-600 plugins:dark:text-amber-400"
                             title={`home 里是 ${updates[row.pkg]!.current}，registry 上最新是 ${updates[row.pkg]!.latest}`}
                           >
                             有新版 → {updates[row.pkg]!.latest}
@@ -1214,7 +1213,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="shrink-0"
+                          className="plugins:shrink-0"
                           disabled={busy}
                           title={`往 cordis.yml 里加一条引 ${row.pkg} 的条目并当场挂上`}
                           onClick={() => void run(ADD_ENTRY, { pkg: row.pkg }, `给 ${row.pkg} 挂了条目`)}
@@ -1225,7 +1224,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="shrink-0 text-destructive"
+                          className="plugins:shrink-0 plugins:text-destructive"
                           disabled={busy}
                           title={`pnpm remove 掉 ${row.pkg}。设置与数据留盘`}
                           onClick={() => askUninstall(row.pkg)}
@@ -1240,7 +1239,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-1 text-xs text-muted-foreground">
+          <div className="plugins:flex plugins:items-center plugins:justify-between plugins:gap-3 plugins:border-t plugins:border-border plugins:px-3 plugins:py-1 plugins:text-xs plugins:text-muted-foreground">
             <span>
               {shown.length === cards.length
                 ? `${summary.entries} 条条目`
@@ -1248,7 +1247,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               {` · ${onCount} 个启用`}
               {badCount > 0 && ` · ${badCount} 个异常`}
             </span>
-            <span className="truncate font-mono" title="设置落在 <home>/settings.json，跟 cordis.yml 并排——home 自持全部配置">
+            <span className="plugins:truncate plugins:font-mono" title="设置落在 <home>/settings.json，跟 cordis.yml 并排——home 自持全部配置">
               settings.json
             </span>
           </div>
@@ -1260,25 +1259,25 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <AlertDialogHeader>
             <AlertDialogTitle>删条目 {asking?.card.entry.label ?? asking?.card.entry.id}？</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2">
+              <div className="plugins:space-y-2">
                 <p>
-                  会把 <code className="font-mono">{asking?.card.entry.id}</code> 这条条目从 cordis.yml 里摘掉，fiber
+                  会把 <code className="plugins:font-mono">{asking?.card.entry.id}</code> 这条条目从 cordis.yml 里摘掉，fiber
                   当场卸下。**包不删**，还留在 home 里；要拿掉包自己去 home 里 pnpm remove。
                 </p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           {/* 设置值删不删要问：不问就静默留下一堆无主的值，问了正好接住列表末尾那一块 */}
-          <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+          <label className="plugins:flex plugins:items-center plugins:gap-2 plugins:rounded-md plugins:border plugins:border-border plugins:px-3 plugins:py-2 plugins:text-sm">
             <input
               type="checkbox"
-              className="size-4 accent-primary"
+              className="plugins:size-4 plugins:accent-primary"
               checked={alsoDrop}
               onChange={(e) => setAlsoDrop(e.target.checked)}
             />
             <span>
               一并抹掉它的设置值
-              <span className="block text-xs text-muted-foreground">
+              <span className="plugins:block plugins:text-xs plugins:text-muted-foreground">
                 不勾的话这些值留在盘上，之后会出现在「无主的设置」里
               </span>
             </span>
@@ -1286,7 +1285,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <AlertDialogFooter>
             <AlertDialogCancel>算了</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="plugins:bg-destructive plugins:text-white plugins:hover:bg-destructive/90"
               disabled={busy}
               onClick={() => void removeEntry()}
             >
@@ -1302,16 +1301,16 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <AlertDialogHeader>
             <AlertDialogTitle>卸载 {askingUninstall?.pkg}？</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2">
+              <div className="plugins:space-y-2">
                 <p>
-                  会把这个包的 <code className="font-mono">{String(askingUninstall?.count ?? 0)}</code> 条条目从
+                  会把这个包的 <code className="plugins:font-mono">{String(askingUninstall?.count ?? 0)}</code> 条条目从
                   cordis.yml 里摘掉（fiber 当场卸下），再 pnpm remove 把包从 home 移走。
                 </p>
                 <p>
                   **设置与数据留在盘上**——重装回来还是那份。只想删一条条目、包留着的话，取消后走那条上的「删条目…」。
                 </p>
                 {askingUninstall?.isSelf && (
-                  <p className="text-destructive">
+                  <p className="plugins:text-destructive">
                     这是插件管理件自己：卸了之后**这一格就没有了**，重启内核后界面退回阶段页。真要重来得回命令行装。
                   </p>
                 )}
@@ -1319,16 +1318,16 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {askingUninstall !== null && askingUninstall.settings.length > 0 && (
-            <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+            <label className="plugins:flex plugins:items-center plugins:gap-2 plugins:rounded-md plugins:border plugins:border-border plugins:px-3 plugins:py-2 plugins:text-sm">
               <input
                 type="checkbox"
-                className="size-4 accent-primary"
+                className="plugins:size-4 plugins:accent-primary"
                 checked={uninstallDrop}
                 onChange={(e) => setUninstallDrop(e.target.checked)}
               />
               <span>
                 一并抹掉这 {askingUninstall.settings.length} 项设置值
-                <span className="block text-xs text-muted-foreground">
+                <span className="plugins:block plugins:text-xs plugins:text-muted-foreground">
                   不勾的话这些值留在盘上，之后会出现在「无主的设置」里
                 </span>
               </span>
@@ -1337,7 +1336,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           <AlertDialogFooter>
             <AlertDialogCancel>算了</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="plugins:bg-destructive plugins:text-white plugins:hover:bg-destructive/90"
               disabled={busy}
               onClick={() => void uninstallPkg()}
             >
@@ -1354,24 +1353,21 @@ function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
   // 认不出的 paneId 报错、不回落——「注册了 x 却画出 installed」是那种没有任何现象的错
   if (args.pane.id === PANE_ID) {
-    // 容器在这里供出去：下拉与确认框的弹层挂它不挂 body——件的样式表整张 scope 在
-    // data-gwb-plugin 之下，挂出去就是一片没样式的白板（见 portal.tsx 的头注）
-    root.render(
-      <PortalContainer value={container}>
-        <PluginsPane args={args} />
-      </PortalContainer>,
-    )
+    // 弹层（下拉、两个确认框）**照 radix 的默认 portal 到 body**：0.2 起围栏是类名前缀，
+    // 规则全页有效，挂到容器外面照样有样式。原先那层 `PortalContainer` 上下文与两个
+    // 组件里「把容器透给 Portal」的手改，连同 src/client/portal.tsx 一起退场了
+    root.render(<PluginsPane args={args} />)
   } else {
-    root.render(<p className="p-3 text-sm text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
+    root.render(<p className="plugins:p-3 plugins:text-sm plugins:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
   }
   return root
 }
 
 /** 窗格件那半的入口。导出名是 `mountPane`——外壳占整页那个根，窗格占井里一格 */
 export function mountPane(args: PaneArgs, container: HTMLElement): { dispose(): void } {
-  // 弹层（下拉、确认框）改成了 absolute 定位，参照系是最近的 positioned 祖先——
-  // 不给这一句的话，确认框会跑到井外面去（design demo 的 mount 同一款）
-  container.style.position = 'relative'
+  // **不再给容器加 position:relative**：那一句是为「弹层 absolute 定位、参照系取最近的
+  // positioned 祖先」配的，而弹层现在是官方原样——portal 到 body、confirm 那层 fixed。
+  // 随之而来的行为变化：确认框的遮罩盖整窗而不是只盖这一格，模态对话框本该如此
   const root = boot(args, container)
   return {
     dispose() {
