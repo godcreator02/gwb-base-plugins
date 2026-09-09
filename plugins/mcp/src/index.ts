@@ -4,13 +4,14 @@ import { createRequire } from 'node:module'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
-import type { GwbContext } from '@godcreator02/gwb-plugin-api'
+import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands 与 gwbData
 import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
+import { DEFAULT_HOME, choosePort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
 import { buildInstructions, skillResources, type SkillsSlot } from './skills.js'
 import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
 
@@ -30,6 +31,8 @@ import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type 
  * - **说明书（skill）也从这道口出**：`instructions` 点名此刻挂着的 skill（唯一的发现面），
  *   正文挂成 `skill://gwb/<名>/<文件>` resources。收的那头是 `gwb-skills` 件，局部注入
  *   接的——skills 件不在这儿时这道桥照开，只是 agent 读不到说明书
+ * - **口开在哪由 home 名定**：`default` 认死 2870、被占就不开这道口（判断在
+ *   `endpoint.ts`，理由也在那儿）；其它 home 默认系统随机口
  * - 鉴权见 `auth.ts`。token 落 `ctx.gwbData` 的 `token` 文档，并**打进日志**——
  *   这一版没有界面，日志是它唯一的示人出口
  */
@@ -38,9 +41,6 @@ export const name = 'gwb-mcp'
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
 export const inject = ['gwbCommands', 'gwbData']
-
-/** 首选端口。被占（多 home 同时开的常态）就退让到系统分配的那个 */
-const DEFAULT_PORT = 2870
 
 /**
  * 报给 MCP 客户端的版本号：**本件自己的**。以前报的是内核的 `kernel.appVersion`，
@@ -74,7 +74,12 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
   // inject 保证了它在，这句只是把类型收窄
   if (cli === undefined) return
 
-  const wantPort = Number(config?.port ?? DEFAULT_PORT)
+  /**
+   * 这道口开在哪：home 名（`dataDir` 的末段）加配置一起定，判断全在 `endpoint.ts`，
+   * 这儿只接线。`gwbKernel` 不写进 `inject`，用 `requireKernel` 取
+   */
+  const home = homeNameOf(requireKernel(ctx).dataDir)
+  const choice = choosePort(home, config?.port)
 
   /**
    * 说明书那格。**局部注入,不写进 export const inject**:skills 件不在时这道桥照开——
@@ -88,12 +93,6 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
       skills = undefined
     })
   })
-
-  /**
-   * 实际监听端口，listen 成功后回填。**端口现读不固化**：首选端口被占时真实端口是
-   * 退让来的另一个，apply 时抓一个常量下来，连接串就会指向另一个 home 的宿主
-   */
-  let port = 0
 
   /**
    * 取令牌的那次尝试，**存的是 promise 而不是值**：首启那次要落一份盘（异步），
@@ -304,41 +303,69 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
     })
   }
 
-  const ready = listenOnce(wantPort)
-    .catch(async (err: NodeJS.ErrnoException) => {
-      if (err.code !== 'EADDRINUSE' || wantPort === 0) throw err
-      log.warn(`127.0.0.1:${wantPort} 已被占用（另一个 home？），改用系统分配端口`)
+  /**
+   * 监听没成时的原因。**这一格必须在 `ready` 的第一个 catch 里填**：填晚了，先注册的
+   * 那个处理器已经跑完，`mcp.info` 会拿到一句「原因未记下」
+   */
+  let listenError: string | undefined
+
+  const ready = listenOnce(choice.port).catch(async (err: NodeJS.ErrnoException) => {
+    const occupied = err.code === 'EADDRINUSE'
+    // 许退让的只有「显式给了口的非 default home」——见 endpoint.ts
+    if (occupied && choice.fallback) {
+      log.warn(`127.0.0.1:${choice.port} 已被占用（另一个 home？），改用系统分配端口`)
       return listenOnce(0)
-    })
-    .then((p) => {
-      port = p
-      return p
-    })
+    }
+    listenError = occupied ? `127.0.0.1:${choice.port} 已被别的进程占着` : String(err)
+    throw err
+  })
 
   ready.then(
     async (p) => {
       const token = await ensureToken()
       // 这一版没有界面：token 的唯一出口就是这行日志与 mcp.info
-      log.info(`MCP 端点就绪：http://127.0.0.1:${p}/mcp`)
+      log.info(`MCP 端点就绪（${home} home）：${endpointUrl(p)}`)
       log.info(`token（仅本机使用，勿外传）：${token ?? '取不到，见上面的错'}`)
     },
     (err: unknown) => {
-      log.error(`监听失败（首选 ${wantPort}）：${String(err)}`)
+      // 本件其它部分照常挂着，只是这道口没开——mcp.info 会把同一句话再说一遍
+      log.error(
+        home === DEFAULT_HOME
+          ? `default home 的 MCP 口 ${choice.port} 没开成，这次不开这道口。` +
+              `**不退让到别的端口**：连上来的会话认死这个串，退让等于把它送给占着口的那个 home。` +
+              `腾开 ${choice.port} 再重启这个 home。原因：${String(err)}`
+          : `${home} home 的 MCP 口没开成（要的是 ${choice.port}）：${String(err)}`,
+      )
     },
   )
 
   ctx.effect(() =>
     cli.register(
-      { name: 'mcp.info', description: 'MCP 连接串（url + token + 实际端口，仅本机使用，勿外传）', plugin: name },
+      {
+        name: 'mcp.info',
+        description: 'MCP 连接串（url + token + 实际端口 + 可直接抄进 .mcp.json 的 mcpServers 片段，仅本机使用，勿外传）',
+        plugin: name,
+      },
       async () => {
+        /**
+         * **端口先答**：这道口没开时报个能看的原因，比报一个连不上的 url 强——
+         * default home 被别人占着口就是这一支。顺带等监听就绪，问早了拿到的是 0
+         */
+        const live = await ready.then(
+          (p) => p,
+          () => null,
+        )
+        if (live === null) {
+          return { ok: false, error: `MCP 没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
+        }
         const token = await ensureToken()
         if (token === null) {
           // 带上真原因：问这条的人本来就在本机，而「令牌不可用」五个字自己查不出盘为什么写不进去
           return { ok: false, error: `token 不可用：${tokenError ?? '原因未记下（上一次尝试还没结束？）'}` }
         }
-        // 先等监听就绪再报端口：问早了拿到的是未回填的 0
-        const live = await ready.catch(() => port)
-        return { ok: true, data: { url: `http://127.0.0.1:${live}/mcp`, port: live, token } }
+        const url = endpointUrl(live)
+        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍
+        return { ok: true, data: { url, port: live, token, mcpServers: mcpServers(url, token) } }
       },
     ),
   )

@@ -32,6 +32,15 @@ describe('buildInstructions', () => {
     expect(text).not.toContain('说明书')
   })
 
+  it('固定那半带着自改的门:两张单子各一条,连内核都点了名', () => {
+    const text = buildInstructions([])
+    expect(text).toContain('不用问就能做')
+    expect(text).toContain('先问人再动手')
+    expect(text).toContain('gwb-kernel')
+    // 无状态桥发不出 list_changed 这件事得写在门里,不然 agent 装完件干等新工具
+    expect(text).toContain('list_changed')
+  })
+
   it('每份 skill 两行:一行名字加描述,一行 URI', () => {
     const text = buildInstructions([
       skill(),

@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-mcp",
-  "version": "0.1.0",
-  "description": "MCP 桥：命令注册表照搬成工具面（登记即暴露），外加 command_list/run 兜时差；token 鉴权。0.1 对应单进程内核：报给客户端的版本号改成本件自己的（内核没有 appVersion 了）",
+  "version": "0.2.0",
+  "description": "MCP 桥：命令注册表照搬成工具面（登记即暴露），外加 command_list/run 兜时差；token 鉴权。0.2：default home 的口固定在 2870 且被占不退让，mcp.info 多回一份可直抄进 .mcp.json 的 mcpServers 片段，instructions 写明 agent 自改的门",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

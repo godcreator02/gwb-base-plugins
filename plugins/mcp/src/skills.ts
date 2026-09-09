@@ -65,7 +65,8 @@ export function buildInstructions(skills: readonly SkillView[]): string {
     INSTRUCTIONS_BASE,
     '',
     `这个 home 的插件带了 ${skills.length} 份说明书（skill），讲的是多步流程、调用顺序与踩过的坑。`,
-    '下面哪一条对得上手头的活，**动手前先把它的 URI 读出来**（resources/read）：',
+    '正文挂在 resources 上（`skill://gwb/<名>/SKILL.md`）——下面哪一条对得上手头的活，',
+    '**动手前先把它的 URI 读出来**（resources/read）：',
     '',
   ]
   for (const skill of skills) {
