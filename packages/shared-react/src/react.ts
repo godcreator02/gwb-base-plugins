@@ -45,3 +45,7 @@ export const useTransition = R.useTransition
 export const version = R.version
 export const act = R.act
 export const cache = R.cache
+// React 19.2 加的。fumadocs 16 的 Tabs 直接 `import { useEffectEvent } from 'react'`——
+// 名单里少一行，页面上就是「The requested module 'react' does not provide an export named …」，
+// 那一格整个白掉。这类静默只有真装进 home 打开那一格才现形
+export const useEffectEvent = R.useEffectEvent

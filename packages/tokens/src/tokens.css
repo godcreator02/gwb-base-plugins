@@ -11,12 +11,47 @@
 :root {
   --radius: 0.625rem;
 
-  /* 字体。默认系统栈——应用不替用户挑字体；改这里一份值，所有件当场跟着变，
-     跟颜色同一个道理。主题件（gwb-theme）往页面上注的覆盖写的就是这两个名字 */
-  --gwb-font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
-  --gwb-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
+  /* 字体。**整个工作台一种字体：更纱黑体等宽（Sarasa Mono SC）**——正文与代码同一个族，
+     中英日韩与拉丁在同一套字面里，中英混排的字重、基线、行宽都对得齐，不再靠系统回退去
+     挑一个不受控的中文族。装的那份有 Light / Regular / Bold（含斜体），更细的字重由浏览器
+     合成。
+
+     两个名字仍然分开留着：件写 `font-mono` 是在表达「这里是代码」，将来要给代码换回另一个
+     族时只动一处，不用把每个件翻一遍。
+
+     机器上没装 Sarasa 时按后面的栈回退。改这里一份值，所有件当场跟着变，跟颜色同一个道理；
+     主题件（gwb-theme）往页面上注的覆盖写的就是这两个名字。 */
+  --gwb-font-sans: 'Sarasa Mono SC', 'Sarasa Gothic SC', ui-sans-serif, system-ui,
+    'Segoe UI Variable Text', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC',
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --gwb-font-mono: 'Sarasa Mono SC', ui-monospace, SFMono-Regular, 'Cascadia Mono', Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  /* ---- 字号与行高的刻度 ----
+     工作台的尺子只有一把。件写 `text-sm` 解析到的是这儿的值（映射在引用面
+     theme.reference.css），手写 CSS 的件直接 `var(--gwb-text-sm)`——两条路同一个值，
+     换主题就是换这一份。
+
+     字号沿用通行的那套（0.75 / 0.875 / 1 / 1.125 / 1.25 / 1.5 / 1.875 / 2.25 rem），拉丁那边
+     的观感不动；**行高按中文放松一档**：中文方块字在拉丁的紧行高下会挤，正文 1.65、小字 1.5，
+     标题反过来收紧（越大越紧），不然大标题之间会散。 */
+  --gwb-text-xs: 0.75rem;
+  --gwb-text-sm: 0.875rem;
+  --gwb-text-base: 1rem;
+  --gwb-text-lg: 1.125rem;
+  --gwb-text-xl: 1.25rem;
+  --gwb-text-2xl: 1.5rem;
+  --gwb-text-3xl: 1.875rem;
+  --gwb-text-4xl: 2.25rem;
+
+  --gwb-leading-xs: 1.4;
+  --gwb-leading-sm: 1.5;
+  --gwb-leading-base: 1.65;
+  --gwb-leading-lg: 1.6;
+  --gwb-leading-xl: 1.5;
+  --gwb-leading-2xl: 1.4;
+  --gwb-leading-3xl: 1.3;
+  --gwb-leading-4xl: 1.2;
 
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);

@@ -20,6 +20,29 @@
   --font-sans: var(--gwb-font-sans);
   --font-mono: var(--gwb-font-mono);
 
+  /* 字号与行高：工作台的尺子。件写 `text-sm` 解析到的是页面那张表上的 `--gwb-text-sm`，
+     值一改所有（重新构建过的）件跟着变。Tailwind 的字号键还带一个 `--…--line-height` 副键，
+     两个都得映，不然 `text-sm` 会带着 Tailwind 自己那份行高走。
+
+     **`inline` 的映射不会输出变量声明**：件的表里如果有代码**字面写** `var(--text-sm)`
+     （比如引第三方的排版资产），那边得自己再声明一份，见块笔记那半的做法。 */
+  --text-xs: var(--gwb-text-xs);
+  --text-xs--line-height: var(--gwb-leading-xs);
+  --text-sm: var(--gwb-text-sm);
+  --text-sm--line-height: var(--gwb-leading-sm);
+  --text-base: var(--gwb-text-base);
+  --text-base--line-height: var(--gwb-leading-base);
+  --text-lg: var(--gwb-text-lg);
+  --text-lg--line-height: var(--gwb-leading-lg);
+  --text-xl: var(--gwb-text-xl);
+  --text-xl--line-height: var(--gwb-leading-xl);
+  --text-2xl: var(--gwb-text-2xl);
+  --text-2xl--line-height: var(--gwb-leading-2xl);
+  --text-3xl: var(--gwb-text-3xl);
+  --text-3xl--line-height: var(--gwb-leading-3xl);
+  --text-4xl: var(--gwb-text-4xl);
+  --text-4xl--line-height: var(--gwb-leading-4xl);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
