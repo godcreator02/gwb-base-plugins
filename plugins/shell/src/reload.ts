@@ -44,18 +44,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * `import('electron')` 回的命名空间 → deps。**先看 `default`**：electron 是 CJS 包，ESM 里
- * `import()` 回的命名空间把整个 API 挂在 `default` 上（内核 `main.ts` 就是
- * `import electron from 'electron'` 再 `electron.BrowserWindow`），顶层没有 `BrowserWindow`。
- * 实机撞过：0.2.2 直接从命名空间取，回的是「不在 Electron 主进程里」。`default` 不是对象
- * 就退回命名空间本身——将来它真出了 ESM 出口也认。认不出就抛，调用方收成回执
+ * `import('electron')` 回的命名空间 → deps。
+ *
+ * **`BrowserWindow` 是一个类，`typeof` 是 `'function'`**——按「是对象」判它，它就等于不存在。
+ * 0.2.2 / 0.2.3 两版都栽在这儿（实机回的是「不在 Electron 主进程里」，而探针证明命名空间与
+ * `default` 上都有它、`createRequire` 也拿得到）；0.2.3 以为是 `default` 的事，改错了地方。
+ * 所以取 `getAllWindows` 之前，`BrowserWindow` 是对象还是函数都往下取。`default` 那一步留着：
+ * electron 是 CJS 包，ESM 里 `import()` 的命名空间上 API 两处都挂，先看 `default` 不吃亏。
+ * 认不出就抛，调用方收成回执
  */
 export function windowsOf(mod: unknown): ReloadDeps {
   const api = isRecord(mod) && isRecord(mod['default']) ? mod['default'] : mod
-  const bw = isRecord(api) ? api['BrowserWindow'] : undefined
-  const getAll = isRecord(bw) ? bw['getAllWindows'] : undefined
+  const bw: unknown = isRecord(api) ? api['BrowserWindow'] : undefined
+  const getAll: unknown =
+    typeof bw === 'function' || isRecord(bw) ? (bw as Record<string, unknown>)['getAllWindows'] : undefined
   if (typeof getAll !== 'function') {
-    throw new Error('import("electron") 里没有 BrowserWindow.getAllWindows（default 上也没有）——不在 Electron 主进程里')
+    throw new Error(
+      `import("electron") 里 BrowserWindow ${bw === undefined ? '不在' : '在，但没有 getAllWindows'}——不在 Electron 主进程里，或者 electron 的面变了`,
+    )
   }
   return { windows: () => (getAll as () => ReloadableWindow[])() }
 }

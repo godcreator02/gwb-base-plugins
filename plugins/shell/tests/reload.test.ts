@@ -37,21 +37,32 @@ describe('reloadWindows', () => {
 
 describe('windowsOf：从 import("electron") 的命名空间里认出窗口列表', () => {
   const win = fakeWindow()
-  const api = { BrowserWindow: { getAllWindows: () => [win] } }
+  /** 照真的 electron 喂：BrowserWindow 是一个**类**，typeof 是 'function'。0.2.2 / 0.2.3 按「是对象」判它，实机上它就等于不存在 */
+  class BrowserWindow {
+    static getAllWindows(): ReloadableWindow[] {
+      return [win]
+    }
+  }
+  const api = { BrowserWindow }
 
-  it('default 上有也认——ESM 里 import() 一个 CJS 包，API 整个挂在 default 上（实机撞过）', () => {
-    expect(windowsOf({ default: api }).windows()).toEqual([win])
+  it('BrowserWindow 是类（typeof function）也认——实机撞过两版的那条', () => {
+    expect(windowsOf(api).windows()).toEqual([win])
   })
 
-  it('顶层就有也认；default 不是对象时退回命名空间本身', () => {
-    expect(windowsOf(api).windows()).toEqual([win])
+  it('default 上挂着类也认；default 不是对象时退回命名空间本身', () => {
+    expect(windowsOf({ default: api }).windows()).toEqual([win])
     expect(windowsOf({ ...api, default: 'nope' }).windows()).toEqual([win])
   })
 
-  it('两头都没有就抛，话里说清 default 也看过了', () => {
-    expect(() => windowsOf({ default: {} })).toThrow('default 上也没有')
-    expect(() => windowsOf(undefined)).toThrow()
-    expect(() => windowsOf({ BrowserWindow: {} })).toThrow()
+  it('普通对象形状（{ getAllWindows }）照旧认', () => {
+    expect(windowsOf({ BrowserWindow: { getAllWindows: () => [win] } }).windows()).toEqual([win])
+  })
+
+  it('BrowserWindow 不在、或在但没有 getAllWindows，都抛且话里分得开', () => {
+    expect(() => windowsOf({ default: {} })).toThrow('BrowserWindow 不在')
+    expect(() => windowsOf(undefined)).toThrow('BrowserWindow 不在')
+    expect(() => windowsOf({ BrowserWindow: class {} })).toThrow('没有 getAllWindows')
+    expect(() => windowsOf({ BrowserWindow: {} })).toThrow('没有 getAllWindows')
   })
 })
 
