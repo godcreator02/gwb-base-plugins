@@ -18,8 +18,7 @@ set(key: string, value: unknown): Promise<void>
 delete(key: string): Promise<void>    // 抹掉值，定义还在，get 回落到 default
 ```
 
-外加四条命令：`settings.all`（无参数）、`settings.get` / `settings.delete`
-（`{ section, key }`）、`settings.set`（`{ section, key, value }`）。
+外加三条命令：`settings.all` / `settings.get` / `settings.set`。
 
 ## 值落在哪
 
@@ -85,30 +84,7 @@ ctx.gwbSettings.define({
 ```
 
 `type` 只是**给界面挑控件**用的，不做运行时校验——那是 cordis 本体的事（`plugin.Config` 走
-Standard Schema）。`secret` 只影响界面打不打码，**存储照样明文**。**唯一的例外是 `list`**，
-见下一节。
-
-## `list`：值是 `string[]`，写入时收窄
-
-第五种类型，为「一张名单」这种设置而加（第一个用它的是 [gwb-mcp](/docs/mcp) 那份人批的
-顶层工具名单）。它跟另外四种不一样：**写入时真的收窄**。
-
-@@livedoc ref ../plugins/settings/src/registry.ts:97-114 @@
-
-三种来源同一种落盘形状：界面上一格文本框里写 `a, b c`、agent 经命令递来一串、代码里给
-一个数组，落到盘上都是 `["a","b","c"]`。字符串按逗号**或空白**拆、空段丢掉；数组逐项
-`String()`；别的（数字、对象、`undefined`）一律拒——抛出的话说清要什么，经命令总线回去
-就是一句 `{ ok: false, error }`，错误即文档。
-
-收窄的落点在 `put`，不在命令那层：
-
-@@livedoc ref ../plugins/settings/src/registry.ts:216-222 @@
-
-于是 `settings.set` 命令与服务面的 `set` 走的是同一处，谁也绕不开。反查定义靠 `defAt`
-——定义表按 owner 键、盘上按位置键，共享区的项要反着找一遍。**没有活着的定义时原样存**：
-件停着、界面照样能改它盘上的值，这一条跟「代码是权威，盘上是快照」是一致的。
-
-`default` 可以给数组，`get` 原样回数组。
+Standard Schema）。`secret` 只影响界面打不打码，**存储照样明文**。
 
 ## 解析顺序
 

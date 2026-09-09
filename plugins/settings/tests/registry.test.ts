@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { coerceValue, createRegistry, toListValue, toSettingsFile, type Owner } from '../src/registry.js'
+import { createRegistry, toSettingsFile, type Owner } from '../src/registry.js'
 
 const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator02/gwb-alice' }
 const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator02/gwb-bob' }
@@ -183,62 +183,6 @@ describe('元信息：代码是权威，盘上是快照', () => {
     reg.define(alice, { key: 'level', title: '级别', type: 'string' })
     reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', shared: true })
     expect(reg.all().map((v) => `${v.section}/${v.key}`).sort()).toEqual(['*/api-key', 'alice/level'])
-  })
-})
-
-describe('list 类型：值是 string[]，写入时收窄', () => {
-  it('字符串按逗号或空白拆，空段丢掉', () => {
-    expect(toListValue('a,b')).toEqual(['a', 'b'])
-    expect(toListValue('a b\tc\nd')).toEqual(['a', 'b', 'c', 'd'])
-    expect(toListValue(' skill.list, skill.read ,, ')).toEqual(['skill.list', 'skill.read'])
-    expect(toListValue('')).toEqual([])
-  })
-
-  it('数组逐项转字符串', () => {
-    expect(toListValue(['a', 1, true])).toEqual(['a', '1', 'true'])
-    expect(toListValue([])).toEqual([])
-  })
-
-  it('别的一律拒，而且说得出要什么', () => {
-    for (const bad of [undefined, null, 42, { a: 1 }]) {
-      expect(() => toListValue(bad)).toThrow(/字符串.*或.*数组/)
-    }
-  })
-
-  it('coerceValue 只对 list 动手，别的类型原样过', () => {
-    expect(coerceValue({ type: 'list' }, 'a b')).toEqual(['a', 'b'])
-    expect(coerceValue({ type: 'string' }, 'a b')).toBe('a b')
-    expect(coerceValue({ type: 'number' }, '1,2')).toBe('1,2')
-  })
-
-  it('put 走到活着的 list 定义上就收窄——命令路与服务路同一处', () => {
-    const { reg } = fresh()
-    reg.define(alice, { key: 'top', title: '名单', type: 'list', default: ['skill.list'] })
-    const slot = reg.locate(alice, 'top')!
-    reg.put(slot, 'a, b')
-    expect(reg.get(alice, 'top')).toEqual(['a', 'b'])
-    reg.put(slot, ['c', 2])
-    expect(reg.get(alice, 'top')).toEqual(['c', '2'])
-    expect(() => reg.put(slot, 7)).toThrow()
-  })
-
-  it('共享区的 list 也反查得到定义', () => {
-    const { reg } = fresh()
-    reg.define(alice, { key: 'tags', title: '标签', type: 'list', shared: true })
-    reg.put({ section: '*', key: 'tags' }, 'x y')
-    expect(reg.get(bob, 'tags')).toEqual(['x', 'y'])
-  })
-
-  it('没有活着的定义就原样存——件停着时界面照样能改值', () => {
-    const { reg } = fresh()
-    reg.put({ section: 'ghost', key: 'top' }, 'a, b')
-    expect(reg.read({ section: 'ghost', key: 'top' })).toBe('a, b')
-  })
-
-  it('default 可以给数组，get 原样回数组', () => {
-    const { reg } = fresh()
-    reg.define(alice, { key: 'top', title: '名单', type: 'list', default: ['skill.list', 'skill.read'] })
-    expect(reg.get(alice, 'top')).toEqual(['skill.list', 'skill.read'])
   })
 })
 

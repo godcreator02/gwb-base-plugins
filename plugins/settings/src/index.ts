@@ -87,34 +87,26 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       // inject 保证了它在，这句只是把类型收窄
       if (cli === undefined) return
       ctx.effect(() =>
-        cli.register({ name: ALL_COMMAND, description: '此刻所有设置项与它们的值。无参数', plugin: NAME }, () =>
+        cli.register({ name: ALL_COMMAND, description: '此刻所有设置项与它们的值', plugin: NAME }, () =>
           this.registry.all(),
         ),
       )
       ctx.effect(() =>
-        cli.register({ name: GET_COMMAND, description: '按位置读一项设置。参数 { section, key }', plugin: NAME }, (args) =>
+        cli.register({ name: GET_COMMAND, description: '按位置读一项设置', plugin: NAME }, (args) =>
           this.registry.read(toSlot(args)),
         ),
       )
       ctx.effect(() =>
-        cli.register(
-          {
-            name: SET_COMMAND,
-            description:
-              '按位置写一项设置。参数 { section, key, value }；定义是 list 的项，value 给字符串（逗号或空白分隔）或数组',
-            plugin: NAME,
-          },
-          async (args) => {
-            const raw = asRecord(args)
-            await this.putAt(toSlot(raw), raw['value'])
-            return { ok: true }
-          },
-        ),
+        cli.register({ name: SET_COMMAND, description: '按位置写一项设置', plugin: NAME }, async (args) => {
+          const raw = asRecord(args)
+          await this.putAt(toSlot(raw), raw['value'])
+          return { ok: true }
+        }),
       )
       // 抹值跟写值走同一条「按位置」的路：删条目的界面要能顺手把那件的设置值擦干净，
       // 不擦的话盘上留下一堆无主的值
       ctx.effect(() =>
-        cli.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）。参数 { section, key }', plugin: NAME }, async (args) => {
+        cli.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', plugin: NAME }, async (args) => {
           const slot = toSlot(args)
           this.registry.drop(slot)
           await this.flush()
@@ -224,7 +216,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
 }
 
 function asRecord(args: unknown): Record<string, unknown> {
-  if (!isRecord(args)) throw new Error('参数要是一个对象：{ section, key }')
+  if (!isRecord(args)) throw new Error('参数要是一个对象：{ scope, section, key }')
   return args
 }
 
