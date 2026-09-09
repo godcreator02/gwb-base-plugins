@@ -26,6 +26,33 @@ const SHARED = new Set(['react', 'react/jsx-runtime', 'react-dom', 'react-dom/cl
 const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 
+/** css 注释 */
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g
+/**
+ * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
+ * **只在这一段里找类**——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
+ * 也捞成类选择器
+ */
+const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
+/** 一个类选择器。转义序列（`.theme\:flex` 里那个 `\:`）整体吃掉 */
+const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
+/**
+ * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，挂在 `<html>` 上、由令牌那张表
+ * 与外壳负责。它只以**祖先**的身份出现在 `theme:dark:*` 编出来的
+ * `.theme\:dark\:…:is(.dark *)` 里，不是本件元素身上的类
+ */
+const DARK_FLAG = new Set(['.dark'])
+
+function classSelectors(css: string): string[] {
+  const found = new Set<string>()
+  for (const rule of css.replaceAll(CSS_COMMENT, '').matchAll(PRELUDE)) {
+    const prelude = rule[1]!.trim()
+    if (prelude.startsWith('@')) continue
+    for (const cls of prelude.matchAll(CLASS_SELECTOR)) found.add(cls[0])
+  }
+  return [...found]
+}
+
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
   const nodeHalf = all.filter((f) => f !== CLIENT)
@@ -62,6 +89,19 @@ describe.skipIf(!built)('产物', () => {
     const text = fs.readFileSync(path.join(distDir, CLIENT), 'utf8')
     const bare = [...text.matchAll(BARE)].map((m) => m[1]!)
     expect(bare.filter((s) => !SHARED.has(s))).toEqual([])
+  })
+
+  it('style.css 里的类选择器一律 .theme\\: 开头——围栏就是前缀本身', () => {
+    const bad = classSelectors(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8'))
+      .filter((s) => !s.startsWith('.theme\\:') && !DARK_FLAG.has(s))
+      .sort()
+    expect(bad).toEqual([])
+  })
+
+  it('style.css 里没有 data-gwb-plugin——围栏换成前缀之后,这张表不再依赖任何祖先关系', () => {
+    // 有它就说明构建又走回了 tools/build-styles.ts 那条选择器 scope 的路。
+    // 症状是弹层（portal 到 body 的那些）当场裸奔,而构建照样绿
+    expect(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')).not.toContain('data-gwb-plugin')
   })
 })
 
