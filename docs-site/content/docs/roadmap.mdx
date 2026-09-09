@@ -12,18 +12,25 @@ livedoc: none
 
 | 件 | 包名 | 服务 | 状态 |
 | --- | --- | --- | --- |
-| **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.0.2**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
-| **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.0.3**，落盘验通；写失败从此 error 出声 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.2.0**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger`。**0.2 起它是前缀方案的样板**——件自己就是一个完整的 Tailwind 入口（`src/client/styles.css` 五行，`@tailwindcss/cli` 直出），类名一律 `hello:` 开头，不再走 `tools/build-styles.ts` 的选择器 scope；两条守卫钉着这个形态（产物里类选择器全带前缀且无 `data-gwb-plugin`、`tests/prefix.test.ts` 抓漏加前缀的类）。判据见[定过的事](/docs/decisions) |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.1.1**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航。**0.1.1 起件的那一格是容器查询的根**（`@container`）——件里的 `@sm:` / `@md:` 按这一格现在有多宽判，跟整窗大小无关；外壳自己那张表仍是 scope 方案 |
-| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.0.3**，收集与查询验通，见[它的页](/docs/skills) |
-| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.0.3**，instructions + `skill://` resources 接通 skills，agent 调用逐条留痕，见[它的页](/docs/mcp) |
-| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.0.4**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
-| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.0.5**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
-| **logger** | `@godcreator02/gwb-logger` | — | **已发 0.0.2**，四路日志窗格实机验通，见[它的页](/docs/logger) |
-| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.0.4**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
-| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.0.11**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill |
+| **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.1.0**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
+| **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.1.0**，落盘验通；写失败从此 error 出声 |
+| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.2.0**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger`。**它是前缀方案的样板**——件自己就是一个完整的 Tailwind 入口（`src/client/styles.css` 五行，`@tailwindcss/cli` 直出），类名一律 `hello:` 开头 |
+| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.2.0**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航。**0.1.1 起件的那一格是容器查询的根**（`@container`）——件里的 `@sm:` / `@md:` 按这一格现在有多宽判，跟整窗大小无关；**0.2.0 起自己那张 `style.css` 也是前缀方案**（`shell:`），`dockview.css` 不套围栏、一字未动 |
+| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.1.0**，收集与查询验通，见[它的页](/docs/skills) |
+| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.1.0**，instructions + `skill://` resources 接通 skills，agent 调用逐条留痕，见[它的页](/docs/mcp) |
+| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.1.0**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
+| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.1.0**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
+| **logger** | `@godcreator02/gwb-logger` | — | **已发 0.2.0**，四路日志窗格实机验通，见[它的页](/docs/logger)；0.2.0 起类名一律 `logger:`，Select 的弹层照 radix 默认挂 `body` |
+| **theme** | `@godcreator02/gwb-theme` | — | **已发 0.2.0**，外观件：字体与自定义 CSS，一格窗格；0.2.0 起类名一律 `theme:`（没有弹层与 ui 组件，迁移只动了类名） |
+| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.1.0**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
+| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.2.0**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill；0.2.0 起类名一律 `plugins:`，卸载确认框的遮罩从此盖整窗 |
 | ~~**status**~~ | `@godcreator02/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
+
+**五个带界面的件（hello / theme / shell / logger / plugins）2026-09-09 全部发到 0.2.0，
+样式围栏一律是 Tailwind 前缀方案**：件自己一份五行的 `src/client/styles.css`、
+`@tailwindcss/cli` 直出，类名从源头带自己的短名。每件两道守卫钉着这个形态——产物里类
+选择器全带前缀且不许出现 `data-gwb-plugin`，`tests/prefix.test.ts` 抓漏加前缀的类。
+判据、产物大小与实机读数见[定过的事](/docs/decisions)。
 
 ## 共享包（`packages/`，不是件）
 
@@ -32,15 +39,17 @@ livedoc: none
 | 包 | 装什么 | 状态 |
 | --- | --- | --- |
 | **shared-react** | `@godcreator02/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.2** |
-| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.2** |
+| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.5** |
 
-**样式构建线 `tools/build-styles.ts` 正在退场。** 它是选择器 scope 方案的那一半——在内存里
-拼输入、再拿 postcss 把每条选择器改写成 `:where([data-gwb-plugin="…"]) …`。**换成 Tailwind
-前缀围栏之后件不再需要它**：件自己那份五行的 `src/client/styles.css` 加一个
-`@tailwindcss/cli` 就够，`build` 脚本直接调那个 bin。所以它如今**只服务尚未迁移的 scope
-方案件**，迁完最后一个就删。判据见[定过的事](/docs/decisions)。
+**构建线不再是仓里共享的一份。** 选择器 scope 方案的那一半 `tools/build-styles.ts`
+（在内存里拼输入、再拿 postcss 把每条选择器改写成 `:where([data-gwb-plugin="…"]) …`）
+2026-09-09 **随最后一批件迁完一起删掉**；`@tailwindcss/postcss` / `postcss` / `tailwindcss` /
+`gwb-tokens` / `esbuild` 也从仓根摘走，仓根 devDependencies 只剩门禁要的四样。
+**件自己装 `esbuild` 与 `@tailwindcss/cli`**，`build` 脚本直接调那两个 bin——件本来就该是
+能单独拎出去建仓的东西，构建线住在件里才对得上那个形状。判据见[定过的事](/docs/decisions)。
 
-**不做成包**这条没变——消费方只有仓内的件，做成包过不了准入判据第二关。
+那条构建线**始终没做成包**，如今连做的必要都没了：当初的判据是「消费方只有仓内的件，
+抽一个共享构建包过不了准入判据第二关」，而件各装各的之后连要抽的东西都不剩了。
 
 ## 组件：各拉各的
 
@@ -48,14 +57,20 @@ livedoc: none
 `pnpm dlx shadcn@latest add <名>` 从 shadcn 官方拉。件之间的组件不需要一致——统一风格由令牌
 保证，不由组件源码一致保证。
 
-`plugins/hello` 是样板，**照 0.2 那版抄**：`components.json`（`tailwind.css` 指自己那份样式
-入口、`tailwind.prefix` 填件的短名）+ 两份 tsconfig 的 `paths` + `build.ts` 的 esbuild
-`alias`，三处的 `@/` 都指 `src/client`。
+`plugins/hello` 是样板，**新件照它 0.2 那版抄**：`components.json`（`tailwind.css` 指自己那份
+样式入口、`tailwind.prefix` 填件的**短名**）+ 两份 tsconfig 的 `paths` + `build.ts` 的 esbuild
+`alias`，三处的 `@/` 都指 `src/client`；件自己的 devDependencies 里带上 `esbuild` 与
+`@tailwindcss/cli`。**别去翻 0.1 那版**——那版没有样式入口、没有 `prefix`，构建走的是
+2026-09-09 已经删掉的 `tools/build-styles.ts`，照着抄一行都跑不起来。
 
 **`prefix` 那一条是新件最省事的一处**：填了它，CLI 拉下来的组件类名**自带前缀**，不用回头
-逐个手改；`cn`（tailwind-merge）对带前缀的类合并本来就对，不用为它配任何东西。反过来
-**别再照 0.1 那版抄** —— 那版没有样式入口、没有 `prefix`，构建走的是已经在退场的
-`tools/build-styles.ts`。
+逐个手改；`cn`（tailwind-merge）对带前缀的类合并本来就对，不用为它配任何东西。拉下来的
+组件也**一个补丁都不用打**——前缀围栏不依赖 DOM 位置，portal 到 `body` 的弹层照样有样式。
+
+**标记类也要带前缀。** `group` / `peer` 这一族是「一个类当锚、另一个类的变体去找它」，
+而 `logger:group-hover:*` 编出来的选择器认的是**带前缀的** `.logger\:group`——锚那头写成
+裸的 `group`，规则永远不命中，还不报错。手写这类搭配时两头一起带前缀，细节见
+[撞过的墙](/docs/walls)。
 
 ## 在做：`gwb-shell`
 

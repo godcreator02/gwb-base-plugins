@@ -268,56 +268,63 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，两个入口（件调的
 `openOwnPane`、状态栏调的 `openSpec`）共用后者。
 
-### 菜单的 portal 必须挂回外壳的根
+### 菜单的 portal 曾经必须挂回外壳的根，0.2 起不必
 
-件的样式表整张 scope 在 `[data-gwb-plugin="…"]` 之下，而 radix 的 Portal 默认挂 `body`
-——挂出去之后菜单一个类名都不生效。所以 `shadcn add` 拉下来的 `dropdown-menu.tsx`
-**本仓改过一处**：给 `DropdownMenuContent` 加了 `container`，透给 Portal。
+**0.1 时是这样的**：外壳那张表整张 scope 在 `[data-gwb-plugin="…"]` 之下，而 radix 的
+Portal 默认挂 `body`——挂出去之后菜单一个类名都不生效。所以 `shadcn add` 拉下来的
+`dropdown-menu.tsx` 本仓改过一处：给 `DropdownMenuContent` 加了 `container`，透给 Portal；
+为了把外壳的根送到那儿，`App` 与 `StatusBar` 之间还拖着一条 `scopeRef` / `root` 的 prop 链。
 
 （这跟 dockview 那张表不 scope 是同一个根因的两面：`.dv-*` 我们管不着，所以整张不 scope；
 而我们自己的菜单归我们管，得让它待在 scope 里面。）
 
-**重新 `shadcn add dropdown-menu` 会覆盖那个文件**，那时要把这段补回来——组件源码里
-也写着这句。
+**0.2.0 换成 Tailwind 前缀围栏之后，这一条整个消失了。** 类名自带 `shell:` 前缀、规则全页
+有效，弹层 portal 到哪都有样式：`dropdown-menu.tsx` **重拉成了官方原样**，那处 `container`
+补丁与那条 prop 链一起连根删掉。实机量过——状态栏的「布局」与「＋可开窗格」两个菜单都挂在
+`body` 下，底色等于 `--popover`。
 
-**这一条只对 scope 方案的件成立**（外壳自己就是其中之一）。**换成 Tailwind 前缀围栏的件
-不需要它**：类名自带前缀、全页有效，弹层 portal 到 `body` 照样有样式，`shadcn add` 拉下来的
-组件一个补丁都不用打——`hello` 0.2.0 那份 `dropdown-menu.tsx` 就是原样的。为什么见
-[定过的事](/docs/decisions)。
+**这条留在这儿是为了防它回来**：以后再看到「菜单得知道自己该挂哪个容器」这种要求，先确认
+是不是有人把围栏又改回了 scope。判据见[定过的事](/docs/decisions)。
 
 ## 两张样式表，规矩不同
 
-| 产物 | scope | 装什么 |
+| 产物 | 围栏 | 装什么 |
 | --- | --- | --- |
-| `./style.css` | `:where([data-gwb-plugin="@godcreator02/gwb-shell"])` | 外壳自己 JSX 的 Tailwind 类 |
-| `./dockview.css` | **一处都没有** | **裁过的** dockview 基础规则 + 我们自己那套 theme |
+| `./style.css` | **类名前缀**——类选择器一律 `.shell\:` 开头 | 外壳自己 JSX 的 Tailwind 类 |
+| `./dockview.css` | **没有，也不需要** | **裁过的** dockview 基础规则 + 我们自己那套 theme |
 
-后者不能 scope，两个理由：它管的 `.dv-*` 类名不经我们的手，而且门户元素可能挂在
-`body` 下——包进 `:where(…)` 就一条都匹配不上。产物守卫钉着这条。
+后者套不了任何围栏，两个理由：它管的 `.dv-*` 类名不经我们的手（改不了名，也就加不上
+前缀），而且门户元素可能挂在 `body` 下——包进 `:where(…)` 一条都匹配不上。前者的围栏则
+**跟 DOM 位置无关**，所以状态栏那两个 portal 到 `body` 的菜单照样有样式。
 
-### 外壳自己仍是 scope；件那边已经分成两代
+产物守卫把两张表的两套规矩分开钉着：
 
-**外壳这张表没换。** `./style.css` 仍旧整张包在 `:where([data-gwb-plugin="@godcreator02/gwb-shell"])`
-之下——上面那张表就是它此刻的样子。件那边**2026-09-09 起换成了 Tailwind 前缀围栏**
-（类名从源头是 `hello:flex` 这种），`hello` 0.2.0 先迁，其余件逐件迁、不赶。判据与实机
-读数见[定过的事](/docs/decisions)。
+{/* ref file="../plugins/shell/tests/artifact.test.ts" lines="114-126" */}
 
-**所以同一张页面上此刻两代件并存，而外壳得同时伺候两套。** 好在它俩要的东西不冲突，
-外壳那一格容器上只多了一个 `@container`：
+`data-gwb-plugin` 出现在**任何一张**表里都算失败——那说明构建又走回了选择器 scope 那条路，
+而症状（状态栏菜单裸奔）得开菜单才看得见，构建照样是绿的。
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="127-137" */}
+### 外壳跟件如今同一套围栏
 
-两件事写在同一个容器上：
+**2026-09-09 全仓一套。** 外壳 0.2.0 与四个带界面的件同日迁完 Tailwind 前缀围栏
+（类名从源头是 `shell:flex` / `hello:flex` 这种），`tools/build-styles.ts` 那条选择器 scope
+的构建线随之删除——**一度存在的「两代件并存」结束了**，外壳不用再同时伺候两套。判据、
+产物大小与实机读数见[定过的事](/docs/decisions)。
+
+件那一格的容器上因此只剩两样东西，一样在围栏之外，一样是围栏换代后的遗留：
+
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="127-138" */}
 
 - **`@container` 让这一格成为容器查询的根。** **窗格不是视口**——件里写的 `@sm:` / `@md:`
   这类变体按**这一格现在有多宽**判，跟整窗大小无关。同一个件在窄格里竖排、在宽格里横排，
   拖动分隔条当场变。实机量过：hello 那格 1069px 时变体按钮排 `row`，压到 300px 变 `column`。
-  **这条对两代件都成立**，容器查询本来就跟围栏是两回事
-- **`data-gwb-plugin` 对两代件意义不同**。对 scope 方案的件它**是围栏本身**：表整张包在
-  `:where([data-gwb-plugin="…"])` 之下，容器上不挂它，那些件的类名一个都不生效；对前缀
-  方案的件它**只是身份标记**——那些件的类名自带前缀，全页有效，挂不挂这个属性都一样。
-  **所以这个属性一个都不能少挂**：少了，未迁的件当场一片没样式，而已迁的件看不出任何区别
-  ——按已迁的件去验这一条，是验不出来的
+  **容器查询跟围栏本来就是两回事**，换围栏一点没碰它。类名带 `shell:` 是因为这条规则出自
+  外壳自己那张表（容器是外壳画的），件那边写的 `@md:` 用的是件自己的前缀
+- **`data-gwb-plugin` 如今只是身份标记。** scope 时代它**是围栏本身**——表整张包在
+  `:where([data-gwb-plugin="…"])` 之下，容器上不挂它，那个件的类名一个都不生效；换成前缀
+  之后件的类名全页有效，挂不挂它一模一样。留着是为了让人在 devtools 里一眼看出这一格是谁的，
+  外加给探针和样式调试一个认件的把手。**正因为它现在少挂一个也不会有任何现象**，别再把它
+  当成「样式生效的前提」去写代码
 
 ### 它的 18 套主题一套都不挂
 
