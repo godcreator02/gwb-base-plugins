@@ -34,6 +34,33 @@ function specsIn(text: string, pattern: RegExp): string[] {
 const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 
+/** css 注释 */
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g
+/**
+ * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
+ * **只在这一段里找类**——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
+ * 也捞成类选择器
+ */
+const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
+/** 一个类选择器。转义序列（`.logger\:flex` 里那个 `\:`）整体吃掉 */
+const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
+/**
+ * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，挂在 `<html>` 上、由令牌那张表
+ * 与外壳负责。它只以**祖先**的身份出现在 `logger:dark:*` 编出来的
+ * `.logger\:dark\:…:is(.dark *)` 里，不是本件元素身上的类
+ */
+const DARK_FLAG = new Set(['.dark'])
+
+function classSelectors(css: string): string[] {
+  const found = new Set<string>()
+  for (const rule of css.replaceAll(CSS_COMMENT, '').matchAll(PRELUDE)) {
+    const prelude = rule[1]!.trim()
+    if (prelude.startsWith('@')) continue
+    for (const cls of prelude.matchAll(CLASS_SELECTOR)) found.add(cls[0])
+  }
+  return [...found]
+}
+
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
   const nodeHalf = all.filter((f) => f !== CLIENT)
@@ -68,9 +95,17 @@ describe.skipIf(!built)('产物', () => {
     expect(leaked).toEqual([])
   })
 
-  it('样式表整张 scope 过', () => {
-    const css = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
-    expect(css).toContain(':where([data-gwb-plugin="@godcreator02/gwb-logger"])')
+  it('style.css 里的类选择器一律 .logger\\: 开头——围栏就是前缀本身', () => {
+    const bad = classSelectors(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8'))
+      .filter((s) => !s.startsWith('.logger\\:') && !DARK_FLAG.has(s))
+      .sort()
+    expect(bad).toEqual([])
+  })
+
+  it('style.css 里没有 data-gwb-plugin——围栏换成前缀之后，这张表不再依赖任何祖先关系', () => {
+    // 有它就说明构建又走回了 tools/build-styles.ts 那条选择器 scope 的路。
+    // 症状是 Select 的弹层（portal 到 body）当场裸奔，而构建照样绿
+    expect(fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')).not.toContain('data-gwb-plugin')
   })
 
   it('**没把 window.gwb 换成 args**：实时行走页面公共面 window.gwb.on，外壳不转发它', () => {
@@ -82,7 +117,9 @@ describe.skipIf(!built)('产物', () => {
     expect(read(CLIENT)).toContain('select-trigger')
   })
 
-  it('**Select 的弹层挂回本件容器**，不挂 body——挂出去样式一条都匹配不上', () => {
-    expect(read(CLIENT)).toContain('usePortalContainer')
+  it('**Select 的弹层不再有 Portal 补丁**：前缀围栏下挂 body 也有样式，容器上下文整个退场', () => {
+    // 0.1 那会儿这条反着断言（产物里必须有 usePortalContainer）。换成前缀之后那份
+    // src/client/portal.tsx 与 Portal 上的 container 补丁一起删了，留着就是死代码
+    expect(read(CLIENT)).not.toContain('usePortalContainer')
   })
 })

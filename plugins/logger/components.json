@@ -8,7 +8,7 @@
     "css": "src/client/styles.css",
     "baseColor": "zinc",
     "cssVariables": true,
-    "prefix": ""
+    "prefix": "logger"
   },
   "aliases": {
     "components": "@/components",

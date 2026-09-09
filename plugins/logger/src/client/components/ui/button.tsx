@@ -4,30 +4,30 @@ import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "logger:inline-flex logger:shrink-0 logger:items-center logger:justify-center logger:gap-2 logger:rounded-md logger:text-sm logger:font-medium logger:whitespace-nowrap logger:transition-all logger:outline-none logger:focus-visible:border-ring logger:focus-visible:ring-[3px] logger:focus-visible:ring-ring/50 logger:disabled:pointer-events-none logger:disabled:opacity-50 logger:aria-invalid:border-destructive logger:aria-invalid:ring-destructive/20 logger:dark:aria-invalid:ring-destructive/40 logger:[&_svg]:pointer-events-none logger:[&_svg]:shrink-0 logger:[&_svg:not([class*=size-])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "logger:bg-primary logger:text-primary-foreground logger:hover:bg-primary/90",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+          "logger:bg-destructive logger:text-white logger:hover:bg-destructive/90 logger:focus-visible:ring-destructive/20 logger:dark:bg-destructive/60 logger:dark:focus-visible:ring-destructive/40",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "logger:border logger:bg-background logger:shadow-xs logger:hover:bg-accent logger:hover:text-accent-foreground logger:dark:border-input logger:dark:bg-input/30 logger:dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "logger:bg-secondary logger:text-secondary-foreground logger:hover:bg-secondary/80",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "logger:hover:bg-accent logger:hover:text-accent-foreground logger:dark:hover:bg-accent/50",
+        link: "logger:text-primary logger:underline-offset-4 logger:hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        default: "logger:h-9 logger:px-4 logger:py-2 logger:has-[>svg]:px-3",
+        xs: "logger:h-6 logger:gap-1 logger:rounded-md logger:px-2 logger:text-xs logger:has-[>svg]:px-1.5 logger:[&_svg:not([class*=size-])]:size-3",
+        sm: "logger:h-8 logger:gap-1.5 logger:rounded-md logger:px-3 logger:has-[>svg]:px-2.5",
+        lg: "logger:h-10 logger:rounded-md logger:px-6 logger:has-[>svg]:px-4",
+        icon: "logger:size-9",
+        "icon-xs": "logger:size-6 logger:rounded-md logger:[&_svg:not([class*=size-])]:size-3",
+        "icon-sm": "logger:size-8",
+        "icon-lg": "logger:size-10",
       },
     },
     defaultVariants: {

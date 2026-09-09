@@ -10,7 +10,6 @@ import {
   type LogSource,
 } from './entries'
 import { ALL_SOURCES, countBySource, groupNames, matches, type FilterState } from './filter'
-import { PortalContainer } from './portal'
 import { ScrollText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,10 +29,14 @@ import {
  * 页面的公共面 `window.gwb.on`：node 半经 `gwbKernel.emit` 推，载荷上带自己的记号 `t`。
  * 外壳不该转发它：它凭什么认识「日志」。历史段与脚注那两条才走 `args.host` 的命令。
  *
- * 版面是 2026-09-08 视觉精修后的样子（效果图 `design/logger-pane.html` 定稿）：
- * 日志行 grid 定宽列齐头、error/warn 整行色调加左缘色条、级别分段控件带门限可视化、
- * 路胶囊开关、吸附提示浮在右下角。行为语义没动：门限、多选路、复合键、seq 去重、
+ * 版面是 2026-09-08 视觉精修后的样子（效果图已随 `design/` 目录从仓里删除，**定稿就是
+ * 本文件**）：日志行 grid 定宽列齐头、error/warn 整行色调加左缘色条、级别分段控件带门限
+ * 可视化、路胶囊开关、吸附提示浮在右下角。行为语义没动：门限、多选路、复合键、seq 去重、
  * 吸附 24px、2000 上限切尾、空态双文案。
+ *
+ * 类名一律带 `logger:` 前缀——样式围栏就是这个前缀本身（见 `./styles.css`）。漏加是
+ * **静默**的：那个类一个字节都不出，页面上就是那一处没样式，构建照样绿，所以
+ * `tests/prefix.test.ts` 那条守卫把源码里每个字符串 token 逐个试编。
  *
  * ⚠️ **这一格在收日志的路径上一个 `console` 都不许打。** 渲染层的 console 是三路之一：
  * 打一句 → 主进程收走 → 进缓冲 → 推回这儿 → 那条路上如果又打了一句，就是一变二、二变四，
@@ -72,18 +75,19 @@ const LEVEL_TEXT: Record<LogLevel, string> = { error: 'Error', warn: 'Warn', inf
 
 /** 级别字母的颜色。只有 error/warn 有色，info/debug 退成灰——一行里颜色太多就没有重点了 */
 const LEVEL_TONE: Record<LogLevel, string> = {
-  error: 'text-destructive',
-  warn: 'text-amber-600 dark:text-amber-400',
-  info: 'text-muted-foreground opacity-70',
-  debug: 'text-muted-foreground opacity-40',
+  error: 'logger:text-destructive',
+  warn: 'logger:text-amber-600 logger:dark:text-amber-400',
+  info: 'logger:text-muted-foreground logger:opacity-70',
+  debug: 'logger:text-muted-foreground logger:opacity-40',
 }
 
 /** 整行色调：error/warn 淡色底加左缘色条（DevTools 那个路数），其余素底只留 hover */
 const ROW_TONE: Record<LogLevel, string> = {
-  error: 'bg-destructive/[0.08] shadow-[inset_2px_0_0_var(--destructive)] hover:bg-destructive/[0.14]',
-  warn: 'bg-amber-400/[0.07] shadow-[inset_2px_0_0_oklch(0.795_0.184_86.9)] hover:bg-amber-400/[0.12]',
-  info: 'hover:bg-accent',
-  debug: 'hover:bg-accent',
+  error:
+    'logger:bg-destructive/[0.08] logger:shadow-[inset_2px_0_0_var(--destructive)] logger:hover:bg-destructive/[0.14]',
+  warn: 'logger:bg-amber-400/[0.07] logger:shadow-[inset_2px_0_0_oklch(0.795_0.184_86.9)] logger:hover:bg-amber-400/[0.12]',
+  info: 'logger:hover:bg-accent',
+  debug: 'logger:hover:bg-accent',
 }
 
 /** 外壳调 `mountPane` 时给的那几样。按形状收，不牵 shell 那个包的类型 */
@@ -109,7 +113,7 @@ declare global {
   }
 }
 
-function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElement }): ReactElement {
+function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
   const [entries, setEntries] = useState<LogEntry[]>([])
   const [failed, setFailed] = useState('')
   const [where, setWhere] = useState<{ home: string; logDir: string } | null>(null)
@@ -193,37 +197,35 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
 
   // 级别分段：选中挡实心，更严重的那几挡半亮——把「显示这一级及以上」画出来
   const segTone = (l: LogLevel): string => {
-    if (filter.level === l) return 'bg-primary text-primary-foreground font-medium'
+    if (filter.level === l) return 'logger:bg-primary logger:text-primary-foreground logger:font-medium'
     return LEVELS.indexOf(l) < LEVELS.indexOf(filter.level)
-      ? 'bg-accent text-muted-foreground'
-      : 'text-muted-foreground hover:text-foreground'
+      ? 'logger:bg-accent logger:text-muted-foreground'
+      : 'logger:text-muted-foreground logger:hover:text-foreground'
   }
 
   const filtering =
     filter.level !== 'debug' || filter.sources.size !== ALL_SOURCES.size || filter.key !== '' || filter.search !== ''
 
   return (
-    // 门户组件（Select 的弹层）挂到这一格自己的容器下，不挂 body——见 ./portal
-    <PortalContainer value={container}>
-    {/* relative 是吸附浮胶囊的定位参照：它必须挂在这层（窗格根），放进滚动容器的话
-        absolute+bottom 相对的是滚动内容，内容一长胶囊就漂出视口 */}
-    <div className="relative flex h-full flex-col bg-background text-foreground">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-card px-2.5 py-1.5">
-        <div className="flex items-center gap-0.5 rounded-lg bg-muted/60 p-0.5">
+    /* logger:relative 是吸附浮胶囊的定位参照：它必须挂在这层（窗格根），放进滚动容器的话
+       absolute+bottom 相对的是滚动内容，内容一长胶囊就漂出视口 */
+    <div className="logger:relative logger:flex logger:h-full logger:flex-col logger:bg-background logger:text-foreground">
+      <div className="logger:flex logger:flex-wrap logger:items-center logger:gap-1.5 logger:border-b logger:border-border logger:bg-card logger:px-2.5 logger:py-1.5">
+        <div className="logger:flex logger:items-center logger:gap-0.5 logger:rounded-lg logger:bg-muted/60 logger:p-0.5">
           {LEVELS.map((l) => (
             <button
               key={l}
               type="button"
               title={`显示 ${LEVEL_TEXT[l]} 及以上`}
               onClick={() => setFilter((f) => ({ ...f, level: l }))}
-              className={`rounded-md px-2.5 py-0.5 text-[11.5px] leading-5 ${segTone(l)}`}
+              className={`logger:rounded-md logger:px-2.5 logger:py-0.5 logger:text-[11.5px] logger:leading-5 ${segTone(l)}`}
             >
               {LEVEL_TEXT[l]}
             </button>
           ))}
         </div>
 
-        <div className="ml-1.5 flex items-center gap-1 border-l border-border py-0.5 pl-2.5">
+        <div className="logger:ml-1.5 logger:flex logger:items-center logger:gap-1 logger:border-l logger:border-border logger:py-0.5 logger:pl-2.5">
           {(['plugin', 'kernel', 'renderer'] as LogSource[]).map((s) => {
             const on = filter.sources.has(s)
             return (
@@ -232,25 +234,26 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
                 type="button"
                 title={`${SOURCE_LABEL[s]}这一路`}
                 onClick={() => toggleSource(s)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] leading-5 ${
+                className={`logger:inline-flex logger:items-center logger:gap-1.5 logger:rounded-full logger:px-2.5 logger:py-0.5 logger:text-[11.5px] logger:leading-5 ${
                   on
-                    ? 'bg-secondary text-secondary-foreground hover:bg-accent'
-                    : 'text-muted-foreground opacity-55 hover:bg-accent hover:opacity-80'
+                    ? 'logger:bg-secondary logger:text-secondary-foreground logger:hover:bg-accent'
+                    : 'logger:text-muted-foreground logger:opacity-55 logger:hover:bg-accent logger:hover:opacity-80'
                 }`}
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: SOURCE_DOT[s] }} />
-                {SOURCE_LABEL[s]} <span className="text-[10.5px] tabular-nums opacity-60">{counts[s]}</span>
+                <span className="logger:h-1.5 logger:w-1.5 logger:rounded-full" style={{ background: SOURCE_DOT[s] }} />
+                {SOURCE_LABEL[s]}{' '}
+                <span className="logger:text-[10.5px] logger:tabular-nums logger:opacity-60">{counts[s]}</span>
               </button>
             )
           })}
         </div>
 
-        <div className="ml-1.5 flex min-w-0 flex-1 items-center gap-1.5 border-l border-border py-0.5 pl-2.5">
+        <div className="logger:ml-1.5 logger:flex logger:min-w-0 logger:flex-1 logger:items-center logger:gap-1.5 logger:border-l logger:border-border logger:py-0.5 logger:pl-2.5">
           <Select
             value={filter.key === '' ? ALL_KEY : filter.key}
             onValueChange={(v) => setFilter((f) => ({ ...f, key: v === ALL_KEY ? '' : v }))}
           >
-            <SelectTrigger size="sm" className="w-40 shrink-0">
+            <SelectTrigger size="sm" className="logger:w-40 logger:shrink-0">
               <SelectValue placeholder="全部来源" />
             </SelectTrigger>
             <SelectContent>
@@ -268,12 +271,12 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
             </SelectContent>
           </Select>
 
-          <div className="flex h-8 min-w-32 flex-1 items-center gap-1.5 rounded-md border border-input px-2 focus-within:border-ring">
-            <Search size={12} className="shrink-0 opacity-50" aria-hidden />
+          <div className="logger:flex logger:h-8 logger:min-w-32 logger:flex-1 logger:items-center logger:gap-1.5 logger:rounded-md logger:border logger:border-input logger:px-2 logger:focus-within:border-ring">
+            <Search size={12} className="logger:shrink-0 logger:opacity-50" aria-hidden />
             <input
               type="text"
               placeholder="搜索 name 或消息"
-              className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              className="logger:w-full logger:bg-transparent logger:text-xs logger:outline-none logger:placeholder:text-muted-foreground"
               value={filter.search}
               onChange={(e) => setFilter((f) => ({ ...f, search: e.target.value }))}
             />
@@ -282,7 +285,7 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
           <Button
             size="sm"
             variant="ghost"
-            className="shrink-0 text-muted-foreground"
+            className="logger:shrink-0 logger:text-muted-foreground"
             title="只清这一份视图，不动内核的缓冲，也不动日志文件。清完不会自己回来，重开这一格才会"
             onClick={() => setEntries([])}
           >
@@ -291,29 +294,43 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto overflow-x-hidden" onScroll={() => {
-        const el = listRef.current
-        if (el !== null) setStick(el.scrollHeight - el.scrollTop - el.clientHeight < STICK_SLACK)
-      }}>
+      <div
+        ref={listRef}
+        className="logger:flex-1 logger:overflow-y-auto logger:overflow-x-hidden"
+        onScroll={() => {
+          const el = listRef.current
+          if (el !== null) setStick(el.scrollHeight - el.scrollTop - el.clientHeight < STICK_SLACK)
+        }}
+      >
         {shown.map((e) => (
           <div
             key={e.seq}
-            className={`group grid grid-cols-[84px_16px_38px_minmax(72px,118px)_1fr] items-baseline gap-x-2.5 px-2.5 py-px font-mono text-[11.5px] leading-[1.5] ${ROW_TONE[e.level]}`}
+            className={`logger:group logger:grid logger:grid-cols-[84px_16px_38px_minmax(72px,118px)_1fr] logger:items-baseline logger:gap-x-2.5 logger:px-2.5 logger:py-px logger:font-mono logger:text-[11.5px] logger:leading-[1.5] ${ROW_TONE[e.level]}`}
           >
-            <span className="tabular-nums text-muted-foreground opacity-75">{clockOf(e.ts)}</span>
-            <span className={`text-center font-semibold ${LEVEL_TONE[e.level]}`}>{LEVEL_MARK[e.level]}</span>
-            <span className="flex items-center gap-1">
-              <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: SOURCE_DOT[e.source] }} />
-              <span className="text-muted-foreground opacity-85">{SOURCE_LABEL[e.source]}</span>
+            <span className="logger:tabular-nums logger:text-muted-foreground logger:opacity-75">{clockOf(e.ts)}</span>
+            <span className={`logger:text-center logger:font-semibold ${LEVEL_TONE[e.level]}`}>
+              {LEVEL_MARK[e.level]}
             </span>
-            <span className="truncate text-foreground/70 group-hover:text-foreground/90" title={e.name}>{e.name}</span>
-            <span className="whitespace-pre-wrap break-all">{e.msg}</span>
+            <span className="logger:flex logger:items-center logger:gap-1">
+              <span
+                className="logger:h-[5px] logger:w-[5px] logger:shrink-0 logger:rounded-full"
+                style={{ background: SOURCE_DOT[e.source] }}
+              />
+              <span className="logger:text-muted-foreground logger:opacity-85">{SOURCE_LABEL[e.source]}</span>
+            </span>
+            <span
+              className="logger:truncate logger:text-foreground/70 logger:group-hover:text-foreground/90"
+              title={e.name}
+            >
+              {e.name}
+            </span>
+            <span className="logger:whitespace-pre-wrap logger:break-all">{e.msg}</span>
           </div>
         ))}
 
         {shown.length === 0 && (
-          <div className="flex flex-col items-center gap-2.5 py-14 text-sm text-muted-foreground">
-            <ScrollText size={26} className="opacity-25" aria-hidden />
+          <div className="logger:flex logger:flex-col logger:items-center logger:gap-2.5 logger:py-14 logger:text-sm logger:text-muted-foreground">
+            <ScrollText size={26} className="logger:opacity-25" aria-hidden />
             {/* 空态得分得清「一条都没有」和「被筛掉了」——后者带一颗清筛选 */}
             {entries.length === 0 ? (
               (failed === '' ? '还没有日志。' : failed)
@@ -333,33 +350,38 @@ function LoggerPane({ args, container }: { args: PaneArgs; container: HTMLElemen
         <button
           type="button"
           onClick={() => setStick(true)}
-          className="absolute bottom-9 right-3.5 z-10 rounded-full border border-border bg-popover px-3 py-1 text-[11.5px] text-popover-foreground shadow-lg hover:bg-accent"
+          className="logger:absolute logger:bottom-9 logger:right-3.5 logger:z-10 logger:rounded-full logger:border logger:border-border logger:bg-popover logger:px-3 logger:py-1 logger:text-[11.5px] logger:text-popover-foreground logger:shadow-lg logger:hover:bg-accent"
         >
           已暂停吸附 · 回到底部
         </button>
       )}
 
-      <div className="flex items-center justify-between gap-3 border-t border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground">
+      <div className="logger:flex logger:items-center logger:justify-between logger:gap-3 logger:border-t logger:border-border logger:bg-card logger:px-2.5 logger:py-1 logger:text-[11px] logger:text-muted-foreground">
         <span>
           {filtering ? `${shown.length} / ${entries.length} 条` : `${entries.length} 条`}
           {entries.length >= CAP ? `（挂满 ${CAP}，更早的去日志文件翻）` : ''}
         </span>
         {where !== null && (
-          <span className="truncate font-mono text-[10.5px] opacity-85" title={`home：${where.home}`}>
+          <span
+            className="logger:truncate logger:font-mono logger:text-[10.5px] logger:opacity-85"
+            title={`home：${where.home}`}
+          >
             {where.logDir === '' ? where.home : where.logDir}
           </span>
         )}
       </div>
     </div>
-    </PortalContainer>
   )
 }
 
 function boot(args: PaneArgs, container: HTMLElement): Root {
   const root = createRoot(container)
   // 认不出的 paneId 报错、不回落到 main：「注册了 x 却画出 main」是那种没有任何现象的错
-  if (args.pane.id === 'main') root.render(<LoggerPane args={args} container={container} />)
-  else root.render(<p className="p-3 text-sm text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
+  if (args.pane.id === 'main') root.render(<LoggerPane args={args} />)
+  else
+    root.render(
+      <p className="logger:p-3 logger:text-sm logger:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>,
+    )
   return root
 }
 
