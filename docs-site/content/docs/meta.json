@@ -11,6 +11,7 @@
     "node-cli",
     "py-cli",
     "settings",
+    "plugins",
     "decisions",
     "walls",
     "readme"

@@ -1,0 +1,149 @@
+---
+title: gwb-plugins：插件管理
+description: 包与条目两层怎么对起来，装卸检升怎么走，一键更新为什么是热重挂而不是重启
+livedoc: none
+---
+
+# gwb-plugins
+
+包名 `@godcreator02/gwb-plugins`，服务 `ctx.gwbPlugins`。它管两样东西，而这两样是两回事：
+
+- **包**——npm 包，pnpm 装进 home 的 `node_modules`。装了包**什么都不会发生**，它只是躺在盘上
+- **条目**——`cordis.yml` 里的一行，指向一个包。挂上条目，件的代码才真的跑起来
+
+这个件的全部工作就是把两层对起来：装（`install`）、卸（`uninstall`）、查新版（`outdated`）、
+升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名，外加一格「插件」
+窗格（已装 / 可装两段）。市场件为什么并进来、白名单为什么退场、卸载为什么第一版不做后来
+又做了，见[定过的事](/docs/decisions)那三条 2026-09-08。
+
+{/* ref file="../plugins/plugins/src/index.ts" lines="23-46" */}
+
+## 两层怎么对起来
+
+盘上那份清单（home 的 `package.json`）与内存里那棵条目树，`reconcile` 对成一张表，
+**两边都不丢**：
+
+{/* ref file="../plugins/plugins/src/inventory.ts" lines="127-154" */}
+
+清单里有、树上没有的包报成 `entries: []`——它可能是装了没挂的件，也可能是共享包
+（`gwb-shared-react`、`gwb-tokens` 这种，永远不该有条目）。这儿不下结论，界面拿
+`plugins.shared` 那张表把共享包摘出去。树上有、清单里没有的（手改过 yml、或包被 `pnpm remove`
+掉了）报成 `installed: false`，界面上是一排 ghost——**卸载先摘条目后卸包**就是为了不制造它。
+
+**改条目树只有一条路**：经 loader 那棵树的 `create` / `remove` / `update`，不自己写 yml。
+loader 把盘上那份 yml 跟内存里挂着的条目绑在一起，绕过它写文件，内存不知道，下一次
+`write()` 就拿旧的内存态把盘上的盖回去：
+
+{/* ref file="../plugins/plugins/src/tree.ts" */}
+
+## 一键更新：热重挂
+
+`plugins.update-all`，无参数（或 `{ only?: string[] }` 限定包名）。agent 发完一批新版本、
+人在工作台点一颗键，**全升、不重启**。它一条命令做完三件事：查清单 → 一趟 pnpm →
+逐条重挂 → 整页重载。**判据与经过在[定过的事](/docs/decisions)那条 2026-09-09
+「一键更新是热重挂，不重启」**，这儿讲它怎么转。
+
+### 为什么「停用再启用」就是重 import
+
+{/* ref file="../plugins/plugins/src/update-all.ts" lines="5-21" */}
+
+loader 那棵树上一条条目的 `update(id, { disabled: true })` 会 `fiber.dispose()`；再
+`update(id, { disabled: null })`（`null` 是「删掉这个字段」）时它看到 fiber 没了走 `init()`，
+而 `_init()` **每次重新 `tree.import(name)`**。所以不用 remove / create——条目在 yml 里的
+id 与位置一字不动，设置与数据的归属（都按 id 分区）也就不动。
+
+这条成立还差一半在内核：主进程没有 `--expose-internals`，件的裸名由内核塞给
+`loader.internal` 的那几行解析，而 Node 的 CJS 解析有**进程级缓存**——装了新版本它还回
+旧版本的路径。内核当天改成先 `realpathSync.native` 解出真实目录再解析（内核仓轨迹卡
+`2026-09-09-wall-resolver-cache`），没有那一步这儿重 import 到的仍是旧文件。跨仓钉不了，
+所以这句只能写在这儿。
+
+### 计划是纯函数：一趟 pnpm、自己最后
+
+{/* ref file="../plugins/plugins/src/update-all.ts" lines="63-96" */}
+
+三件事在这段里定死：
+
+- **pnpm 参数是一趟 `add`，每个包钉 outdated 回的 `latest`**——不是 `@latest` 标签。查到
+  什么装什么，两次问 registry 之间又发了一版也不会装成回执上没写的那个
+- **升了的每个包的每条条目都在清单上**，本来就停用的带 `disabled` 标（执行时保持停用）。
+  不能指望级联：被大家 inject 的件（commands / settings…）重挂时 cordis 会把依赖它的件停了
+  再起，可那是重跑**内存里的旧模块**，盘上的新版本它碰都没碰
+- **自己所在的包排最后，包内自己那条条目也排最后**（`self` 标）——理由在下面
+
+### 执行：升级与重挂同一条命令，不留窗口
+
+{/* ref file="../plugins/plugins/src/index.ts" lines="614-637" */}
+
+pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件若读盘（惰性 import 一个子模块、
+读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
+取决于人什么时候调下一条。
+
+一条条目的重挂是四步，不是两步：
+
+{/* ref file="../plugins/plugins/src/index.ts" lines="894-908" */}
+
+**等旧的拆完再启用**这一步不能省：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
+**不等它**，而 Service 件的 `provide` 是在卸载那趟里撤的。不等就启用，新 fiber 起来时旧服务
+可能还没撤，cordis 报「service has been registered」。等的方式是 cordis 自己的
+`Fiber.await()`（`while (inertia) await inertia`），它不会因为「依赖永远不满足」而挂死
+（PENDING 时 inertia 是空的）；会挂死的只有某个件的 `apply` 自己不回来，那种情况到点就走，
+读到什么状态报什么：
+
+{/* ref file="../plugins/plugins/src/update-all.ts" lines="119-144" */}
+
+### 自己最后，而且在回执之后
+
+{/* ref file="../plugins/plugins/src/index.ts" lines="639-665" */}
+
+处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
+「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
+那时命令的应答早已发出。闭包**只持 tree、id、总线的引用与那只 logger**——本件的 fiber
+已经拆了，ctx 上取服务会「inactive context」；`this` 上别的方法也不进来。
+
+整页重载跟着推迟到自己重挂完之后：回执上 `selfDeferred: true`、`reload: 'deferred'`。
+自己不在清单里就当场 `shell.reload`（`reload: 'done'`）；命令表里没有它（外壳没装、或
+版本太旧）就 `unavailable`，`note` 里写「界面要手动刷新」——按名探，不 import 外壳的常量，
+那会把 shell 变成本件的运行时依赖。
+
+### 回执
+
+{/* ref file="../plugins/plugins/src/index.ts" lines="121-161" */}
+
+每条条目的去向有四种：`remounted`（重 import 了新版本）、`skipped`（本来就停用，保持停用）、
+`deferred`（本件自己那条）、`failed`（动树时抛了，`state` 里是那句错）。`state` 照 cordis
+`FiberState` 的原名报——**ACTIVE 才算真起来了**，PENDING 是 inject 没满足，FAILED 是
+`apply` 抛了，原因在日志里。
+
+### 渲染层：整页重载
+
+开着的格持的是旧的 client 束，importmap 只在开机注一次；node 半换了新版本，页面上那份
+还是旧的，而 ESM 没有卸载、外壳内部重建做不到。所以收尾是 [`shell.reload`](/docs/shell)
+——就是状态栏那颗「刷新」的命令版，归外壳。
+
+窗格那侧因此有一条跟别的动作不一样：**reload 在路上时 busy 不撤**——页面随时会被整页
+重载（自己也升了的话先是这一格关掉再开），撤了只会让人在最后一帧点到什么。没在路上
+（命令表里没 `shell.reload`、或者没成）才照常重取表、撤 busy：
+
+{/* ref file="../plugins/plugins/src/client/index.tsx" lines="858-883" */}
+
+点「全部更新」先在格内列 `from → to` 让人看一眼（照卸载确认框的做法），确认才调命令；
+有过期包才亮——没查过与查了全新都是灰的。
+
+### agent 那头
+
+发完新版本调它，是写进 mcp 的 instructions 里的：
+
+{/* has file="../plugins/mcp/instructions.md" text="plugins.update-all" */}
+
+升到 mcp 自己时这条回执会丢——桥随件重挂，连接断在半路——重连后 `plugins.list` 核对
+版本与 active。升到 gwb-plugins 自己时回执还在，只是自己那条 `deferred`。
+
+## 卸载：先摘条目后卸包
+
+{/* ref file="../plugins/plugins/src/uninstall.ts" */}
+
+一个包在树上的全部条目，逐条 `tree.remove`（写回 yml、当场卸 fiber），再 `pnpm remove`。
+顺序反过来就是上面说的 ghost。**pnpm 失败不回滚**：条目已摘是正当落点，包落进「已装、
+没挂条目」区看得见、重试加条目就行。只摘一条条目、包留着，走 `remove-entry`——两个动作
+分工，不是同一个的两种写法。

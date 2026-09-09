@@ -9,6 +9,63 @@ livedoc: none
 按 `gwb-decide` 的规矩：选型推完交人拍板，拍板之后记进这页。只记关系**件**的选型；
 关系**规则**的（命名、依赖判据、内核该不该做某事）归内核仓的站。
 
+## 2026-09-09：一键更新是热重挂，不重启
+
+**定**（plugins 0.3.0，配套 shell 0.2.2 / mcp 0.3.1）：
+
+1. **`plugins.update-all`**：`outdated` 拿清单 → **一趟** `pnpm add a@x b@y …`（精确版本）→
+   升了的每个包的**每条条目**停用再启用 → `shell.reload` 整页重载。**不重启内核。**
+   `{ only?: string[] }` 可限定包名
+2. **升级与重挂在同一条命令里做完**，中间不留「下一条命令」的窗口
+3. **本件自己排最后、回执之后才重挂**：回执先交出去，`setTimeout(…, 0)` 的闭包里再停用/
+   启用自己，然后才 `shell.reload`。回执上 `selfDeferred: true`、`reload: 'deferred'`
+4. **外壳加 `shell.reload`**（主进程 `import('electron')`，逐扇 `webContents.reload()`；没窗口
+   回 `ok: false`）；命令表里没有它就在回执 `note` 里写「界面要手动刷新」
+5. **mcp 的 instructions 加一行**：发完新版本调 `plugins.update-all`；升到 mcp 自己时回执会丢，
+   重连后 `plugins.list` 核对
+
+**为什么是热重挂而不是重启**：agent 在干活途中改件、发版是这台工作台鼓励的事（instructions
+里写着），可 0.2 的 `plugins.update` 升完只能说一句「重启内核后才换成新的」——发一版验一版
+就得重启一次，agent 的会话（MCP 连接）跟着断一次。而事实基础（读 `@cordisjs/plugin-loader`
+核过的）是：条目 `disabled: true` → `fiber.dispose()`；再把 `disabled` 抹掉 → `update()` 见
+fiber 没了走 `init()`，而 `_init()` **每次重新 `tree.import(name)`**。所以「停用再启用」本身
+就是一次干净的重 import，不用 remove / create，条目在 yml 里的 id 与位置一字不动，设置与
+数据的归属（都按 id 分区）也就不动。做法见[插件管理](/docs/plugins)。
+
+**为什么升级与重挂要在同一条命令里**：pnpm 升级会**删掉旧版本目录**。分成两条命令
+（先 `update` 再 `remount`）的话，两条之间旧件若读盘（惰性 import 一个子模块、读自己
+包里的模板）会读空——而那段时间有多长取决于人或 agent 什么时候调下一条。合成一条，
+窗口就只剩 pnpm 退出到第一条 `tree.update` 之间的几毫秒。
+
+**为什么每条条目都自己重挂，不靠级联**：被大家 inject 的件（commands / settings…）重挂时，
+cordis 会把依赖它的件停了再起——看着像连带升级了，其实那是**重跑内存里的旧模块**，盘上的
+新版本它碰都没碰。所以计划里升了的每个包的每条条目都在清单上，一条不省。
+
+**为什么自己最后、而且在回执之后**：处理器里停用自己，这条 await 链随 fiber 一起拆掉，
+回执永远到不了调用方——界面上就是「点了没反应」。所以自己那条从计划里单独标出来
+（`planUpdateAll` 的 `self`），处理器把别人的都做完、回执交出去，下一个宏任务再动自己。
+那段闭包**只持 tree、id、总线的引用与那只 logger**——本件的 fiber 已经拆了，ctx 上取服务
+会「inactive context」。
+
+**依赖内核那次改动**：主进程没有 `--expose-internals`，件的裸名由内核塞给 `loader.internal`
+的那五行解析——它原来走 `createRequire(home).resolve(name)`，而 Node 的 CJS 解析有
+**进程级缓存**，装了新版本还会回旧版本的路径，重 import 拿到的还是旧文件。内核当天改成
+先 `realpathSync.native` 把 home 里那个名字解成真实目录再解析（内核仓轨迹卡
+`2026-09-09-wall-resolver-cache`，提交 `1e744bc`）。**没有那一步，这条线上「停用再启用」
+重 import 到的仍是旧版本**——热重挂能成立，一半在件这边、一半在内核那五行。
+
+**渲染层为什么整页重载**：开着的格持的是旧的 client 束，importmap 只在开机注一次；
+node 半换了新版本、页面上那份还是旧的。外壳内部重建做不到——束已经 import 进来了，
+ESM 没有卸载。所以收尾是 `shell.reload`（就是状态栏那颗「刷新」的命令版），归外壳。
+
+**验的方式**：单测钉住纯函数——`planUpdateAll`（一趟 pnpm、精确版本、包按名排自己最后、
+包内自己那条最后、停用的带标、`only` 限定与 `ignored`）、`fiberStateOf`、`settleFiber`
+（到点就走）、`describeUpdateAll`（回执→几行话）、外壳的 `reloadWindows`（没窗口 `ok: false`）
+与 `electronWindows`（不在 Electron 里 reject）；三包 `pnpm check` 全绿。**实机没验**——
+default home 正被连着的会话占着，而这条改动恰恰要装进 home 才验得出来（内核那次解析器
+改动也得先起新内核）；留给下一次起机时由人验：发一版 hello → 点「全部更新」→ 看
+`plugins.list` 的版本与 active、页面是否重载、`gwb.log` 有没有 error。
+
 ## 2026-09-09：MCP 工具面收窄——固定两枚加登记时标了 `top` 的；配置走 settings
 
 **定**（mcp 0.3.0，配套 commands 0.2.0 / skills 0.2.0 / node-cli 0.2.0 / py-cli 0.2.0）：

@@ -16,7 +16,7 @@ livedoc: none
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="29-55" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="71-91" */}
 
 件给的那几样，与服务替它填上的身份：
 
@@ -68,7 +68,7 @@ await args.host.call('shell.plugins')
 `registerPane` 只收 `{ id, title, icon?, duplicable? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="124-139" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="190-205" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。
@@ -260,6 +260,27 @@ mountPane({ host, shell, pane }, container) => { dispose() }
 bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；内核那半与页面加载无关（IPC
 句柄在主进程启动时注册，宿主进程也活在那边），reload 对它只是一次重新连线。装了新件、
 启停了件之后点它，比重启整个应用轻一档。
+
+### `shell.reload`：同一件事的命令版
+
+0.2.2 起那颗「刷新」有了命令面的版本——`shell.reload`，无参数，给
+[`plugins.update-all`](/docs/plugins) 一键热升收尾用：node 半换成新版本之后，开着的格持的
+仍是旧的 client 束、importmap 只在开机注一次，只有整页重载能让页面重新 import 到新东西。
+
+{/* ref file="../plugins/shell/src/reload.ts" */}
+
+件跑在 Electron **主进程**里，`import('electron')` 拿得到 `BrowserWindow`——开窗、重载全归件，
+内核一条都不代办。两处讲究：
+
+- **取窗口列表抽成可注入的 deps**。测试里没有 electron，纯逻辑那半（没窗口怎么答、有几扇就
+  reload 几扇）喂一份假的就能测；真机那份 `electronWindows()` 不在 Electron 里就 reject
+- **说明符走变量**，不让 tsc 去解析 `electron` 这个模块——本包不依赖它的类型（那要把整个
+  electron 装进件的 devDependencies，只为一个方法名），运行时它就在主进程里
+
+**没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
+登记那头把「拿不到 electron」也收成回执：
+
+{/* ref file="../plugins/shell/src/index.ts" lines="162-181" */}
 
 **＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致：已经开着的点了是聚焦，
 声明了 `duplicable` 的行尾多一个「＋一份」。**已开的那条不 disable**——点它是聚焦，
