@@ -65,20 +65,24 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     super(ctx, 'gwbSkills')
   }
 
-  /** 服务就绪时把取表那条命令挂上；effect 包着，本件卸载时自动注销 */
+  /**
+   * 服务就绪时把两条命令挂上；effect 包着，本件卸载时自动注销。
+   * 两条都标 `top: true`——**申请**当 MCP 顶层工具（说明书是 agent 连上第一件要看的东西），
+   * 上不上由 mcp 件那份人批的名单定
+   */
   [Service.init](): void {
     const cli = this.ctx.gwbCommands
     // inject 保证了它在，这句只是把类型收窄
     if (cli === undefined) return
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', plugin: 'gwb-skills' },
+        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）。无参数', plugin: 'gwb-skills', top: true },
         () => ({ count: this.table.size, skills: this.list() }),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文（{ name, file? }，file 缺省 SKILL.md）', plugin: 'gwb-skills' },
+        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文。参数 { name, file? }，file 缺省 SKILL.md', plugin: 'gwb-skills', top: true },
         async (args) => {
           const req = args as { name?: unknown; file?: unknown } | undefined
           const skillName = req?.name
