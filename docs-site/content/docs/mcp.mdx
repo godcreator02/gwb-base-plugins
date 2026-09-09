@@ -1,6 +1,6 @@
 ---
 title: gwb-mcp：把命令面开给 agent
-description: 自己起 node:http，无状态 streamableHTTP，工具面只有两件
+description: 自己起 node:http，无状态 streamableHTTP，工具面只有几件——固定两枚加登记时标了 top 的
 livedoc: none
 ---
 
@@ -9,7 +9,8 @@ livedoc: none
 把 [`ctx.gwbCommands`](/docs/commands) 那份命令注册表开给任意外部 agent。方向**永远**是
 agent → 工作台。
 
-包名 `@godcreator02/gwb-mcp`，无界面。`inject: ['gwbCommands', 'gwbData']`。
+包名 `@godcreator02/gwb-mcp`，无界面。`inject: ['gwbCommands', 'gwbData', 'gwbSettings']`
+——settings 是硬依赖，端口从它来。
 
 ## 怎么连
 
@@ -28,23 +29,24 @@ token 落在 `<home>/data/@godcreator02/gwb-mcp/token.json`，形状 `{ token, c
 
 ## `mcp.info` 回的是一段能照抄的配置
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="72-80" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="81-89" */}
 
 除了 `url` / `port` / `token` 三样散件，`mcp.info` 还回一个 `mcpServers`——形状就是
-Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户端配置就能连**。
+Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户端配置就能连**——
+外加 `top.rendered`：此刻会渲染成顶层工具的命令名，跟下一台 server 起来时的判断同一份。
 
 给散件也给拼好的那一份，是因为**拼装那一步本来是每个客户端各拼一遍的**：scheme 写成
 `sse`、header 漏了 `Bearer ` 前缀、url 少了 `/mcp` 一段——三种都拼得出来，而症状全是
 「连不上」，从客户端那头看不出为什么。拼好的这份把那些机会一次收掉。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="349-369" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="356-388" */}
 
 命令自己的顺序是**端口先答**：这道口没开成时回 `ok: false` 说清楚原因，而不是回一个
 连不上的 url。下一节就是它最常见的那一种。
 
 ## default 的口是契约，不是首选
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="50-58" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-67" */}
 
 **`default` 这个 home 认死 2870，被占就不开这道口。**
 
@@ -55,22 +57,53 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 所以 default 那一支的 `fallback` 是 `false`，接线照着它走：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="306-321" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="320-335" */}
 
 **不开比开在别处强**——开在别处是静默连错，不开是当场看得见（一行 `log.error`，
 外加 `mcp.info` 回 `ok: false`）。本件其它部分照常挂着，只是这道口这次没开。
 
-其它 home 不吃这条：默认要系统随机口（没有哪个串是它的契约），显式给了 `config.port`
-才试那个口、被占照旧退让并 warn。home 名从 `gwbKernel.dataDir` 的末段认——那个目录就是
-home 目录，件不必另有一条「你是谁」的入口。
+其它 home 不吃这条：缺省要系统随机口（没有哪个串是它的契约），显式给了口才试那个口、
+被占照旧退让并 warn。home 名从 `gwbKernel.dataDir` 的末段认——那个目录就是 home 目录，
+件不必另有一条「你是谁」的入口。
 
-## 工具面只有两件
+## 端口是一项设置，不是 `cordis.yml` 的 config
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="179-254" */}
+**件的配置一律走 `gwbSettings.define`**，这个件不再收 `apply` 的 `config` 形参：
 
-**没有逐条门牌**：命令注册表随装了哪些件而变，没有一张固定清单，所以给的是
-「看清单」加「按名字调」这一对。旧线做过五件精选直通，后来发现它们不比
-`gwb_cli_run` 多任何能力，只是多了几条要维护的常驻描述。
+@@livedoc ref ../plugins/mcp/src/index.ts:83-97 @@
+
+`port` 的缺省按 home 名给（`defaultPort`），跟 `choosePort` 不给值时的答案一致——界面上
+看到的缺省就是真会用的口，不会出现「显示 0、实际 2870」这种两份真相。设置件不做运行时
+校验，所以 `choosePort` 收的是 `unknown`：不是整数、出了范围一律当没给，数字串也认
+（界面上一格文本框写进来的就是串）。改了要重启这个 home 才生效——口是 `apply` 时开的。
+
+## 工具面只有几件
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="191-268" */}
+
+**固定两枚**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
+的那几条命令；其余命令一律经 `gwb_command_run` 按名调。挑法是一个纯函数：
+
+@@livedoc ref ../plugins/mcp/src/top.ts @@
+
+**顶层是开发时定的，不是装进软件之后批的。** 件在登记命令时标 `top: true`，桥看到就
+渲染，没有运行时名单、没有批准这一步；缺省只有说明书那两条（`skill_list` /
+`skill_read`，[skills](/docs/skills) 件自己标的）。「同意」只剩一条纪律，写在
+instructions 里：agent 给命令标 `top: true` 之前先停下来问人。
+
+为什么收这么窄，三样实测：
+
+- **顶层工具清单与 resources 列表都是连接时的快照**。Claude Code 连上之后不刷新——
+  停用一个件，它那枚工具还挂在清单里；新装的件也不会长出新工具
+- **server instructions 会被截断**。清单曾经列在 instructions 里，十三份说明书列到第八份
+  就断了——agent 根本不知道后面还有
+- **逐条渲染出来的工具 schema 全是 `args: unknown`**，比 `gwb_command_run` 只多一个
+  名字。旧线做过五件精选直通，后来发现它们不比 command_run 多任何能力，只是多了几条要
+  维护的常驻描述
+
+逐条渲染那版是当天一次提交信息为「a」的提交带进来的、没记理由；这一次是回到这页一直
+写着的设计。参数形状不在 schema 里，在**命令描述**里——所以描述必须写形状，见
+[commands](/docs/commands)。
 
 业务失败（命令不存在、参数不对）回的是 `isError` 的文本，**不是协议错误**——
 agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON-RPC 错误，
@@ -92,40 +125,42 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="256-267" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="270-281" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
 
-好处是工具面永远是**此刻**的——热挂上来的件当场就在清单里。
+好处是工具面永远是**此刻**的——热挂上来的件当场就在清单里（对 `gwb_command_list` 而言；
+客户端自己那份顶层清单是它连接时的快照，见上一节）。
 代价是**发不出 list_changed 那类通知**：正连着的 agent 要等下一次重连才知道多了什么。
 认下这个代价，为一条通知改成有状态不划算。
 
-## instructions：每个 agent 连上来都要读的那段
-
-固定那半是包根一份真的 markdown，模块加载时读一次；动态那半（此刻挂着的 skill 清单）
-才由 `skills.ts` 现拼。**它是每会话的固定成本**——skill 一多、话一长，这段就变成一页
-白占上下文的废话，所以两半都按「少一句就漏事、多一句就是废话」裁。
+## instructions：固定二十行，每个 agent 连上来都要读
 
 {/* ref file="../plugins/mcp/instructions.md" */}
 
-固定那半里有一条不写就会出事的：**这道口是无状态的，agent 自己新装的件不会长出新的
+包根一份真的 markdown，模块加载时读一次，**不随挂着的 skill 变**。它是每会话的固定成本，
+所以按「少一句就漏事、多一句就是废话」裁，二十行内。
+
+从前它有动态那半——此刻挂着的 skill 清单，逐条点名。撤掉的理由就是上面那条截断：清单
+一长就被客户端切掉后半截，而且 skill 一多这段就是一页白占上下文的废话。现在说明书的
+发现面是 `skill_list` 那枚顶层工具的**回执**——它是现取的，不是快照；instructions 只说
+「连上先调 `gwb_command_list` 与 `skill_list` 各一次」。正文仍另挂成
+`skill://gwb/<名>/<文件>` resources，`skill_read` 与 resources 两条路都读得到。
+
+固定文本里有一条不写就会出事的：**这道口是无状态的，agent 自己新装的件不会长出新的
 顶层工具**（上一节那个代价）。不说明白，它装完件就会在工具清单里干等，而清单永远
-不会变——写清楚了它才知道该走 `gwb_command_list` / `gwb_command_run`，或者重连。
+不会变——写清楚了它才知道该走 `gwb_command_run`。
 
 后半段是**这台工作台准许 agent 改自己到哪儿**：修 bug、补 `SKILL.md`、加命令加件不用
-问；改内核、改那七件被别人 `inject` 的契约面或依赖先问人。判据是**改动的爆炸半径**——
-前一类错了只波及它自己，后一类错了是整台工作台起不来或者别的件静默失灵，而 agent
-在自己的会话里看不见那个半径。
-
-{/* ref file="../plugins/mcp/src/skills.ts" lines="56-77" */}
-
-「说明书在 `skill://gwb/<名>/SKILL.md` 里，动手前先读对得上的那份」这句在**动态那半**，
-不在固定那半：这个 home 一份 skill 都没挂时，那句话读了也无处可去。
+问；改内核、改那七件被别人 `inject` 的契约面或依赖、**给命令标 `top: true`** 先问人。
+判据是**改动的爆炸半径**——前一类错了只波及它自己，后一类错了是整台工作台起不来、别的
+件静默失灵，或者顶层工具清单被一个没人批过的门牌占掉，而 agent 在自己的会话里看不见
+那个半径。
 
 ## 一道门，不是两道
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="130-152" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="145-167" */}
 
 token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到正事。
 
@@ -137,7 +172,7 @@ token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到
 
 ## 取令牌存的是 promise，不是值
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="109-123" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="124-138" */}
 
 首启那次要异步落一份盘，而路由一挂上去随时可能进请求。存值的话，两个并发请求会各
 生成一个 token 互相盖掉；存 promise，先到的请求等的就是同一次首启。
@@ -158,8 +193,10 @@ express-rate-limit 一串，解包 4.3MB、693 个文件，跟着这个件全装
 
 ## 安全边界
 
-**持 token 就拿到写面**：`gwb_cli_run` 能调的是完整的命令注册表，包括往 home 里装件。
+**持 token 就拿到写面**：`gwb_command_run` 能调的是完整的命令注册表，包括往 home 里装件。
+顶层收窄收的是**发现面**，不是权限面——不渲染成顶层的命令照样按名调得到。
 这个系统的信任模型是两层——**装件 = 授权**（件在宿主进程里有完整 Node 权限，无沙箱），
 **token 给谁 = 授权**（持 token 的 agent 等同一个远程的你）。
 
-绑 `127.0.0.1`，不对外。命令级的拒绝名单这一版不做。
+绑 `127.0.0.1`，不对外。命令级的拒绝名单这一版不做。「用户同意」在这个系统里只能是
+纪律——agent 有整台机器——所以它写进 instructions，不做成机制。

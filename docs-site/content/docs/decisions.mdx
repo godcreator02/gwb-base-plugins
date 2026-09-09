@@ -9,6 +9,46 @@ livedoc: none
 按 `gwb-decide` 的规矩：选型推完交人拍板，拍板之后记进这页。只记关系**件**的选型；
 关系**规则**的（命名、依赖判据、内核该不该做某事）归内核仓的站。
 
+## 2026-09-09：MCP 工具面收窄——固定两枚加登记时标了 `top` 的；配置走 settings
+
+**定**（mcp 0.3.0，配套 commands 0.2.0 / skills 0.2.0 / node-cli 0.2.0 / py-cli 0.2.0）：
+
+1. **桥只渲染固定两枚**（`gwb_command_list` / `gwb_command_run`）**加登记表里标了
+   `top: true` 的命令**；其余一律经 `gwb_command_run` 按名调。`GwbCommandDef` 加可选
+   `top`，总线原样带进 `list()`，缺省 `false`
+2. **顶层是开发时定的**：件在登记命令时标 `top: true` 就是决定，桥看到就渲染——**没有
+   运行时名单、没有批准这一步**。「同意」只剩一条纪律，写进 instructions：agent 标它
+   之前先停下来问人。缺省只有说明书那两条（skills 件自己标的）
+3. **件的配置一律走 `gwbSettings.define`**，不吃 `cordis.yml` 的 `config`。mcp 的端口
+   改成 `port` 设置（缺省按 home 名：default 2870、其它 0），硬 `inject` settings
+4. **instructions 改成固定文本**（二十行内），不再列说明书清单；说明书的发现面改为
+   `skill_list` 的回执，正文 `skill_read` 与 resources 两条路
+5. **命令描述必须写参数形状**（`{ entryId }`、`{ args?: string[], cwd?: string }` 这种；
+   无参数写「无参数」）——顶层收窄之后 agent 手上只有名字和这一句
+6. **两个 CLI 运行器的 `run` 加按次的 `cwd`**：必须是存在的目录的绝对路径，不合规回
+   `{ ok: false, error }` 不抛；总线镜像认 `{ args, cwd }`
+
+**依据**：三样发现面、两样是快照、一样会截断。实测 Claude Code 连着时，顶层工具清单与
+resources 列表都是**连接时的快照**（停用一个件，它那枚工具还挂着；新装的不长新的），
+server instructions 则会被**截断**（十三份说明书列到第八份就断）。而逐条渲染出来的每枚
+工具 schema 都只是 `args: unknown`，比 `gwb_command_run` 只多一个名字——为一个名字占一个
+会被截断的稀缺位，不划算。mcp 页一直写的就是「工具面只有两件、没有逐条门牌」，逐条
+渲染是当天一次提交信息为「a」的提交带进来的、没记理由，这一次是回到文档写的设计。
+
+**顶层为什么不做成名单**：起初推的是「件申请（`top: true`）+ mcp 一项 `top` 设置做人批的
+名单」，settings 为此加了 `list` 类型。当天改判：顶层是**开发时**的决定，不是装进软件
+之后批的事——名单是给运行时留的机制，而这个系统里 agent 拿着整台机器，任何「同意」都只
+能是纪律，做成机制只是多一处要维护的表。于是 `top: true` 写在代码里就是决定，settings
+的 `list` 类型随之撤回（那版没发出去），「标之前问人」写进 instructions 的门里。
+
+**配置为什么走 settings**：`cordis.yml` 的 `config` 只有改文件重挂一条路，界面看不见、
+agent 也调不到；settings 有界面、有命令、有缺省值的展示。件的配置面只留一条。
+
+**验的方式**：单测钉住纯函数（`selectTop` 只挑标了 top 的、`choosePort` 收 unknown 且
+数字串也认、`defaultPort` 跟不给值时一致、`checkCwd` 三种拒法、`parseInvocation` 认两种
+形状、instructions 二十行内且点名固定工具），门禁 `pnpm check` 全绿。**装机没做**——
+default home 正被一条连着的会话占着，留给下一次起机时由人验。
+
 ## 2026-09-09：`default` home 的 MCP 口不许退让
 
 **定**（mcp 0.2.0，三件一起）：

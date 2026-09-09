@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_HOME_PORT,
   choosePort,
+  defaultPort,
   endpointUrl,
   homeNameOf,
   mcpServers,
@@ -39,6 +40,25 @@ describe('choosePort：default home', () => {
     expect(choosePort('default', -1)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', 70000)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', Number.NaN)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
+    // 设置件不做运行时校验,什么形状都可能进来
+    expect(choosePort('default', 'abc')).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
+    expect(choosePort('default', null)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
+    expect(choosePort('default', { port: 1 })).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
+  })
+
+  it('数字串也认——界面上一格文本框写进来的就是串', () => {
+    expect(choosePort('default', '3999')).toEqual({ port: 3999, fallback: false })
+    expect(choosePort('probe', ' 2871 ')).toEqual({ port: 2871, fallback: true })
+    expect(choosePort('probe', '')).toEqual({ port: 0, fallback: false })
+  })
+})
+
+describe('defaultPort：port 设置的缺省', () => {
+  it('default 是 2870,其它 home 是 0——跟 choosePort 不给配置时的答案一致', () => {
+    expect(defaultPort('default')).toBe(DEFAULT_HOME_PORT)
+    expect(defaultPort('probe')).toBe(0)
+    expect(choosePort('default', defaultPort('default'))).toEqual(choosePort('default'))
+    expect(choosePort('probe', defaultPort('probe'))).toEqual(choosePort('probe'))
   })
 })
 

@@ -295,6 +295,9 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.1.0
         version: 0.1.0(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-settings':
+        specifier: workspace:*
+        version: link:../settings
       '@godcreator02/gwb-skills':
         specifier: workspace:*
         version: link:../skills

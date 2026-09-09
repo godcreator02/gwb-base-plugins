@@ -5,15 +5,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
 import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands 与 gwbData
+// 只为激活那三个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbData / gwbSettings
 import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
+import type {} from '@godcreator02/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
-import { DEFAULT_HOME, choosePort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
-import { buildInstructions, skillResources, type SkillsSlot } from './skills.js'
+import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
+import { baseInstructions, skillResources, type SkillsSlot } from './skills.js'
 import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
+import { selectTop } from './top.js'
 
 /**
  * MCP 桥：把命令面开给外部 agent（方向永远是 agent → 工作台）。
@@ -23,24 +25,28 @@ import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type 
  * - `/mcp` 是**无状态 streamableHTTP**：每请求现造一对 server + transport，随响应关闭。
  *   代价是发不出 list_changed 那类通知，正连着的 agent 要等下一次重连才知道
  *   工具面变了。认下——每请求一对是这道口的立身之本
- * - **工具面就是命令注册表**：登记一条命令，就是一枚同名工具（`skill.list`→
- *   `skill_list`）；件卸了，下一请求工具自动消失。**暴露什么由登记命令的件决定**，
- *   mcp 一个门牌都不替别人开。参数统一装在 `args` 里——命令自己校验
- * - 自留 `gwb_command_list` / `gwb_command_run` 两件兜**时差**：无状态端点发不了
- *   list_changed，agent 连着时新装的件不长新工具，这两件是重连前够到新能力的唯一口
- * - **说明书（skill）也从这道口出**：`instructions` 点名此刻挂着的 skill（唯一的发现面），
- *   正文挂成 `skill://gwb/<名>/<文件>` resources。收的那头是 `gwb-skills` 件，局部注入
- *   接的——skills 件不在这儿时这道桥照开，只是 agent 读不到说明书
- * - **口开在哪由 home 名定**：`default` 认死 2870、被占就不开这道口（判断在
- *   `endpoint.ts`，理由也在那儿）；其它 home 默认系统随机口
+ * - **工具面只有几件**：固定 `gwb_command_list` / `gwb_command_run` 两枚，外加登记表里
+ *   标了 `top: true` 的命令（判断在 `top.ts`）；其余命令一律经 command_run 按名调。
+ *   顶层是开发时定的——桥看到 `top` 就渲染，没有运行时名单。参数统一装在 `args` 里，
+ *   形状看命令描述——命令自己校验
+ * - **说明书（skill）也从这道口出**：`skill_list` / `skill_read` 是顶层工具（skills 件
+ *   自己标的 top），正文另挂成 `skill://gwb/<名>/<文件>` resources；instructions 是固定
+ *   文本，只说「先调 skill_list」。收的那头是 `gwb-skills` 件，局部注入接的——skills
+ *   件不在这儿时这道桥照开，只是那两枚工具与 resources 都不在
+ * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
+ *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`，
+ *   理由也在那儿）；其它 home 缺省系统随机口
  * - 鉴权见 `auth.ts`。token 落 `ctx.gwbData` 的 `token` 文档，并**打进日志**——
  *   这一版没有界面，日志是它唯一的示人出口
  */
 
 export const name = 'gwb-mcp'
 
-/** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议 */
-export const inject = ['gwbCommands', 'gwbData']
+/** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议。settings 是硬依赖：端口从它来 */
+export const inject = ['gwbCommands', 'gwbData', 'gwbSettings']
+
+/** 端口那一项设置的 key。改了要重启这个 home 才生效——口是 apply 时开的 */
+const PORT_KEY = 'port'
 
 /**
  * 报给 MCP 客户端的版本号：**本件自己的**。以前报的是内核的 `kernel.appVersion`，
@@ -67,7 +73,7 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
   res.end(text)
 }
 
-export function apply(ctx: GwbContext, config?: { port?: number }): void {
+export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
   const version = ownVersion()
   const cli = ctx.gwbCommands
@@ -75,11 +81,20 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
   if (cli === undefined) return
 
   /**
-   * 这道口开在哪：home 名（`dataDir` 的末段）加配置一起定，判断全在 `endpoint.ts`，
-   * 这儿只接线。`gwbKernel` 不写进 `inject`，用 `requireKernel` 取
+   * 这道口开在哪：home 名（`dataDir` 的末段）加 `port` 设置一起定，判断全在 `endpoint.ts`，
+   * 这儿只接线。`gwbKernel` 不写进 `inject`，用 `requireKernel` 取。
+   * 设置的缺省按 home 名给，跟 choosePort 不给值时的答案一致——界面上看到的就是真会用的口
    */
   const home = homeNameOf(requireKernel(ctx).dataDir)
-  const choice = choosePort(home, config?.port)
+  ctx.gwbSettings.define({
+    key: PORT_KEY,
+    title: 'MCP 端口',
+    type: 'number',
+    default: defaultPort(home),
+    description:
+      'default home 认死 2870（被占就不开这道口，不退让）；其它 home 0 = 系统随机口，给了口被占就退让。改了要重启这个 home 才生效',
+  })
+  const choice = choosePort(home, ctx.gwbSettings.get(PORT_KEY))
 
   /**
    * 说明书那格。**局部注入,不写进 export const inject**:skills 件不在时这道桥照开——
@@ -177,25 +192,24 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
    * 现造一台 MCP server。**每请求一台**：工具面随此刻挂着的件变，抓一份下来就固化了。
    */
   const buildServer = (): McpServer => {
-    // 每请求现取:此刻挂着的 skill 当场进说明书,热挂的件不用等重连之外的动作
+    // 每请求现取:此刻挂着的 skill 当场进 resources,热挂的件不用等重连之外的动作
     const list = skills?.list() ?? []
     const server = new McpServer(
       { name: 'gwb', version },
-      // instructions 是 skill 唯一的发现面:客户端不会自己 resources/list,
-      // 不在这段里点名的 skill 等于不存在
-      { instructions: buildInstructions(list) },
+      // 固定文本:说明书的发现面是 skill_list 那枚顶层工具的回执,不在这段里列清单——
+      // 清单会被客户端截断,而且是每会话的固定成本
+      { instructions: baseInstructions() },
     )
 
-    /** 自留的两件兜时差。压名从它们开始占位，命令渲染出的工具名让路 */
+    /** 固定的两件。压名从它们开始占位，顶层命令渲染出的工具名让路 */
     const taken = new Set<string>(['gwb_command_list', 'gwb_command_run'])
 
     server.registerTool(
       'gwb_command_list',
       {
         description:
-          '一页看完这个 home 此刻登记的全部命令（名字 + 描述 + 登记的件）。' +
-          '每条命令平时就是一枚同名工具（skill.list→skill_list）；' +
-          '连接之后新装的件要等重连才长出新工具，那期间靠这枚按名调用。',
+          '一页看完这个 home 此刻登记的全部命令（名字 + 描述 + 登记的件 + 是否顶层）。' +
+          '连上先调一次；除顶层那几枚，其余命令一律经 gwb_command_run 按名调。无参数。',
       },
       () => {
         const commands = cli.list()
@@ -208,19 +222,19 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
       'gwb_command_run',
       {
         description:
-          '按命令名调工作台的命令面（先用 gwb_command_list 看有哪些）。' +
+          '按命令名调工作台的命令面（先用 gwb_command_list 看有哪些、参数怎么给）。' +
           '命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
         inputSchema: {
           command: z.string().describe('命令名，如 skill.read'),
-          args: z.unknown().optional().describe('可选参数，命令自己校验'),
+          args: z.unknown().optional().describe('可选参数，形状见命令描述；命令自己校验'),
         },
       },
       async ({ command, args }) => runCommand(command, args),
     )
 
-    // 注册表照搬：登记一条命令就是一枚同名工具。**暴露什么由登记命令的件决定**，
-    // mcp 不替任何人挑门牌；件停了/卸了，下一台 server 起来这份就没了
-    for (const command of cli.list()) {
+    // 顶层只渲染登记时标了 top 的：顶层是开发时定的,桥看到就渲染,没有运行时名单。
+    // 件停了/卸了,下一台 server 起来这份就没了
+    for (const command of selectTop(cli.list())) {
       const tool = toolNameOf(command.name, taken)
       taken.add(tool)
       server.registerTool(
@@ -343,7 +357,8 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
     cli.register(
       {
         name: 'mcp.info',
-        description: 'MCP 连接串（url + token + 实际端口 + 可直接抄进 .mcp.json 的 mcpServers 片段，仅本机使用，勿外传）',
+        description:
+          'MCP 连接串（url + token + 实际端口 + 可直接抄进 .mcp.json 的 mcpServers 片段 + top.rendered 此刻渲染成顶层的命令名，仅本机使用，勿外传）。无参数',
         plugin: name,
       },
       async () => {
@@ -364,8 +379,10 @@ export function apply(ctx: GwbContext, config?: { port?: number }): void {
           return { ok: false, error: `token 不可用：${tokenError ?? '原因未记下（上一次尝试还没结束？）'}` }
         }
         const url = endpointUrl(live)
-        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍
-        return { ok: true, data: { url, port: live, token, mcpServers: mcpServers(url, token) } }
+        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍；
+        // top.rendered 是此刻会渲染成顶层的命令名——跟下一台 server 起来时的判断同一份
+        const rendered = selectTop(cli.list()).map((command) => command.name)
+        return { ok: true, data: { url, port: live, token, mcpServers: mcpServers(url, token), top: { rendered } } }
       },
     ),
   )

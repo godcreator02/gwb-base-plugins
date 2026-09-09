@@ -4,18 +4,17 @@ import { readFileSync } from 'node:fs'
  * skill 那一面在 MCP 上的表达，从端点实现里抽出以便测试。
  *
  * **MCP 协议里没有 skill 这个原语**，客户端也不会把 MCP 来的东西自动挂成 skill
- * （那是文件系统上 `.claude/skills/` 的待遇）。能用的只有两格：
+ * （那是文件系统上 `.claude/skills/` 的待遇）。能用的只有三格：
  *
- * - `instructions`：initialize 时白送进 agent 上下文的那段，**唯一的发现面**。
- *   客户端不会自己去 `resources/list`——不在这段里点名的 skill，等于不存在
- * - `resources`：正文的载体，agent 照 instructions 给的 URI 来读
+ * - **顶层工具 `skill_list` / `skill_read`**：skills 件登记时标了 `top`，桥渲染成顶层。
+ *   说明书的发现面就是 `skill_list` 的回执——它是现取的，不是连接时的快照
+ * - `resources`：正文的另一个载体，`skill://gwb/<名>/<文件>`，agent 照名字来读
+ * - `instructions`：initialize 时白送进 agent 上下文的那段，**固定文本**——只说
+ *   「先调 skill_list」，不再列清单。清单曾经列在这儿，实测会被客户端截断（十三份列到
+ *   第八份就断），而且它是每会话的固定成本，skill 一多就是一页废话
  *
- * 所以动态那半的分寸是：**每份 skill 一行，说清什么时候该读它**，正文一个字不放。
- * 它是每个连上来的 agent 都要吃的固定成本，skill 一多就变成一页废话。
- *
- * 固定那半（工作台自我说明）是一份真的 markdown——包根 `instructions.md`，模块加载时
- * 读一次：能当 markdown 写、预览、格式化，而不是源码里一串引号（跟内核仓 home-readme
- * 的待遇一个理）。动态那半（此刻挂着的 skill 清单）才归这份 .ts 拼。
+ * 固定那半是一份真的 markdown——包根 `instructions.md`，模块加载时读一次：能当 markdown
+ * 写、预览、格式化，而不是源码里一串引号（跟内核仓 home-readme 的待遇一个理）。
  *
  * 只搬了形状、没搬旧线的实现：旧仓那份依赖 `@godcreator02/gwb-platform` 的类型，
  * 这儿按本仓的依赖纪律**本地收窄声明**——mcp 只消费 list/read，不欠 skills 件一个依赖。
@@ -46,34 +45,14 @@ const ENTRY = 'SKILL.md'
  * 包根那份说明，模块加载时读一次——部署期就定死的文字，不值得每请求重读。
  * dist/ 与 src/（vitest）两种运行位向上跳一级都是包根，指到的是同一份。
  */
-const INSTRUCTIONS_BASE: string = readFileSync(new URL('../instructions.md', import.meta.url), 'utf8').trimEnd()
-
-/** 工作台自我说明的固定那半：包根 instructions.md 原样 */
-export function baseInstructions(): string {
-  return INSTRUCTIONS_BASE
-}
+const INSTRUCTIONS: string = readFileSync(new URL('../instructions.md', import.meta.url), 'utf8').trimEnd()
 
 /**
- * 拼 server instructions。
- *
- * 没有 skill 时只有固定那半——**不留一句「本台支持 skill」的空话**：agent 读了
- * 也无处可去，只是白占上下文。
+ * server instructions：包根 `instructions.md` 原样，**不随挂着的 skill 变**。
+ * 每个 agent 连上来都要读这段，所以按「少一句就漏事、多一句就是废话」裁，二十行内。
  */
-export function buildInstructions(skills: readonly SkillView[]): string {
-  if (skills.length === 0) return INSTRUCTIONS_BASE
-  const lines = [
-    INSTRUCTIONS_BASE,
-    '',
-    `这个 home 的插件带了 ${skills.length} 份说明书（skill），讲的是多步流程、调用顺序与踩过的坑。`,
-    '正文挂在 resources 上（`skill://gwb/<名>/SKILL.md`）——下面哪一条对得上手头的活，',
-    '**动手前先把它的 URI 读出来**（resources/read）：',
-    '',
-  ]
-  for (const skill of skills) {
-    lines.push(`- ${skill.name}（${skill.plugin} 件）：${skill.description === '' ? '（这一份没写描述）' : skill.description}`)
-    lines.push(`  ${skillUri(skill.name, ENTRY)}`)
-  }
-  return lines.join('\n')
+export function baseInstructions(): string {
+  return INSTRUCTIONS
 }
 
 /** 一条要挂到 MCP 上的 resource */

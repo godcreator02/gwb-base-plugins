@@ -6,12 +6,12 @@
  * default 的口一旦退让，那个会话连上的就是**另一个 home**——一台测试 home 先起来占住
  * 2870，后起的 default 退到系统随机口，会话从此在测试 home 上干活而且不报错。
  *
- * 于是分成两种 home：
+ * 于是分成两种 home（口从 `port` 设置来，缺省按 home 名给，见 `defaultPort`）：
  *
- * - **`default`**：要 `config.port ?? 2870`，**被占就不开这道口**（报错，不退让）。
+ * - **`default`**：要 `port` 设置里那个（缺省 2870），**被占就不开这道口**（报错，不退让）。
  *   不开比开在别处强——开在别处是静默连错，不开是当场看得见
- * - **其它 home**：默认要系统随机口（多 home 同开是常态，没有哪个串是它的契约）。
- *   显式给了 `config.port` 就试那个，被占照旧退让到随机口
+ * - **其它 home**：缺省要系统随机口（多 home 同开是常态，没有哪个串是它的契约）。
+ *   设置里显式给了口就试那个，被占照旧退让到随机口
  */
 
 /** 总控台会话永远连它 */
@@ -42,13 +42,22 @@ export function homeNameOf(dataDir: string): string {
   return cut === -1 ? trimmed : trimmed.slice(cut + 1)
 }
 
-/** 配置里那个数当不当端口用。不是整数、出了 0-65535 一律当没给——不为一个笔误让口开在别处 */
-function askedPort(value: number | undefined): number | undefined {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 65535 ? value : undefined
+/**
+ * 设置里那个值当不当端口用。设置件不做运行时校验，这儿收的是 unknown：不是整数、出了
+ * 0-65535 一律当没给——不为一个笔误让口开在别处。数字串也认（界面上一格文本框写进来的）
+ */
+function askedPort(value: unknown): number | undefined {
+  const n = typeof value === 'string' && value.trim() !== '' ? Number(value) : value
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 65535 ? n : undefined
 }
 
-/** 按 home 名与配置定这道口开在哪、被占了怎么办 */
-export function choosePort(homeName: string, configPort?: number): PortChoice {
+/** `port` 设置的缺省：default 认死 2870，其它 home 0（系统随机口） */
+export function defaultPort(homeName: string): number {
+  return homeName === DEFAULT_HOME ? DEFAULT_HOME_PORT : 0
+}
+
+/** 按 home 名与 `port` 设置定这道口开在哪、被占了怎么办 */
+export function choosePort(homeName: string, configPort?: unknown): PortChoice {
   const asked = askedPort(configPort)
   // default：要哪个口都行，唯独不许退让——退让就是把会话让给先起来的那个 home
   if (homeName === DEFAULT_HOME) return { port: asked ?? DEFAULT_HOME_PORT, fallback: false }

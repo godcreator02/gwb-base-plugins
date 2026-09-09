@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildInstructions, mimeTypeOf, skillResources, skillUri, type SkillView } from '../src/skills.js'
+import { baseInstructions, mimeTypeOf, skillResources, skillUri, type SkillView } from '../src/skills.js'
 
 /** 一份测试用的 skill */
 function skill(overrides: Partial<SkillView> = {}): SkillView {
@@ -24,33 +24,30 @@ describe('mimeTypeOf', () => {
   })
 })
 
-describe('buildInstructions', () => {
-  it('没有 skill 时只有固定那半,不留「本台支持 skill」的空话', () => {
-    const text = buildInstructions([])
+describe('baseInstructions：固定文本', () => {
+  it('把两枚固定工具与说明书那两枚顶层工具点了名——它们是固定的工具名,不是清单', () => {
+    const text = baseInstructions()
     expect(text).toContain('gwb_command_list')
-    expect(text).not.toContain('skill://')
-    expect(text).not.toContain('说明书')
+    expect(text).toContain('gwb_command_run')
+    expect(text).toContain('skill_list')
+    expect(text).toContain('skill_read')
+    // 说明书的发现面是 skill_list 的回执,不再在这儿列清单:一份具体的 skill 名都不许出现
+    expect(text).not.toContain('demo')
+    expect(text).not.toMatch(/\d+ 份说明书/)
   })
 
-  it('固定那半带着自改的门:两张单子各一条,连内核都点了名', () => {
-    const text = buildInstructions([])
+  it('带着自改的门:两张单子各一条,连内核都点了名,标 top 之前要问人也在门里', () => {
+    const text = baseInstructions()
     expect(text).toContain('不用问就能做')
     expect(text).toContain('先问人再动手')
     expect(text).toContain('gwb-kernel')
+    expect(text).toContain('top: true')
     // 无状态桥发不出 list_changed 这件事得写在门里,不然 agent 装完件干等新工具
     expect(text).toContain('list_changed')
   })
 
-  it('每份 skill 两行:一行名字加描述,一行 URI', () => {
-    const text = buildInstructions([
-      skill(),
-      skill({ name: 'another', description: '', plugin: '@godcreator02/gwb-x' }),
-    ])
-    expect(text).toContain('2 份说明书')
-    expect(text).toContain('- demo（@godcreator02/gwb-demo 件）：演示用')
-    expect(text).toContain(`  ${skillUri('demo', 'SKILL.md')}`)
-    // 没写描述的不留空,也不冒充有
-    expect(text).toContain('- another（@godcreator02/gwb-x 件）：（这一份没写描述）')
+  it('二十行内——它是每个 agent 每会话的固定成本', () => {
+    expect(baseInstructions().split('\n').length).toBeLessThanOrEqual(20)
   })
 })
 
