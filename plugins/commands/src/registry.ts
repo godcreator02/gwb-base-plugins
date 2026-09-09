@@ -7,8 +7,8 @@ export interface GwbCommandDef {
   description?: string
   plugin: string
   /**
-   * **申请**当 MCP 的顶层工具。只是申请：上不上由 mcp 件那份人批的名单（`top` 设置）定，
-   * 总线本身对它没有任何动作，只是原样带进 `list()`
+   * 标了就是 MCP 的顶层工具：桥看到 `true` 就渲染，没有运行时名单。顶层是稀缺位，agent
+   * 标它之前先问人（写在 mcp 的 instructions 里）。总线对它没有任何动作，只是原样带进 `list()`
    */
   top?: boolean
 }

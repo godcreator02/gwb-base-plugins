@@ -67,8 +67,8 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
 
   /**
    * 服务就绪时把两条命令挂上；effect 包着，本件卸载时自动注销。
-   * 两条都标 `top: true`——**申请**当 MCP 顶层工具（说明书是 agent 连上第一件要看的东西），
-   * 上不上由 mcp 件那份人批的名单定
+   * 两条都标 `top: true`——它们是 MCP 的顶层工具（说明书是 agent 连上第一件要看的东西）。
+   * 顶层在登记时就定了，桥照它渲染，没有名单
    */
   [Service.init](): void {
     const cli = this.ctx.gwbCommands

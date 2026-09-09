@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-skills",
   "version": "0.2.0",
-  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.2：skill.list / skill.read 登记时标 top: true（申请当 MCP 顶层工具），描述写明参数形状",
+  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.2：skill.list / skill.read 登记时标 top: true（是 MCP 的顶层工具，桥照它渲染），描述写明参数形状",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

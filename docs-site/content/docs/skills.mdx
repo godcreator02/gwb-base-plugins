@@ -18,8 +18,8 @@ skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状�
 {/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
 
 外加两条命令：`skill.list`（表）与 `skill.read`（正文）。两条登记时都标了 `top: true`
-——**申请**当 MCP 的顶层工具，说明书是 agent 连上第一件要看的东西。申请归申请，上不上由
-[gwb-mcp](/docs/mcp) 那份人批的名单定（它缺省就批了这两条）：
+——它们是 [gwb-mcp](/docs/mcp) 的顶层工具，agent 一连上就看得见：说明书是它第一件要看的
+东西。顶层在登记时就定了，桥照它渲染，没有名单：
 
 @@livedoc has ../plugins/skills/src/index.ts "top: true" @@
 
