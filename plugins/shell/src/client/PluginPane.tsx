@@ -124,8 +124,17 @@ export function PluginPane({
 
   return (
     <div className="relative h-full">
-      {/* 件的表整张 scope 在这个属性之下——容器上不挂它，件的类名一个都不生效 */}
-      <div ref={hostRef} data-gwb-plugin={pluginKey} className="h-full overflow-auto" />
+      {/*
+        `@container` 让这一格成为容器查询的根：**窗格不是视口**，件里写的 `@sm:` / `@md:`
+        这类变体按这一格现在有多宽来判，跟整窗大小无关——同一个件在窄格里竖排、在宽格里
+        横排，拖动分隔条当场变。
+
+        `data-gwb-plugin` 对两代件意义不同：选择器 scope 那套方案的件（表整张包在
+        `:where([data-gwb-plugin="…"])` 之下）仍靠它围栏，容器上不挂它，那些件的类名
+        一个都不生效；Tailwind 前缀方案的件（类名自带 `hello:` 这种前缀）不靠它，
+        对它们这个属性只是身份标记。
+      */}
+      <div ref={hostRef} data-gwb-plugin={pluginKey} className="@container h-full overflow-auto" />
       {!ready && (
         <p className="text-muted-foreground pointer-events-none absolute inset-x-0 top-2 m-0 text-center text-sm">
           加载中…
