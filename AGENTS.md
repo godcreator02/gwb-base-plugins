@@ -1,7 +1,7 @@
 # gwb-base-plugins
 
 **单进程内核 `gwb-kernel-min`（`D:\unitfolders\26090705ymz\gwb-kernel-min`，单元
-`26090705ymz`）的件仓。** 十二件全在 0.1.0。
+`26090705ymz`）的件仓。** 版本看各包 `package.json`。
 
 ## 2026-09-09：换了内核，换了契约
 
@@ -44,6 +44,17 @@
 **服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-commands` → `ctx.gwbCommands`）。cordis 官方件
 的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。判据与理由在内核仓的
 `AGENTS.md`。
+
+## 件的三条通用规矩
+
+1. **配置一律走 `gwbSettings.define`，不吃 `cordis.yml` 的 `config`。** 设置有界面、有命令、
+   缺省值看得见；`config` 只有改文件重挂一条路。件的配置面只留一条（mcp 的 `port` 是样板）
+2. **命令描述必须写参数形状。** `register({ description })` 要让 agent 只看它就知道参数怎么给
+   ——`{ entryId }`、`{ pkg, spec? }`、`{ args?: string[], cwd?: string }` 这种；无参数写
+   「无参数」。经 mcp 出去的命令，agent 手上除了名字就只有这一句
+3. **要上顶层在登记命令时标 `top: true`，桥照它渲染；agent 标之前先问人。** 顶层是稀缺位
+   （客户端的工具清单是连接时的快照），缺省只有说明书那两条；其余命令一律经
+   `gwb_command_run` 按名调。判据见文档站 `decisions` 那条 2026-09-09「工具面收窄」
 
 ## 内核给的面就这么大
 
