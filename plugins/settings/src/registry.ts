@@ -3,7 +3,8 @@ import { assertKey, assertSection, entrySection, SHARED_SECTION } from './paths.
 
 /** 注册表本体：内存里的两张表 + 定义表 + 解析规则。不碰 ctx、不碰 fs，于是可测 */
 
-export type SettingType = 'string' | 'number' | 'boolean' | 'secret'
+/** `list` 的值是 `string[]`——写入时收窄（见 `toListValue`），别的类型不做运行时校验 */
+export type SettingType = 'string' | 'number' | 'boolean' | 'secret' | 'list'
 
 /** 一项设置的自述。件在 apply 里声明。**没有机器级**——home 自持全部配置 */
 export interface SettingDef {
@@ -11,7 +12,10 @@ export interface SettingDef {
   key: string
   /** 界面上的标签 */
   title: string
-  /** 界面照它挑控件；`secret` 只影响显示打码，**存储照样明文** */
+  /**
+   * 界面照它挑控件；`secret` 只影响显示打码，**存储照样明文**。
+   * `list` 是唯一做收窄的：写进来的字符串按逗号或空白拆成数组、数组逐项转字符串、别的拒
+   */
   type: SettingType
   /** 写 true 进公共区，别的件不用 define 就读得到 */
   shared?: boolean
@@ -62,6 +66,7 @@ export interface SettingsRegistry {
   locate(owner: Owner, key: string): Slot | undefined
   /** 按位置直读，不经身份。界面走这条——它不是一个件，没有身份可绑 */
   read(slot: Slot): unknown
+  /** 按位置写。这一格有活着的定义时按它的 type 收窄（list → string[]，别的原样） */
   put(slot: Slot, value: unknown): void
   drop(slot: Slot): void
   /** 内存里的那一份，给落盘用 */
@@ -90,9 +95,24 @@ function viewKey(slot: Slot): string {
 }
 
 /**
- * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
- * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
+ * `list` 类型的值收窄成 `string[]`。三种来源同一种落盘形状：界面上一格文本框写的
+ * `a, b c`、命令行递来的一串、代码里给的一个数组。
+ *
+ * - 字符串：按逗号或空白拆，空段丢掉（`'a, ,b'` → `['a','b']`，空串 → `[]`）
+ * - 数组：逐项 `String()`
+ * - 别的一律拒——抛出的话要说清要什么，经命令总线回去就是 `{ ok: false, error }`
  */
+export function toListValue(value: unknown): string[] {
+  if (typeof value === 'string') return value.split(/[,\s]+/).filter((item) => item !== '')
+  if (Array.isArray(value)) return value.map(String)
+  throw new Error(`list 类型的设置要一个字符串（逗号或空白分隔）或一个数组，给的是 ${typeof value}`)
+}
+
+/** 按定义收窄要写进去的值。只有 `list` 做收窄——别的类型仍是「只给界面挑控件」 */
+export function coerceValue(def: Pick<SettingDef, 'type'>, value: unknown): unknown {
+  return def.type === 'list' ? toListValue(value) : value
+}
+
 /**
  * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
  * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
@@ -127,6 +147,15 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
   /** 读一格的值。缺席与「设成了 undefined」在这儿是同一件事 */
   const valueAt = (slot: Slot): unknown => files[slot.section]?.[slot.key]?.value
+
+  /** 此刻有件声明着这一格吗——有的话按它的 type 收窄写入的值。共享项要反查，定义表按 owner 键 */
+  const defAt = (slot: Slot): SettingDef | undefined => {
+    for (const { owner, def } of defs.values()) {
+      const at = slotOf(owner, def)
+      if (at.section === slot.section && at.key === slot.key) return def
+    }
+    return undefined
+  }
 
   return {
     load(home) {
@@ -185,8 +214,11 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     },
 
     put(slot, value) {
+      // 有活着的定义就按它收窄（眼下只有 list 真收窄）；没有就原样存——件停着时界面照样能改值
+      const def = defAt(slot)
+      const stored = def === undefined ? value : coerceValue(def, value)
       const section = (files[slot.section] ??= {})
-      section[slot.key] = { ...section[slot.key], value }
+      section[slot.key] = { ...section[slot.key], value: stored }
     },
 
     drop(slot) {
