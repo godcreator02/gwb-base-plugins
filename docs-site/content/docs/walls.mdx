@@ -59,7 +59,7 @@ devDependencies**。
 
 ## 撞名是后来者赢，但不许静默地赢
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="23-36" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="29-42" */}
 
 件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
@@ -71,7 +71,7 @@ devDependencies**。
 
 ## 一条命令抛出来不该炸到调用方
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="42-54" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="48-60" */}
 
 它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
 

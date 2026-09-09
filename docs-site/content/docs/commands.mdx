@@ -72,7 +72,7 @@ handler **自己判过成败就原样透传**，没判的一律算成了：
 一连上就在工具清单里看得见的那种。总线对这个字段只做一件事：原样带进 `list()`，缺省
 `false`；桥看到 `true` 就渲染，**没有运行时名单、没有「批准」这一步**。
 
-@@livedoc ref ../plugins/commands/src/registry.ts:9-13 @@
+{/* ref file="../plugins/commands/src/registry.ts" lines="9-13" */}
 
 **顶层是开发时定的，不是装进软件之后批的。** 顶层工具清单在 agent 连着的时候是一份快照，
 而且每枚工具的 schema 都只是 `args: unknown`，比 `gwb_command_run` 只多一个名字——顶层是

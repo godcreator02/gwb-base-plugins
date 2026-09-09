@@ -70,7 +70,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 **件的配置一律走 `gwbSettings.define`**，这个件不再收 `apply` 的 `config` 形参：
 
-@@livedoc ref ../plugins/mcp/src/index.ts:83-97 @@
+{/* ref file="../plugins/mcp/src/index.ts" lines="83-97" */}
 
 `port` 的缺省按 home 名给（`defaultPort`），跟 `choosePort` 不给值时的答案一致——界面上
 看到的缺省就是真会用的口，不会出现「显示 0、实际 2870」这种两份真相。设置件不做运行时
@@ -84,7 +84,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 **固定两枚**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
 的那几条命令；其余命令一律经 `gwb_command_run` 按名调。挑法是一个纯函数：
 
-@@livedoc ref ../plugins/mcp/src/top.ts @@
+{/* ref file="../plugins/mcp/src/top.ts" */}
 
 **顶层是开发时定的，不是装进软件之后批的。** 件在登记命令时标 `top: true`，桥看到就
 渲染，没有运行时名单、没有批准这一步；缺省只有说明书那两条（`skill_list` /
