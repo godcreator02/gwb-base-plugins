@@ -42,12 +42,6 @@ export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
  */
 export const ENV_COMMAND = 'shell.env'
 
-/**
- * 整页重载全部窗口。给命令面的——`plugins.update-all` 热升完靠它让页面重新 import 新束、
- * 重注 importmap；状态栏那颗「刷新」是同一件事的人手版。做法在 `reload.ts`
- */
-export const RELOAD_COMMAND = 'shell.reload'
-
 export interface ShellEnv {
   home: string
   /** 按序加载：令牌表、dockview 表、本件自己的表 */
@@ -67,6 +61,12 @@ function shellEnv(home: string): ShellEnv {
     ],
   }
 }
+
+/**
+ * 整页重载全部窗口。给命令面的——`plugins.update-all` 热升完靠它让页面重新 import 新束、
+ * 重注 importmap；状态栏那颗「刷新」是同一件事的人手版。做法在 `reload.ts`
+ */
+export const RELOAD_COMMAND = 'shell.reload'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
