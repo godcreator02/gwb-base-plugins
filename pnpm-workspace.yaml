@@ -6,9 +6,13 @@ packages:
   - docs-site
 
 allowBuilds:
+  # @tailwindcss/cli 拖来的，只在 `tailwindcss --watch` 那条路上用得着；件的构建是一次性的，
+  # 那个原生模块不编也一样跑
+  '@parcel/watcher': false
   esbuild: true
 
 minimumReleaseAgeExclude:
   - '@godcreator02/gwb-plugin-api@0.0.1 || 0.0.2 || 0.0.3 || 0.1.0'
   - '@godcreator02/gwb-cli@0.0.4'
   - '@godcreator02/gwb-commands@0.0.1'
+  - lucide-react@1.43.0

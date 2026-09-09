@@ -4,30 +4,30 @@ import { cn } from "cn"
 import { Slot } from "radix-ui"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "hello:inline-flex hello:shrink-0 hello:items-center hello:justify-center hello:gap-2 hello:rounded-md hello:text-sm hello:font-medium hello:whitespace-nowrap hello:transition-all hello:outline-none hello:focus-visible:border-ring hello:focus-visible:ring-[3px] hello:focus-visible:ring-ring/50 hello:disabled:pointer-events-none hello:disabled:opacity-50 hello:aria-invalid:border-destructive hello:aria-invalid:ring-destructive/20 hello:dark:aria-invalid:ring-destructive/40 hello:[&_svg]:pointer-events-none hello:[&_svg]:shrink-0 hello:[&_svg:not([class*=size-])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "hello:bg-primary hello:text-primary-foreground hello:hover:bg-primary/90",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+          "hello:bg-destructive hello:text-white hello:hover:bg-destructive/90 hello:focus-visible:ring-destructive/20 hello:dark:bg-destructive/60 hello:dark:focus-visible:ring-destructive/40",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "hello:border hello:bg-background hello:shadow-xs hello:hover:bg-accent hello:hover:text-accent-foreground hello:dark:border-input hello:dark:bg-input/30 hello:dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "hello:bg-secondary hello:text-secondary-foreground hello:hover:bg-secondary/80",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "hello:hover:bg-accent hello:hover:text-accent-foreground hello:dark:hover:bg-accent/50",
+        link: "hello:text-primary hello:underline-offset-4 hello:hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        default: "hello:h-9 hello:px-4 hello:py-2 hello:has-[>svg]:px-3",
+        xs: "hello:h-6 hello:gap-1 hello:rounded-md hello:px-2 hello:text-xs hello:has-[>svg]:px-1.5 hello:[&_svg:not([class*=size-])]:size-3",
+        sm: "hello:h-8 hello:gap-1.5 hello:rounded-md hello:px-3 hello:has-[>svg]:px-2.5",
+        lg: "hello:h-10 hello:rounded-md hello:px-6 hello:has-[>svg]:px-4",
+        icon: "hello:size-9",
+        "icon-xs": "hello:size-6 hello:rounded-md hello:[&_svg:not([class*=size-])]:size-3",
+        "icon-sm": "hello:size-8",
+        "icon-lg": "hello:size-10",
       },
     },
     defaultVariants: {

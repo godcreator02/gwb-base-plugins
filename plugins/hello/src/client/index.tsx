@@ -1,20 +1,39 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 /**
  * 浏览器半——**两格窗格**（不再是整页外壳）。`mountPane` 按 `args.pane.id` 分派。
  *
  * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经注册时自报的 `file://` 地址拿得到、
- * scope 生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**，
+ * 样式生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**，
  * 外加**跑得起本件自带的那两条 CLI**（一 node 一 python）并把回执显出来。
+ *
+ * **样式这一面验的是三条事实**（0.2 起换成 Tailwind 前缀围栏，见 `src/client/styles.css`）：
+ *
+ * 1. **前缀围栏**：这个文件里每一个类名都带 `hello:`，本件那张表里的规则也只认这种类名。
+ *    规则全页有效，但只可能匹配到本件画出来的元素——围栏来自名字唯一，不是 DOM 祖先关系。
+ *    漏加前缀的类**静默不出规则**（一个字节都不编），所以配了 `tests/prefix.test.ts` 钉住。
+ * 2. **弹层挂 body 也有样式**：下面那个 `DropdownMenu` 的浮层 portal 到 `<body>` 上去，
+ *    压根不在窗格容器里。选择器 scope 那套方案下它必然裸奔；前缀方案下它照样有样式。
+ * 3. **容器查询按窗格宽度判**：`hello:@md:flex-row` 这类变体问的是最近的容器查询根，
+ *    而那个根是外壳给这一格的容器（`PluginPane` 上的 `@container`），不是视口。
+ *    把这一格拖窄，那排按钮换行；整窗大小没变。
  *
  * **亮暗那颗按钮挪到状态栏去了**：它改的是 `html.dark`、影响整页，本来就该归外壳。
  * 「切换当场变色而不重新构建」那条验收因此也归那边。
  *
- * **样式与 scope 属性都不归这儿管了**：外壳的 `PluginPane` 在 import 这个束之前就把
- * `style.css` 注好、把 `data-gwb-plugin` 挂在容器上了。令牌表更是页面级的一份，
- * 由外壳注。窗格件只管画自己那一格。
+ * **表与容器属性都不归这儿管**：外壳的 `PluginPane` 在 import 这个束之前就把 `style.css`
+ * 注好了，令牌表更是页面级的一份，也由外壳注。容器上那个 `data-gwb-plugin` 仍然挂着，
+ * 但对这个件**只是身份标记**——它不再承担围栏，围栏已经在类名里。窗格件只管画自己那一格。
  */
 
 /** 外壳交出来的两条取表命令。这儿不 import shell 的常量：那是 node 半的包,浏览器半不牵它 */
@@ -122,7 +141,7 @@ async function runCli(host: PaneArgs['host'], command: string, args: readonly st
 }
 
 function Empty({ what }: { what: string }): ReactElement {
-  return <p className="text-sm text-muted-foreground">{what}</p>
+  return <p className="hello:text-sm hello:text-muted-foreground">{what}</p>
 }
 
 /** 两条 CLI 各跑一趟，外加一条注定失败的——验退出码真能原样带回界面 */
@@ -139,14 +158,14 @@ function CliBlock({ args }: { args: PaneArgs }): ReactElement {
   }
 
   return (
-    <div className="space-y-3 rounded-lg border bg-card p-4 text-card-foreground">
-      <p className="text-sm font-semibold">两条 CLI（本件自带，一 node 一 python）</p>
-      <p className="text-sm text-muted-foreground">
-        node 那条跑的是 <span className="font-mono">dist/cli.js</span>——tsc 编译产物；python
-        那条跑包根 <span className="font-mono">py/.venv</span> 里的入口点垫片，那个 venv 由守卫现建。
+    <div className="hello:space-y-3 hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+      <p className="hello:text-sm hello:font-semibold">两条 CLI（本件自带，一 node 一 python）</p>
+      <p className="hello:text-sm hello:text-muted-foreground">
+        node 那条跑的是 <span className="hello:font-mono">dist/cli.js</span>——tsc 编译产物；python
+        那条跑包根 <span className="hello:font-mono">py/.venv</span> 里的入口点垫片，那个 venv 由守卫现建。
       </p>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="hello:flex hello:flex-wrap hello:gap-3">
         <Button data-probe="run-node" disabled={busy} onClick={() => fire(NODE_CLI_COMMAND, ['来自界面'])}>
           跑 node CLI
         </Button>
@@ -180,25 +199,25 @@ function CliBlock({ args }: { args: PaneArgs }): ReactElement {
 function CliShotView({ shot }: { shot: CliShot }): ReactElement {
   const { result } = shot
   return (
-    <div className="space-y-2" data-probe="cli-out">
-      <p className="font-mono text-xs text-muted-foreground">
+    <div className="hello:space-y-2" data-probe="cli-out">
+      <p className="hello:font-mono hello:text-xs hello:text-muted-foreground">
         {shot.command} {shot.args.join(' ')}
       </p>
       {result === undefined ? (
         // 调不通跟「跑了但失败了」是两回事,分开显示——前者多半是件没装或 venv 没就绪
-        <p className="text-sm text-destructive" data-probe="cli-error">
+        <p className="hello:text-sm hello:text-destructive" data-probe="cli-error">
           调不通：{shot.error}
         </p>
       ) : (
         <>
-          <p className="font-mono text-xs" data-probe="cli-meta">
+          <p className="hello:font-mono hello:text-xs" data-probe="cli-meta">
             {`exitCode=${String(result.exitCode)} ok=${String(result.ok)} ${
               result.timedOut ? '超时 ' : ''
             }${String(result.durationMs)}ms`}
           </p>
           {result.stdout.text === '' ? null : (
             <pre
-              className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs whitespace-pre-wrap"
+              className="hello:overflow-x-auto hello:rounded hello:bg-muted hello:p-2 hello:font-mono hello:text-xs hello:whitespace-pre-wrap"
               data-probe="cli-stdout"
             >
               {result.stdout.text}
@@ -206,7 +225,7 @@ function CliShotView({ shot }: { shot: CliShot }): ReactElement {
           )}
           {result.stderr.text === '' ? null : (
             <pre
-              className="overflow-x-auto rounded bg-muted p-2 font-mono text-xs whitespace-pre-wrap text-destructive"
+              className="hello:overflow-x-auto hello:rounded hello:bg-muted hello:p-2 hello:font-mono hello:text-xs hello:whitespace-pre-wrap hello:text-destructive"
               data-probe="cli-stderr"
             >
               {result.stderr.text}
@@ -222,11 +241,11 @@ function PaneTable({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
   if (panes === undefined) return <Empty what="窗格表取不到——看 console 那条错。" />
   if (panes.length === 0) return <Empty what="注册表是空的：没有件注册过窗格。" />
   return (
-    <ul className="space-y-1 text-sm">
+    <ul className="hello:space-y-1 hello:text-sm">
       {panes.map((p) => (
-        <li key={`${p.entryId}:${p.id}`} className="font-mono">
+        <li key={`${p.entryId}:${p.id}`} className="hello:font-mono">
           {`plugin:${p.entryId}:${p.id}`} — {p.title}
-          {p.duplicable === true ? ' ×N' : ''} — <span className="text-muted-foreground">{p.pkg}</span>
+          {p.duplicable === true ? ' ×N' : ''} — <span className="hello:text-muted-foreground">{p.pkg}</span>
         </li>
       ))}
     </ul>
@@ -237,11 +256,11 @@ function PluginTable({ plugins }: { plugins: PluginRow[] | undefined }): ReactEl
   if (plugins === undefined) return <Empty what="件表取不到——看 console 那条错。" />
   if (plugins.length === 0) return <Empty what="没有件报过名字。" />
   return (
-    <ul className="space-y-1 text-sm">
+    <ul className="hello:space-y-1 hello:text-sm">
       {plugins.map((p) => (
-        <li key={p.entryId} className="font-mono">
+        <li key={p.entryId} className="hello:font-mono">
           {p.entryId} — {p.title}
-          {p.icon === undefined ? '' : ` (${p.icon})`} — <span className="text-muted-foreground">{p.pkg}</span>
+          {p.icon === undefined ? '' : ` (${p.icon})`} — <span className="hello:text-muted-foreground">{p.pkg}</span>
         </li>
       ))}
     </ul>
@@ -270,15 +289,24 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
   }, [args.host])
 
   return (
-    <div className="h-full space-y-6 overflow-auto p-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">gwb 验收件</h1>
-        <p className="text-sm text-muted-foreground">
-          这一格的类名全由本件自己那张表提供，颜色取自共享的那份令牌。
+    <div className="hello:h-full hello:space-y-6 hello:overflow-auto hello:p-8">
+      <div className="hello:space-y-1">
+        <h1 className="hello:text-2xl hello:font-semibold">gwb 验收件</h1>
+        <p className="hello:text-sm hello:text-muted-foreground">
+          这一格的类名全带 <span className="hello:font-mono">hello:</span> 前缀，规则由本件自己那张表提供，
+          颜色取自共享的那份令牌。
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      {/*
+        **这一排验容器查询**：窄的时候竖着排、到 md 才横过来，而 `@md` 问的是最近的
+        容器查询根——外壳给这一格的容器（`PluginPane` 上那个 `@container`），不是视口。
+        把这一格拖窄它就竖过来，整窗大小一点没变。
+      */}
+      <div
+        data-probe="variant-row"
+        className="hello:flex hello:flex-col hello:flex-wrap hello:gap-3 hello:@md:flex-row"
+      >
         <Button>默认</Button>
         <Button variant="secondary">次要</Button>
         <Button variant="destructive">危险</Button>
@@ -287,23 +315,59 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
         <Button variant="link">链接</Button>
       </div>
 
-      <div className="rounded-lg border bg-card p-4 text-card-foreground">
-        <p className="text-sm">这块是 bg-card——它跟页面底色差一档，换主题时两个一起变。</p>
+      <div className="hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+        <p className="hello:text-sm">这块是 bg-card——它跟页面底色差一档，换主题时两个一起变。</p>
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-card p-4 text-card-foreground">
-        <p className="text-sm font-semibold">窗格注册表（{PANES_COMMAND}）</p>
+      {/*
+        **这颗菜单验的是「弹层挂 body 也有样式」**：radix 把 `DropdownMenuContent`
+        portal 到 `<body>` 上，它压根不是窗格容器的后代。选择器 scope 那套方案下这层
+        浮层必然裸奔（一堆无边框无底色的裸文字）；前缀方案下类名自己就是围栏，
+        规则照样命中。
+      */}
+      <div className="hello:space-y-2 hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+        <p className="hello:text-sm hello:font-semibold">弹层（portal 到 body）</p>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button data-probe="menu-trigger" variant="outline">
+              打开菜单
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent data-probe="menu-content" align="start">
+            <DropdownMenuLabel>这层不在窗格容器里</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem data-probe="menu-open-counter" onSelect={() => args.shell.openPane('counter')}>
+              打开计数器
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-probe="menu-dup-counter"
+              onSelect={() => args.shell.openPane('counter', { duplicate: true })}
+            >
+              再开一份计数器
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-probe="menu-wave"
+              onSelect={() => args.shell.bus.emit(HELLO_EVENT, { at: Date.now() })}
+            >
+              朝总线喊一嗓子
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="hello:space-y-2 hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+        <p className="hello:text-sm hello:font-semibold">窗格注册表（{PANES_COMMAND}）</p>
         <PaneTable panes={panes} />
       </div>
 
-      <div className="space-y-2 rounded-lg border bg-card p-4 text-card-foreground">
-        <p className="text-sm font-semibold">件表（{PLUGINS_COMMAND}）</p>
+      <div className="hello:space-y-2 hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+        <p className="hello:text-sm hello:font-semibold">件表（{PLUGINS_COMMAND}）</p>
         <PluginTable plugins={plugins} />
       </div>
 
       <CliBlock args={args} />
 
-      <div className="flex flex-wrap gap-3">
+      <div className="hello:flex hello:flex-wrap hello:gap-3">
         <Button data-probe="open-counter" onClick={() => args.shell.openPane('counter')}>
           打开计数器
         </Button>
@@ -351,23 +415,23 @@ function CounterPane({ args }: { args: PaneArgs }): ReactElement {
   }, [args.shell])
 
   return (
-    <div className="h-full space-y-4 overflow-auto p-8">
-      <h1 className="text-xl font-semibold">计数器</h1>
-      <p className="font-mono text-xs text-muted-foreground" data-probe="instance">
+    <div className="hello:h-full hello:space-y-4 hello:overflow-auto hello:p-8">
+      <h1 className="hello:text-xl hello:font-semibold">计数器</h1>
+      <p className="hello:font-mono hello:text-xs hello:text-muted-foreground" data-probe="instance">
         {args.pane.instance}
       </p>
 
-      <div className="flex items-center gap-3">
+      <div className="hello:flex hello:items-center hello:gap-3">
         <Button data-probe="bump" onClick={() => setCount((n) => n + 1)}>
           +1
         </Button>
-        <span className="font-mono text-2xl" data-probe="count">
+        <span className="hello:font-mono hello:text-2xl" data-probe="count">
           {count}
         </span>
       </div>
 
-      <div className="rounded-lg border bg-card p-4 text-card-foreground">
-        <p className="text-sm" data-probe="waves">
+      <div className="hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
+        <p className="hello:text-sm" data-probe="waves">
           {waves.n === 0 ? '还没收到过喊话' : `收到 main 喊话 ${String(waves.n)} 次，最后一次 ${waves.at}`}
         </p>
       </div>
@@ -381,7 +445,11 @@ async function boot(args: PaneArgs, container: HTMLElement): Promise<Root> {
   // 没有任何现象的错，而分派表与注册那两行必须一一对上
   if (args.pane.id === 'main') root.render(<MainPane args={args} />)
   else if (args.pane.id === 'counter') root.render(<CounterPane args={args} />)
-  else root.render(<p className="p-3 text-sm text-destructive">本件没有叫 {args.pane.id} 的窗格</p>)
+  else {
+    root.render(
+      <p className="hello:p-3 hello:text-sm hello:text-destructive">本件没有叫 {args.pane.id} 的窗格</p>,
+    )
+  }
   return root
 }
 
