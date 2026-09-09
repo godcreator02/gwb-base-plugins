@@ -18,8 +18,9 @@ import type { OpenableSpec } from '../openable.js'
  */
 
 /** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
-const CELL = 'flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs text-muted-foreground'
-const BUTTON = `${CELL} cursor-default select-none hover:bg-accent hover:text-accent-foreground`
+const CELL =
+  'shell:flex shell:h-6 shell:items-center shell:gap-1.5 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-muted-foreground'
+const BUTTON = `${CELL} shell:cursor-default shell:select-none shell:hover:bg-accent shell:hover:text-accent-foreground`
 
 /**
  * 布局那一格：已存布局清单（点谁铺谁）＋ 存当前为布局（格子变输入框）＋ 重置。
@@ -27,15 +28,12 @@ const BUTTON = `${CELL} cursor-default select-none hover:bg-accent hover:text-ac
  */
 function LayoutBar({
   saved,
-  scopeRef,
   onApply,
   onSave,
   onDelete,
   onReset,
 }: {
   saved: readonly SavedLayout[]
-  /** 外壳根那个元素。菜单 portal 要挂回它，理由同＋列表那条 */
-  scopeRef: HTMLElement | null
   onApply: (row: SavedLayout) => void
   onSave: (name: string) => void
   onDelete: (id: string) => void
@@ -54,7 +52,7 @@ function LayoutBar({
   if (naming !== null) {
     return (
       <input
-        className="bg-background h-6 w-36 rounded-full px-2.5 text-xs text-foreground outline-none"
+        className="shell:bg-background shell:h-6 shell:w-36 shell:rounded-full shell:px-2.5 shell:text-xs shell:text-foreground shell:outline-none"
         value={naming}
         autoFocus
         placeholder="布局名（Enter 存，Esc 弃）"
@@ -71,11 +69,10 @@ function LayoutBar({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={BUTTON} title="布局：存当前 / 打开已存的 / 重置">
-        <LayoutGrid className="size-3.5" />
+        <LayoutGrid className="shell:size-3.5" />
         布局
       </DropdownMenuTrigger>
-      {/* container 少不了，理由见 scopeRef 那条 prop */}
-      <DropdownMenuContent align="start" side="top" container={scopeRef}>
+      <DropdownMenuContent align="start" side="top">
         <DropdownMenuLabel>已存的布局</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {saved.length === 0 ? (
@@ -83,11 +80,11 @@ function LayoutBar({
         ) : (
           saved.map((row) => (
             <DropdownMenuItem key={row.id} onSelect={() => onApply(row)}>
-              <span className="flex-1">{row.name}</span>
+              <span className="shell:flex-1">{row.name}</span>
               <span
                 role="button"
                 tabIndex={-1}
-                className="hover:bg-accent ml-2 rounded px-1 text-[10px]"
+                className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
                 title="删掉这套"
                 onClick={(e) => {
                   // 别让这一下冒泡成「选中这一项」——那会走成应用这套布局
@@ -113,7 +110,6 @@ export function StatusBar({
   specs,
   openIds,
   home,
-  scopeRef,
   savedLayouts,
   saveFailed,
   onOpen,
@@ -129,11 +125,6 @@ export function StatusBar({
   openIds: readonly string[]
   /** home 目录的绝对路径 */
   home: string
-  /**
-   * 外壳根那个元素。**菜单的 portal 要挂回它**——挂到 `body` 上就出了
-   * `[data-gwb-plugin="…gwb-shell"]` 那层 scope，菜单一个类名都不生效。
-   */
-  scopeRef: HTMLElement | null
   /** 人起名存下来的布局清单 */
   savedLayouts: readonly SavedLayout[]
   /** 布局档最后一次落盘成没成。失败亮一格，点一下重试 */
@@ -154,10 +145,9 @@ export function StatusBar({
   }
 
   return (
-    <footer className="bg-card text-card-foreground flex h-8 flex-none items-center gap-0.5 border-t px-1 text-xs">
+    <footer className="shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
       <LayoutBar
         saved={savedLayouts}
-        scopeRef={scopeRef}
         onApply={onApplyLayout}
         onSave={onSaveLayout}
         onDelete={onDeleteLayout}
@@ -166,11 +156,10 @@ export function StatusBar({
 
       <DropdownMenu>
         <DropdownMenuTrigger className={BUTTON} title="打开一格窗格">
-          <Plus className="size-3.5" />
+          <Plus className="shell:size-3.5" />
           打开窗格
         </DropdownMenuTrigger>
-        {/* container 少不了，理由见 scopeRef 那条 prop */}
-        <DropdownMenuContent align="start" side="top" container={scopeRef}>
+        <DropdownMenuContent align="start" side="top">
           <DropdownMenuLabel>可开的窗格</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {specs.length === 0 ? (
@@ -180,14 +169,14 @@ export function StatusBar({
               const opened = openIds.includes(spec.id)
               return (
                 <DropdownMenuItem key={spec.id} onSelect={() => onOpen(spec, false)}>
-                  <span className="flex-1">{spec.title}</span>
+                  <span className="shell:flex-1">{spec.title}</span>
                   {/* 已开的不 disable——点它是聚焦,那是个有用的动作 */}
-                  {opened && <span className="text-muted-foreground ml-2 text-[10px]">已开</span>}
+                  {opened && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">已开</span>}
                   {spec.duplicable === true && (
                     <span
                       role="button"
                       tabIndex={-1}
-                      className="hover:bg-accent ml-2 rounded px-1 text-[10px]"
+                      className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
                       title="再开一份"
                       onClick={(e) => {
                         // 别让这一下冒泡成「选中这一项」——那会走成聚焦
@@ -207,21 +196,21 @@ export function StatusBar({
       </DropdownMenu>
 
       <div className={CELL} title={home}>
-        <FolderOpen className="size-3.5" />
+        <FolderOpen className="shell:size-3.5" />
         {/* 只摆最后一段:路径很长,而人要认的是「我在哪个 home 里」。全长在 title 上 */}
-        <span className="font-mono">{home.split(/[\\/]/).filter(Boolean).at(-1) ?? home}</span>
+        <span className="shell:font-mono">{home.split(/[\\/]/).filter(Boolean).at(-1) ?? home}</span>
       </div>
 
-      <span className="flex-1" />
+      <span className="shell:flex-1" />
 
       {saveFailed && (
         <button
           type="button"
-          className={`${BUTTON} text-destructive`}
+          className={`${BUTTON} shell:text-destructive`}
           title="布局没存上——点一下立刻重试一次"
           onClick={onRetrySave}
         >
-          <TriangleAlert className="size-3.5" />
+          <TriangleAlert className="shell:size-3.5" />
           布局没存上
         </button>
       )}
@@ -236,12 +225,12 @@ export function StatusBar({
         title="刷新界面：整页重跑——重取注册表、按档恢复布局（宿主进程不动）"
         onClick={() => location.reload()}
       >
-        <RefreshCw className="size-3.5" />
+        <RefreshCw className="shell:size-3.5" />
         刷新
       </button>
 
       <button type="button" className={BUTTON} onClick={toggleDark} title={dark ? '切到亮色' : '切到暗色'}>
-        {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+        {dark ? <Sun className="shell:size-3.5" /> : <Moon className="shell:size-3.5" />}
         {dark ? '亮色' : '暗色'}
       </button>
     </footer>

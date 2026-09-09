@@ -119,24 +119,25 @@ export function PluginPane({
   }, [pluginKey, entryId, paneId, panelId, host])
 
   if (error !== null) {
-    return <p className="text-destructive m-0 p-3 text-sm">加载失败：{error}</p>
+    return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">加载失败：{error}</p>
   }
 
   return (
-    <div className="relative h-full">
+    <div className="shell:relative shell:h-full">
       {/*
         `@container` 让这一格成为容器查询的根：**窗格不是视口**，件里写的 `@sm:` / `@md:`
         这类变体按这一格现在有多宽来判，跟整窗大小无关——同一个件在窄格里竖排、在宽格里
-        横排，拖动分隔条当场变。
+        横排，拖动分隔条当场变。类名带 `shell:` 是因为这条规则出自**外壳自己那张表**
+        （容器是外壳画的），件那边写的 `@md:` 用的是件自己的前缀，两者互不相干。
 
-        `data-gwb-plugin` 对两代件意义不同：选择器 scope 那套方案的件（表整张包在
-        `:where([data-gwb-plugin="…"])` 之下）仍靠它围栏，容器上不挂它，那些件的类名
-        一个都不生效；Tailwind 前缀方案的件（类名自带 `hello:` 这种前缀）不靠它，
-        对它们这个属性只是身份标记。
+        **`data-gwb-plugin` 只是身份标记**：围栏是类名前缀——每个件的类名从源头就带自己
+        那一份（`hello:flex` / `shell:flex`），规则全页有效但只匹配得上本件的元素，跟
+        DOM 祖先关系无关。挂这个属性是为了让人在 devtools 里一眼看出这一格是谁的，
+        以及给外部（探针、样式调试）一个认件的把手。
       */}
-      <div ref={hostRef} data-gwb-plugin={pluginKey} className="@container h-full overflow-auto" />
+      <div ref={hostRef} data-gwb-plugin={pluginKey} className="shell:@container shell:h-full shell:overflow-auto" />
       {!ready && (
-        <p className="text-muted-foreground pointer-events-none absolute inset-x-0 top-2 m-0 text-center text-sm">
+        <p className="shell:text-muted-foreground shell:pointer-events-none shell:absolute shell:inset-x-0 shell:top-2 shell:m-0 shell:text-center shell:text-sm">
           加载中…
         </p>
       )}

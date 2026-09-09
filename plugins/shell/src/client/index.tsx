@@ -245,7 +245,7 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
     ) {
       // 这一格的 params 是外壳自己按 openable 拼的，缺项属于外壳的 bug。摆出来而不是
       // 画个空白——空白跟「件加载慢」分不开
-      return <p className="text-destructive m-0 p-3 text-sm">这一格缺 params（外壳的 bug）</p>
+      return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">这一格缺 params（外壳的 bug）</p>
     }
     const bridge = hostBridge
     const openPane: ShellBridge['openPane'] = (target, options) => {
@@ -276,12 +276,10 @@ const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeade
 function App({
   specs,
   home,
-  root,
   initialDoc,
 }: {
   specs: OpenableSpec[]
   home: string
-  root: HTMLElement
   /** 盘上的档。null = 第一次开机（或档废了），走默认铺格 */
   initialDoc: LayoutDoc | null
 }): ReactElement {
@@ -406,15 +404,14 @@ function App({
   // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html。
   // 井那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕
   return (
-    <div className="fixed inset-0 flex flex-col">
-      <div className="min-h-0 flex-1">
+    <div className="shell:fixed shell:inset-0 shell:flex shell:flex-col">
+      <div className="shell:min-h-0 shell:flex-1">
         <DockviewReact components={COMPONENTS} tabComponents={TAB_COMPONENTS} onReady={onReady} theme={GWB_THEME} />
       </div>
       <StatusBar
         specs={specs}
         openIds={openIds}
         home={home}
-        scopeRef={root}
         savedLayouts={saved}
         saveFailed={saveFailed}
         onOpen={(spec, duplicate) => {
@@ -456,8 +453,9 @@ async function fetchLayoutDoc(host: HostBridge): Promise<LayoutDoc | null> {
 
 async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   hostBridge = args.host
-  // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张不 scope
-  // （它管的 DOM 类名不经我们的手，而且门户元素在 body 下）、外壳自己那张 scope 过
+  // 三张表都等到位再渲染：令牌是值的来源（页面级，件不用自己注）、dockview 那张管的是
+  // `.dv-*` 与 `.dockview-theme-gwb`（类名不经我们的手）、外壳自己那张类名一律带
+  // `shell:` 前缀——三张都全页有效，谁也不靠祖先关系围栏
   await Promise.all(args.styles.map((href) => loadStyle(href)))
   // 第四样：用户自己的外观样式（gwb-theme 件的字体覆盖 + 自定义 CSS）。它要压过令牌
   // 默认值，所以排在这三张 link 之后；theme 没装时这儿是个空操作
@@ -466,7 +464,9 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   // 深色是默认态：令牌的 .dark 那套在这儿挂上，状态栏的开关之后随时摘。dispose 不摘
   // ——亮暗是页面级选择，热换外壳时新壳 boot 会再挂，这头摘了反而闪一下亮色
   document.documentElement.classList.add('dark')
-  // 外壳自己的表 scope 在这个属性之下。井里每一格的件容器另挂它自己的那个
+  // **只是身份标记**：围栏是类名前缀（外壳那张表里的类一律 `shell:` 开头），这个属性
+  // 不参与任何选择器。挂它是为了 devtools 里一眼认得出这棵树是谁的——井里每一格的件
+  // 容器另挂它自己的那个，同样只作身份用
   root.setAttribute('data-gwb-plugin', SELF)
 
   const panes = await fetchPanes(args.host)
@@ -483,8 +483,7 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   )
 
   const reactRoot = createRoot(root)
-  // root 传下去是给状态栏那个菜单的 portal 用的——挂 body 上就出了 scope
-  reactRoot.render(<App specs={specs} home={args.home} root={root} initialDoc={initialDoc} />)
+  reactRoot.render(<App specs={specs} home={args.home} initialDoc={initialDoc} />)
   return reactRoot
 }
 

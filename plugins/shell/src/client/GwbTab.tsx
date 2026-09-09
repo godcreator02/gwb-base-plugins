@@ -78,21 +78,23 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
     // 跟 god-dsh-panes 的标签同尺寸；6px 圆角也同款
     <div
       className={cn(
-        'group/tab flex h-full w-full min-w-0 cursor-grab items-center gap-1.5 rounded-md px-2 text-[13px] transition-colors select-none',
-        active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+        'shell:group/tab shell:flex shell:h-full shell:w-full shell:min-w-0 shell:cursor-grab shell:items-center shell:gap-1.5 shell:rounded-md shell:px-2 shell:text-[13px] shell:transition-colors shell:select-none',
+        active
+          ? 'shell:bg-muted shell:text-foreground'
+          : 'shell:text-muted-foreground shell:hover:bg-accent/50 shell:hover:text-foreground',
       )}
       title={title}
     >
-      <Icon className="size-4 shrink-0" />
-      <span className="min-w-0 truncate">{title}</span>
+      <Icon className="shell:size-4 shell:shrink-0" />
+      <span className="shell:min-w-0 shell:truncate">{title}</span>
       <button
         type="button"
         aria-label="关闭"
         // 叉只在悬停这枚标签时出现（选中不出——选中的那一格正是人在看的）。位置一直
         // 占着、切的是 opacity：用 display 的话标签宽度会在鼠标进出时跳一下
         className={cn(
-          'hover:bg-accent flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md transition-opacity',
-          'opacity-0 group-hover/tab:opacity-70 hover:opacity-100',
+          'shell:hover:bg-accent shell:flex shell:size-5 shell:shrink-0 shell:cursor-pointer shell:items-center shell:justify-center shell:rounded-md shell:transition-opacity',
+          'shell:opacity-0 shell:group-hover/tab:opacity-70 shell:hover:opacity-100',
         )}
         onClick={(e) => {
           // 别让这一下冒泡成「激活这一格」——关掉就该是关掉
@@ -100,7 +102,7 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
           props.api.close()
         }}
       >
-        <X className="size-3" />
+        <X className="shell:size-3" />
       </button>
     </div>
   )

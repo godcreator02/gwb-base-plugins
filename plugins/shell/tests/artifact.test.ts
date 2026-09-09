@@ -47,6 +47,31 @@ function specsIn(text: string, pattern: RegExp): string[] {
 const RELATIVE = /^import\s+(?:[^'"]*from\s*)?['"](\.[^'"]*)['"]/gm
 const BARE = /^import\s+(?:[^'"]*from\s*)?['"]([^'".][^'"]*)['"]/gm
 
+/**
+ * 一条规则的选择器（或 at-rule 的头）：`{` 之前、上一个 `{` / `}` / `;` 之后的那一段。
+ * **只在这一段里找类**——直接全文搜 `.xxx` 会把声明值里的小数（`0.25rem` 的 `.25rem`）
+ * 也捞成类选择器
+ */
+const PRELUDE = /(?:^|[{};])([^{};]*)\{/g
+/** 一个类选择器。转义序列（`.shell\:flex` 里那个 `\:`）整体吃掉 */
+const CLASS_SELECTOR = /\.(?:\\.|[A-Za-z0-9_-])+/g
+/**
+ * **唯一放行的非前缀类**：`.dark` 是页面级的亮暗标志，挂在 `<html>` 上、由令牌那张表
+ * 与外壳的 boot 负责。它只以**祖先**的身份出现在 `shell:dark:*` 编出来的
+ * `.shell\:dark\:…:is(.dark *)` 里，不是外壳自己元素身上的类
+ */
+const DARK_FLAG = new Set(['.dark'])
+
+function classSelectors(css: string): string[] {
+  const found = new Set<string>()
+  for (const rule of stripComments(css).matchAll(PRELUDE)) {
+    const prelude = rule[1]!.trim()
+    if (prelude.startsWith('@')) continue
+    for (const cls of prelude.matchAll(CLASS_SELECTOR)) found.add(cls[0])
+  }
+  return [...found]
+}
+
 describe.skipIf(!built)('产物', () => {
   const all = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
   const nodeHalf = all.filter((f) => f !== CLIENT)
@@ -86,11 +111,14 @@ describe.skipIf(!built)('产物', () => {
     expect(read(CLIENT)).toContain('dv-groupview')
   })
 
-  it('两张样式表都出得来，各自的 scope 规矩不同', () => {
-    const scoped = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
+  it('两张样式表都出得来，各自的围栏规矩不同', () => {
+    const own = fs.readFileSync(path.join(distDir, 'style.css'), 'utf8')
     const dockview = fs.readFileSync(path.join(distDir, 'dockview.css'), 'utf8')
-    // 外壳自己那张整张包在 scope 之下
-    expect(scoped).toContain(':where([data-gwb-plugin="@godcreator02/gwb-shell"])')
+    // 外壳自己那张：围栏就是前缀本身，类选择器一律 .shell\: 开头
+    expect(classSelectors(own).filter((s) => !s.startsWith('.shell\\:') && !DARK_FLAG.has(s)).sort()).toEqual([])
+    // 有 data-gwb-plugin 就说明构建又走回了 tools/build-styles.ts 那条选择器 scope 的路。
+    // 症状是状态栏那两个菜单（portal 到 body 的）当场裸奔,而构建照样绿
+    expect(stripComments(own)).not.toContain('data-gwb-plugin')
     // dockview 那张**一条 scope 规则都不许有**：门户元素挂在 body 下，包进去就没样式。
     // 先剥注释——两张表的头注里都在讲这件事，不剥的话查的是文案不是规则
     expect(stripComments(dockview)).not.toContain('data-gwb-plugin')
