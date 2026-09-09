@@ -11,16 +11,11 @@
     "doc": "pnpm --filter gwb-base-plugins-docs-site exec livedoc check",
     "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec livedoc confirm"
   },
-  "//devDeps": "tools/ 那两个构建脚本用的：件的浏览器半走 esbuild 打包，样式表走 tailwind + postcss 编译再 scope。件自己不装这些——构建线是仓里共享的一份，不做成包（消费方只有仓内的件，做成包过不了准入判据第二关）",
+  "//devDeps": "仓根只装门禁用的：oxlint、vitest、typescript、@types/node。构建线不再是仓里共享的一份——每个件自己装 esbuild 与 @tailwindcss/cli，样式表由件自己那份 src/client/styles.css 用 Tailwind 前缀直出（2026-09-09 起，tools/build-styles.ts 那条选择器 scope 的线随之删除）",
   "devDependencies": {
-    "@godcreator02/gwb-tokens": "workspace:*",
-    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^24.0.0",
-    "esbuild": "^0.27.0",
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
-    "postcss": "^8.5.0",
-    "tailwindcss": "^4.3.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
