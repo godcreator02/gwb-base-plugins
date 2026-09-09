@@ -270,10 +270,14 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 {/* ref file="../plugins/shell/src/reload.ts" */}
 
 件跑在 Electron **主进程**里，`import('electron')` 拿得到 `BrowserWindow`——开窗、重载全归件，
-内核一条都不代办。两处讲究：
+内核一条都不代办。三处讲究：
 
 - **取窗口列表抽成可注入的 deps**。测试里没有 electron，纯逻辑那半（没窗口怎么答、有几扇就
   reload 几扇）喂一份假的就能测；真机那份 `electronWindows()` 不在 Electron 里就 reject
+- **从命名空间取 API 先看 `default`**（`windowsOf`）。electron 是 CJS 包，ESM 里 `import()`
+  回的命名空间把整个 API 挂在 `default` 上，顶层没有 `BrowserWindow`——0.2.2 直接从命名空间取，
+  实机回的是「不在 Electron 主进程里」，0.2.3 修的就是这一条；`default` 不是对象才退回命名
+  空间本身
 - **说明符走变量**，不让 tsc 去解析 `electron` 这个模块——本包不依赖它的类型（那要把整个
   electron 装进件的 devDependencies，只为一个方法名），运行时它就在主进程里
 
