@@ -18,7 +18,8 @@ set(key: string, value: unknown): Promise<void>
 delete(key: string): Promise<void>    // 抹掉值，定义还在，get 回落到 default
 ```
 
-外加三条命令：`settings.all` / `settings.get` / `settings.set`。
+外加四条命令：`settings.all`（无参数）、`settings.get` / `settings.delete`
+（`{ section, key }`）、`settings.set`（`{ section, key, value }`）。
 
 ## 值落在哪
 

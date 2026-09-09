@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-theme",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "外观件：正文字体、等宽字体、自定义样式表。启动样式经 theme.startupCss 交给外壳在首帧前注入；「外观」那格现场改现场看。注册窗格时自报浏览器半与样式表的 file:// 地址。0.2 起样式走 Tailwind 前缀围栏（类名一律 theme: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：件自己就是一个完整的 Tailwind 入口，产物由 @tailwindcss/cli 直出",
   "type": "module",
   "main": "dist/index.js",

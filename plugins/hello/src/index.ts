@@ -82,14 +82,19 @@ export function apply(ctx: GwbContext): void {
   })
 
   // 探针数据的取数口。窗格那半与 agent（经 MCP）都走这两条：读回上次写的值就说明
-  // 真的落了盘。register 不用自己包 effect：内部挂在调用方的 effect 上了
+  // 真的落了盘。
   const cli = ctx.gwbCommands
-  // inject 保证了它在，这句只是把类型收窄
+  // inject 保证了它在，这句只是把类型收窄。**两条都包 ctx.effect**：gwbCommands.register
+  // 回的是注销函数，不包的话条目停了、fiber 灭了，名字还留在表上（2026-09-09 撞过，见文档站）
   if (cli !== undefined) {
-    cli.register({ name: 'hello.probe', description: '读启动探针文档', plugin: name }, async () =>
-      ctx.gwbData.readDoc('probe'),
+    ctx.effect(() =>
+      cli.register({ name: 'hello.probe', description: '读启动探针文档。无参数', plugin: name }, async () =>
+        ctx.gwbData.readDoc('probe'),
+      ),
     )
-    cli.register({ name: 'hello.bump', description: '启动次数 +1，写盘回新值', plugin: name }, () => report())
+    ctx.effect(() =>
+      cli.register({ name: 'hello.bump', description: '启动次数 +1，写盘回新值。无参数', plugin: name }, () => report()),
+    )
   }
 
   // 说明书那一格。**局部注入,不写进 export const inject**:写进去,这个件在没装
@@ -104,7 +109,7 @@ export function apply(ctx: GwbContext): void {
   // 而本件照常挂上、两格窗格照常画，界面上那两颗按钮置灰。
   //
   // 两个 register 都**不用自己包 effect**:运行器内部已经挂在调用方的 effect 上了
-  // （跟 registerPane 一个待遇,跟上面 gwbSkills.register 不一样——那个要自己包）
+  // （跟 registerPane 一个待遇,跟上面 gwbSkills.register 与 gwbCommands.register 不一样——那两个要自己包）
   ctx.inject(['gwbNodeCli', 'gwbPyCli'], (scoped) => {
     scoped.gwbNodeCli.register({
       name: 'hello.node',

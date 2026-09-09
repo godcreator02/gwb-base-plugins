@@ -869,11 +869,12 @@ hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 
 后一对是 hello 自己直接 `cli.register`，**没包 `ctx.effect`**——`register` 回的注销函数
 没人调，条目停了、fiber 灭了、表上的名字还在：
 
-{/* ref file="../plugins/hello/src/index.ts" lines="89-92" */}
+{/* ref file="../plugins/hello/src/index.ts" lines="89-98" */}
 
 症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
 「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是
-`c.effect(() => c.gwbCommands.register(…))`），样板件自己漏了。修法一行，还没修。
+`c.effect(() => c.gwbCommands.register(…))`），样板件自己漏了。修法一行，**2026-09-09
+已修**（hello 0.2.1，上面钉的就是修过的样子：两条都包进了 `ctx.effect`）。
 
 同一次实验顺带验了桥那头：无状态桥发不出 `list_changed`，Claude Code 的顶层工具清单在命令表
 变化后**不刷新**（停用期间 `hello_node` 那枚工具一直在），只有 `gwb_command_list` /

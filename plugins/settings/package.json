@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-settings",
-  "version": "0.1.0",
-  "description": "设置：件声明自己有哪些设置项，值落在两份 JSON 里——本 home 一份、全机一份",
+  "version": "0.1.1",
+  "description": "设置：件声明自己有哪些设置项，值落在 <home>/settings.json。0.1.1：四条命令的描述写明参数形状",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

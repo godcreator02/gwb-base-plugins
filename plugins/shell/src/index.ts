@@ -120,25 +120,25 @@ export default class GwbShell extends Service implements GwbShellApi {
     if (cli === undefined) return
     this.ctx.effect(() =>
       cli.register(
-        { name: PANES_COMMAND, description: '此刻注册了哪些窗格', plugin: 'gwb-shell' },
+        { name: PANES_COMMAND, description: '此刻注册了哪些窗格。无参数', plugin: 'gwb-shell' },
         () => this.registry.list(),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字', plugin: 'gwb-shell' },
+        { name: PLUGINS_COMMAND, description: '此刻有哪些件报过名字。无参数', plugin: 'gwb-shell' },
         () => this.plugentry.list(),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单），没存过回 null', plugin: 'gwb-shell' },
+        { name: LAYOUT_GET_COMMAND, description: '外壳的布局档（当前布局＋已存清单），没存过回 null。无参数', plugin: 'gwb-shell' },
         () => this.ctx.gwbData.readDoc(LAYOUT_DOC),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局档', plugin: 'gwb-shell' },
+        { name: LAYOUT_SAVE_COMMAND, description: '整份替换外壳的布局档。参数是整份布局档 { v, current, saved }（shell.layout.get 回的那个形状）', plugin: 'gwb-shell' },
         (args) => {
           // 存这头也过一遍形状：浏览器半自己的 bug 拼出坏档，不该有资格盖掉盘上那份好的
           const doc = parseLayoutDoc(args)
@@ -150,7 +150,7 @@ export default class GwbShell extends Service implements GwbShellApi {
     )
     const env = shellEnv(this.kernel.dataDir)
     this.ctx.effect(() =>
-      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）', plugin: 'gwb-shell' }, () => env),
+      cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）。无参数', plugin: 'gwb-shell' }, () => env),
     )
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href

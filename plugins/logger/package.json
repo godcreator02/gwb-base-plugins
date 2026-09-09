@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-logger",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "日志件：自己挂 cordis exporter 收全量、自己缓冲、经内核事件口推给窗格。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.2 起样式走 Tailwind 前缀围栏（类名一律 logger: 开头，不再靠 data-gwb-plugin 祖先选择器 scope），Select 的弹层因此照常挂 body、Portal 补丁退场",
   "type": "module",
   "main": "dist/index.js",

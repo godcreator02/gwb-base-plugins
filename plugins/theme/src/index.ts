@@ -96,19 +96,19 @@ export function apply(ctx: GwbContext): void {
 
   ctx.effect(() =>
     cli.register(
-      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳 boot 时取', plugin: name },
+      { name: STARTUP_COMMAND, description: '启动样式表（字体覆盖 + 自定义 CSS），外壳 boot 时取。无参数', plugin: name },
       () => buildStartupCss(readValues(ctx)),
     ),
   )
   ctx.effect(() =>
     cli.register(
-      { name: VALUES_COMMAND, description: '本件三样设置的现值', plugin: name },
+      { name: VALUES_COMMAND, description: '本件三样设置的现值。无参数', plugin: name },
       () => toWire(readValues(ctx)),
     ),
   )
   ctx.effect(() =>
     cli.register(
-      { name: SAVE_COMMAND, description: '一次写齐三样；空串 = 抹回默认', plugin: name },
+      { name: SAVE_COMMAND, description: '一次写齐三样。参数 { "font-sans", "font-mono", "custom-css" }（都是字符串，空串 = 抹回默认）', plugin: name },
       async (args) => {
         const raw = (args ?? {}) as Record<string, unknown>
         // 逐项走 set：它自带「先 define 过才许写」的守卫与原子落盘
