@@ -1,8 +1,8 @@
 {
   "name": "@godcreator02/gwb-commands",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "//name": "改名之前叫 @godcreator02/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
-  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.1 是单进程内核线的复制品，代码没动，只换了词汇表包的来源",
+  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.2：GwbCommandDef 加 top（申请当 MCP 顶层工具，上不上由 mcp 的名单定），list() 原样带出",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -13,7 +13,7 @@ livedoc: none
 
 ## 它的面
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-16" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-22" */}
 
 ## 怎么用
 
@@ -56,6 +56,30 @@ handler **自己判过成败就原样透传**，没判的一律算成了：
 - 回 `42` → 包成 `{ ok: true, data: 42 }`
 - 抛异常 → `{ ok: false, error: '<异常文本>' }`，不炸到调用方
 - 命令没注册 → `{ ok: false, error: '没有这条命令：xxx' }`
+
+## 描述里必须写参数形状
+
+`description` 不是给人看的简介，是**agent 只看它就得知道参数怎么给**的那一行。经
+[gwb-mcp](/docs/mcp) 出去的每条命令，agent 手上除了名字就只有这一句——参数形状不在
+这儿，它就只能猜，猜错了回的是一句跟形状无关的报错。
+
+所以写法定死：带参数的把形状写出来（`{ entryId }`、`{ pkg, spec? }`、
+`{ args?: string[], cwd?: string }` 这种），无参数的写「无参数」。
+
+## 申请顶层
+
+登记时多标一个 `top: true`，是**向 MCP 桥申请**把这条命令渲染成顶层工具——agent 一连上
+就在工具清单里看得见的那种。总线对这个字段只做一件事：原样带进 `list()`，缺省 `false`。
+
+@@livedoc ref ../plugins/commands/src/registry.ts:9-13 @@
+
+**申请不等于批准。** 上不上由 [gwb-mcp](/docs/mcp) 那份人批的名单定（它的 `top` 设置）：
+申请了、也在名单里的才渲染；申请了但不在名单里的不渲染，桥在启动日志里点名；名单里有、
+却没申请的照渲染但 warn 一次。三种组合各自的判法与理由在 mcp 那页。
+
+为什么不让件自己定：顶层工具清单在 agent 连着的时候是一份快照，而且每枚工具的 schema
+都只是 `args: unknown`，比 `gwb_command_run` 只多一个名字——顶层是稀缺位，谁上得由
+人定，件只能举手。
 
 ## 三条判据
 

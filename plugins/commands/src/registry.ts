@@ -3,8 +3,14 @@ import type { GwbResult } from '@godcreator02/gwb-plugin-api'
 /** 一条命令的自述。`plugin` 由注册方自带 */
 export interface GwbCommandDef {
   name: string
+  /** 给 agent 看的：参数形状必须写在这儿（如 `{ entryId }`；无参数就写「无参数」） */
   description?: string
   plugin: string
+  /**
+   * **申请**当 MCP 的顶层工具。只是申请：上不上由 mcp 件那份人批的名单（`top` 设置）定，
+   * 总线本身对它没有任何动作，只是原样带进 `list()`
+   */
+  top?: boolean
 }
 
 /** 命令总线的面。件之间的契约，住在提供方这个包里 */
@@ -32,7 +38,7 @@ export function createRegistry(log: RegistryLog): GwbCommands {
 
   return {
     register(def, handler) {
-      const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin }
+      const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin, top: def.top ?? false }
       const record = { def: entry, handler }
       const prev = table.get(def.name)
       // 撞名后来者赢，但要告警
