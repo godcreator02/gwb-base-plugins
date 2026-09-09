@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { electronWindows, reloadWindows, type ReloadableWindow } from '../src/reload.js'
+import { electronWindows, reloadWindows, windowsOf, type ReloadableWindow } from '../src/reload.js'
 
 /** `shell.reload` 的纯逻辑那半：取窗口列表是注入的，electron 不在也测得了 */
 
@@ -32,6 +32,26 @@ describe('reloadWindows', () => {
     reloadWindows({ windows })
     reloadWindows({ windows })
     expect(windows).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('windowsOf：从 import("electron") 的命名空间里认出窗口列表', () => {
+  const win = fakeWindow()
+  const api = { BrowserWindow: { getAllWindows: () => [win] } }
+
+  it('default 上有也认——ESM 里 import() 一个 CJS 包，API 整个挂在 default 上（实机撞过）', () => {
+    expect(windowsOf({ default: api }).windows()).toEqual([win])
+  })
+
+  it('顶层就有也认；default 不是对象时退回命名空间本身', () => {
+    expect(windowsOf(api).windows()).toEqual([win])
+    expect(windowsOf({ ...api, default: 'nope' }).windows()).toEqual([win])
+  })
+
+  it('两头都没有就抛，话里说清 default 也看过了', () => {
+    expect(() => windowsOf({ default: {} })).toThrow('default 上也没有')
+    expect(() => windowsOf(undefined)).toThrow()
+    expect(() => windowsOf({ BrowserWindow: {} })).toThrow()
   })
 })
 

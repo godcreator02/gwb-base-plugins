@@ -44,6 +44,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * `import('electron')` 回的命名空间 → deps。**先看 `default`**：electron 是 CJS 包，ESM 里
+ * `import()` 回的命名空间把整个 API 挂在 `default` 上（内核 `main.ts` 就是
+ * `import electron from 'electron'` 再 `electron.BrowserWindow`），顶层没有 `BrowserWindow`。
+ * 实机撞过：0.2.2 直接从命名空间取，回的是「不在 Electron 主进程里」。`default` 不是对象
+ * 就退回命名空间本身——将来它真出了 ESM 出口也认。认不出就抛，调用方收成回执
+ */
+export function windowsOf(mod: unknown): ReloadDeps {
+  const api = isRecord(mod) && isRecord(mod['default']) ? mod['default'] : mod
+  const bw = isRecord(api) ? api['BrowserWindow'] : undefined
+  const getAll = isRecord(bw) ? bw['getAllWindows'] : undefined
+  if (typeof getAll !== 'function') {
+    throw new Error('import("electron") 里没有 BrowserWindow.getAllWindows（default 上也没有）——不在 Electron 主进程里')
+  }
+  return { windows: () => (getAll as () => ReloadableWindow[])() }
+}
+
+/**
  * 真机那份 deps：`BrowserWindow.getAllWindows()`。
  *
  * 说明符走变量，**不让 tsc 去解析 `electron` 这个模块**——本包不依赖它的类型（那要把整个
@@ -52,11 +69,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export async function electronWindows(): Promise<ReloadDeps> {
   const spec = 'electron'
-  const mod: unknown = await import(spec)
-  const bw = isRecord(mod) ? mod['BrowserWindow'] : undefined
-  const getAll = isRecord(bw) ? bw['getAllWindows'] : undefined
-  if (typeof getAll !== 'function') {
-    throw new Error('import("electron") 里没有 BrowserWindow.getAllWindows——不在 Electron 主进程里')
-  }
-  return { windows: () => (getAll as () => ReloadableWindow[])() }
+  return windowsOf(await import(spec))
 }
