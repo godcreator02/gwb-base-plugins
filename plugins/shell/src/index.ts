@@ -9,6 +9,7 @@ import type {} from '@godcreator02/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
 import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, parseLayoutDoc } from './layout.js'
+import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
 export type { PluginInfo, RegisteredPlugin } from './plugin-registry.js'
@@ -40,6 +41,12 @@ export { LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND } from './layout.js'
  * 页面注完表才 import 本件的浏览器半。
  */
 export const ENV_COMMAND = 'shell.env'
+
+/**
+ * 整页重载全部窗口。给命令面的——`plugins.update-all` 热升完靠它让页面重新 import 新束、
+ * 重注 importmap；状态栏那颗「刷新」是同一件事的人手版。做法在 `reload.ts`
+ */
+export const RELOAD_COMMAND = 'shell.reload'
 
 export interface ShellEnv {
   home: string
@@ -152,11 +159,31 @@ export default class GwbShell extends Service implements GwbShellApi {
     this.ctx.effect(() =>
       cli.register({ name: ENV_COMMAND, description: '外壳浏览器半开机要的环境（home 与样式表的地址）。无参数', plugin: 'gwb-shell' }, () => env),
     )
+    this.ctx.effect(() =>
+      cli.register(
+        {
+          name: RELOAD_COMMAND,
+          description: '整页重载全部窗口（BrowserWindow.webContents.reload）：装了新件、热升之后让页面重取注册表、重注 importmap。没有窗口回 ok:false。无参数',
+          plugin: 'gwb-shell',
+        },
+        async () => {
+          let deps: ReloadDeps
+          try {
+            deps = await electronWindows()
+          } catch (err: unknown) {
+            return { ok: false, error: `拿不到 electron 的窗口列表：${String(err)}` }
+          }
+          const result = reloadWindows(deps)
+          if (result.ok) this.info(`整页重载了 ${String(result.reloaded)} 扇窗口`)
+          return result
+        },
+      ),
+    )
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}；页面根已要来，入口 ${entry}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 
