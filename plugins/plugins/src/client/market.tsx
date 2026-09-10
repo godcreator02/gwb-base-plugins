@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactElement } from 're
 import { RotateCw, Search } from 'lucide-react'
 import { asResult } from './rows'
 import { acceptPackages, NO_INDEX, summarize, toRows, type InstalledIndex, type SearchRow } from './market-rows'
+import { describePeers } from './peers'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -100,7 +101,11 @@ export function MarketTab({ host, installed, busy, onChanged }: MarketTabProps):
     try {
       const result = asResult(await host.call(INSTALL, { pkg }))
       if (result.ok) {
-        setDone(`${pkg} 装上了，条目也加进 cordis.yml 了。挂上没有去「已装」那段看。`)
+        // peer 没装上时件本身照样是装上了的，可那条得跟着说——不说就是一条会扑空的依赖
+        const peers = describePeers(result.data)
+        const line = `${pkg} 装上了，条目也加进 cordis.yml 了。挂上没有去「已装」那段看。${peers.line}`
+        if (peers.ok) setDone(line)
+        else setFailed((prev) => ({ ...prev, [pkg]: line }))
         await onChanged()
       }
       // error 里带着 pnpm 输出的尾巴，一个字都不许吞

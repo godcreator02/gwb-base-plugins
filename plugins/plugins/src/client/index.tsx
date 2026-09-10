@@ -45,6 +45,7 @@ import {
 } from './settings'
 import { MarketTab } from './market'
 import { installedIndex, type InstalledIndex } from './market-rows'
+import { describePeers } from './peers'
 import { describeUpdateAll } from './update-all'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -831,7 +832,9 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
           setNotice({ ok: false, text: `${message}${tail}` })
         } else {
           const entryId = typeof inner['entryId'] === 'string' ? `，条目 ${inner['entryId']}` : ''
-          setNotice({ ok: true, text: `装好了 ${pkg}${entryId}` })
+          // peer 没装上时件本身照样是装上了的，可提示不能是绿的——那条依赖跑起来会扑空
+          const peers = describePeers(inner)
+          setNotice({ ok: peers.ok, text: `装好了 ${pkg}${entryId}${peers.line}` })
         }
       }
     } catch (err: unknown) {

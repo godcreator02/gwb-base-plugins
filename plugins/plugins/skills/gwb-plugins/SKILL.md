@@ -1,6 +1,6 @@
 ---
 name: gwb-plugins
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、发完新版本怎么一键热升（update-all，不重启）、以及装完之后必须重新 gwb_command_list。
+description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后必须重新 gwb_command_list。
 ---
 
 # 插件怎么装、怎么管、怎么升
@@ -19,11 +19,41 @@ description: 要装插件、更新插件、查 registry 上有什么可装、启
 
 ## 装：plugins.install
 
-`{ "pkg": "@godcreator02/gwb-xxx" }`（可选 `spec` 指定版本）。它做两件事：pnpm add 进
-home，**然后自动加一条条目（默认启用）**，回执里带新条目的 `entryId`。
+`{ "pkg": "@godcreator02/gwb-xxx" }`（可选 `spec` 指定版本）。它做三件事：pnpm add 进
+home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动加一条条目（默认启用）**，
+回执里带新条目的 `entryId`。
 
 - 装不下来（pnpm 没成、包名不存在）回 `ok: false`，error 带着原因和 pnpm 输出的尾巴
 - **装完之后 `gwb_command_list` 一遍**——新件的命令现在才出现在总线上
+
+### peer 那一步：谁装、谁跳过、谁没装上
+
+件如果依赖一个**会独立升级**的 npm 包，而且只是读它的文件、起它的进程（不 import 它的
+代码），那个包就该是件的 peer、并且**装成 home 的直接依赖**——只有进了 home 的
+`package.json` 才有 `<home>/node_modules/<包名>` 那条会被 pnpm 改指的 junction，件每次现查
+它就拿到当前版本，升级不用重启也不用重挂。**pnpm 自动补的 peer 顶不上这个用**：它只塞进
+`.pnpm/`，那条路径根本不存在，于是 `plugins.outdated`（只看 `package.json`）看不见它、
+`plugins.update-all` 也永远升不到它。
+
+所以 install 读刚装进来那个包的 `peerDependencies`，逐条判：
+
+| 回执里的 `action` | 什么情况 |
+| --- | --- |
+| `installed` | 这次装成了 home 的直接依赖（装 latest；`range` 里是件清单写的范围，一律 `>=`，latest 通常都满足） |
+| `present` | 本来就在 home 的 `package.json` 里，**版本一个字没动**——不降级、不改写别人钉好的版本 |
+| `skipped` | 不该由这条路装：`cordis`（宿主那一份）、本生态的件（要装走 `plugins.install`，那条还落条目）。共享包（清单里有 `gwb.shared`，`gwb-shared-react` / `gwb-tokens`）与生态外的包不在此列，照装 |
+| `failed` | 装不上（源上没有之类）。**件本身照样是装上了的**，回执顶层 `note` 里点名，自己去 home 里 `pnpm add` 一趟 |
+
+回执形状：`{ ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }`。件一条 peer
+都没声明就没有 `peers` 这一格。
+
+**卸载不动 peer。** `plugins.uninstall` 只拿走这个包与它的条目，**不去追谁还在用那些 peer、
+一条都不删**——这不是漏了，是判过的：代价不对称，残留一个没人用的包只是占磁盘，误删一个
+还有件在用的包是运行时故障。真要清，人自己在 home 里 `pnpm remove`。
+
+**只有 install 这一条路会种 peer。** `plugins.update` / `plugins.update-all` 不重读
+`peerDependencies`——升级把已经在 `package.json` 里的那些一起升到最新（那正是这一步的用意），
+但新版本**新加**的 peer 不会自动进来。件加了新 peer 的那一版，人得自己补一趟 `pnpm add`。
 
 ## 查有什么可装：plugins.search
 

@@ -8,9 +8,10 @@ import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-shell'
 import type {} from '@godcreator02/gwb-skills'
-import { readHomeDependencies, readSharedPackages } from './home.js'
+import { readHomeDependencies, readInstalledManifest, readPeerManifest, readSharedPackages } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
+import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peers.js'
 import { locatePnpm, runPnpm, runPnpmCapture } from './pnpm.js'
 import { parseOutdated, type UpdateInfo } from './outdated.js'
 import { isGwbLine, parseSearch, type SearchRow } from './search.js'
@@ -19,6 +20,7 @@ import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
 import { fiberStateOf, planUpdateAll, settleFiber, type PlannedEntry } from './update-all.js'
 
 export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './inventory.js'
+export type { PeerKind, PeerPlanItem } from './peers.js'
 
 /**
  * 管 home 里的**包**和 `cordis.yml` 里的**条目**。
@@ -26,6 +28,13 @@ export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './invent
  * 两样东西是两回事，这个件的全部工作就是把它们对起来：包由 pnpm 装进 home，条目由
  * loader 写进 `cordis.yml`——**装了包不加条目等于什么都没发生**，而 home 里还躺着一批
  * 永远不该有条目的共享包。
+ *
+ * **装（`install`）还顺带一件事：把该进 home 的 peer 也装成 home 的直接依赖。** 件依赖一个
+ * 会独立升级、只读文件不 import 代码的包时，那个包得在 home 的 `package.json` 里才有
+ * `<home>/node_modules/<包名>` 那条会被 pnpm 改指的 junction——pnpm 自动补的 peer 只进
+ * `.pnpm/`，`pnpm outdated` 看不见、`update-all` 也升不到。判据与实测在 `peers.ts`。
+ * **卸载时不动 peer**：代价不对称——残留一个没人用的包只是占磁盘，误删一个还有件在用的
+ * 包是运行时故障。所以 `uninstall` 不去追谁还在用它，这不是漏了。
  *
  * **卸载（`uninstall`）= 条目与包一起走人**，设置与数据留盘。第一版刻意不做卸载
  * （「删包比留着危险」），2026-09-08 推翻——装卸检升都齐了、独缺「拿掉」，而危险那半
@@ -86,12 +95,34 @@ export const SEARCH_COMMAND = 'plugins.search'
 export const UNINSTALL_COMMAND = 'plugins.uninstall'
 export const SHARED_COMMAND = 'plugins.shared'
 
+/** 装件时顺带处理的一条 peer。判据与理由在 `peers.ts` */
+export interface PeerResult {
+  pkg: string
+  /** 件的清单里给它写的版本范围。**装的是 latest**，对不上时人一眼看得见 */
+  range: string
+  /**
+   * `installed` 这次装成了 home 的直接依赖；`present` 本来就在 home 的 `package.json` 里、
+   * 版本一个字没动；`skipped` 本生态自己提供的，不该由这条路装；`failed` 装不上——
+   * **件本身已经装好了**，这一条得人自己来
+   */
+  action: 'installed' | 'present' | 'skipped' | 'failed'
+  /** present 是 home 里那条 spec；skipped 是跳过的理由；failed 是那句错（带 pnpm 尾巴） */
+  note?: string
+}
+
 /** 装机的回执 */
 export interface InstallResult {
   ok: boolean
   pkg: string
   /** 装成了才有：新加的那条条目的完整 entryId */
   entryId?: string
+  /**
+   * 这个件声明了 peer 才有：每条各自的去向。**空着 = 它一条 peer 都没声明**，
+   * 跟「声明了但全跳过了」分得开
+   */
+  peers?: PeerResult[]
+  /** 值得说一声的：有 peer 没装上、或者 peer 那一步整个没跑成。**件本身照样是装上了的** */
+  note?: string
   /** 没成时的一句话 */
   error?: string
   /** pnpm 没成时它输出的最后几行——原因就在那儿 */
@@ -210,7 +241,17 @@ export interface GwbPluginsApi {
    */
   shared(): Promise<Record<string, string[]>>
   /**
-   * `pnpm add` 进 home，成了再自动加一条条目（**默认启用**）。
+   * `pnpm add` 进 home → **把该进 home 的 peer 也装成 home 的直接依赖** → 再自动加一条
+   * 条目（**默认启用**）。
+   *
+   * **peer 那一步**（判据与理由在 `peers.ts`）：读刚装进来那个包的 `peerDependencies`，
+   * 还没在 home `package.json` 里的那些，逐条 `pnpm add <包>`（latest）。已经在的**一个字
+   * 不动**——不降级、不改写别人钉好的版本。宿主提供的（`cordis`）与本生态的件跳过，
+   * 共享包与生态外的包装。**装不上不让整条 install 失败**：件本身照样是装上了的，
+   * 没装上的那几条在回执的 `peers` 与 `note` 里点名。
+   *
+   * **卸载不动 peer**（`uninstall` 那条一如既往）：代价不对称——残留一个没人用的包只是占
+   * 磁盘，误删一个还有件在用的包是运行时故障。
    *
    * **不抛**——pnpm 没成、找不到 pnpm，都收敛成一份 `ok: false` 的回执带上原因；
    * 包名不合规这种调用方写错了的事才抛。
@@ -258,6 +299,10 @@ export interface GwbPluginsApi {
    * **顺序是先摘条目后卸包**：反过来的话，条目会引着一个不在 home 里的包，`list()` 里
    * 出现一排 ghost。**pnpm 失败不回滚**：条目已摘是正当落点（包进「已装、没挂条目」
    * 那一区看得见、重试加条目就行），回执带尾巴。
+   *
+   * **`install` 替它装进来的 peer 一条都不动，也不去追谁还在用**——这不是漏了，是判过的：
+   * 代价不对称，残留一个没人用的包只是占磁盘，误删一个还有件在用的包是运行时故障。
+   * 真要清，人自己在 home 里 `pnpm remove`。
    *
    * 包没装（调用方写错了的事）当场抛；摘条目与 pnpm 那两步的「没成」收敛成回执。
    */
@@ -398,14 +443,18 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
         data: { packages: await this.shared() },
       }))
 
-      on(INSTALL_COMMAND, 'pnpm add 一个包进 home，再自动加一条条目。参数 { pkg, spec? }（spec 是版本或 tag）', async (args) => {
-        const raw = asRecord(args)
-        const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
-        if (result.ok) return { ok: true, data: result }
-        // 尾巴既拼进 error 那句话（人看的），也原样留在 data 里（界面要单独排版时用）
-        const tail = result.tail === undefined ? '' : `\n${result.tail}`
-        return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
-      })
+      on(
+        INSTALL_COMMAND,
+        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目。回执 { ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }，action 是 installed / present / skipped / failed。参数 { pkg, spec? }（spec 是版本或 tag）',
+        async (args) => {
+          const raw = asRecord(args)
+          const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
+          if (result.ok) return { ok: true, data: result }
+          // 尾巴既拼进 error 那句话（人看的），也原样留在 data 里（界面要单独排版时用）
+          const tail = result.tail === undefined ? '' : `\n${result.tail}`
+          return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
+        },
+      )
 
       on(ADD_ENTRY_COMMAND, '给已装的包再加一条条目。参数 { pkg, id?, config? }', async (args) => {
         const raw = asRecord(args)
@@ -513,18 +562,85 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
       return run.tail === undefined ? { ok: false, pkg, error } : { ok: false, pkg, error, tail: run.tail }
     }
 
+    /**
+     * **peer 排在建条目之前**：条目一落 loader 就当场挂它，而件挂起来第一件事很可能就是
+     * 现查 `<home>/node_modules/<peer>`。先把 peer 摆好，件起来时那条路径就已经在了。
+     */
+    const peers = await this.settlePeers(pkg, found.cjs)
+
     try {
       // 直接建条目、不再回头查一遍清单：pnpm 刚说过它成了，再问一次只是多一条失败路径
       const entryId = await this.createEntry(pkg)
       // 说「加上了」不说「挂上了」——挂载不等它，挂没挂上看 list() 的 active
       this.info(`${target} 装上了，条目 ${entryId} 已加进 cordis.yml`)
-      return { ok: true, pkg, entryId }
+      return { ok: true, pkg, entryId, ...peers }
     } catch (err: unknown) {
       // **不回滚删包**：留着的包会出现在 list() 的「一条条目都没有」那一档里，有落点；
       // 删包比留着危险，而且删的时候未必只删掉这一个
       const error = `${target} 装上了，但条目加不进 cordis.yml：${String(err)}。包留在 home 里，看表走 ${LIST_COMMAND}`
       this.warn(error)
-      return { ok: false, pkg, error }
+      return { ok: false, pkg, error, ...peers }
+    }
+  }
+
+  /**
+   * 把这个件声明的 peer 里**该进 home 的**装成 home 的直接依赖（跟件平级）。
+   *
+   * **为什么装、为什么 pnpm 自动补的那份顶不上用**，判据与实测读数在 `peers.ts` 的头注释。
+   * 这儿只讲执行上的三个取舍：
+   *
+   * **一、装的是 latest，不是清单上那条 range。** 这个生态的 peer range 一律写 `>=`
+   * （理由见各件 `package.json` 的 `//peerRange`），latest 通常都满足；而按 range 装会把
+   * `^1.2.3` 这种范围原样写进 home 的 `package.json`，跟这儿每条依赖都是精确版本的形状
+   * 对不上。range 原样带进回执，对不上时人看得见。
+   *
+   * **二、一条一趟 pnpm，不批量。** 一趟 `add a b c` 里有一个包源上没有，pnpm 整趟失败、
+   * 好的那几个一个都装不上，而且它不告诉你是哪个挂的。peer 数量是个位数，多起几个进程
+   * 换「装不上的那个点得出名字」值。
+   *
+   * **三、永不抛、永不让装机失败。** 件本身已经装上了，peer 这一步的每一种没成都只是
+   * 回执里的一行——这条命令是所有 home 装件的必经之路，它多一条抛出的路径就多一次
+   * 「什么都装不了」。
+   */
+  private async settlePeers(pkg: string, pnpmCjs: string): Promise<{ peers?: PeerResult[]; note?: string }> {
+    let plan: ReturnType<typeof planPeers>
+    try {
+      const declared = toPeerDependencies(await readInstalledManifest(this.home, pkg))
+      const names = Object.keys(declared)
+      if (names.length === 0) return {}
+      // 种类只对本生态那些包问得出意思，可读一份清单是几微秒的事，不值得为它再分一次流
+      const kinds: Record<string, PeerKind | undefined> = {}
+      for (const peer of names) kinds[peer] = peerKindOf(await readPeerManifest(this.home, pkg, peer))
+      plan = planPeers(declared, await readHomeDependencies(this.home), kinds)
+    } catch (err: unknown) {
+      const note = `${pkg} 装好了，但它的 peer 清单没读成（${String(err)}），一条都没装。要的话自己在 home 里 pnpm add`
+      this.warn(note)
+      return { note }
+    }
+
+    const peers: PeerResult[] = []
+    for (const item of plan) {
+      if (item.decision !== 'install') {
+        const stay: PeerResult = { pkg: item.pkg, range: item.range, action: item.decision }
+        peers.push(item.note === undefined ? stay : { ...stay, note: item.note })
+        continue
+      }
+      const run = await this.queue(() => runPnpm({ pnpmCjs, cwd: this.home, args: ['add', item.pkg] }))
+      if (run.ok) {
+        this.info(`${pkg} 的 peer ${item.pkg}（清单写 ${item.range}）装成了 home 的直接依赖`)
+        peers.push({ pkg: item.pkg, range: item.range, action: 'installed' })
+        continue
+      }
+      const why = `pnpm add ${item.pkg} 没成（退出码 ${String(run.exitCode)}）${run.tail === undefined ? '' : `\n${run.tail}`}`
+      this.warn(`${pkg} 的 peer ${item.pkg} 没装上：${why}`)
+      peers.push({ pkg: item.pkg, range: item.range, action: 'failed', note: why })
+    }
+
+    const failed = peers.filter((peer) => peer.action === 'failed').map((peer) => peer.pkg)
+    if (failed.length === 0) return { peers }
+    return {
+      peers,
+      note: `${pkg} 装好了，但这几条 peer 没装上：${failed.join('、')}。件跑起来现查 <home>/node_modules/<包名> 会扑空——自己在 home 里 pnpm add 一趟，或者先看它在不在源上`,
     }
   }
 
