@@ -9,6 +9,55 @@ livedoc: none
 按 `gwb-decide` 的规矩：选型推完交人拍板，拍板之后记进这页。只记关系**件**的选型；
 关系**规则**的（命名、依赖判据、内核该不该做某事）归内核仓的站。
 
+## 2026-09-10：装件时把该进 home 的 peer 一并装成直接依赖
+
+**定**（plugins 0.4.0/0.4.1）：`plugins.install` 在「pnpm add 进 home」与「加条目」之间多一步
+——读刚装进来那个包的 `peerDependencies`，把**该进 home 的**逐条 `pnpm add` 成 home 的直接
+依赖（装 latest）。判据四条按顺序：已经在 home 清单里的 `present`（**版本一个字不动**）→
+`cordis` 跳过 → `@godcreator02/gwb-*` 里共享包装、件跳过（判据是清单里有没有 `gwb.shared`）
+→ 其余一律装。**装不上不让整条 install 失败**，回执 `peers` 逐条报 installed / present /
+skipped / failed。**卸载不动 peer。**
+
+**为什么要有这一步**：件依赖一个会独立升级、只读文件不 import 代码的包时（`gwb-live-doc`
+之于 `@godcreator02/livedoc` 就是），正确形状是把它写成 peer、件每次现查
+`<home>/node_modules/<包名>`——那是一条会被 pnpm 改指的 junction，指向永远是当前版本，
+升级不用重启也不用重挂。而**那条路径只有在包进了 home 的 `package.json` 时才存在**。
+内核仓 `probes/2609101500_peer-dep-live-swap` 实测三条：pnpm 自动补的 peer 只塞进 `.pnpm/`
+与件的解析面，home 顶层没有；`pnpm outdated` 只看 `package.json`，于是自动补的 peer 永远
+不在过期清单里、[一键热升](#2026-09-09一键更新是热重挂不重启)也永远升不到它；
+`auto-install-peers` 那个开关帮不上忙（默认本来就是开的，而且在 pnpm 11 上写 `.npmrc` 完全
+不认）。三条路（件替它装 / 开开关 / 人手装）里只有第一条成立。
+
+**为什么共享包也算「该进 home 的」**：`gwb-shared-react` / `gwb-tokens` 本来就该是 home 的
+直接依赖——内核只扫 home 的 dependencies 拼页面 importmap，它们不在那张清单里等于没有。
+跟这次要接的 peer 是同一个形状，先例已经在跑。区分「共享包」与「件」不猜，读那个包清单里
+的 `gwb.shared`：内核扫它拼 importmap、`plugins.shared` 读同一批，是本生态既有的标记。
+读不出来（多半是条 `optional` 的 peer，pnpm 不为这种自动补）**保守当件跳过**。
+
+**为什么卸载不动 peer**：**代价不对称**——残留一个没人用的包只是占磁盘，误删一个还有件在
+用的包是运行时故障。所以 `plugins.uninstall` 不去追引用计数。这条要写在说明书上，免得下一个
+人以为是漏了。
+
+**为什么装 latest 不装清单上那条 range**：这个生态的 peer range 一律写 `>=`（`//peerRange`），
+latest 通常都满足；按 range 装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进
+回执，对不上时人看得见。**一条一趟 pnpm 不批量**：一趟 `add a b c` 里有一个包源上没有，
+pnpm 整趟失败、好的一个都装不上，而且不告诉你是哪个挂的。
+
+**踩到的一处**：peer 的清单**不在** `<home>/node_modules/<件>/node_modules/` 下（那儿只有
+`.bin`）——pnpm 把 peer 跟件并排放在虚拟仓那一层。0.4.0 按前者找，于是每条 gwb peer 都落进
+「认不出种类」的保守分支、共享包跟着被当件跳过；0.4.1 改成先 `realpath` 解开那条 junction
+再按包名段数往上退，实机复验共享包正确入账。
+
+**验的方式**：单测钉住纯函数（`toPeerDependencies` / `peerKindOf` / `planPeers` 四条判据与
+排序）与真碰盘的 `readPeerManifest`（临时目录里搭一份 pnpm 布局，junction、顶层兜底、
+两处都没有、平铺布局四种）。**实机验过**：隔离 home（`peerdep2-2609101601`，只装 commands
+与 plugins 两件）里 `plugins.install @godcreator02/gwb-theme` → `gwb-shared-react` /
+`gwb-tokens` 进了 home 清单、`gwb-plugin-api` / `gwb-settings` 报 skipped「本生态的件」；
+装一个自造的假件 → 好的 peer `installed`、源上不存在的那条 `failed` 而**件本身照样装上、
+条目照样落**；再发一版假库之后 `plugins.outdated` 看得见那条 peer，`plugins.update-all`
+把它升掉、`<home>/node_modules/<包名>` 的 junction 改指新版本、读出来是新内容。假件已
+unpublish、测试 home 已删。**没升 default home。**
+
 ## 2026-09-09：一键更新是热重挂，不重启
 
 **定**（plugins 0.3.0，配套 shell 0.2.2 / mcp 0.3.1）：

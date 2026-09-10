@@ -23,7 +23,7 @@ livedoc: none
 | **logger** | `@godcreator02/gwb-logger` | — | **已发 0.2.0**，四路日志窗格实机验通，见[它的页](/docs/logger)；0.2.0 起类名一律 `logger:`，Select 的弹层照 radix 默认挂 `body` |
 | **theme** | `@godcreator02/gwb-theme` | — | **已发 0.2.0**，外观件：字体与自定义 CSS，一格窗格；0.2.0 起类名一律 `theme:`（没有弹层与 ui 组件，迁移只动了类名） |
 | **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.1.0**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
-| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.2.0**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill；0.2.0 起类名一律 `plugins:`，卸载确认框的遮罩从此盖整窗 |
+| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.2.0**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill；0.2.0 起类名一律 `plugins:`，卸载确认框的遮罩从此盖整窗；0.3.0 加一键热升 `plugins.update-all`（不重启）；**0.4.1 起 `install` 把该进 home 的 peer 一并装成直接依赖**（`cordis` 与本生态的件跳过、共享包与生态外的包装、已在 home 的版本不动、装不上不让整条 install 失败；卸载不动 peer），判据见[定过的事](/docs/decisions) |
 | ~~**status**~~ | `@godcreator02/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
 
 **五个带界面的件（hello / theme / shell / logger / plugins）2026-09-09 全部发到 0.2.0，
