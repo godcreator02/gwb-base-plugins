@@ -41,8 +41,8 @@ describe('包是共享包还是件', () => {
 
 describe('peer 计划', () => {
   it('生态外的包一律装——那正是这次要接的形状', () => {
-    expect(planPeers({ '@godcreator02/live-doc-cli': '>=0.4.0' }, NONE, NO_KINDS)).toEqual([
-      { pkg: '@godcreator02/live-doc-cli', range: '>=0.4.0', decision: 'install' },
+    expect(planPeers({ '@godcreator02/docfirst-workflow': '>=0.4.0' }, NONE, NO_KINDS)).toEqual([
+      { pkg: '@godcreator02/docfirst-workflow', range: '>=0.4.0', decision: 'install' },
     ])
   })
 

@@ -1,7 +1,7 @@
 ---
 title: 撞过的墙
 description: 件这边为什么写成这样——每条连着它钉住的那段代码
-livedoc: none
+docfirst: none
 ---
 
 # 撞过的墙
@@ -146,7 +146,7 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="50-68" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="76-94" */}
 
 ### 一份数据的主人是**条目**，不是包
 

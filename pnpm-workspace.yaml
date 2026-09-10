@@ -16,3 +16,5 @@ minimumReleaseAgeExclude:
   - '@godcreator02/gwb-cli@0.0.4'
   - '@godcreator02/gwb-commands@0.0.1'
   - lucide-react@1.43.0
+  - '@godcreator02/docfirst-trajectory@0.1.0'
+  - '@godcreator02/docfirst-workflow@0.2.0'

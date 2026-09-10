@@ -1,7 +1,7 @@
 ---
 title: gwb-shell：外壳
 description: 窗格注册服务 ctx.gwbShell，件在 apply 里说「我有一格窗格」
-livedoc: none
+docfirst: none
 ---
 
 # gwb-shell
@@ -368,7 +368,7 @@ Portal 默认挂 `body`——挂出去之后菜单一个类名都不生效。所
 
 件那一格的容器上因此只剩两样东西，一样在围栏之外，一样是围栏换代后的遗留：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="127-138" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="137-148" */}
 
 - **`@container` 让这一格成为容器查询的根。** **窗格不是视口**——件里写的 `@sm:` / `@md:`
   这类变体按**这一格现在有多宽**判，跟整窗大小无关。同一个件在窄格里竖排、在宽格里横排，

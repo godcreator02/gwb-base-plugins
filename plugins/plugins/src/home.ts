@@ -43,8 +43,8 @@ export async function readInstalledManifest(homeDir: string, pkg: string): Promi
  * **要先解软链。** pnpm 自动补的 peer 不进 home 顶层，而是跟 owner 并排躺在虚拟仓里：
  * `<home>/node_modules/<owner>` 是一条指向
  * `<home>/node_modules/.pnpm/<owner>@<hash>/node_modules/<owner>` 的 junction，那一层
- * `node_modules/` 才是 owner 的解析面，peer 就在里面（本机实测：`gwb-live-doc` 的
- * `gwb-plugin-api` / `livedoc` 都在那儿，而 `<home>/node_modules/<owner>/node_modules/`
+ * `node_modules/` 才是 owner 的解析面，peer 就在里面（本机实测：`gwb-docfirst-workflow` 的
+ * `gwb-plugin-api` / `docfirst-workflow` 都在那儿，而 `<home>/node_modules/<owner>/node_modules/`
  * 里只有 `.bin`）。所以取法是：解出 owner 的真实目录，按包名有几段就往上退几层，
  * 退到的就是那张解析面。
  *

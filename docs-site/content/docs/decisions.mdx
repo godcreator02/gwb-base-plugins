@@ -1,7 +1,7 @@
 ---
 title: 定过的事
 description: 选型与它们的依据——拍板之后记在这儿
-livedoc: none
+docfirst: none
 ---
 
 # 定过的事
@@ -18,8 +18,8 @@ livedoc: none
 → 其余一律装。**装不上不让整条 install 失败**，回执 `peers` 逐条报 installed / present /
 skipped / failed。**卸载不动 peer。**
 
-**为什么要有这一步**：件依赖一个会独立升级、只读文件不 import 代码的包时（`gwb-live-doc`
-之于 `@godcreator02/livedoc` 就是），正确形状是把它写成 peer、件每次现查
+**为什么要有这一步**：件依赖一个会独立升级、只读文件不 import 代码的包时（`gwb-docfirst-workflow`
+之于 `@godcreator02/docfirst-workflow` 就是），正确形状是把它写成 peer、件每次现查
 `<home>/node_modules/<包名>`——那是一条会被 pnpm 改指的 junction，指向永远是当前版本，
 升级不用重启也不用重挂。而**那条路径只有在包进了 home 的 `package.json` 时才存在**。
 内核仓 `probes/2609101500_peer-dep-live-swap` 实测三条：pnpm 自动补的 peer 只塞进 `.pnpm/`

@@ -8,8 +8,8 @@
     "lint": "oxlint . --type-aware --deny-warnings",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "doc": "pnpm --filter gwb-base-plugins-docs-site exec livedoc check",
-    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec livedoc confirm"
+    "doc": "pnpm --filter gwb-base-plugins-docs-site exec docfirst check",
+    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec docfirst confirm"
   },
   "//devDeps": "仓根只装门禁用的：oxlint、vitest、typescript、@types/node。构建线不再是仓里共享的一份——每个件自己装 esbuild 与 @tailwindcss/cli，样式表由件自己那份 src/client/styles.css 用 Tailwind 前缀直出（2026-09-09 起，tools/build-styles.ts 那条选择器 scope 的线随之删除）",
   "devDependencies": {
