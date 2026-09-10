@@ -21,9 +21,10 @@ import {
   titleForOrdinal,
   uniquePanelId,
   type OpenableSpec,
+  type OpenPaneOptions,
   type OpenPlan,
 } from '../openable.js'
-import { PLUGIN_COMPONENT } from '../panels.js'
+import { PLUGIN_COMPONENT, pluginParamsIn } from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
   LAYOUT_SAVE_COMMAND,
@@ -133,12 +134,6 @@ const SAVE_DEBOUNCE_MS = 400
  */
 let flushLayoutSave: (() => void) | undefined
 
-interface PluginParams {
-  pluginKey: string
-  entryId: string
-  paneId: string
-}
-
 /** 这个 id 在井里已经有格了吗。`planOpen` 与 `addInstance` 同吃这一处 */
 function takenIn(api: DockviewApi): (id: string) => boolean {
   return (id) => api.getPanel(id) !== undefined
@@ -148,9 +143,13 @@ function takenIn(api: DockviewApi): (id: string) => boolean {
 const TAB_COMPONENT = 'gwb-tab'
 
 /**
- * 面板 params：件的识别三件套 + 标签要的图标名。图标走 params 是借道——dockview
- * 没给图标留位子，而 GwbTab 只拿得到面板 params 与 api。它本来就是格的静态属性，
- * 将来布局落盘时跟着 params 走也无妨。
+ * 面板 params：件的识别三件套 + 标签要的图标名 + 件开这一份时传的那些键（已由
+ * `planOpen` 并进 `spec.params`）。图标走 params 是借道——dockview 没给图标留位子，
+ * 而 GwbTab 只拿得到面板 params 与 api。
+ *
+ * **这一份跟着布局落盘**：dockview 的 `toJSON` 原样带上 params，整档写进 gwbData 的
+ * `layout`，`fromJSON` 再原样喂回来。件传的参数免费活过重启，代价是它必须可 JSON
+ * 序列化——所以往这儿塞活对象是不行的。
  */
 function panelParams(spec: OpenableSpec): Record<string, unknown> {
   return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
@@ -189,7 +188,7 @@ async function openOwnPane(
   api: DockviewApi,
   host: HostBridge,
   who: { entryId: string; paneId: string },
-  options: { duplicate?: boolean } | undefined,
+  options: OpenPaneOptions | undefined,
 ): Promise<void> {
   const panes = await fetchPanes(host)
   applyPlan(api, planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, takenIn(api), who))
@@ -209,7 +208,8 @@ function openSpec(api: DockviewApi, spec: OpenableSpec, duplicate: boolean): voi
 
 /** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
 function applyPlan(api: DockviewApi, plan: OpenPlan): void {
-  if (plan.kind !== 'open' && plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
+  // 三种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
+  if (plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
   if (plan.kind === 'none') return
   if (plan.kind === 'focus') {
     api.getPanel(plan.id)?.api.setActive()
@@ -233,7 +233,8 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
  */
 const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> = {
   [PLUGIN_COMPONENT]: (props: IDockviewPanelProps) => {
-    const params = props.params as Partial<PluginParams> | undefined
+    // 一份 params 装两半：外壳的识别三件套（加图标）在这儿读，件自己那半交给 pluginParamsIn 摘
+    const params = props.params as Record<string, unknown> | undefined
     const pluginKey = params?.pluginKey
     const entryId = params?.entryId
     const paneId = params?.paneId
@@ -260,6 +261,8 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
         entryId={entryId}
         paneId={paneId}
         panelId={props.api.id}
+        // 件那半只看得见自己传的那些键：保留键摘掉，件不该认识 entryId 这种外壳内部的东西
+        paneParams={pluginParamsIn(params)}
         host={hostBridge}
         openPane={openPane}
         setTitle={(title) => props.api.setTitle(title)}

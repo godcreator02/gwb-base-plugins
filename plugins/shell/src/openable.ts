@@ -1,4 +1,4 @@
-import { PLUGIN_COMPONENT } from './panels.js'
+import { PLUGIN_COMPONENT, pluginParamsIn, shellParamKeysIn } from './panels.js'
 import type { RegisteredPane } from './pane-registry.js'
 
 /**
@@ -35,6 +35,32 @@ import type { RegisteredPane } from './pane-registry.js'
 export const NAV_ID = 'nav'
 export const NAV_COMPONENT = 'nav'
 
+/**
+ * 落进 dockview 面板的那份 `params`：外壳的识别三件套，加上件开这一份时传的那些键。
+ * 两半并排住在一份里，保留键归外壳（名单在 `panels.ts`）。
+ */
+export interface PanelParams {
+  pluginKey: string
+  entryId: string
+  paneId: string
+  /** 件传的那半。键名由件定，撞上保留键的在入口就摘掉了 */
+  [key: string]: unknown
+}
+
+/**
+ * 件调 `openPane` 时给的那几样。
+ *
+ * **`params` 必须可 JSON 序列化**：它跟着面板进 `api.toJSON()`、再整档写进 gwbData 的
+ * `layout`，重启后原样喂给这一份的 `mountPane`。活对象（函数、DOM 节点、类实例）在那趟
+ * 往返里会丢或者写坏，而且是重启之后才现形。
+ */
+export interface OpenPaneOptions {
+  /** 已经开着时再开一份，而且那格得在注册时声明过 `duplicable` */
+  duplicate?: boolean
+  /** 交给**新开那一份**的参数。聚焦已开的那份时不作数（见 `planOpen`） */
+  params?: Record<string, unknown>
+}
+
 /** 一格「可以打开的窗格」。`params` 是要落进 dockview 面板的那份 */
 export interface OpenableSpec {
   /** 这是**基名**，不是某一份实例的 id。实例 id 由 `uniquePanelId` 算 */
@@ -44,7 +70,7 @@ export interface OpenableSpec {
   icon?: string
   /** 准不准开第二份。从注册记录原样带过来——开格那处判它时不用回头再查一遍注册表 */
   duplicable?: boolean
-  params?: { pluginKey: string; entryId: string; paneId: string }
+  params?: PanelParams
 }
 
 /**
@@ -103,19 +129,42 @@ export function titleForOrdinal(title: string, ordinal: number): string {
 /** 「件说打开某一格」之后该干什么。副作用留给调用方，这儿只出判断 */
 export type OpenPlan =
   | { kind: 'focus'; id: string; notice?: string }
-  | { kind: 'open'; id: string; title: string; spec: OpenableSpec }
+  | { kind: 'open'; id: string; title: string; spec: OpenableSpec; notice?: string }
   | { kind: 'none'; notice: string }
 
+/** 几句话并成一句。一条都没有回 undefined——`notice` 缺席就是「没什么好说的」 */
+function joinNotices(...notices: (string | undefined)[]): string | undefined {
+  const said = notices.filter((n): n is string => n !== undefined)
+  return said.length === 0 ? undefined : said.join('；')
+}
+
 /**
- * 开格的**决策**：认不认得这一格、该聚焦还是该开新的一份、要不要顺带说句话。
+ * 件传的那份参数并进面板 params。
  *
- * 抽成纯函数是因为这四条分支里有两条**实机点不出来**——「件要多份而那格没声明过」
- * 得专门写一个错的件才走得到。副作用（`setActive` / `addPanel` / `console`）全留在
- * 接线那一侧，那边就只剩「按 kind 分派」两行。
+ * **外壳的三件套压在最上面**：保留键在这一步之前已由 `pluginParamsIn` 摘掉，这个展开
+ * 顺序是第二道锁——件永远改不动这一格的身份。
+ *
+ * 没有 `params` 的 spec（导航那格）不接参数：它不是插件窗格，件也报不出它。
+ */
+function withOpenParams(spec: OpenableSpec, params: Record<string, unknown> | undefined): OpenableSpec {
+  const mine = pluginParamsIn(params)
+  if (mine === undefined || spec.params === undefined) return spec
+  return { ...spec, params: { ...mine, ...spec.params } }
+}
+
+/**
+ * 开格的**决策**：认不认得这一格、该聚焦还是该开新的一份、参数怎么落、要不要顺带说句话。
+ *
+ * 抽成纯函数是因为这几条分支里有两条**实机点不出来**——「件要多份而那格没声明过」
+ * 与「件传的参数踩了保留键」都得专门写一个错的件才走得到。副作用（`setActive` /
+ * `addPanel` / `console`）全留在接线那一侧，那边就只剩「按 kind 分派」两行。
+ *
+ * **参数只作用于新开的那一份**：走到聚焦时那一格早就挂好了，件的 `mountPane` 已经拿过
+ * 一次参数，改不了了。悄悄换掉面板 params 只会让盘上的档跟界面上活着的那份对不上。
  */
 export function planOpen(
   spec: OpenableSpec | undefined,
-  options: { duplicate?: boolean } | undefined,
+  options: OpenPaneOptions | undefined,
   taken: (id: string) => boolean,
   who: { entryId: string; paneId: string },
 ): OpenPlan {
@@ -125,12 +174,22 @@ export function planOpen(
   const asked = options?.duplicate === true
   // 要多份，而且那格声明过自己经得起多份
   const wantsNew = asked && spec.duplicable === true
-  const notice = asked && !wantsNew ? `窗格 ${who.paneId} 没声明 duplicable，开不了第二份——退回聚焦已开的那份` : undefined
+  const dupNotice = asked && !wantsNew ? `窗格 ${who.paneId} 没声明 duplicable，开不了第二份——退回聚焦已开的那份` : undefined
   if (!wantsNew && taken(spec.id)) {
-    return notice === undefined ? { kind: 'focus', id: spec.id } : { kind: 'focus', id: spec.id, notice }
+    return dupNotice === undefined ? { kind: 'focus', id: spec.id } : { kind: 'focus', id: spec.id, notice: dupNotice }
   }
+  const reserved = shellParamKeysIn(options?.params)
+  const reservedNotice =
+    reserved.length === 0 ? undefined : `窗格 ${who.paneId} 传的 params 里 ${reserved.join('、')} 是外壳的保留键，已摘掉`
   const { id, ordinal } = uniquePanelId(spec.id, taken)
-  return { kind: 'open', id, title: titleForOrdinal(spec.title, ordinal), spec }
+  const notice = joinNotices(dupNotice, reservedNotice)
+  return {
+    kind: 'open',
+    id,
+    title: titleForOrdinal(spec.title, ordinal),
+    spec: withOpenParams(spec, options?.params),
+    ...(notice === undefined ? {} : { notice }),
+  }
 }
 
 /** 表里一条 → 井里那一格的**定义**。列表与「打开我的某一格」同吃这一处，免得两边拼得不一样 */

@@ -33,6 +33,7 @@ export function PluginPane({
   entryId,
   paneId,
   panelId,
+  paneParams,
   host,
   openPane,
   setTitle,
@@ -45,6 +46,8 @@ export function PluginPane({
   paneId: string
   /** 这**一份**的唯一键（dockview 的 panel id）。开两份时两份的这个值不一样 */
   panelId: string
+  /** 开这一份时件传的那份参数（保留键已摘）。同一格开出的几份靠它彼此不同 */
+  paneParams: Record<string, unknown> | undefined
   host: HostBridge
   /** 开本件另一格。entryId 已经由上层绑好，件报不出别人的 */
   openPane: ShellBridge['openPane']
@@ -58,6 +61,10 @@ export function PluginPane({
   openPaneRef.current = openPane
   const setTitleRef = useRef(setTitle)
   setTitleRef.current = setTitle
+  // **同样经 ref、不进依赖数组**：这是从面板 params 摘出来的新对象，每轮渲染都换引用。
+  // 它是这一份的**开格入参**，只在挂载那一刻读一次——读到的一定是最新的那份
+  const paneParamsRef = useRef(paneParams)
+  paneParamsRef.current = paneParams
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -92,7 +99,10 @@ export function PluginPane({
         if (mountPane === undefined) {
           throw new Error(`${pluginKey} 的 client.js 没有 mountPane 导出——那是窗格件的入口名`)
         }
-        const handle = mountPane({ host, shell, pane: { id: paneId, instance: panelId } }, container)
+        // 没传参数就不给这一项：件那头 `pane.params === undefined` 干脆地等于「没给」
+        const openParams = paneParamsRef.current
+        const pane = { id: paneId, instance: panelId, ...(openParams === undefined ? {} : { params: openParams }) }
+        const handle = mountPane({ host, shell, pane }, container)
         dispose = pickDispose(handle)
         if (dispose === undefined) {
           setError(

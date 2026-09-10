@@ -210,10 +210,11 @@ mountPane({ host, shell, pane }, container) => { dispose() }
 | | 是什么 |
 | --- | --- |
 | `host.call(command, args?)` | 命令通道，走到宿主分发再原路回 |
-| `shell.openPane(paneId, { duplicate? })` | 打开**本件**的另一格 |
+| `shell.openPane(paneId, { duplicate?, params? })` | 打开**本件**的另一格 |
 | `shell.bus` | 格间小总线，`emit(type, detail?)` 与 `on(type, fn)` 回注销函数 |
 | `pane.id` | 这一格是本件的哪一格（注册时给的那个 id） |
 | `pane.instance` | 这**一份**的唯一键。开两份时两份的这个值不一样 |
+| `pane.params` | 开这一份时件自己传的那份参数。没传就没有这一项 |
 
 **只开得了自己那几格**：`entryId` 由 `PluginPane` 造这个对象时闭包绑定，件报不出别人的
 条目——跟 `registerPane` 不收身份是同一条理由。
@@ -222,8 +223,33 @@ mountPane({ host, shell, pane }, container) => { dispose() }
 才再开一份；要多份但没声明就退回聚焦、外加一条 console 警告（不静默也不抛）；认不出
 `paneId` 什么都不做，但话里带得出是谁要开什么。
 
-判断全在 `planOpen` 那个纯函数里，接线那侧只剩「按 kind 分派」——那四条分支**有两条
-实机点不出来**（要多份而没声明那条，得专门写一个错的件才走得到）。
+判断全在 `planOpen` 那个纯函数里，接线那侧只剩「按 kind 分派」——那几条分支**有两条
+实机点不出来**（要多份而没声明那条、传的参数踩了保留键那条，都得专门写一个错的件
+才走得到）。
+
+### 开出来的几份靠 `params` 彼此不同
+
+`duplicable` 只解决「开得出几份」，`params` 才解决「这一份是给谁的」：
+
+```js
+args.shell.openPane('doc', { duplicate: true, params: { file: 'a.md' } })
+// → 那一份的 mountPane 拿到 pane.params === { file: 'a.md' }
+```
+
+**它跟着布局落盘**：这份参数并进面板 `params`，`api.toJSON()` 原样带上、整档写进
+gwbData 的 `layout`，`fromJSON` 再原样喂回来——重启之后那一份拿到的还是当初那一份，
+件不用自己存一遍。
+
+代价就写在这条好处背面：**必须可 JSON 序列化**。函数、DOM 节点、类实例塞进去，症状是
+重启之后才现形的「参数变形了」。
+
+**保留键 `pluginKey` / `entryId` / `paneId` / `icon` 归外壳**：件传了会被**摘掉**并出一条
+console 警告——不是盖掉，也不是静默丢。摘掉而不是让外壳的值压上去，是因为「悄悄用了
+另一个值」这种现象从件那头查不回来；出声之后件当场看得见自己传错了。反方向同理：
+件拿到的 `pane.params` 也不含这几个键，件不该认识外壳内部的身份字段。
+
+**只作用于新开的那一份**：走到聚焦时那一格早就挂好了、`mountPane` 已经拿过一次参数，
+这时改面板 `params` 只会让盘上的档跟界面上活着的那份对不上。要换参数就开新的一份。
 
 **表现取不用快照**：件是热挂载的，后挂上的件在快照里没有自己。取表是一次本地 IPC，
 而调用方全是 click 回调、没人等返回值。

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isPluginPanel, pluginKeyOf, PLUGIN_COMPONENT } from '../src/panels.js'
+import {
+  isPluginPanel,
+  pluginKeyOf,
+  pluginParamsIn,
+  shellParamKeysIn,
+  PLUGIN_COMPONENT,
+  SHELL_PARAM_KEYS,
+} from '../src/panels.js'
 
 /**
  * 「重载 UI」按钮出不出现，看的是激活那格的 component，不是 id 前缀。
@@ -52,5 +59,42 @@ describe('pluginKeyOf：认 params.pluginKey，认不出回空串', () => {
   it('没有面板一律空串', () => {
     expect(pluginKeyOf(null)).toBe('')
     expect(pluginKeyOf(undefined)).toBe('')
+  })
+})
+
+/**
+ * 一份面板 params 装两半：外壳的识别三件套（加图标）与件开这一份时传的那些键。
+ * 这两个函数就是那条分界线——进面板前摘一次，出到件手上再摘一次。
+ */
+describe('保留键：外壳那半与件那半的分界', () => {
+  it('名单就是识别三件套加图标', () => {
+    expect([...SHELL_PARAM_KEYS]).toEqual(['pluginKey', 'entryId', 'paneId', 'icon'])
+  })
+
+  it('件那半摘掉保留键，剩下的原样留着', () => {
+    expect(
+      pluginParamsIn({ pluginKey: '@x/x', entryId: 'echo', paneId: 'main', icon: 'flask', file: 'a.md', line: 3 }),
+    ).toEqual({ file: 'a.md', line: 3 })
+  })
+
+  it('值是什么形状都不动它——只按键名摘，不碰值', () => {
+    const nested = { where: { file: 'a.md', at: [1, 2] }, open: false, none: null }
+    expect(pluginParamsIn(nested)).toEqual(nested)
+  })
+
+  it('一个键都不剩回 undefined，不回空对象——件那头就能拿「没有」当「没给参数」', () => {
+    expect(pluginParamsIn(undefined)).toBeUndefined()
+    expect(pluginParamsIn({})).toBeUndefined()
+    expect(pluginParamsIn({ pluginKey: '@x/x', entryId: 'echo', paneId: 'main' })).toBeUndefined()
+  })
+
+  it('踩了哪几个保留键说得出名字——摘掉要出声，不静默', () => {
+    expect(shellParamKeysIn({ entryId: '别人的', file: 'a.md' })).toEqual(['entryId'])
+    expect(shellParamKeysIn({ paneId: 'x', icon: 'y', file: 'a.md' })).toEqual(['paneId', 'icon'])
+  })
+
+  it('没踩就没话说', () => {
+    expect(shellParamKeysIn(undefined)).toEqual([])
+    expect(shellParamKeysIn({ file: 'a.md' })).toEqual([])
   })
 })

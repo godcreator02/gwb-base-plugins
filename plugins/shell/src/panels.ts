@@ -1,5 +1,6 @@
 /**
- * 窗格的两条判据：这一格是什么种类，以及它背后挂的是哪个插件。
+ * 面板 `params` 的读法：这一格是什么种类、背后挂的是哪个插件、哪条条目，以及这份
+ * `params` 里哪一半是件自己传的。
  *
  * dockview 里一格是什么，看的是它的 `view.contentComponent`——那是 `addPanel` 时给的
  * component 名，对应 COMPONENTS 表里的键。**不拿 id 当判据**：id 是调用方起的名字
@@ -50,5 +51,38 @@ export function entryIdOf(panel: PanelLike | null | undefined): string {
   if (!isPluginPanel(panel)) return ''
   const id = panel?.params?.entryId
   return typeof id === 'string' ? id : ''
+}
+
+/**
+ * 外壳自己占着的那几个 `params` 键：识别三件套加标签要的图标名。
+ *
+ * 件经 `openPane` 传的参数跟它们**并排住在同一份 `params` 里**，所以这张名单是两边的
+ * 分界：进面板之前件传的这几个键被摘掉（`pluginParamsIn`），出到件手上时同样摘一遍。
+ */
+export const SHELL_PARAM_KEYS = ['pluginKey', 'entryId', 'paneId', 'icon'] as const
+
+const SHELL_PARAM_KEY_SET = new Set<string>(SHELL_PARAM_KEYS)
+
+/**
+ * 这份参数里踩了保留键的那几个名字，按给的顺序回。
+ *
+ * **摘掉要出声**：件传了 `entryId` 而它被无声无息地丢掉，现象是「我传的参数没到」，
+ * 从那头查不到这儿。
+ */
+export function shellParamKeysIn(params: Record<string, unknown> | undefined): string[] {
+  if (params === undefined) return []
+  return Object.keys(params).filter((key) => SHELL_PARAM_KEY_SET.has(key))
+}
+
+/**
+ * 一份 `params` 里**件自己那半**：把保留键摘干净。
+ *
+ * **一个键都不剩就回 undefined**，不回空对象——件手上 `pane.params === undefined` 因此
+ * 干脆地等于「开这一份时没给参数」，用不着再数一遍键。
+ */
+export function pluginParamsIn(params: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (params === undefined) return undefined
+  const mine = Object.entries(params).filter(([key]) => !SHELL_PARAM_KEY_SET.has(key))
+  return mine.length === 0 ? undefined : Object.fromEntries(mine)
 }
 

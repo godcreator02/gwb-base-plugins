@@ -195,3 +195,73 @@ describe('planOpen：件说打开某一格之后该干什么', () => {
     expect(plan.kind === 'none' ? plan.notice : '').toContain('main')
   })
 })
+
+/**
+ * 开多份时那几份靠什么彼此不同：件在 `openPane` 里传一份参数，它并进面板 params、
+ * 跟着布局落盘，再原样到那一份的 `mountPane` 手上。
+ */
+describe('planOpen 的 params：件说这一份是给谁的', () => {
+  const counter = specForPane({ ...echo, id: 'counter', title: '计数器', duplicable: true })
+  const who = { entryId: 'echo', paneId: 'counter' }
+
+  /** 开出来的那一份的面板 params */
+  function paramsOf(plan: ReturnType<typeof planOpen>) {
+    return plan.kind === 'open' ? plan.spec.params : undefined
+  }
+
+  it('件传的键跟识别三件套并排落在同一份 params 里', () => {
+    const plan = planOpen(counter, { params: { file: 'a.md', line: 3 } }, taken(), who)
+    expect(paramsOf(plan)).toEqual({
+      pluginKey: '@godcreator02/gwb-echo',
+      entryId: 'echo',
+      paneId: 'counter',
+      file: 'a.md',
+      line: 3,
+    })
+  })
+
+  it('两份各拿各的——「多份之间彼此不同」就是这条', () => {
+    const first = planOpen(counter, { params: { file: 'a.md' } }, taken(), who)
+    const second = planOpen(counter, { duplicate: true, params: { file: 'b.md' } }, taken(counter.id), who)
+    expect(second.kind === 'open' ? second.id : '').toBe(`${counter.id}:2`)
+    expect(paramsOf(first)?.file).toBe('a.md')
+    expect(paramsOf(second)?.file).toBe('b.md')
+  })
+
+  it('不传 params 的调用方一个字不用改：面板 params 还是原来那三样', () => {
+    expect(paramsOf(planOpen(counter, undefined, taken(), who))).toEqual(counter.params)
+    expect(paramsOf(planOpen(counter, { duplicate: true }, taken(), who))).toEqual(counter.params)
+  })
+
+  it('保留键改不动这一格的身份：摘掉，而且要出声', () => {
+    // **这条实机点不出来**——得专门写一个乱传的件才走得到
+    const plan = planOpen(
+      counter,
+      { params: { entryId: '别人的条目', pluginKey: '@x/x', icon: 'skull', file: 'a.md' } },
+      taken(),
+      who,
+    )
+    expect(paramsOf(plan)).toEqual({
+      pluginKey: '@godcreator02/gwb-echo',
+      entryId: 'echo',
+      paneId: 'counter',
+      file: 'a.md',
+    })
+    expect(plan.kind === 'open' ? plan.notice : '').toMatch(/保留键/)
+  })
+
+  it('聚焦已开的那份时参数不作数——那一格早挂好了，改 params 只会让档跟界面对不上', () => {
+    const plan = planOpen(counter, { params: { file: 'a.md' } }, taken(counter.id), who)
+    expect(plan).toEqual({ kind: 'focus', id: counter.id })
+  })
+
+  it('两句话并成一句：没声明 duplicable 又踩了保留键，一次说完', () => {
+    const plan = planOpen(specForPane(echo), { duplicate: true, params: { icon: 'skull' } }, taken(), {
+      entryId: 'echo',
+      paneId: 'main',
+    })
+    const notice = plan.kind === 'open' ? plan.notice : ''
+    expect(notice).toMatch(/duplicable/)
+    expect(notice).toMatch(/保留键/)
+  })
+})
