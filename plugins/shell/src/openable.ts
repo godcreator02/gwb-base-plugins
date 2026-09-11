@@ -10,7 +10,7 @@ import type { RegisteredPane } from './pane-registry.js'
  * | | 是什么 | 谁产出 |
  * | --- | --- | --- |
  * | 窗格**定义** | 注册表里一条，件说「我有这么一格」 | `pane-registry` |
- * | 窗格**实例** | dockview 里一个 panel，声明了 `duplicable` 就能有好几份 | `uniquePanelId` |
+ * | 窗格**实例** | dockview 里一个 panel，装着不同内容的可以有好几份 | `uniquePanelId` |
  *
  * 这个文件里 `specForPane` / `listOpenable` / `specForOwnPane` 管的都是**定义**，
  * 只有 `uniquePanelId` 管实例。
@@ -43,6 +43,16 @@ export interface PanelParams {
   pluginKey: string
   entryId: string
   paneId: string
+  /**
+   * 这一份**装的是什么**：件开格时给的那个不透明字符串，外壳只拿它找同一格的几份、
+   * 不解释内容。件不给等于空串——「没给 key」不是特例。
+   */
+  key?: string
+  /**
+   * 这一份是不是**预览格**。只写 `true`，**转正就是把这个键删掉**，不写成 false
+   * ——「有没有这个键」与「它是不是 true」两种判法并存的话，迟早有一处只判了其中一种。
+   */
+  preview?: boolean
   /** 件传的那半。键名由件定，撞上保留键的在入口就摘掉了 */
   [key: string]: unknown
 }
@@ -55,10 +65,18 @@ export interface PanelParams {
  * 往返里会丢或者写坏，而且是重启之后才现形。
  */
 export interface OpenPaneOptions {
-  /** 已经开着时再开一份，而且那格得在注册时声明过 `duplicable` */
-  duplicate?: boolean
-  /** 交给**新开那一份**的参数。聚焦已开的那份时不作数（见 `planOpen`） */
+  /**
+   * 这一份装的是什么。**一格的身份是它装的内容**——外壳拿这个字符串去同一格已开的
+   * 几份里找，找得到就聚焦那一份。不透明：外壳一个字都不解释。不给等于空串。
+   */
+  key?: string
+  /** 交给这一份的参数。走到聚焦时不作数、走到软换时原样换上（见 `planOpen`） */
   params?: Record<string, unknown>
+  /**
+   * 找不到时把内容放进**预览格**：已经有一份预览格就原地换掉它的内容（格数不变），
+   * 没有就新开一份并标成预览格。同一格的预览格**至多一份**。
+   */
+  preview?: boolean
 }
 
 /** 一格「可以打开的窗格」。`params` 是要落进 dockview 面板的那份 */
@@ -68,9 +86,23 @@ export interface OpenableSpec {
   component: string
   title: string
   icon?: string
-  /** 准不准开第二份。从注册记录原样带过来——开格那处判它时不用回头再查一遍注册表 */
-  duplicable?: boolean
   params?: PanelParams
+}
+
+/**
+ * 这一格**此刻开着的几份**：`planOpen` 认身份、挑预览格、查重都吃这一张表。
+ *
+ * 由调用方从 dockview 现摘（按 `entryId` + `paneId` 滤），所以这个判断在 node 里直接
+ * 测得了。**只装同一格的那几份**：`key` 与 `preview` 都是「这一格之内」的概念，掺进
+ * 别的格会让查重把别人的 id 也算上。
+ */
+export interface OpenPane {
+  /** 这一份的 panel id */
+  id: string
+  /** 这一份装着什么（没给过就是空串） */
+  key: string
+  /** 这一份是不是预览格 */
+  preview: boolean
 }
 
 /**
@@ -129,65 +161,103 @@ export function titleForOrdinal(title: string, ordinal: number): string {
 /** 「件说打开某一格」之后该干什么。副作用留给调用方，这儿只出判断 */
 export type OpenPlan =
   | { kind: 'focus'; id: string; notice?: string }
+  /** 软换：这一格还是这一格，换掉它 params 里装的内容。`params` 是**整份**新的面板 params */
+  | { kind: 'retarget'; id: string; params: PanelParams; notice?: string }
   | { kind: 'open'; id: string; title: string; spec: OpenableSpec; notice?: string }
   | { kind: 'none'; notice: string }
 
-/** 几句话并成一句。一条都没有回 undefined——`notice` 缺席就是「没什么好说的」 */
-function joinNotices(...notices: (string | undefined)[]): string | undefined {
-  const said = notices.filter((n): n is string => n !== undefined)
-  return said.length === 0 ? undefined : said.join('；')
-}
-
 /**
- * 件传的那份参数并进面板 params。
+ * 件传的那份参数并进面板 params，顺带按上这一份的身份（`key`，预览格再按一个 `preview`）。
  *
  * **外壳的三件套压在最上面**：保留键在这一步之前已由 `pluginParamsIn` 摘掉，这个展开
  * 顺序是第二道锁——件永远改不动这一格的身份。
  *
  * 没有 `params` 的 spec（导航那格）不接参数：它不是插件窗格，件也报不出它。
  */
-function withOpenParams(spec: OpenableSpec, params: Record<string, unknown> | undefined): OpenableSpec {
+function withOpenParams(
+  spec: OpenableSpec,
+  params: Record<string, unknown> | undefined,
+  key: string,
+  preview: boolean,
+): OpenableSpec {
+  if (spec.params === undefined) return spec
   const mine = pluginParamsIn(params)
-  if (mine === undefined || spec.params === undefined) return spec
-  return { ...spec, params: { ...mine, ...spec.params } }
+  return { ...spec, params: { ...mine, ...spec.params, key, ...(preview ? { preview: true } : {}) } }
 }
 
 /**
- * 开格的**决策**：认不认得这一格、该聚焦还是该开新的一份、参数怎么落、要不要顺带说句话。
+ * 落进 dockview 面板的那份 `params`：`spec` 那半，加上标签借道的 `icon`。
  *
- * 抽成纯函数是因为这几条分支里有两条**实机点不出来**——「件要多份而那格没声明过」
- * 与「件传的参数踩了保留键」都得专门写一个错的件才走得到。副作用（`setActive` /
- * `addPanel` / `console`）全留在接线那一侧，那边就只剩「按 kind 分派」两行。
+ * **开格与软换同吃这一处**：两处各拼一份的话，软换那条会把 `icon` 拼漏——现象是换完
+ * 内容标签上的图标变成了兜底那枚，而谁都不会想到是这儿。
  *
- * **参数只作用于新开的那一份**：走到聚焦时那一格早就挂好了，件的 `mountPane` 已经拿过
- * 一次参数，改不了了。悄悄换掉面板 params 只会让盘上的档跟界面上活着的那份对不上。
+ * 没有 `params` 的 spec（导航那格）回 undefined：那格不是插件窗格，它没有身份三件套。
+ */
+export function panelParamsOf(spec: OpenableSpec): PanelParams | undefined {
+  if (spec.params === undefined) return undefined
+  return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
+}
+
+/** 这一格已开的那几份里，某个 id 占着没有。`uniquePanelId` 要的那个形状 */
+function takenIn(open: readonly OpenPane[]): (id: string) => boolean {
+  return (id) => open.some((p) => p.id === id)
+}
+
+/**
+ * 开格的**决策**：这一格的几份里有没有装着这份内容的、该聚焦还是软换还是新开一份、
+ * 参数怎么落、要不要顺带说句话。
+ *
+ * **一格的身份是它装的内容**（`options.key`）。所以这个函数吃的不是「这个 id 占着没有」，
+ * 而是**这一格此刻开着的几份**：认身份、挑预览格、查重三件事都要读它。
+ *
+ * ```
+ * want = options.key ?? ''
+ * 1. 表里有 p.key === want            → focus 那一份
+ * 2. 没有，且没要 preview              → open 一份新的（params 带 key，不带 preview）
+ * 3. 没有，且要了 preview
+ *    3a. 表里有预览格                  → retarget 它（params 带 key 与 preview: true）
+ *    3b. 没有                         → open 一份新的并标成预览格
+ * 4. spec 认不出                       → none
+ * ```
+ *
+ * 抽成纯函数是因为这几条分支里有一条**实机点不出来**——「件传的参数踩了保留键」得专门
+ * 写一个错的件才走得到。副作用（`setActive` / `updateParameters` / `addPanel` /
+ * `console`）全留在接线那一侧，那边就只剩「按 kind 分派」几行。
+ *
+ * **参数不作用于聚焦**：走到聚焦时那一格装的本来就是这份内容（key 对上了），它早挂好、
+ * 件的 `mountPane` 已经拿过一次参数。悄悄换掉面板 params 只会让盘上的档跟界面上活着的
+ * 那份对不上——要换内容走的是 preview 那条（软换），那条会连着通知件。
  */
 export function planOpen(
   spec: OpenableSpec | undefined,
   options: OpenPaneOptions | undefined,
-  taken: (id: string) => boolean,
+  open: readonly OpenPane[],
   who: { entryId: string; paneId: string },
 ): OpenPlan {
   if (spec === undefined) {
     return { kind: 'none', notice: `条目 ${who.entryId} 要开的窗格 ${who.paneId} 不在注册表里` }
   }
-  const asked = options?.duplicate === true
-  // 要多份，而且那格声明过自己经得起多份
-  const wantsNew = asked && spec.duplicable === true
-  const dupNotice = asked && !wantsNew ? `窗格 ${who.paneId} 没声明 duplicable，开不了第二份——退回聚焦已开的那份` : undefined
-  if (!wantsNew && taken(spec.id)) {
-    return dupNotice === undefined ? { kind: 'focus', id: spec.id } : { kind: 'focus', id: spec.id, notice: dupNotice }
-  }
+  const want = options?.key ?? ''
+  const already = open.find((p) => p.key === want)
+  // 装着这份内容的那一格已经开着——预览格也好正式格也好，都是它
+  if (already !== undefined) return { kind: 'focus', id: already.id }
   const reserved = shellParamKeysIn(options?.params)
-  const reservedNotice =
+  const notice =
     reserved.length === 0 ? undefined : `窗格 ${who.paneId} 传的 params 里 ${reserved.join('、')} 是外壳的保留键，已摘掉`
-  const { id, ordinal } = uniquePanelId(spec.id, taken)
-  const notice = joinNotices(dupNotice, reservedNotice)
+  const preview = options?.preview === true
+  const next = withOpenParams(spec, options?.params, want, preview)
+  const nextParams = panelParamsOf(next)
+  const slot = preview ? open.find((p) => p.preview) : undefined
+  // 预览格至多一份：有一份活着就原地换掉它装的东西，格数不变
+  if (slot !== undefined && nextParams !== undefined) {
+    return { kind: 'retarget', id: slot.id, params: nextParams, ...(notice === undefined ? {} : { notice }) }
+  }
+  const { id, ordinal } = uniquePanelId(spec.id, takenIn(open))
   return {
     kind: 'open',
     id,
     title: titleForOrdinal(spec.title, ordinal),
-    spec: withOpenParams(spec, options?.params),
+    spec: next,
     ...(notice === undefined ? {} : { notice }),
   }
 }
@@ -199,7 +269,6 @@ export function specForPane(pane: RegisteredPane): OpenableSpec {
     component: PLUGIN_COMPONENT,
     title: pane.title,
     ...(pane.icon === undefined ? {} : { icon: pane.icon }),
-    ...(pane.duplicable === true ? { duplicable: true } : {}),
     params: { pluginKey: pane.pkg, entryId: pane.entryId, paneId: pane.id },
   }
 }

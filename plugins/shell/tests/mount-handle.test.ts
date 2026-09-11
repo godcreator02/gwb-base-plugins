@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeHandle, pickMountPane, pickDispose } from '../src/mount-handle.js'
+import { describeHandle, pickMountPane, pickDispose, pickRetarget } from '../src/mount-handle.js'
 
 /**
  * 外壳接窗格契约的那两步收窄。要钉住的是：句柄按契约是 `{ dispose() }` 这个**对象**，
@@ -68,6 +68,45 @@ describe('pickDispose：句柄上的 dispose 才是卸载口', () => {
 
   it('回 unmount 的老写法不认——那是改名之前的契约', () => {
     expect(pickDispose({ unmount: () => {} })).toBeUndefined()
+  })
+})
+
+/**
+ * 换内容那条分岔就在这支上：挑得到就是**软换**（件自己换、保住该保的状态），
+ * 挑不到就是**硬换**（外壳拆了重挂）。所以「挑不到」是一条正常路径，不是契约不符。
+ */
+describe('pickRetarget：可选的那支，挑不到就走硬换', () => {
+  it('给了就回一支能调的，参数原样送到', () => {
+    const seen: unknown[] = []
+    const retarget = pickRetarget({ dispose() {}, retarget: (params: unknown) => void seen.push(params) })
+    expect(retarget).toBeTypeOf('function')
+    retarget!({ root: 'b' })
+    expect(seen).toEqual([{ root: 'b' }])
+  })
+
+  it('写成方法时 this 是句柄本身（方法体里读得到自己的字段）', () => {
+    const handle = {
+      seen: null as unknown,
+      dispose() {},
+      retarget() {
+        this.seen = this
+      },
+    }
+    pickRetarget(handle)!({})
+    expect(handle.seen).toBe(handle)
+  })
+
+  it('没给、不是函数、句柄不是对象 → undefined，那是硬换那条路，不是错', () => {
+    expect(pickRetarget({ dispose() {} })).toBeUndefined()
+    expect(pickRetarget({ dispose() {}, retarget: true })).toBeUndefined()
+    expect(pickRetarget(undefined)).toBeUndefined()
+    expect(pickRetarget(null)).toBeUndefined()
+    expect(pickRetarget('x')).toBeUndefined()
+  })
+
+  it('函数句柄一律不收——跟 pickDispose 同一条：契约里的句柄是对象', () => {
+    const both = Object.assign(() => {}, { retarget: () => {} })
+    expect(pickRetarget(both)).toBeUndefined()
   })
 })
 

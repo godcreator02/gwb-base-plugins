@@ -29,7 +29,6 @@ export interface PaneRow {
   id: string
   title: string
   icon?: string
-  duplicable?: boolean
   /** 浏览器半与样式表的地址，件注册时自报。见 pane-registry 的 PaneSpec */
   client?: string
   style?: string
@@ -41,8 +40,8 @@ export interface PaneRow {
  */
 export interface ShellBridge {
   /**
-   * 打开本件的另一格。已经开着就聚焦它；`duplicate: true` 才再开一份，而且那一格
-   * 得在注册时声明过 `duplicable`。认不出 paneId 就什么都不做。
+   * 打开本件的另一格。**身份是 `options.key`**：装着这份内容的那一格已经开着就聚焦它，
+   * 没开着才开新的一份（`preview: true` 时优先放进预览格）。认不出 paneId 什么都不做。
    *
    * `options.params` 是**让开出来的几份彼此不同**的那条路：它原样到那一份的
    * `mountPane` 手上（`pane.params`），并且跟着布局落盘、重启后还在。必须可 JSON
@@ -54,12 +53,33 @@ export interface ShellBridge {
    * 当前文件名就是走这里。初始标题归 `registerPane`，这里只管运行时改。
    */
   setPaneTitle(title: string): void
+  /**
+   * 把**这一格**留住：它不再是预览格，下一次 preview 打开不会顶掉它。
+   *
+   * 件该在「人真的开始用这一格」的那一刻调它（开始编辑、改了什么），**不是挂上就调**
+   * ——挂上就调等于这个件没有预览格。已经是正式格时调它是空操作，重复调不要紧。
+   * 人**双击标签**是同一个动作的手势版。没有反方向：正式格变不回预览格。
+   */
+  keepPane(): void
   /** 格间小总线。桶按条目分，所以同一条条目的几格（含重复实例）在同一个桶里 */
   bus: {
     emit(type: string, detail?: unknown): void
     /** 挂一个听众，回注销函数 */
     on(type: string, listener: (detail: unknown) => void): () => void
   }
+}
+
+/**
+ * 件的 `mountPane` 回的那个句柄。**`dispose` 是硬的，`retarget` 是可选的**：
+ *
+ * - 给了 `retarget`：外壳换了这一格的 params 之后调它（**软换**），件自己决定怎么换
+ *   内容、保住哪些状态（滚动位置、前进后退、正在打的字）
+ * - 没给：外壳**拆了重挂**（硬换）。简单的件不必为此写一行代码，代价是那一格的
+ *   内部状态跟着重来一遍
+ */
+export interface PaneHandle {
+  dispose(): void
+  retarget?(params: Record<string, unknown>): void
 }
 
 /** 外壳调件的 `mountPane` 时给的那几样 */
@@ -77,6 +97,9 @@ export interface PaneArgs {
      *
      * **没传就没有这一项**，不是空对象。它跟着布局落盘，所以重启之后这一份拿到的
      * 还是当初那一份。
+     *
+     * **这是挂上那一刻的那份**。后来换了内容的话，新的那份走 `retarget(params)`
+     * 到件手上（件没给 `retarget` 就是拆了重挂，那时这儿拿到的本来就是新的）。
      */
     params?: Record<string, unknown>
   }

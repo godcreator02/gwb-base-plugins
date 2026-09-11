@@ -18,8 +18,9 @@ import type {} from '@godcreator02/gwb-commands'
  * 「我是谁」；注册那两格出现在 `shell.panes` 的回执里，就说明服务真从 fiber 上认出了
  * 注册方的条目与包名。
  *
- * 两格是**故意**的：`main` 只能开一份，`counter` 声明了 `duplicable`——一个件同时验
- * 「几格各画各的」与「同一格开两份互不干扰」这两件事。
+ * 两格是**故意**的：`main` 是那种「一个件只该有一份」的格（开它永远不给 `key`），
+ * `counter` 每份装着不同的内容（`key` 不同）——一个件同时验「几格各画各的」与
+ * 「身份不同的两份互不干扰」这两件事。
  */
 export const name = 'gwb-hello'
 
@@ -48,12 +49,12 @@ export function apply(ctx: GwbContext): void {
   // 注册在 apply 里,同步的。身份不用报——服务从 fiber 上认。也不用自己包 effect,
   // 本件卸载时这两格自动从表上摘掉
   ctx.gwbShell.registerPane({ id: 'main', title: '验收件', icon: 'flask-conical', client: CLIENT_URL, style: STYLE_URL })
-  // **声明 duplicable 的那一格**:它每一份自己一个本地计数,开两份互不干扰
+  // **装什么开几份的那一格**:每一份自己一个本地计数,身份（key）不同的两份互不干扰。
+  // 注册时说不出「我能开几份」——那取决于它装着几份不同的内容,不取决于谁给过权限
   ctx.gwbShell.registerPane({
     id: 'counter',
     title: '计数器',
     icon: 'hash',
-    duplicable: true,
     client: CLIENT_URL,
     style: STYLE_URL,
   })

@@ -15,6 +15,10 @@ import type { OpenableSpec } from '../openable.js'
  * 井底下那条。**它是唯一不进窗格系统的东西**——也正因如此它兜得住「窗格全关光了怎么办」。
  *
  * 左起：布局菜单、可开窗格的＋列表、home 路径；右边：刷新、亮暗，布局没存上时再亮一格告警。
+ *
+ * 那张「可开的窗格」列表只有一个动作：**打开这一格，已经开着就聚焦**。「再来一份」不在
+ * 这儿——一格开几份取决于它装的是什么内容（件调 `openPane` 时给的 `key`），不是这行
+ * 状态栏点得出来的事。
  */
 
 /** 一格的外观：状态栏上所有格共用，免得每处各写一套。h-6 的幽灵 pill，跟井里的标签同一套语言 */
@@ -129,7 +133,9 @@ export function StatusBar({
   savedLayouts: readonly SavedLayout[]
   /** 布局档最后一次落盘成没成。失败亮一格，点一下重试 */
   saveFailed: boolean
-  onOpen: (spec: OpenableSpec, duplicate: boolean) => void
+  /** 打开这一格；已经开着就聚焦。**这张表只干这一件事**——「再来一份」是件说了算的事，
+   * 它要几份取决于装的是什么内容（`openPane` 的 `key`），不是状态栏点得出来的 */
+  onOpen: (spec: OpenableSpec) => void
   onApplyLayout: (row: SavedLayout) => void
   onSaveLayout: (name: string) => void
   onDeleteLayout: (id: string) => void
@@ -168,26 +174,10 @@ export function StatusBar({
             specs.map((spec) => {
               const opened = openIds.includes(spec.id)
               return (
-                <DropdownMenuItem key={spec.id} onSelect={() => onOpen(spec, false)}>
+                <DropdownMenuItem key={spec.id} onSelect={() => onOpen(spec)}>
                   <span className="shell:flex-1">{spec.title}</span>
                   {/* 已开的不 disable——点它是聚焦,那是个有用的动作 */}
                   {opened && <span className="shell:text-muted-foreground shell:ml-2 shell:text-[10px]">已开</span>}
-                  {spec.duplicable === true && (
-                    <span
-                      role="button"
-                      tabIndex={-1}
-                      className="shell:hover:bg-accent shell:ml-2 shell:rounded shell:px-1 shell:text-[10px]"
-                      title="再开一份"
-                      onClick={(e) => {
-                        // 别让这一下冒泡成「选中这一项」——那会走成聚焦
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onOpen(spec, true)
-                      }}
-                    >
-                      ＋一份
-                    </span>
-                  )}
                 </DropdownMenuItem>
               )
             })

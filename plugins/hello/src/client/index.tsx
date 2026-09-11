@@ -14,8 +14,8 @@ import {
  * 浏览器半——**两格窗格**（不再是整页外壳）。`mountPane` 按 `args.pane.id` 分派。
  *
  * 验的是这么几样：裸名 import 经页面 importmap 解析得到、自己那张表经注册时自报的 `file://` 地址拿得到、
- * 样式生效、两张注册表过得了桥、**几格各画各的**、**同一格开两份互不干扰**，
- * 外加**跑得起本件自带的那两条 CLI**（一 node 一 python）并把回执显出来。
+ * 样式生效、两张注册表过得了桥、**几格各画各的**、**身份不同的两份互不干扰**、
+ * **预览格原地换内容与转正**，外加**跑得起本件自带的那两条 CLI**（一 node 一 python）并把回执显出来。
  *
  * **样式这一面验的是三条事实**（0.2 起换成 Tailwind 前缀围栏，见 `src/client/styles.css`）：
  *
@@ -48,13 +48,29 @@ const PY_CLI_COMMAND = 'hello.python'
 const HELLO_EVENT = 'hello:wave'
 
 /**
+ * 计数器那格装得下的三份**内容**。`key` 是外壳拿去找格的那个不透明串（它不解释内容），
+ * `label` 是这一份自己的参数——两样都跟着面板 params 落盘。
+ *
+ * 验的是「身份不同的两份互不干扰」：拿不同的 key 各开一份，两格各数各的；**拿同一个 key
+ * 再点一次是聚焦**，不会再开一格。
+ */
+const COUNTERS = [
+  { key: 'counter:甲', label: '甲' },
+  { key: 'counter:乙', label: '乙' },
+  { key: 'counter:丙', label: '丙' },
+] as const
+
+/**
  * 外壳调 `mountPane` 时给的那几样。**按形状收**，不牵 shell 那个包的类型——那是 node
  * 半的包，浏览器半不该为一个接口把它拖进来。
  */
 interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
   shell: {
-    openPane: (paneId: string, options?: { duplicate?: boolean }) => void
+    /** `key` 是这一份装的是什么：装着它的那一格已经开着就聚焦，没开着才开新的一份 */
+    openPane: (paneId: string, options?: { key?: string; params?: Record<string, unknown>; preview?: boolean }) => void
+    /** 把这一格留住：它不再是预览格，下一次预览打开顶不掉它 */
+    keepPane: () => void
     bus: {
       emit: (type: string, detail?: unknown) => void
       on: (type: string, listener: (detail: unknown) => void) => () => void
@@ -65,6 +81,8 @@ interface PaneArgs {
     id: string
     /** 这**一份**的唯一键。开两份时两份的这个值不一样 */
     instance: string
+    /** 开这一份时传的那份参数（保留键已摘）。这一格装的是什么就看它 */
+    params?: Record<string, unknown>
   }
 }
 
@@ -75,7 +93,6 @@ interface PaneRow {
   id: string
   title: string
   icon?: string
-  duplicable?: boolean
 }
 
 interface PluginRow {
@@ -244,8 +261,7 @@ function PaneTable({ panes }: { panes: PaneRow[] | undefined }): ReactElement {
     <ul className="hello:space-y-1 hello:text-sm">
       {panes.map((p) => (
         <li key={`${p.entryId}:${p.id}`} className="hello:font-mono">
-          {`plugin:${p.entryId}:${p.id}`} — {p.title}
-          {p.duplicable === true ? ' ×N' : ''} — <span className="hello:text-muted-foreground">{p.pkg}</span>
+          {`plugin:${p.entryId}:${p.id}`} — {p.title} — <span className="hello:text-muted-foreground">{p.pkg}</span>
         </li>
       ))}
     </ul>
@@ -267,10 +283,27 @@ function PluginTable({ plugins }: { plugins: PluginRow[] | undefined }): ReactEl
   )
 }
 
-/** `main` 那一格：验样式、验两张表、跑那两条 CLI、给出开另一格的三个入口 */
+/** `main` 那一格：验样式、验两张表、跑那两条 CLI、给出开另一格的几个入口 */
 function MainPane({ args }: { args: PaneArgs }): ReactElement {
   const [panes, setPanes] = useState<PaneRow[] | undefined>()
   const [plugins, setPlugins] = useState<PluginRow[] | undefined>()
+  /** 预览格那颗按钮点到第几份了——每点一次换一份内容，验「同一格原地换」 */
+  const [previewAt, setPreviewAt] = useState(0)
+
+  /** 开一份正式格：装着这份内容的那一格已经开着就是聚焦，没开着才新开 */
+  const openCounter = (at: number): void => {
+    const row = COUNTERS[at]
+    if (row === undefined) return
+    args.shell.openPane('counter', { key: row.key, params: { label: row.label } })
+  }
+
+  /** 放进预览格：没有预览格就新开一格并标成预览，有就**原地换掉它装的东西**（格数不变） */
+  const previewCounter = (): void => {
+    const row = COUNTERS[previewAt % COUNTERS.length]
+    if (row === undefined) return
+    setPreviewAt((n) => n + 1)
+    args.shell.openPane('counter', { key: row.key, preview: true, params: { label: row.label } })
+  }
 
   useEffect(() => {
     let alive = true
@@ -336,14 +369,11 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
           <DropdownMenuContent data-probe="menu-content" align="start">
             <DropdownMenuLabel>这层不在窗格容器里</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem data-probe="menu-open-counter" onSelect={() => args.shell.openPane('counter')}>
-              打开计数器
+            <DropdownMenuItem data-probe="menu-open-counter" onSelect={() => openCounter(0)}>
+              打开计数器（甲）
             </DropdownMenuItem>
-            <DropdownMenuItem
-              data-probe="menu-dup-counter"
-              onSelect={() => args.shell.openPane('counter', { duplicate: true })}
-            >
-              再开一份计数器
+            <DropdownMenuItem data-probe="menu-open-counter-b" onSelect={() => openCounter(1)}>
+              打开计数器（乙）
             </DropdownMenuItem>
             <DropdownMenuItem
               data-probe="menu-wave"
@@ -367,23 +397,24 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
 
       <CliBlock args={args} />
 
+      {/*
+        **这一组验的是「一格的身份是它装的内容」**：
+        - 甲、乙各点一次 → 两格，各数各的；再点同一颗 → 聚焦那一格，**不再多开一格**
+        - 「放进预览格」每点一次换一份内容：第一下开出一格**标题淡一档**的预览格，
+          之后原地换它装的东西，**格数不变**。双击那枚标签（或件调 `keepPane()`）转正，
+          下一次预览就另开一格
+        - 本件**故意没给 `retarget`**，所以预览格换内容走的是硬换（拆了重挂，计数归零）。
+          软换那条由给了 `retarget` 的件验
+      */}
       <div className="hello:flex hello:flex-wrap hello:gap-3">
-        <Button data-probe="open-counter" onClick={() => args.shell.openPane('counter')}>
-          打开计数器
+        <Button data-probe="open-counter" onClick={() => openCounter(0)}>
+          打开计数器（甲）
         </Button>
-        <Button
-          data-probe="dup-counter"
-          variant="secondary"
-          onClick={() => args.shell.openPane('counter', { duplicate: true })}
-        >
-          再开一份计数器
+        <Button data-probe="open-counter-b" variant="secondary" onClick={() => openCounter(1)}>
+          打开计数器（乙）
         </Button>
-        <Button
-          data-probe="dup-main"
-          variant="outline"
-          onClick={() => args.shell.openPane('main', { duplicate: true })}
-        >
-          再开一份「验收件」（开不出来，它没声明 duplicable）
+        <Button data-probe="preview-counter" variant="outline" onClick={previewCounter}>
+          放进预览格（每点一次换一份）
         </Button>
         <Button
           data-probe="wave"
@@ -400,13 +431,18 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
 /**
  * `counter` 那一格：**每一份自己一个本地计数**。
  *
- * 开两份、各点各的，两个数字对不上就说明它们是两棵独立的 React 树、`mountPane` 真的
- * 跑了两次。而 `main` 喊一嗓子时**两份同时**加一——那说明格间总线的桶按条目分，
- * 重复实例落在同一个桶里。
+ * 开两份（身份不同的两份）、各点各的，两个数字对不上就说明它们是两棵独立的 React 树、
+ * `mountPane` 真的跑了两次。而 `main` 喊一嗓子时**两份同时**加一——那说明格间总线的桶
+ * 按条目分，同一格的几份落在同一个桶里。
+ *
+ * 「留住这一格」那颗验的是转正：预览格调完 `keepPane()` 之后标题不再淡，下一次预览
+ * 打开会另开一格、顶不掉它。**已经是正式格时那一下是空操作**。
  */
 function CounterPane({ args }: { args: PaneArgs }): ReactElement {
   const [count, setCount] = useState(0)
   const [waves, setWaves] = useState<{ n: number; at: string }>({ n: 0, at: '' })
+  /** 这一份装的是什么：开格时传的那份参数里的 label。没传就是那份没有身份的默认格 */
+  const label = typeof args.pane.params?.label === 'string' ? args.pane.params.label : '（没给 label）'
 
   useEffect(() => {
     return args.shell.bus.on(HELLO_EVENT, () => {
@@ -416,7 +452,9 @@ function CounterPane({ args }: { args: PaneArgs }): ReactElement {
 
   return (
     <div className="hello:h-full hello:space-y-4 hello:overflow-auto hello:p-8">
-      <h1 className="hello:text-xl hello:font-semibold">计数器</h1>
+      <h1 className="hello:text-xl hello:font-semibold">
+        计数器 · <span data-probe="label">{label}</span>
+      </h1>
       <p className="hello:font-mono hello:text-xs hello:text-muted-foreground" data-probe="instance">
         {args.pane.instance}
       </p>
@@ -428,6 +466,9 @@ function CounterPane({ args }: { args: PaneArgs }): ReactElement {
         <span className="hello:font-mono hello:text-2xl" data-probe="count">
           {count}
         </span>
+        <Button data-probe="keep-pane" variant="outline" onClick={() => args.shell.keepPane()}>
+          留住这一格（转正）
+        </Button>
       </div>
 
       <div className="hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">

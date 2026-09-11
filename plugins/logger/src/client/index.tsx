@@ -94,7 +94,7 @@ const ROW_TONE: Record<LogLevel, string> = {
 interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
   shell: {
-    openPane: (paneId: string, options?: { duplicate?: boolean }) => void
+    openPane: (paneId: string, options?: { key?: string; params?: Record<string, unknown>; preview?: boolean }) => void
     bus: {
       emit: (type: string, detail?: unknown) => void
       on: (type: string, listener: (detail: unknown) => void) => () => void

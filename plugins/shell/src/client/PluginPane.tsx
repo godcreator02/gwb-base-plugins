@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
-import { describeHandle, pickDispose, pickMountPane } from '../mount-handle.js'
+import { describeHandle, pickDispose, pickMountPane, pickRetarget } from '../mount-handle.js'
+import { paramsKeyOf } from '../panels.js'
 import { createBusRegistry } from '../bus.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
@@ -20,6 +21,10 @@ import type { HostBridge, ShellBridge } from './types.js'
  * 当场看见。报错一渲染，容器那个 div 被 React 拆走，而件自己的根（React 根、定时器）
  * 仍挂在那个游离节点上——泄漏从看不见变成看得见，但仍在泄漏。止得住它的只有件按契约
  * 回句柄。
+ *
+ * **换内容分软硬两条**（外壳把这一格的 params 换掉之后）：件给了 `retarget` 就调它
+ * （**软换**，件自己保住该保的状态），没给就**拆了重挂**（硬换）。判的是句柄上有没有
+ * 那支函数，不是件说了什么。
  */
 
 /**
@@ -37,6 +42,7 @@ export function PluginPane({
   host,
   openPane,
   setTitle,
+  keepPane,
 }: {
   /** 完整包名 */
   pluginKey: string
@@ -46,25 +52,35 @@ export function PluginPane({
   paneId: string
   /** 这**一份**的唯一键（dockview 的 panel id）。开两份时两份的这个值不一样 */
   panelId: string
-  /** 开这一份时件传的那份参数（保留键已摘）。同一格开出的几份靠它彼此不同 */
+  /** 这一份此刻装着什么（件传的那份参数，保留键已摘）。同一格开出的几份靠它彼此不同 */
   paneParams: Record<string, unknown> | undefined
   host: HostBridge
   /** 开本件另一格。entryId 已经由上层绑好，件报不出别人的 */
   openPane: ShellBridge['openPane']
   /** 改这一格标签上的标题。绑的是这一份自己的 panel api，件改不到别人 */
   setTitle: ShellBridge['setPaneTitle']
+  /** 把这一格留住（不再是预览格）。同样绑这一份自己的 panel api */
+  keepPane: ShellBridge['keepPane']
 }): ReactElement {
   const hostRef = useRef<HTMLDivElement>(null)
-  // **经 ref 转一道，不进依赖数组**：这个函数在面板组件里每轮渲染都是个新闭包，
+  // **经 ref 转一道，不进依赖数组**：这几个函数在面板组件里每轮渲染都是个新闭包，
   // 直接进依赖会让整个件被反复拆了重挂。件手上那个 shell 是挂载时给的一份
   const openPaneRef = useRef(openPane)
   openPaneRef.current = openPane
   const setTitleRef = useRef(setTitle)
   setTitleRef.current = setTitle
+  const keepPaneRef = useRef(keepPane)
+  keepPaneRef.current = keepPane
   // **同样经 ref、不进依赖数组**：这是从面板 params 摘出来的新对象，每轮渲染都换引用。
-  // 它是这一份的**开格入参**，只在挂载那一刻读一次——读到的一定是最新的那份
+  // 挂载时读一次（读到的一定是最新那份），之后由下面那条 effect 按**稳定序列化**比对着换
   const paneParamsRef = useRef(paneParams)
   paneParamsRef.current = paneParams
+  /** 件给的那支软换。挂上了才有，硬换那条永远是 undefined */
+  const retargetRef = useRef<((params: Record<string, unknown>) => void) | undefined>(undefined)
+  /** 件真挂上了没有。没挂上时换 params 什么都不用做——挂的时候读的就是最新那份 */
+  const mountedRef = useRef(false)
+  /** 硬换的扳手：加一下，下面那条挂载 effect 就重跑一遍（拆了重挂） */
+  const [remounts, setRemounts] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -78,6 +94,7 @@ export function PluginPane({
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
       setPaneTitle: (title) => setTitleRef.current(title),
+      keepPane: () => keepPaneRef.current(),
       bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
     }
     setError(null)
@@ -104,6 +121,9 @@ export function PluginPane({
         const pane = { id: paneId, instance: panelId, ...(openParams === undefined ? {} : { params: openParams }) }
         const handle = mountPane({ host, shell, pane }, container)
         dispose = pickDispose(handle)
+        // 软换那支是可选的：挑不到就是这个件走硬换，不是契约不符
+        retargetRef.current = pickRetarget(handle)
+        mountedRef.current = true
         if (dispose === undefined) {
           setError(
             `${pluginKey} 的 mountPane 没按契约回 { dispose() }，回的是${describeHandle(handle)}——关掉窗格时清理不了`,
@@ -118,6 +138,8 @@ export function PluginPane({
 
     return () => {
       disposed = true
+      mountedRef.current = false
+      retargetRef.current = undefined
       try {
         dispose?.()
       } catch (err) {
@@ -126,7 +148,37 @@ export function PluginPane({
       }
       bus.release()
     }
-  }, [pluginKey, entryId, paneId, panelId, host])
+    // **`paneParams` 故意不在这张表里**：它每轮渲染都是个新对象，进来就是反复拆了重挂。
+    // 换内容走下面那条 effect，比的是它的稳定序列化；硬换要重挂时扳 `remounts`
+  }, [pluginKey, entryId, paneId, panelId, host, remounts])
+
+  /**
+   * 这一格装的东西换了（外壳软换了面板 params）。**软换优先**：件给了 `retarget` 就调它，
+   * 那一格的 React 树、滚动位置、正在打的字全留着；没给才扳 `remounts` 拆了重挂。
+   *
+   * 比的是 `paramsKeyOf` 算出来的**稳定序列化**，不是对象引用——面板 params 每轮渲染都
+   * 摘出一个新对象，按引用比等于每轮都算「换了」。
+   *
+   * **件还没挂上时什么都不做**：挂载那条链读的是 `paneParamsRef.current`，读到的一定是
+   * 最新那份。这时候扳重挂只会把正在挂的那一次白白掐掉。
+   */
+  const paramsKey = paramsKeyOf(paneParams)
+  useEffect(() => {
+    if (!mountedRef.current) return
+    const retarget = retargetRef.current
+    if (retarget === undefined) {
+      setRemounts((n) => n + 1)
+      return
+    }
+    try {
+      retarget(paneParamsRef.current ?? {})
+    } catch (err) {
+      // 件的 retarget 抛了：这一格现在显示的是上一份内容，而人刚点的那下看着像没反应
+      console.error(`[shell] ${pluginKey} 的 retarget 抛了：`, err)
+    }
+    // 只认 paramsKey（`pluginKey` 只是那句错话里的名字）：别的都经 ref 现读，
+    // 进来就是无谓的软换
+  }, [paramsKey, pluginKey])
 
   if (error !== null) {
     return <p className="shell:text-destructive shell:m-0 shell:p-3 shell:text-sm">加载失败：{error}</p>

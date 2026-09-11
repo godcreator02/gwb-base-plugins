@@ -108,16 +108,12 @@ describe('说不清自己是谁的一律抛——不静默进表', () => {
   })
 })
 
-describe('duplicable：这一格能不能开多份', () => {
-  it('不写就是不能——默认单份', () => {
+describe('注册的是**定义**，一格开几份不在这张表上', () => {
+  it('件说不出「我能开几份」——那张老的 duplicable 开关删掉了', () => {
+    // 一格开几份取决于它装着几份不同的内容（`openPane` 的 `key`），不取决于谁给过权限。
+    // 多写一个字段进来的话，注册表就又成了「开格那处要回头查一遍」的东西
     const { reg } = fresh()
     reg.register(echo, { id: 'main', title: '回声' })
-    expect(reg.list()[0]!.duplicable).toBeUndefined()
-  })
-
-  it('写了原样收下', () => {
-    const { reg } = fresh()
-    reg.register(echo, { id: 'main', title: '回声', duplicable: true })
-    expect(reg.list()[0]!.duplicable).toBe(true)
+    expect(Object.keys(reg.list()[0]!).sort()).toEqual(['entryId', 'id', 'pkg', 'title'])
   })
 })

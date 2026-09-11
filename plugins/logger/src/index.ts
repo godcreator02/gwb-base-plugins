@@ -70,7 +70,6 @@ export function apply(ctx: GwbContext): void {
     id: 'main',
     title: '日志',
     icon: 'scroll-text',
-    duplicable: true,
     client: new URL('./client.js', here).href,
     style: new URL('./style.css', here).href,
   })

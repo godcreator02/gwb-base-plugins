@@ -27,6 +27,11 @@ import { cn } from 'cn'
  * 「这个面板是不是整个井里唯一激活的那枚」，多组时只会有 maximal 一枚亮。每格各亮
  * 各的才对：标签说的是「这一格现在显示的是谁」。面板会被拖去别的组，所以两级订阅：
  * 先跟住自己在哪一组，再跟住那一组当前显示的是谁。
+ *
+ * **预览格标一下，正式格一个像素都不变**：标例外不标常态——预览格至多一份，正式格
+ * 可以很多。记号是标题**淡一档**（外壳自己那套 muted 前景色）；**不用斜体**：中文没有
+ * 真斜体，浏览器画的伪斜体很难看。**双击标签转正**（把 `preview` 从这一份的 params 上
+ * 删掉），跟件调 `keepPane()` 是同一个动作。
  */
 
 /** 窗格注册用的图标裸名 → 图标。加一枚就添一行，名字跟注册那边的 kebab 裸名对齐 */
@@ -46,8 +51,11 @@ function iconFor(name: string | undefined): LucideIcon {
 }
 
 export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
-  const params = (props.params ?? {}) as { icon?: string }
+  const params = (props.params ?? {}) as { icon?: string; preview?: unknown }
   const Icon = iconFor(params.icon)
+  // 判 `=== true`：正式格身上没有这个键（转正就是把它删掉），不是写成 false。
+  // params 换了 dockview 会拿新的重渲染这枚标签，所以直读 props 就够，不用自己订事件
+  const preview = params.preview === true
   const panelId = props.api.id
   const [group, setGroup] = useState(props.api.group)
   const [active, setActive] = useState(() => props.api.group.activePanel?.id === panelId)
@@ -83,10 +91,14 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
           ? 'shell:bg-muted shell:text-foreground'
           : 'shell:text-muted-foreground shell:hover:bg-accent/50 shell:hover:text-foreground',
       )}
-      title={title}
+      title={preview ? `${title}（预览格：下一次打开会顶掉它。双击这枚标签留住它）` : title}
+      // **转正的手势版**：dockview 那个包里一处 `dblclick` 都没有，我们自己的标签也
+      // 只挂了 onClick，这条手势本来空着；拖拽走的是 pointer 那条，不跟它打架。
+      // 已经是正式格时这一下是空操作（那份 params 上本来就没有 preview 这个键）
+      onDoubleClick={() => props.api.updateParameters({ preview: undefined })}
     >
       <Icon className="shell:size-4 shell:shrink-0" />
-      <span className="shell:min-w-0 shell:truncate">{title}</span>
+      <span className={cn('shell:min-w-0 shell:truncate', preview && 'shell:text-muted-foreground')}>{title}</span>
       <button
         type="button"
         aria-label="关闭"

@@ -16,15 +16,25 @@ import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
 import {
   listOpenable,
+  panelParamsOf,
   planOpen,
   specForOwnPane,
   titleForOrdinal,
   uniquePanelId,
   type OpenableSpec,
+  type OpenPane,
   type OpenPaneOptions,
   type OpenPlan,
 } from '../openable.js'
-import { PLUGIN_COMPONENT, pluginParamsIn } from '../panels.js'
+import {
+  PLUGIN_COMPONENT,
+  entryIdOf,
+  isPreviewPanel,
+  paneIdOf,
+  paneKeyOf,
+  pluginParamsIn,
+  replaceParams,
+} from '../panels.js'
 import {
   LAYOUT_GET_COMMAND,
   LAYOUT_SAVE_COMMAND,
@@ -134,9 +144,21 @@ const SAVE_DEBOUNCE_MS = 400
  */
 let flushLayoutSave: (() => void) | undefined
 
-/** 这个 id 在井里已经有格了吗。`planOpen` 与 `addInstance` 同吃这一处 */
+/** 这个 id 在井里已经有格了吗。默认布局铺格（`addInstance`）查重用 */
 function takenIn(api: DockviewApi): (id: string) => boolean {
   return (id) => api.getPanel(id) !== undefined
+}
+
+/**
+ * **这一格此刻开着的几份**：`planOpen` 认身份、挑预览格、查重都吃这张表。
+ *
+ * 现从井里摘，不存快照——格是人随时关得掉的。滤的是「同一条条目的同一格」：`key` 与
+ * `preview` 都是这一格之内的概念，掺进别的格会让查重把别人的 id 也算上。
+ */
+function openInstances(api: DockviewApi, who: { entryId: string; paneId: string }): OpenPane[] {
+  return api.panels
+    .filter((panel) => entryIdOf(panel) === who.entryId && paneIdOf(panel) === who.paneId)
+    .map((panel) => ({ id: panel.id, key: paneKeyOf(panel), preview: isPreviewPanel(panel) }))
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
@@ -152,7 +174,8 @@ const TAB_COMPONENT = 'gwb-tab'
  * 序列化——所以往这儿塞活对象是不行的。
  */
 function panelParams(spec: OpenableSpec): Record<string, unknown> {
-  return { ...spec.params, ...(spec.icon === undefined ? {} : { icon: spec.icon }) }
+  // 拼法归 `panelParamsOf`（开格与软换同吃那一处）。导航那格没有 params，回空表
+  return panelParamsOf(spec) ?? {}
 }
 
 /**
@@ -191,28 +214,39 @@ async function openOwnPane(
   options: OpenPaneOptions | undefined,
 ): Promise<void> {
   const panes = await fetchPanes(host)
-  applyPlan(api, planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, takenIn(api), who))
+  applyPlan(api, planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, openInstances(api, who), who))
 }
 
 /**
- * 外壳自己开一格（状态栏的＋列表点的就是这条）。**走跟件调 `openPane` 同一个 `planOpen`**
- * ——所以行为一致：已经开着的点了是聚焦，声明了 `duplicable` 的才开得出第二份。
+ * 外壳自己开一格（状态栏那张「可开的窗格」列表点的就是这条）。**走跟件调 `openPane`
+ * 同一个 `planOpen`**——所以行为一致：打开这一格，已经开着就聚焦。
  *
  * 跟 `openOwnPane` 的差别只在入口：那边件只给得出 `paneId`、要现取表查 spec，这边 spec
- * 本来就在手上（＋列表就是拿它排出来的）。
+ * 本来就在手上（那张列表就是拿它排出来的）。
  */
-function openSpec(api: DockviewApi, spec: OpenableSpec, duplicate: boolean): void {
+function openSpec(api: DockviewApi, spec: OpenableSpec): void {
   const who = { entryId: spec.params?.entryId ?? '', paneId: spec.params?.paneId ?? '' }
-  applyPlan(api, planOpen(spec, { duplicate }, takenIn(api), who))
+  applyPlan(api, planOpen(spec, undefined, openInstances(api, who), who))
 }
 
 /** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
 function applyPlan(api: DockviewApi, plan: OpenPlan): void {
-  // 三种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
+  // 四种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
   if (plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
   if (plan.kind === 'none') return
   if (plan.kind === 'focus') {
     api.getPanel(plan.id)?.api.setActive()
+    return
+  }
+  if (plan.kind === 'retarget') {
+    const panel = api.getPanel(plan.id)
+    // 表是刚从井里摘的，这一格不该凭空没了。真没了就当什么都没发生——补开一格的话，
+    // 人看到的是「点一下冒出来两格」，比少开一格更难往回查
+    if (panel === undefined) return
+    // **`replaceParams` 少不了**：dockview 的 updateParameters 是并不是换，上一份内容
+    // 的参数不显式写成 undefined 就会赖在这一格里，跟着 toJSON() 一起落盘
+    panel.api.updateParameters(replaceParams(panel.params, plan.params))
+    panel.api.setActive()
     return
   }
   api.addPanel({
@@ -255,6 +289,19 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
         console.error(`[shell] 开 ${target} 失败：${String(err)}`)
       })
     }
+    /**
+     * 转正：把 `preview` 从**这一份**的 params 上删掉。
+     *
+     * **写 `undefined` 就是删**（dockview 的 update 里那条：新值是 undefined 的键从
+     * params 上摘掉），不是写成 false——「有没有这个键」只该有一种判法。
+     *
+     * 已经是正式格就什么都不做：件在每次击键时调它是预料之中的用法，而每调一次就发一轮
+     * params 变更，会白白带起一次重渲染与一次布局落盘。
+     */
+    const keepPane: ShellBridge['keepPane'] = () => {
+      if (params?.preview !== true) return
+      props.api.updateParameters({ preview: undefined })
+    }
     return (
       <PluginPane
         pluginKey={pluginKey}
@@ -266,6 +313,7 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
         host={hostBridge}
         openPane={openPane}
         setTitle={(title) => props.api.setTitle(title)}
+        keepPane={keepPane}
       />
     )
   },
@@ -417,9 +465,9 @@ function App({
         home={home}
         savedLayouts={saved}
         saveFailed={saveFailed}
-        onOpen={(spec, duplicate) => {
+        onOpen={(spec) => {
           if (api === null) return
-          openSpec(api, spec, duplicate)
+          openSpec(api, spec)
         }}
         onApplyLayout={applySaved}
         onSaveLayout={saveCurrent}

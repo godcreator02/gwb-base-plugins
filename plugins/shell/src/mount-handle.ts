@@ -1,8 +1,8 @@
 /**
- * 动态 import 回来的件 client 模块是 `any`，这里把它按窗格契约收窄成两步：
- * 取 `mountPane` 导出、取它回的句柄上的 `dispose`。
+ * 动态 import 回来的件 client 模块是 `any`，这里把它按窗格契约收窄成三步：
+ * 取 `mountPane` 导出、取它回的句柄上的 `dispose`，以及那支可选的 `retarget`。
  *
- * 契约写的是 `mountPane(args, container): { dispose(): void }`——回的是**对象**，不是
+ * 契约写的是 `mountPane(args, container): { dispose(): void; retarget?(params): void }`——回的是**对象**，不是
  * 函数。把句柄当函数调会抛 TypeError，而卸载路径上的异常通常被 catch 吞掉，于是
  * 「清理一次都没跑过」这件事没有任何现象：React 根不卸、轮询定时器不停，开关几次
  * 窗格后台就攒下几条定时器。所以 `dispose` 必须按契约从句柄上取，取不到就是契约不符，
@@ -37,6 +37,25 @@ export function pickDispose(handle: unknown): (() => void) | undefined {
   if (typeof dispose !== 'function') return undefined
   return () => {
     ;(dispose as (this: unknown) => void).call(handle)
+  }
+}
+
+/**
+ * 句柄上那支**可选的** `retarget`：外壳换了这一格的 params 之后调它（**软换**），
+ * 件自己决定怎么换内容、保住哪些状态。
+ *
+ * **按形状挑，不按类型收**（同 `pickMountPane` / `pickDispose`）：件那半在别的仓、
+ * 过的是动态 import，这边手上只有 `unknown`。
+ *
+ * **挑不到不是错**：没给这一支的件，外壳走硬换（拆了重挂）——所以这儿回 undefined 是
+ * 一条正常路径，不出声、不报契约不符。
+ */
+export function pickRetarget(handle: unknown): ((params: Record<string, unknown>) => void) | undefined {
+  if (handle === null || typeof handle !== 'object') return undefined
+  const retarget = (handle as { retarget?: unknown }).retarget
+  if (typeof retarget !== 'function') return undefined
+  return (params) => {
+    ;(retarget as (this: unknown, params: Record<string, unknown>) => void).call(handle, params)
   }
 }
 
