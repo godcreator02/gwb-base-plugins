@@ -146,7 +146,7 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="76-94" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="108-126" */}
 
 ### 一份数据的主人是**条目**，不是包
 
@@ -854,7 +854,7 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="169-175" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="172-178" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
 
@@ -897,7 +897,7 @@ hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 
 后一对是 hello 自己直接 `cli.register`，**没包 `ctx.effect`**——`register` 回的注销函数
 没人调，条目停了、fiber 灭了、表上的名字还在：
 
-{/* ref file="../plugins/hello/src/index.ts" lines="89-98" */}
+{/* ref file="../plugins/hello/src/index.ts" lines="90-99" */}
 
 症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
 「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是
