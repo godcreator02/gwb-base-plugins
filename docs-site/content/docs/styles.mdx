@@ -187,7 +187,7 @@ hook 当场炸。现在把这条留着，比将来再统一便宜得多。
 **第一步：内核注 importmap，然后才 import 外壳的浏览器半。** 顺序反了，外壳顶层那句
 `import { … } from 'react'` 就解析不到。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="574-579" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="597-602" */}
 
 **第二步：外壳问一次 `shell.env`**，拿到 home 和三张样式表的地址。地址由 node 半算（本包的从
 `import.meta.url` 算，令牌表按包解析），**顺序是写死的**：令牌、dockview、外壳自己那张。
@@ -207,7 +207,7 @@ dockview 那张管的类名不经我们的手（改不了名，也就加不上�
 **第五步：挂 `.dark`、挂身份标记，然后 `createRoot`。** 深色是默认态，令牌的暗色那半在这儿
 生效。身份标记只是个把手，不参与任何选择器（下面还会再说一遍，因为它以前不是）。
 
-{/* ref file="../plugins/shell/src/client/index.tsx" lines="505-521" */}
+{/* ref file="../plugins/shell/src/client/index.tsx" lines="528-544" */}
 
 **第六步：开一格窗格时**——从注册表里取这个件自报的两个地址 → **先注它的样式表、等它真到位**
 → 再动态 import 它的束 → 调它的挂载函数、把容器交出去 → 收下清理句柄。
