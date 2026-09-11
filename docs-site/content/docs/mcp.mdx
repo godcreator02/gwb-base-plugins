@@ -72,7 +72,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 `sse`、header 漏了 `Bearer ` 前缀、url 少了 `/mcp` 一段——三种都拼得出来，而症状全是
 「连不上」，从客户端那头看不出为什么。拼好的这份把那些机会一次收掉。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="356-388" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="371-403" */}
 
 命令自己的顺序是**端口先答**：这道口没开成时回 `ok: false` 说清楚原因，而不是回一个
 连不上的 url。下一节就是它最常见的那一种。
@@ -90,7 +90,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 所以 default 那一支的 `fallback` 是 `false`，接线照着它走：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="320-335" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="323-338" */}
 
 **不开比开在别处强**——开在别处是静默连错，不开是当场看得见（一行 `log.error`，
 外加 `mcp.info` 回 `ok: false`）。本件其它部分照常挂着，只是这道口这次没开。
@@ -103,7 +103,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 **件的配置一律走 `gwbSettings.define`**，这个件不再收 `apply` 的 `config` 形参：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="83-97" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="86-100" */}
 
 `port` 的缺省按 home 名给（`defaultPort`），跟 `choosePort` 不给值时的答案一致——界面上
 看到的缺省就是真会用的口，不会出现「显示 0、实际 2870」这种两份真相。设置件不做运行时
@@ -112,7 +112,7 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 ## 工具面只有几件
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="191-268" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="194-271" */}
 
 **固定两枚**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
 的那几条命令；其余命令一律经 `gwb_command_run` 按名调。挑法是一个纯函数：
@@ -158,7 +158,7 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="270-281" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="273-284" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
@@ -199,7 +199,7 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 
 ## 一道门，不是两道
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="145-167" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="148-170" */}
 
 token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到正事。
 
@@ -211,7 +211,7 @@ token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到
 
 ## 取令牌存的是 promise，不是值
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="124-138" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="127-141" */}
 
 首启那次要异步落一份盘，而路由一挂上去随时可能进请求。存值的话，两个并发请求会各
 生成一个 token 互相盖掉；存 promise，先到的请求等的就是同一次首启。
