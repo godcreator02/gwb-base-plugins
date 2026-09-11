@@ -112,7 +112,7 @@ function LayoutBar({
 
 export function StatusBar({
   specs,
-  openIds,
+  focusIds,
   home,
   savedLayouts,
   saveFailed,
@@ -125,8 +125,12 @@ export function StatusBar({
 }: {
   /** 可开的窗格清单（已经滤掉导航那条） */
   specs: readonly OpenableSpec[]
-  /** 此刻井里开着哪些 panel id */
-  openIds: readonly string[]
+  /**
+   * 点了会走成**聚焦**的那几条（spec 基名）。「已开」那个记号标的就是它——
+   * **记号跟点下去的效果同一个判据**（上游 `willFocus` 直接问 `planOpen`），
+   * 不是「这一格有没有开着」：那两者会岔开，那时记号就开始说谎。
+   */
+  focusIds: readonly string[]
   /** home 目录的绝对路径 */
   home: string
   /** 人起名存下来的布局清单 */
@@ -172,7 +176,7 @@ export function StatusBar({
             <DropdownMenuItem disabled>没有件注册过窗格</DropdownMenuItem>
           ) : (
             specs.map((spec) => {
-              const opened = openIds.includes(spec.id)
+              const opened = focusIds.includes(spec.id)
               return (
                 <DropdownMenuItem key={spec.id} onSelect={() => onOpen(spec)}>
                   <span className="shell:flex-1">{spec.title}</span>

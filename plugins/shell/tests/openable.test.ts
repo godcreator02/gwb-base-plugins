@@ -202,6 +202,13 @@ describe('planOpen：件说打开某一格之后该干什么', () => {
     expect(planOpen(counter, { params: { file: 'a.md' } }, kept(''), who)).toEqual({ kind: 'focus', id: BASE })
   })
 
+  it('件拿 key 开了几份、空身份那一份没开着 → 不给 key 的调用是 open 不是 focus', () => {
+    // 状态栏那张表点一条走的就是这条（它不给 key），所以**「已开」那个记号必须问这同一句**
+    // ——拿「这一格有没有开着」当判据的话，这儿明明开着两份、记号会说「已开」，而点下去
+    // 多开一格空白的。记号跟效果岔开那一下，人看着就是坏的（接线侧的 willFocus 钉住这条）
+    expect(planOpen(counter, undefined, kept('a', 'b'), who)).toMatchObject({ kind: 'open', id: `${BASE}:3` })
+  })
+
   it('认不出那一格 → 什么都不做,但话里要带得出是谁要开什么', () => {
     const plan = planOpen(undefined, undefined, [], who)
     expect(plan.kind).toBe('none')

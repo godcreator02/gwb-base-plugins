@@ -29,9 +29,10 @@ import { cn } from 'cn'
  * 先跟住自己在哪一组，再跟住那一组当前显示的是谁。
  *
  * **预览格标一下，正式格一个像素都不变**：标例外不标常态——预览格至多一份，正式格
- * 可以很多。记号是标题**淡一档**（外壳自己那套 muted 前景色）；**不用斜体**：中文没有
- * 真斜体，浏览器画的伪斜体很难看。**双击标签转正**（把 `preview` 从这一份的 params 上
- * 删掉），跟件调 `keepPane()` 是同一个动作。
+ * 可以很多。记号是标题前面**一枚小空心圆点**，它是个**形状**，激活未激活都认得出：
+ * 未激活的标签本来整体就是 muted 前景色，拿「标题淡一档」当记号在那半边等于没标。
+ * **不用斜体**：中文没有真斜体，浏览器画的伪斜体很难看。**双击标签转正**（把 `preview`
+ * 从这一份的 params 上删掉），跟件调 `keepPane()` 是同一个动作。
  */
 
 /** 窗格注册用的图标裸名 → 图标。加一枚就添一行，名字跟注册那边的 kebab 裸名对齐 */
@@ -98,7 +99,16 @@ export function GwbTab(props: IDockviewPanelHeaderProps): ReactElement {
       onDoubleClick={() => props.api.updateParameters({ preview: undefined })}
     >
       <Icon className="shell:size-4 shell:shrink-0" />
-      <span className={cn('shell:min-w-0 shell:truncate', preview && 'shell:text-muted-foreground')}>{title}</span>
+      {preview && (
+        // **空心圆点，不是淡一档**：形状跟前景色深浅无关，未激活那半边照样认得出。
+        // 边框走 currentColor，所以它跟着标签四态一起变色，不用自己配一套色
+        <span
+          role="img"
+          aria-label="预览格：这一格会被下一次打开顶掉"
+          className="shell:size-2 shell:shrink-0 shell:rounded-full shell:border shell:border-current"
+        />
+      )}
+      <span className="shell:min-w-0 shell:truncate">{title}</span>
       <button
         type="button"
         aria-label="关闭"

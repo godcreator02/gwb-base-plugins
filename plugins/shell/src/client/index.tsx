@@ -161,6 +161,26 @@ function openInstances(api: DockviewApi, who: { entryId: string; paneId: string 
     .map((panel) => ({ id: panel.id, key: paneKeyOf(panel), preview: isPreviewPanel(panel) }))
 }
 
+/** 这一条 spec 背后是谁的哪一格。导航那格没有 params，两段都回空串 */
+function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
+  return { entryId: spec.params?.entryId ?? '', paneId: spec.params?.paneId ?? '' }
+}
+
+/**
+ * 状态栏那张表上点这一条会不会走成**聚焦**——那个「已开」记号标的就是它。
+ *
+ * **记号必须跟点下去的效果对齐**：那条入口不给 `key`（等于空串），所以它开/聚焦的是
+ * 「没装特定内容的那一份」。拿「这一格有没有开着」当判据的话两者会岔开——件拿几个 key
+ * 开了几份、而空身份那一份没开着时，人看见「已开」点下去却多一格空白，那一下看着就是坏的。
+ *
+ * **问的就是 `planOpen` 自己**：在这儿另写一条「key 为空的那份在不在」就是第二份真相，
+ * 两处迟早漂，而漂了没有任何现象——只是那个记号开始说谎。
+ */
+function willFocus(api: DockviewApi, spec: OpenableSpec): boolean {
+  const who = whoOf(spec)
+  return planOpen(spec, undefined, openInstances(api, who), who).kind === 'focus'
+}
+
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
 const TAB_COMPONENT = 'gwb-tab'
 
@@ -225,7 +245,7 @@ async function openOwnPane(
  * 本来就在手上（那张列表就是拿它排出来的）。
  */
 function openSpec(api: DockviewApi, spec: OpenableSpec): void {
-  const who = { entryId: spec.params?.entryId ?? '', paneId: spec.params?.paneId ?? '' }
+  const who = whoOf(spec)
   applyPlan(api, planOpen(spec, undefined, openInstances(api, who), who))
 }
 
@@ -334,10 +354,11 @@ function App({
   /** 盘上的档。null = 第一次开机（或档废了），走默认铺格 */
   initialDoc: LayoutDoc | null
 }): ReactElement {
-  // 井外面那条状态栏要用 api（开格）与「此刻开着哪些」（标已开），而 api 只在 onReady
+  // 井外面那条状态栏要用 api（开格）与「点哪条是聚焦」（标已开），而 api 只在 onReady
   // 的回调里出现——接住它
   const [api, setApi] = useState<DockviewApi | null>(null)
-  const [openIds, setOpenIds] = useState<string[]>([])
+  /** 状态栏那张表上点了会走成聚焦的那几条（spec 的基名）。判据归 `willFocus` */
+  const [focusIds, setFocusIds] = useState<string[]>([])
   /** 人起名存下来的布局清单，档里那半 */
   const [saved, setSaved] = useState<SavedLayout[]>(initialDoc?.saved ?? [])
   const [saveFailed, setSaveFailed] = useState(false)
@@ -410,15 +431,17 @@ function App({
 
   useEffect(() => {
     if (api === null) return
-    const sync = (): void => setOpenIds(api.panels.map((p) => p.id))
+    const sync = (): void => setFocusIds(specs.filter((spec) => willFocus(api, spec)).map((spec) => spec.id))
     sync()
-    // 两个用途一个事件：状态栏的「已开」跟着新，布局落盘也订它
+    // 两个用途一个事件：状态栏的「已开」跟着新，布局落盘也订它。**换 params 也在这条上**
+    // ——dockview 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange（8.2.0），
+    // 所以一格被软换、或者转正了，这个记号跟着重算，不会停在上一轮
     const sub = api.onDidLayoutChange(() => {
       sync()
       scheduleSave()
     })
     return () => sub.dispose()
-  }, [api, scheduleSave])
+  }, [api, scheduleSave, specs])
 
   /** 点开哪套已存布局，就把哪套铺回井上。变化照常走防抖落盘（current 跟着换） */
   const applySaved = (row: SavedLayout): void => {
@@ -461,7 +484,7 @@ function App({
       </div>
       <StatusBar
         specs={specs}
-        openIds={openIds}
+        focusIds={focusIds}
         home={home}
         savedLayouts={saved}
         saveFailed={saveFailed}
