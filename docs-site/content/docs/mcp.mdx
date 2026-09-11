@@ -27,6 +27,39 @@ agent → 工作台。
 token 落在 `<home>/data/@godcreator02/gwb-mcp/token.json`，形状 `{ token, createdAt }`。
 重启沿用，不会每次换一个。
 
+## 端口落进 home 的 `runtime.json`
+
+绑成的那一刻，这道口补进 `<home>/runtime.json` 的 `mcp` 那一格：
+
+```json
+{
+  "pid": 72896,
+  "startedAt": 1789120432968,
+  "appDir": "D:\\unitfolders\\26090705ymz\\gwb-kernel\\apps\\desktop",
+  "cdp": 9352,
+  "mcp": { "port": 55572, "url": "http://127.0.0.1:55572/mcp" }
+}
+```
+
+**这一格归本件，是因为这个数运行时才定**：`default` 认死 2870，别的 home 缺省要系统随机口
+（上面那份实测就是一台隔离 home，拿到 55572），绑成功之后件手里才有真正的那个数。下游要
+「说出 home 名就连得上它」，就得有人把它落在 home 里，而别人都拿不到。
+
+那份记录是**跨仓的契约**：内核开机整份重写 `pid` / `startedAt` / `appDir` / `cdp` 四格，
+本件在它之后补自己那格。于是本件这半只许**读改写**：
+
+{/* ref file="../plugins/mcp/src/runtime.ts" */}
+
+整份覆盖会把内核那几格抹掉，而那几格是下游定位这个 home 的唯一凭据——尤其 `cdp`，那是
+Chromium 的命令行开关，除了起进程的那只手谁都不知道。
+
+三条边界：
+
+- **没绑成不写。** 那时这个 home 上根本没有 MCP 口，写一格假的比不写坏得多
+- **写失败不影响这道口。** 记录是附属品，打一行 warn 继续，端点照常服务
+- **进程退了不删。** 崩溃与被 kill 是常态，「退出时清掉」那条路在那两种情况下本来就不跑；
+  **代价是记录随时可能是陈旧的，验活是读的人的事**（核 pid 还在、且那个 pid 真持着那个口）
+
 ## `mcp.info` 回的是一段能照抄的配置
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="81-89" */}

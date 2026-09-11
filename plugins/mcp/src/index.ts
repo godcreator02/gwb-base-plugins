@@ -13,6 +13,7 @@ import type {} from '@godcreator02/gwb-settings'
 import type {} from '@godcreator02/gwb-skills'
 import { bearerMatches, loadOrCreateToken } from './auth.js'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
+import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
 import { baseInstructions, skillResources, type SkillsSlot } from './skills.js'
 import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
 import { selectTop } from './top.js'
@@ -38,6 +39,8 @@ import { selectTop } from './top.js'
  *   理由也在那儿）；其它 home 缺省系统随机口
  * - 鉴权见 `auth.ts`。token 落 `ctx.gwbData` 的 `token` 文档，并**打进日志**——
  *   这一版没有界面，日志是它唯一的示人出口
+ * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
+ *   而下游要的是「说出 home 名就连得上它」。只补自己那格，内核那几格原样保留
  */
 
 export const name = 'gwb-mcp'
@@ -340,6 +343,18 @@ export function apply(ctx: GwbContext): void {
       // 这一版没有界面：token 的唯一出口就是这行日志与 mcp.info
       log.info(`MCP 端点就绪（${home} home）：${endpointUrl(p)}`)
       log.info(`token（仅本机使用，勿外传）：${token ?? '取不到，见上面的错'}`)
+      /**
+       * 把这道口落进 home 的运行记录，**只在绑成了这一刻**：下游（比如 devkit 那条改一版
+       * 看一版）要的是「说出 home 名就连得上它」，而这个数运行时才定。没绑成不写——那时
+       * 这个 home 上根本没有 MCP 口，写一格假的比不写坏得多。
+       *
+       * **写失败不影响这道口**：记录是附属品，端点照常服务。
+       */
+      try {
+        writeRuntimeMcp(requireKernel(ctx).dataDir, { port: p, url: endpointUrl(p) })
+      } catch (err) {
+        log.warn(`运行记录 ${RUNTIME_FILE} 没写成（这道口照常服务）：${String(err)}`)
+      }
     },
     (err: unknown) => {
       // 本件其它部分照常挂着，只是这道口没开——mcp.info 会把同一句话再说一遍
