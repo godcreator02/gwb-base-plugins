@@ -31,8 +31,7 @@ export const inject = ['gwbShell']
 
 export function apply(ctx: GwbContext) {
   ctx.gwbShell.registerPane({ id: 'main', title: '我这一格', icon: 'flask-conical' })
-  // 声明了 duplicable 的格才开得出第二份
-  ctx.gwbShell.registerPane({ id: 'doc', title: '文档', duplicable: true })
+  ctx.gwbShell.registerPane({ id: 'doc', title: '文档' })
   ctx.gwbShell.describeSelf({ title: '我这个件', icon: 'box' })
 }
 ```
@@ -40,9 +39,8 @@ export function apply(ctx: GwbContext) {
 一个件想有几格就注册几格。`icon` 是 [lucide](https://lucide.dev) 的图标名，kebab-case，
 可以不给——画它是第四刀导航的事，这一刀只原样收下。
 
-**`duplicable` 不写就是「我只能有一份」**。默认单份是因为代价不对称：一个没想过多实例
-的件被开两份可能状态打架（它可能用了模块级单例），而默认单份的代价只是想多份的件多写
-一个字段。第四刀的导航也要靠它决定「点一下是聚焦还是新开」。
+**注册说不出「我能开几份」**（2026-09-11 起，那个 `duplicable` 布尔删掉了）：一格开几份
+取决于它**装着几份不同的内容**，见[一格的身份是它装的内容](#一格的身份是它装的内容)。
 
 **给人看的名字归运行时**（`describeSelf`），不进包清单。包清单里那种没人读的字段死掉时
 没有任何机制会发现——`gwb.title` 就这么放了一阵，四个包声明着、零处读、两仓文档站一句
@@ -55,7 +53,7 @@ export function apply(ctx: GwbContext) {
 
 ```js
 await args.host.call('shell.panes')
-// { ok: true, data: [{ id, title, icon?, duplicable?, entryId, pkg }, …] }
+// { ok: true, data: [{ id, title, icon?, client?, style?, entryId, pkg }, …] }
 await args.host.call('shell.plugins')
 // { ok: true, data: [{ title, icon?, entryId, pkg }, …] }
 ```
@@ -65,7 +63,7 @@ await args.host.call('shell.plugins')
 
 ## 身份不由件自己报
 
-`registerPane` 只收 `{ id, title, icon?, duplicable? }`，`describeSelf` 只收
+`registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
 {/* ref file="../plugins/shell/src/index.ts" lines="190-205" */}
@@ -85,7 +83,7 @@ await args.host.call('shell.plugins')
 |  | 是什么 | 谁产出 |
 | --- | --- | --- |
 | 窗格**定义** | 注册表里一条，件说「我有这么一格」 | `pane-registry` |
-| 窗格**实例** | 井里一个 panel，声明了 `duplicable` 就能有好几份 | `uniquePanelId` |
+| 窗格**实例** | 井里一个 panel，装着不同内容的可以有好几份 | `uniquePanelId` |
 
 这两个概念一开始是同一个东西——`panelIdOf(entryId, paneId)` 是纯函数，同一格必然拼出
 同一个 id。而 dockview 的 `addPanel` 撞 id 是**同步抛 Error**，所以「开第二份」这件事
@@ -204,36 +202,106 @@ flush——它们本来就是布局落盘的东西，不是多桌面的。
 这是**窗格件契约的正本**（内核只定 `bootShell`，`mountPane` 的 args 由外壳定）：
 
 ```ts
-mountPane({ host, shell, pane }, container) => { dispose() }
+mountPane({ host, shell, pane }, container) => { dispose(); retarget?(params) }
 ```
 
 | | 是什么 |
 | --- | --- |
 | `host.call(command, args?)` | 命令通道，走到宿主分发再原路回 |
-| `shell.openPane(paneId, { duplicate?, params? })` | 打开**本件**的另一格 |
+| `shell.openPane(paneId, { key?, params?, preview? })` | 打开**本件**的另一格 |
+| `shell.setPaneTitle(title)` | 改这一格标签上的标题 |
+| `shell.keepPane()` | 把这一格留住：它不再是预览格 |
 | `shell.bus` | 格间小总线，`emit(type, detail?)` 与 `on(type, fn)` 回注销函数 |
 | `pane.id` | 这一格是本件的哪一格（注册时给的那个 id） |
 | `pane.instance` | 这**一份**的唯一键。开两份时两份的这个值不一样 |
-| `pane.params` | 开这一份时件自己传的那份参数。没传就没有这一项 |
+| `pane.params` | 挂上这一刻这一份装的那份参数。没传就没有这一项 |
 
 **只开得了自己那几格**：`entryId` 由 `PluginPane` 造这个对象时闭包绑定，件报不出别人的
 条目——跟 `registerPane` 不收身份是同一条理由。
 
-`openPane` 的行为：已经开着就聚焦；`duplicate: true` **而且**那格声明过 `duplicable`
-才再开一份；要多份但没声明就退回聚焦、外加一条 console 警告（不静默也不抛）；认不出
-`paneId` 什么都不做，但话里带得出是谁要开什么。
+## 一格的身份是它装的内容
 
-判断全在 `planOpen` 那个纯函数里，接线那侧只剩「按 kind 分派」——那几条分支**有两条
-实机点不出来**（要多份而没声明那条、传的参数踩了保留键那条，都得专门写一个错的件
-才走得到）。
+**2026-09-11 换的模型**，判据与推翻的那条见[定过的事](/docs/decisions)。一句话：
+
+> 一格开几份，**是因为它们装着不同的东西**，不是因为谁给过它开第二份的权限。
+
+件开格时给一个不透明字符串 `key`（不给等于空串，所以「没给 key」不是特例），外壳只拿它
+去这一格已开的几份里找，一个字都不解释。`planOpen` 那个纯函数的全部规则：
+
+```
+want = options.key ?? ''
+
+1. 有一份 p.key === want            → 聚焦那一份（预览格正式格都算）
+2. 没有，且没要 preview             → 开一份新的（params 带 key，不带 preview）
+3. 没有，且要了 preview
+   3a. 有一份是预览格               → **软换**它：params 整份换成新内容
+   3b. 没有                        → 开一份新的并标成预览格
+4. 认不出那一格                     → 什么都不做，但话里带得出是谁要开什么
+```
+
+判断全在 `planOpen` 里，接线那侧只剩「按 kind 分派」——**有一条分支实机点不出来**
+（传的参数踩了保留键，得专门写一个乱传的件才走得到），这也正是它必须是纯函数的理由。
+
+`planOpen` 吃的**不是**「这个 id 占着没有」，而是**这一格此刻开着的几份**
+（`{ id, key, preview }[]`，由接线侧从 dockview 现摘）：认身份、挑预览格、查重三件事都
+要读它。查重（`uniquePanelId`）也从这张表里推，所以实例 id 的算法一点没变——第一份仍然
+就是基名，第二份起追 `:2`。
+
+### 预览格：至多一份，可被顶掉，开始用就转正
+
+照 VS Code 那套语义，**实现是我们自己的**：dockview 的 PinnedTabs 是付费模块，而且它的
+pin 管的是排序与溢出，跟「别换我的内容」不是一件事。
+
+| | |
+| --- | --- |
+| 怎么进 | 件开格时 `preview: true`。同一格的预览格**至多一份** |
+| 被顶掉 | 下一次 `preview: true` 打开且内容不同 → **原地换内容**（`retarget`），格数不变 |
+| 怎么转正 | 件调 `shell.keepPane()`，或人**双击标签**。两条落到同一个动作：把 `preview` 从这一份的 params 上删掉 |
+| 标成什么样 | 标题**淡一档**（外壳那套 muted 前景色）。**不用斜体**——中文没有真斜体，浏览器画的伪斜体很难看 |
+| 没有的动作 | **正式格变不回预览格**。VS Code 也没有 |
+
+**标例外不标常态**：预览格至多一份，正式格可以很多，所以记号打在预览格身上、正式格一个
+像素都不变。
+
+件该在「人真的开始用这一格」那一刻调 `keepPane()`（开始编辑、改了什么），**不是挂上就调**
+——挂上就调等于这个件没有预览格。它是幂等的：已经是正式格时那一下什么都不做（连一次
+params 变更都不发，不然每次击键都要带起一轮重渲染与一次布局落盘）。
+
+### 换内容：软换与硬换
+
+外壳换掉这一格的 params 之后，**件给了 `retarget` 就调它（软换），没给就拆了重挂（硬换）**。
+判的是句柄上有没有那支函数，不是件说了什么：
+
+```ts
+mountPane(args, container) {
+  const view = mount(args.pane.params)
+  return {
+    dispose: () => view.destroy(),
+    // 有它就是软换：这棵树、这份滚动位置、人正打到一半的字全留着
+    retarget: (params) => view.go(params.root),
+  }
+}
+```
+
+硬换是**正常路径**，不是契约不符：简单的件不必为此写一行代码，代价是那一格的内部状态跟着
+重来一遍（`hello` 的 `counter` 故意不给 `retarget`，验的就是这条）。
+
+接住这条的是 `PluginPane` 的第二条 effect。两处讲究，都是实机会静默出错的地方：
+
+- **比的是 params 的稳定序列化，不是对象引用**（`paramsKeyOf`：键先排序再 `JSON.stringify`）。
+  面板 params 每轮渲染都摘出一个新对象，按引用比等于每轮都算「换了」；而 params 本来就要求
+  可 JSON 序列化。挂载那条 effect 的依赖数组里**故意没有 `paneParams`**，理由同上
+- **件还没挂上时什么都不做**：挂载那条链读的是 ref、读到的一定是最新那份。这时候扳重挂
+  只会把正在挂的那一次白白掐掉
 
 ### 开出来的几份靠 `params` 彼此不同
 
-`duplicable` 只解决「开得出几份」，`params` 才解决「这一份是给谁的」：
+`key` 解决「这是不是同一格」，`params` 解决「这一份里装的东西长什么样」：
 
 ```js
-args.shell.openPane('doc', { duplicate: true, params: { file: 'a.md' } })
+args.shell.openPane('doc', { key: 'a.md', params: { file: 'a.md' } })
 // → 那一份的 mountPane 拿到 pane.params === { file: 'a.md' }
+// 再点一次同一个 key：聚焦那一格，不新开也不换内容
 ```
 
 **它跟着布局落盘**：这份参数并进面板 `params`，`api.toJSON()` 原样带上、整档写进
@@ -243,13 +311,18 @@ gwbData 的 `layout`，`fromJSON` 再原样喂回来——重启之后那一份�
 代价就写在这条好处背面：**必须可 JSON 序列化**。函数、DOM 节点、类实例塞进去，症状是
 重启之后才现形的「参数变形了」。
 
-**保留键 `pluginKey` / `entryId` / `paneId` / `icon` 归外壳**：件传了会被**摘掉**并出一条
-console 警告——不是盖掉，也不是静默丢。摘掉而不是让外壳的值压上去，是因为「悄悄用了
-另一个值」这种现象从件那头查不回来；出声之后件当场看得见自己传错了。反方向同理：
+**保留键 `pluginKey` / `entryId` / `paneId` / `icon` / `key` / `preview` 归外壳**：件传了会被
+**摘掉**并出一条 console 警告——不是盖掉，也不是静默丢。摘掉而不是让外壳的值压上去，是因为
+「悄悄用了另一个值」这种现象从件那头查不回来；出声之后件当场看得见自己传错了。反方向同理：
 件拿到的 `pane.params` 也不含这几个键，件不该认识外壳内部的身份字段。
 
-**只作用于新开的那一份**：走到聚焦时那一格早就挂好了、`mountPane` 已经拿过一次参数，
-这时改面板 `params` 只会让盘上的档跟界面上活着的那份对不上。要换参数就开新的一份。
+后两个（`key` / `preview`）进这张名单是有代价的：**件从此不能拿这两个名字当自己的参数名**。
+换来的是身份跟着面板 params 一起落盘——整页重载之后外壳照旧认得出哪一格装着什么、哪一格是
+预览格，不用另存一份账。
+
+**不作用于聚焦**：走到聚焦时那一格装的本来就是这份内容（key 对上了），它早挂好、
+`mountPane` 已经拿过一次参数。这时改面板 `params` 只会让盘上的档跟界面上活着的那份对不上
+——要换内容走的是 `preview` 那条（软换），那条会连着通知件。
 
 **表现取不用快照**：件是热挂载的，后挂上的件在快照里没有自己。取表是一次本地 IPC，
 而调用方全是 click 回调、没人等返回值。
@@ -257,8 +330,14 @@ console 警告——不是盖掉，也不是静默丢。摘掉而不是让外壳
 **总线的桶按条目分**，所以同一条条目的几格——含同一格的两份——在同一个桶里。一格松手时
 自己挂的听众要摘干净，理由见[撞过的墙](/docs/walls)。
 
-**重复那份开在右边一个新 group**：不给 `position` 的话它落进当前 group 当兄弟 tab，
+**多出来那份开在右边一个新 group**：不给 `position` 的话它落进当前 group 当兄弟 tab，
 一开就把第一份盖住，而「两份同屏」正是多实例唯一能眼见为实的地方。
+
+**软换是 `api.updateParameters`，而它是并不是换**：dockview 那头做的是 `{ …旧, …新 }`，
+只有值写成 `undefined` 的键才删（8.2.0 的 `DockviewPanel.update`）。所以换内容前要拿
+`replaceParams` 把旧那份里多出来的键显式写成 `undefined`——不补这一道，上一份内容的参数
+会赖在这一格里跟着落盘，而现象只是「件收到了一个它这一轮没传过的参数」。转正正好是这条
+机制的另一面：**删掉 `preview` 就是给它写一个 `undefined`**。
 
 **样式表注过就不摘**：同一个件开几格没必要注几条，而摘它需要引用计数，计数错了的症状是
 「关掉一格，另一格的样式跟着没了」——静默，且要两格同开才复现。留着的代价只是内存里
@@ -276,7 +355,7 @@ console 警告——不是盖掉，也不是静默丢。摘掉而不是让外壳
 | 项 | 干什么 |
 | --- | --- |
 | **布局** | 已存布局清单：点谁把谁铺回井上、行尾 ✕ 删谁；「存当前为布局…」（格子变内联输入框，Enter 存、Esc 弃、**同名覆盖**）；「重置布局（铺回全部格）」 |
-| **＋ 可开窗格** | 点开列出注册表里所有格，选一个就开 |
+| **＋ 可开窗格** | 点开列出注册表里所有格，选一个就开；已经开着的标一下「已开」，点它是聚焦 |
 | **home** | 一眼看出自己在哪个 home 里，开测试 home 时不用翻日志 |
 | **刷新** | `location.reload()` 整页重跑——重取注册表、按档恢复布局，宿主进程不动。渲染层「boot 之后注册表就旧了」的手动答卷 |
 | **亮暗** | 切 `html.dark`，令牌整套跟着换 |
@@ -313,9 +392,13 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 
 {/* ref file="../plugins/shell/src/index.ts" lines="162-181" */}
 
-**＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致：已经开着的点了是聚焦，
-声明了 `duplicable` 的行尾多一个「＋一份」。**已开的那条不 disable**——点它是聚焦，
-那是个有用的动作，标一下就够。
+**＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致。**已开的那条不 disable**
+——点它是聚焦，那是个有用的动作，标一下就够。
+
+**那枚「＋一份」删掉了**（2026-09-11，随 `duplicable` 一起）：这张表回到它本来的职责
+——打开这一格，已经开着就聚焦。「再来一份」是件说了算的事，它要几份取决于装的是什么
+内容，不是状态栏点得出来的。状态栏这条入口不给 `key`（等于空串），所以它开/聚焦的是
+**那份没有身份的**。
 
 判断与副作用继续分开：`planOpen` 出判断，`applyPlan` 落成动作，两个入口（件调的
 `openOwnPane`、状态栏调的 `openSpec`）共用后者。
@@ -443,7 +526,7 @@ Portal 默认挂 `body`——挂出去之后菜单一个类名都不生效。所
   已实例化的**。`DockviewOptions` 六十多个字段里没有 `catalog` / `availablePanels` 这类
   东西
 - **身份与元数据**——`title` 在它那儿是 `addPanel` 的入参、不是可查询的目录项；
-  `icon` / `duplicable` / `entryId` / `pkg` 它完全没有
+  `icon` / `client` / `entryId` / `pkg` 它完全没有
 
 一句话：**dockview 管「已经决定要有这一格之后它长什么样」，`pane-registry` 管「有哪几格
 值得存在」**——后者 dockview 从设计上就留给宿主。
