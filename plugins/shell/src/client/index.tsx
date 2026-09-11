@@ -150,10 +150,17 @@ function takenIn(api: DockviewApi): (id: string) => boolean {
 }
 
 /**
- * **这一格此刻开着的几份**：`planOpen` 认身份、挑预览格、查重都吃这张表。
+ * **这一格此刻开着的几份**：`planOpen` 认身份、挑预览格、查重、算新那份摆哪儿，
+ * 都吃这张表。
  *
  * 现从井里摘，不存快照——格是人随时关得掉的。滤的是「同一条条目的同一格」：`key` 与
  * `preview` 都是这一格之内的概念，掺进别的格会让查重把别人的 id 也算上。
+ *
+ * **顺序是 dockview 的布局序，不是开格的先后**：`api.panels` 回的是「组按建组先后」
+ * flatMap「组内标签先后」（dockview-core 8.2.0 的 `DockviewComponent.panels` 与
+ * `BaseGrid.groups`）。同一刻读两次一样，但人拖过标签、挪过格、或者按存档 `fromJSON`
+ * 恢复之后，它就不再等于谁先开。所以 `planOpen` 挑参照时**只依赖「哪一份不是基名」**，
+ * 表里取最后一份只是要个确定的答案（见 `placeNext`）。
  */
 function openInstances(api: DockviewApi, who: { entryId: string; paneId: string }): OpenPane[] {
   return api.panels
@@ -269,15 +276,23 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
     panel.api.setActive()
     return
   }
+  // 摆哪儿是 `planOpen` 算好的两格（`direction` / `referencePanel`），这儿只换成
+  // dockview 的形状。**`referencePanel` 有就得带上**：只给 direction 的 position 在
+  // dockview 那头是 AbsolutePosition，落的是整口井的边，不是「参照那一份的下面」
+  const position =
+    plan.direction === undefined
+      ? undefined
+      : plan.referencePanel === undefined
+        ? { direction: plan.direction }
+        : { direction: plan.direction, referencePanel: plan.referencePanel }
   api.addPanel({
     id: plan.id,
     component: plan.spec.component,
     tabComponent: TAB_COMPONENT,
     title: plan.title,
     params: panelParams(plan.spec),
-    // **重复那份摆到右边**：不给 position 的话它落进当前 group 当兄弟 tab，
-    // 一开就把第一份盖住了——而「两份同时看得见」正是多实例唯一能眼见为实的地方
-    ...(plan.id === plan.spec.id ? {} : { position: { direction: 'right' as const } }),
+    // 不给 position 的那一档是真的一个键都不给：它落进当前 group 当兄弟 tab
+    ...(position === undefined ? {} : { position }),
   })
 }
 

@@ -218,6 +218,64 @@ describe('planOpen：件说打开某一格之后该干什么', () => {
 })
 
 /**
+ * **新那份摆哪儿**：按这一格此刻开着几份分三档。第三份起往下叠而不是继续往右——件多半
+ * 是从基名那一份（正文）点出来的，活动的一直是它，不改就是一格一列。
+ */
+describe('planOpen 的落位：第三份起往下叠，不再往右开', () => {
+  const counter = specForPane({ ...echo, id: 'counter', title: '计数器' })
+  const who = { entryId: 'echo', paneId: 'counter' }
+
+  it('一份都没开 → 两格都不给，落当前活动组', () => {
+    const plan = planOpen(counter, { key: 'a' }, [], who)
+    expect(plan).not.toHaveProperty('direction')
+    expect(plan).not.toHaveProperty('referencePanel')
+  })
+
+  it('开着一份 → 右边一个新 group，不给参照（相对当前活动的那一格）', () => {
+    const plan = planOpen(counter, { key: 'b' }, kept('a'), who)
+    expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2`, direction: 'right' })
+    expect(plan).not.toHaveProperty('referencePanel')
+  })
+
+  it('开着两份 → 往下叠，**参照显式给**', () => {
+    // 只说 below 不给参照的话，dockview 按整口井算（AbsolutePosition），新那份会横在
+    // 正文格底下而不是叠在上一份评论下面——这条正是这次改动的要害
+    expect(planOpen(counter, { key: 'c' }, kept('a', 'b'), who)).toMatchObject({
+      kind: 'open',
+      id: `${BASE}:3`,
+      direction: 'below',
+      referencePanel: `${BASE}:2`,
+    })
+  })
+
+  it('参照的那一份**不是基名**——基名那份装的是件先开出来的内容，参照它就又挂回它底下', () => {
+    const plan = planOpen(counter, { key: 'd' }, kept('a', 'b', 'c'), who)
+    const ref = plan.kind === 'open' ? plan.referencePanel : undefined
+    expect(ref).not.toBe(BASE)
+    expect(ref).toBe(`${BASE}:3`)
+  })
+
+  it('基名那一份被人关掉了照样往下叠：表里剩的全是非基名的', () => {
+    const open: OpenPane[] = [
+      { id: `${BASE}:2`, key: 'b', preview: false },
+      { id: `${BASE}:3`, key: 'c', preview: false },
+    ]
+    expect(planOpen(counter, { key: 'd' }, open, who)).toMatchObject({
+      direction: 'below',
+      referencePanel: `${BASE}:3`,
+    })
+  })
+
+  it('预览格新开的那一份走同一张表——落位不看要没要 preview', () => {
+    expect(planOpen(counter, { key: 'c', preview: true }, kept('a', 'b'), who)).toMatchObject({
+      kind: 'open',
+      direction: 'below',
+      referencePanel: `${BASE}:2`,
+    })
+  })
+})
+
+/**
  * 预览格那套语义：至多一份、可被顶掉、转正之后就顶不动了。**照 VS Code 的规矩，
  * 实现是我们自己的**（dockview 的 PinnedTabs 是付费模块，而且它的 pin 管的是排序与溢出）。
  */

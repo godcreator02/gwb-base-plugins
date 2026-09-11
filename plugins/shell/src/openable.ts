@@ -163,7 +163,23 @@ export type OpenPlan =
   | { kind: 'focus'; id: string; notice?: string }
   /** 软换：这一格还是这一格，换掉它 params 里装的内容。`params` 是**整份**新的面板 params */
   | { kind: 'retarget'; id: string; params: PanelParams; notice?: string }
-  | { kind: 'open'; id: string; title: string; spec: OpenableSpec; notice?: string }
+  | {
+      kind: 'open'
+      id: string
+      title: string
+      spec: OpenableSpec
+      /**
+       * 新那份往哪开。**不给等于不给 dockview 的 `position`**——那时它落进当前活动组
+       * 当兄弟 tab。三档怎么分见 `placeNext`
+       */
+      direction?: 'right' | 'below'
+      /**
+       * `direction` 相对哪一份实例算（那一份的 panel id）。**不给就是相对当前活动的
+       * 那一格**
+       */
+      referencePanel?: string
+      notice?: string
+    }
   | { kind: 'none'; notice: string }
 
 /**
@@ -203,6 +219,42 @@ function takenIn(open: readonly OpenPane[]): (id: string) => boolean {
   return (id) => open.some((p) => p.id === id)
 }
 
+/** 新开的这一份摆哪儿：`OpenPlan` 的 `open` 那一档里那两格 */
+interface Placement {
+  direction?: 'right' | 'below'
+  referencePanel?: string
+}
+
+/**
+ * 新开的这一份摆哪儿，**按这一格此刻开着几份**分三档：
+ *
+ * | 已经开着 | 新那份开在哪 |
+ * | --- | --- |
+ * | 0 份 | 不给落位——落当前活动组 |
+ * | 1 份 | `right`，不给参照（相对当前活动的那一格） |
+ * | 2 份及以上 | `below`，参照已开的某一份**非基名实例** |
+ *
+ * 第三份起往下叠而不是继续往右：件开第二份、第三份多半是从**基名那一份**点出来的
+ * （正文格里点两下评论），活动的一直是它，于是每一份都开在它右边，一格一列。
+ *
+ * **参照必须显式给。** dockview 那头只有 `direction` 的 `position` 是 `AbsolutePosition`
+ * （`_doAddPanel` 里 orthogonalize 那一支），落的是整口井的边，不是「上一份的下面」。
+ *
+ * **要害是「不是基名那一份」，不是「最后开的那一份」**：基名那一份装的是件先开出来的
+ * 内容，参照它就又挂回它底下。挑哪一份非基名的只决定新格落在那一列的哪个位置，所以
+ * 这儿取表里最后一份——`open` 的顺序是 dockview 自己的布局序（`api.panels` = 组按建组
+ * 先后 flatMap 组内标签先后），同一刻读两次一样，但人拖过标签之后就不再等于开格先后。
+ * 判断不吊在那上面。
+ *
+ * 2 份及以上时表里必然有非基名的那一份（id 互不相同，基名至多占一份），`undefined`
+ * 那条分支只是把「找不到」退回上一档，不靠它。
+ */
+function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
+  if (open.length === 0) return {}
+  const under = open.length < 2 ? undefined : open.findLast((p) => p.id !== spec.id)
+  return under === undefined ? { direction: 'right' } : { direction: 'below', referencePanel: under.id }
+}
+
 /**
  * 开格的**决策**：这一格的几份里有没有装着这份内容的、该聚焦还是软换还是新开一份、
  * 参数怎么落、要不要顺带说句话。
@@ -219,6 +271,9 @@ function takenIn(open: readonly OpenPane[]): (id: string) => boolean {
  *    3b. 没有                         → open 一份新的并标成预览格
  * 4. spec 认不出                       → none
  * ```
+ *
+ * 走到 open 的那两条顺带说**新那份摆哪儿**（`direction` / `referencePanel`），同样按
+ * 这张表算——三档在 `placeNext`。
  *
  * 抽成纯函数是因为这几条分支里有一条**实机点不出来**——「件传的参数踩了保留键」得专门
  * 写一个错的件才走得到。副作用（`setActive` / `updateParameters` / `addPanel` /
@@ -258,6 +313,7 @@ export function planOpen(
     id,
     title: titleForOrdinal(spec.title, ordinal),
     spec: next,
+    ...placeNext(spec, open),
     ...(notice === undefined ? {} : { notice }),
   }
 }
