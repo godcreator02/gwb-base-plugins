@@ -6,9 +6,15 @@ docfirst: none
 
 # gwb-base-plugins
 
-**单进程内核 `gwb-kernel-min`（`D:\unitfolders\26090705ymz\gwb-kernel-min`，单元 `26090705ymz`）
-的件仓。** 十二件 + 两个共享包（`packages/`），全部对着词汇表 0.1（`@godcreator02/gwb-plugin-api`）。
-旧内核 `gwb-kernel` 已退役——宿主子进程、fd3、`gwb://`、`kernel.info` 都不在了。
+**gwb 的无头基础件仓**——2026-09-12 三仓拆分后只剩**九个无 UI 的件**：commands、data、
+settings、mcp、skills、node-cli、py-cli、logger(core)、plugin-manager(core)，全部对着词汇表
+（`@godcreator02/gwb-plugin-api`）。**这个仓的件零 UI 依赖**：peer 与产物里不许出现 shell /
+shared-react / tokens 三件套（产物守卫钉着）。
+
+UI 那半住 `D:\unitfolders\26091217uiz\gwb-ui-plugins`（shell、theme、baseui 与两个共享包），
+验收位住 `D:\unitfolders\26091217hkq\gwb-hello`（单件仓，依赖全走 registry 的装配态验收）。
+劈分方案与判据见本站 spec 区 `2026-09-12-three-repos-split`。旧内核 `gwb-kernel` 已退役
+——宿主子进程、fd3、`gwb://`、`kernel.info` 都不在了。
 
 ## 件的三条通用规矩
 
@@ -33,9 +39,9 @@ docfirst: none
 
 ## 写件与验机
 
-`.claude/skills/` 三份：`gwb-plugin-dev`（起件 / 改件 / 发版 / 实机验）、`gwb-doc`（写文档、
-动钉码）、`gwb-decide`（选型——推完交人拍板，不自己定）。动手前先读内核仓 `gwb-kernel-min`
-的 `AGENTS.md`，那些是这条线的正本。
+写件的整条路（起件 / 改件 / 发版 / 实机验）在 `gwb-devkit` 件的 skill（经 `gwb-skills`
+挂载，`skill.read {"name":"gwb-devkit"}`）；写文档、动钉码看 `docfirst-docs` skill。动手前
+先读内核仓的 `AGENTS.md`，那些是这条线的正本。
 
 门禁 `pnpm check`（typecheck + lint + test）；文档检查单独 `pnpm doc` / `pnpm doc:confirm`，
 红了这个提交不许推；动了被钉住的源码，confirm 之前先 commit。

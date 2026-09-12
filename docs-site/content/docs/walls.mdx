@@ -3,15 +3,6 @@ title: 撞过的墙
 description: 件这边为什么写成这样——每条连着它钉住的那段代码
 docfirst: none
 ---
-
-# 撞过的墙
-
-代码注释只写现状，**为什么、症状、当时怎么查的，全在这一页**，每条钉在具体代码上。
-
-内核那边的规则与坑在内核仓的站上；这一页只记件自己的。
-
----
-
 ## 相对 import 必须带 `.js`，而它是个静默失败
 
 产物给 node 直接加载（loader 不打包），ESM 不做扩展名补全。少了 `.js` 的症状是
@@ -38,6 +29,7 @@ docfirst: none
 
 ---
 
+
 ## 契约包走 peer，不是 dev
 
 判据「运行时真 import 了才写 peer，只 `import type` 写 dev」**漏了中间一档**：
@@ -57,6 +49,7 @@ devDependencies**。
 
 ---
 
+
 ## 撞名是后来者赢，但不许静默地赢
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="29-42" */}
@@ -64,10 +57,12 @@ devDependencies**。
 件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
 
+
 ## 注销只收自己那份
 
 同一段里那个 `if (table.get(def.name) === record)`：撞名之后**先卸载的那个件，不该把接手的
 那份一起带走**。少了这个判等，卸一个件会让另一个件注册的命令跟着消失。
+
 
 ## 一条命令抛出来不该炸到调用方
 
@@ -76,6 +71,7 @@ devDependencies**。
 它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
 
 ---
+
 
 ## 服务用 `ctx.effect` 包着 provide
 
@@ -86,27 +82,8 @@ devDependencies**。
 
 ---
 
+
 ## 服务
-
-### 一格松手时不摘听众——单实例把这个洞遮了整整三刀
-
-格间总线的 `release()` 原来只减引用计数、桶空了才整个删。**一格一份的年代这完全看不
-出问题**：最后一格松手时桶就没了，听众摘没摘都一样。
-
-同一格能开两份之后遮不住了：关掉两份里的一份，**它挂的听众仍被另一份撑在桶里**，于是
-关掉的那一格继续收事件，回调往一棵已经拆掉的 React 树上打。症状要么是 console 里
-「往已卸载组件 setState」，要么干脆无声泄漏。
-
-这条是**新能力引出来的旧洞**，不是新写坏的。句柄现在自己记一份挂过什么，`release` 时
-逐条摘、再松手——顺序反过来的话桶可能已经拆了，摘了个寂寞，而桶没拆那种情况正是这几行
-要治的。
-
-{/* ref file="../plugins/shell/src/bus.ts" lines="121-131" */}
-
-两条跟着定下来的语义：`emit` 在 `release` 之后是**静默**的（外壳的清理顺序是「先让件
-dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效）；桶里那层是 `Set`，
-**按函数引用去重**，两格挂同一个函数只存一份、谁先摘谁带走。
-
 ### 要认出「是谁在取我」，用 `Service` 基类，别用 `accessor`
 
 `ctx.gwbData` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
@@ -128,25 +105,6 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 顺带一条：`extends Service` 意味着 **cordis 是运行时依赖，得写 peer**（两份 cordis 的
 `instanceof` 对不上）。对照 `gwb-commands`——它只在 `apply` 的参数类型里用 cordis，那边是 dev。
 同一个包在两个件里档位不同，这正是三档判据要一条条判的原因。
-
-### 条目 id 自带 `home:` 前缀，别去掉它
-
-`fiber.entry.id` 取到的**不是** `hello`，是 **`home:hello`**——loader 把件的条目挂在
-`cordis:include` 那条下面，id 是走到它的全路径（内核那条 include 的 id 就叫 `home`）。
-
-**这条不是坏了之后查出来的**，是 `gwb-shell` 第二刀实机验时 CDP 探针的回执里当场看见的：
-窗格 id 本来按 `plugin:<entryId>:<窗格 id>` 设计成三段，实际拼出来是四段的
-`plugin:home:hello:main`。
-
-看着不好看，但**去掉那个前缀会坏，而且坏得没有现象**：`entryId` 要跟条目视图的 `id`
-一字不差，`liveness` 拿它去条目表里认这一格背后的件还在不在。改短了就一条都认不出——
-那不是「认不出」，是**认成别人**：`panePluginState` 找不到条目会判 `gone`，于是每一格
-在启动的头一帧都被当成「插件已卸载」关掉，而那是落盘的布局，关掉就没了。
-
-所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
-里取，那儿本来就分开存着。
-
-{/* ref file="../plugins/shell/src/openable.ts" lines="118-136" */}
 
 ### 一份数据的主人是**条目**，不是包
 
@@ -229,38 +187,8 @@ PENDING，父件照常挂上。hello 给 `gwbSkills` 与两条 CLI 用的都是�
 `undefined`，那个 while 一次都不进。**别拿它当「加载完成」信号**：写探针时 `await
 ctx.plugin(x)` 之后立刻去调 `x` 提供的服务，服务可能压根还不在。
 
-### `typeof` 一个类是 `function`，按「是对象」判它等于不存在
-
-`shell.reload` 0.2.2 与 0.2.3 实机都回「不在 Electron 主进程里」，而探针（electron.exe 跑，
-应用目录外与 `node_modules/.pnpm` 下两个位置）证明 `import('electron')` 的命名空间与 `default`
-上都有 `BrowserWindow`，`createRequire` 也拿得到。根因在取法：`BrowserWindow` 是一个**类**，
-`typeof` 是 `'function'`，而那句 `isRecord(bw)` 只认 `typeof === 'object'`——于是 `getAllWindows`
-永远 undefined。0.2.3 以为是 ESM 的 `default` 挂法，改错了地方；0.2.4 才对：对象或函数都往下取。
-
-{/* ref file="../plugins/shell/src/reload.ts" lines="56-67" */}
-
-**判据**：凡是按形状收窄一个「可能是类」的东西（`BrowserWindow`、`Service` 子类、任何构造器），
-`isRecord` 那种「是对象」的守卫要配上 `typeof === 'function'`；而且**报错要说清是哪一层没认出**
-——「没有 X.y」三个字分不开「X 不在」和「X 在但 y 不在」，这次多绕一版就是这么来的。
-
-### 【未决】外壳热换时渲染层报四条 `removeChild` NotFoundError——功能没坏，日志脏
-
-2026-09-09 实机用 `plugins.update-all` 只升 shell（0.2.2 → 0.2.3）：外壳热重挂成功，页面
-import 了新入口、重开了 10 格，**但切换那一瞬渲染层连报四条**
-`Uncaught NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.`
-
-**现场推断，未证实**：内核页面根的 `onShell` 里先调旧外壳的 `dispose`、再 `root.textContent = ''`
-把根清空；而 React 的卸载是异步分批的，旧树在根已经被清空之后才去 `removeChild`，节点早就不
-在那棵树上了。只是推断——没有拿到堆栈对应到具体那一行。
-
-**根因未查，这次不修**：功能没坏（新外壳起来了、格都在），只是日志脏。**下一次动外壳热换
-（内核页面根的换壳顺序、或外壳的 `dispose`）时先查这条**：让 dispose 那侧真的等 React 卸完
-（`root.unmount()` 之后再清容器），或者页面根不再手动清空容器。
-
----
 
 ## 发版
-
 ### `pnpm check` 不构建——不加 `prepublishOnly` 就会静默发出旧产物
 
 `pnpm check` 是 typecheck + lint + test，**它不跑 build**。而件的 `package.json` 里如果没有
@@ -274,112 +202,11 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 所有包都补上 `"prepublishOnly": "pnpm build"`。
 
-### `files` 收整个目录时，`__pycache__` 跟着一起发出去了
-
-**撞在 `gwb-py-cli` 0.0.1 上**（那一版还自带一个 python 自检靶子，后来那个靶子搬去 hello 了）：
-`files` 里写了 `py`，而**开发工位上只要跑过一次那个 python 项目就有了 `__pycache__`**。
-发出去、装进 home 一看：
-
-```
-package/py/gwb_pycli_selftest/__pycache__/__main__.cpython-313.pyc
-```
-
-发出去的是**别人机器上的字节码**，带着绝对路径与 python 版本号。它不会让谁当场报错——
-python 发现 `.pyc` 与源码时间戳对不上会自己重编——所以这类东西**混进去就一直在那儿**，
-没有任何机制会发现。
-
-`files` 里补一条否定式 `"!py/**/__pycache__"`，并且当场验过它真的起作用（故意造出
-`__pycache__` 再 `pnpm pack` 看包里还有没有）。如今带 `py/` 的是 hello，那条否定式跟着它：
-
-{/* has file="../plugins/hello/package.json" text="__pycache__" */}
-
-**这条引用本来想把那个 glob 原样写进 `text=`，结果当场撞了本页下面那条**——`**/` 里
-带着 `*/`，把 `{/* … */}` 提前关掉了，`pnpm doc` 报的是一句
-`Could not parse expression with acorn: Unterminated string constant`。
-所以 `text=` 里只留了 `__pycache__`，glob 写在正文的反引号里。
-
-顺带钉进产物守卫，防它哪天被人当成手滑删掉：
-
-{/* has file="../plugins/hello/tests/artifact.test.ts" text="__pycache__ 排在包外" */}
-
-**判据**：`files` 一旦收的是**整个目录**而不是具体文件，就得想一遍「这个目录在开发工位上
-会不会长出别的东西」。`dist` 与 `src` 没这问题（构建产物与源码是干净的），`py` 有。
-
----
 
 ## 门禁
 
-### 两条 oxlint 误报，都出在「有意反常」的代码上
-
-搬 shell 那批纯逻辑时撞到两条。**规则本身没错，是这两处代码故意反着来**：
-
-{/* ref file="../plugins/shell/src/bus.ts" lines="94-101" */}
-
-- **`unicorn/no-useless-spread`** —— `for (const fn of [...set])` 那份拷贝是有意的：听众
-  收到事件后摘掉自己是常事，直接遍历活集合会漏掉或重复。规则看不出「遍历期间集合会被改」
-- **`unicorn/no-thenable`** —— 测试里 `describeHandle({ then() {} })` **故意**造一个
-  thenable，验的正是「碰上这种对象也认得出来」。规则防的是无意中把对象弄成 thenable
-
-两处都用 `// oxlint-disable-next-line <规则名>` 局部禁用，**而且注释里写清为什么**——
-只有 disable 没有理由的话，下一个人只会以为是图省事绕过去的。
-
-**不动全局配置**：内核仓 decisions 定 oxlint 时判过，白名单的真代价是「新规则永远进不来」。
-拿 111 条 correctness 去换这两条误报不划算。这也是那条决策头一回被真正检验：代价确实
-只是「几条误报要处置」。
-
-### react 至今没有 ESM 出口，中间包躲不掉
-
-实测 react 19.2.8 的包清单：`exports` 里只有 `react-server` 与 `default`，`default` 指
-`index.js`，**没有 `module` 字段、没有 `"type": "module"`**——它是纯 CJS。
-
-所以「把 home 里的 react 按裸名直接交给浏览器」这条路根本不通，必须有人先把它打成 ESM
-再发一个包出来。这不是绕远，是唯一的走法。
-
-### 打 ESM 只能用 esbuild，rolldown 会留 `require`
-
-{/* ref file="../packages/shared-react/build.ts" lines="6-9" */}
-
-rolldown 在 browser 平台对「CJS require 外置包」**刻意保留 `require`**，而浏览器里没有
-这个东西——产物一加载就炸。esbuild 会把它提升成顶层 `import`。
-
-### react-dom 在工厂函数内部 require，esbuild 也提不出来
-
-{/* ref file="../packages/shared-react/build.ts" lines="22-30" */}
-
-它那句 `require('react')` 不在顶层，而在工厂函数**内部**。esbuild 提不动，于是产物里留下
-一个 `__require` 探针，跑到那一句才炸。修补是 banner 提一句 `import * as __gwb_react`，
-再把探针换成只认 react 的同步解析器（回 `default`——react-dom 要摸 React 的内部件）。
-
-那条正则认的是 **esbuild 生成代码的形状**，是个明摆着的脆弱点。所以这里跟母仓的处理不同：
-**匹配不上直接抛**，而不是打一句「无探针，原样保留」就放过——带探针的产物发出去，要到
-页面上打开窗格才看得见。产物守卫再兜一道：四份束里不许出现 `typeof require` 或裸 `require(`。
-
----
-
-## 令牌
-
-### preflight 必须包进 `@layer base`，否则它盖掉所有件的工具类
-
-{/* ref file="../packages/tokens/build.ts" lines="16-21" */}
-
-CSS 里**未分层的规则优先级高于所有分层规则**。件的表只写 `@layer utilities { … }`、自己
-不声明层顺序，所以顺序得由先加载的令牌表来声明；而 Tailwind 的 `preflight.css` 是一份
-**裸规则**（零 `@layer`），原样拼进去就是未分层的，会压过每一个件的工具类。
-
-### 声明面与映射面必须拆成两个文件
-
-{/* ref file="../packages/tokens/src/theme.reference.css" lines="1-14" */}
-
-`theme(reference)` 只拦得住 `@theme` 块的输出，**拦不住普通规则**。把带 `:root { --background: … }`
-的声明面一起引进件的构建里，每个件的表都会多出一整份 `:root`，跟页面上那张叠成两份真相。
-
-拆开之后：映射让类名解析得出来（`bg-primary` → `var(--primary)`），值仍在运行时取页面那张
-表的变量。实测验收件的产物里 `:root` 出现 **0 次**。
-
----
 
 ## 验收方法
-
 ### 装件时**共享包要显式带上**——pnpm 自动装的 peer 不算数
 
 验收开的干净 home 里装了 `cli` / `shell` / `logger` / `hello` 四个件，起来之后**页面一片空白**。
@@ -401,78 +228,6 @@ CSS 里**未分层的规则优先级高于所有分层规则**。件的表只写
 
 这条容易被「peer 会被 pnpm 自动装进 home」那句话骗过去——**那句话没错，错在「装进来」不等于
 「进了 dependencies」**。
-
-### 量颜色前先关掉过渡——「等它跑完」是靠不住的
-
-shadcn 的 button 基础类里有 `transition-all`。切换 `.dark` 之后立刻 `getComputedStyle`
-读到的是过渡中间色：暗色 `--primary` 应该是 `oklch(0.92 …)`，第一次验收读出来是
-`oklab(0.223 …)`，看着像「切换没生效」。
-
-**当时的解法是「等 600ms 再读」，那是错的，后来就翻车了**：同一套代码换了个组件重跑，
-600ms 之后读到的是 `oklab(0.21 …)`——**过渡的起点**，一动没动。原因是探针把窗口
-**最小化**启动，而 Chromium 会**节流后台窗口的动画**，等多久都可能停在起点。上一次
-读对纯属碰巧。
-
-两个可靠的判据：
-
-- **返回格式就是指纹**：过渡进行中返回 `oklab(…)`（插值空间），停下来才是原始的 `oklch(…)`。
-  读到 oklab 就说明这个数不能信
-- **body 与按钮读数不一致**也是指纹：body 没有 transition，它任何时候都是终值
-
-正确的量法是**把过渡关掉再读**，跟等多久无关：
-
-```js
-const kill = document.createElement('style')
-kill.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}'
-document.head.appendChild(kill)
-```
-
-顺带：直接读 `getComputedStyle(el).getPropertyValue('--primary')` 也不受过渡影响——
-CSS 变量本身不参与过渡（除非用 `@property` 声明过类型）。
-
-### 探针里别用 `requestAnimationFrame` 等帧——后台窗口里它根本不跑
-
-上一条的**同一个根因，另一副面孔**。验亮暗切换时探针写成「点一下按钮 → 等两帧 →
-读颜色」，症状是 **CDP 直接超时**：`Runtime.evaluate` 一去不回，20 秒后自己断掉。
-查了一圈才想起来是 Chromium 节流后台窗口——rAF 一次都没触发，那个 promise 永远
-resolve 不了。
-
-**过渡关掉之后本来就不用等**：`getComputedStyle` 是同步的，改完类名当场读就是终值。
-要等异步的东西就用 `setTimeout`（它不受节流影响到这个程度），别用 rAF。
-
-### 探针的轮询要放在 node 侧，别写在页面里——同一个根因的第三副面孔
-
-上面那条说 rAF 在后台窗口里不跑。**页面内的 `setTimeout` 轮询同样靠不住**：验 hello 那两条
-CLI 时，写成
-
-```js
-// 在页面里跑:20 秒轮询,一次都没成
-new Promise((resolve) => {
-  const tick = () => { if (找到了) return resolve(true); setTimeout(tick, 200) }
-  tick()
-})
-```
-
-**20 秒一次都没等到**，而同一段判断在 node 侧 `await new Promise(r => setTimeout(r, 2000))`
-之后一次 `Runtime.evaluate` 就读到了。原因同上：窗口没获得焦点时 Chromium 把页面的 timer
-节流掉，而 React 的重渲染也排在那类被节流的 task 里。
-
-**写法**：轮询的循环放在 node 侧，每轮发一次独立的 `Runtime.evaluate`，页面里只做一次同步判断。
-
-### dockview 的标签要**反复点到成功为止**
-
-`.dv-tab` 上 dispatch 那串 `pointerdown/mousedown/...`（见下面那条）**点得太早时照样返回成功，
-但那一格并不会切过来**——dockview 还没把事件接上。一次性点完就去等，会等到超时。
-
-正确的形状是把点击本身放进轮询：每轮先看目标那格的 DOM 出现没有，没出现就再点一次。
-
-### 探针里判「这次的结果」别拿自己塞的 DOM 属性当记号
-
-验那三颗按钮时，想用 `node.setAttribute('data-stale','1')` 标记上一轮的输出、再用
-`:not([data-stale])` 等新结果。**永远等不到**：React 更新时复用的是同一个 DOM 节点，
-自己塞的属性它既不认识也不会替你摘掉。
-
-比对 `textContent` 变化才是可靠的。
 
 ### 验 node-only 的件不必起 electron，但 `createRequire` 得先 `realpath`
 
@@ -499,49 +254,8 @@ new Promise((resolve) => {
 里的真身——件算出来的包根正是它实际装着的位置，`gwb-py-cli` 的 venv 也就建在那儿，
 而那正是要验的东西。
 
-### dockview 的标签不听 `.click()`
-
-探针要切窗格标签时 `tab.click()` **一点反应都没有**，而且不报错——活动标签原样不动，
-探针接着就撞上「找不到那一格里的按钮」，看着像是那一格没画出来。
-
-它听的是 **`pointerdown` / `mousedown` 序列**：
-
-```js
-for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) {
-  tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window, button: 0 }))
-}
-```
-
-顺带一条**验收时必须知道的**：同一个 group 里不活动的那一格，dockview 的默认渲染器
-（`onlyWhenVisible`）**只把 DOM 摘走、不卸组件**。所以 `querySelector` 找不到它里面的
-东西，但它的 React 状态、总线监听全都还活着——「切走再切回来，计数还在」是对的，
-「切走的那一格收不到总线事件」则是错的。
-
-### 【未决】dockview 的标签经 CDP 一次都点不动，连真鼠标事件也不行
-
-2026-09-09 验前缀围栏时撞上的，**至今没有结论，先记在这儿别让它烂掉**。
-
-上面两条给的招（dispatch `pointerdown/mousedown/pointerup/mouseup`、反复点到成功为止）
-这一次**一次都没成**。换成 CDP `Input` 域发**真鼠标点击**——那是浏览器自己合成的、
-`isTrusted` 为真的事件——**同样切不动**。两个方向对称地试过（A→B 与 B→A），
-四发事件的 `target` 每次都落在 `.dv-tab` 上，坐标没打偏，活动标签就是不换。
-
-最后是走状态栏的「打开窗格」菜单，靠那条 focus 的路才切过去的——取证因此没有卡住。
-
-**没验的那一半**：真人拿鼠标点能不能切，没人试过。所以现在说不出这是 dockview 的问题、
-CDP 的问题，还是这一版外壳的问题。
-
-**跟这次的 diff 无关**：`GwbTab.tsx` 一行没动，前缀围栏也不碰标签条。哪天真人点也切不动，
-再当成一条真的墙来查。
-
-**2026-09-09 第二轮（其余四件全迁那次）没再撞上**：四格窗格全部经状态栏的「打开窗格」
-菜单激活成功，取证一路顺。所以这条现象**不是稳定复现的**，而**真人拿鼠标点能不能切
-仍然没人试过**——两个未知都还在，这条继续挂着。
-
----
 
 ## gwb:// 取货
-
 ### 子路径是 `exports` 表里的键，不是文件名
 
 约定是 `gwb://asset/plugins/<包名>/<exports 子路径>`，而**子路径就是 `exports` 键去掉
@@ -558,282 +272,12 @@ TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@god
 同一个 URL 里紧挨着的 `style.css` 反而是对的（那条 exports 键就叫 `./style.css`），
 两条并排更容易看漏。
 
-{/* ref file="../plugins/shell/src/client/asset.ts" lines="1-5" */}
+（那段代码已随 `gwb://` 协议与外壳迁走——本页留档，钉码随之退场。）
 
 ---
 
-## dockview
-
-### 主题必须经 `theme` 选项交给它，挂在 `<html>` 上没用
-
-第三刀最费时间的一条。皮肤表写好了、`<html>` 上挂了 `dockview-theme-light
-dockview-theme-gwb` 两个类，探针读 `document.documentElement` 上的
-`--dv-group-view-background-color` 是对的（`oklch(1 0 0)`），**可井底是一片深蓝黑**。
-
-根因在祖先链里：dockview 自己会把主题类名写到它内部的 `.dv-shell` 上，不传就是默认的
-**`dockview-theme-abyss`**（一套深色主题）。那一层比 `<html>` 近，整个把我们的值压掉了。
-
-```
-DIV.dv-shell dockview-theme-abyss …     ← 它在这儿挂,--dv-* 从这层往下都是 abyss 的
-…
-HTML.dockview-theme-light dockview-theme-gwb   ← 我们挂的这份被压在外面
-```
-
-正解是传 `theme: { name, className, colorScheme }`。**`className` 一个字段塞得下几个类**
-——dockview 那边是 `classNames.split(' ')` 收的。
-
-`<html>` 上那份留着当兜底，给可能挂到 `body` 下的门户元素——多挂一个只定义变量的类
-代价是零，漏了的话那些元素一片没样式，而且要拖起来才发现。
-
-**后来撤掉了它的主题**，`className` 现在只有 `dockview-theme-gwb` 一个（当时是
-`dockview-theme-light` 打头、我们那份只覆盖配色）。这条墙本身没变：**不经 `theme` 选项
-交，`.dv-shell` 上就是 `dockview-theme-abyss`**——撤主题之后忘了传，症状照旧是井底深蓝黑。
-
-### 它自带的 18 套主题一套都不挂，所以那批变量得自己给全
-
-撤掉它的主题之后，裁剩的基础规则引用的 **54 个 `--dv-*` 全由 `dockview-theme.css` 提供**
-（表里实际定义了 71 个——多出来的是企业模块那批与我们自己的中间变量，**故意全定义**，
-维护「已知用不到」的例外清单只会腐烂）。dockview 升级新增一个，我们就漏一个，而**漏了是
-读空、不报错**——只是某个高度没了、某个交互没样式。
-
-**升级 dockview 之后核对一遍**，一条命令的事（在 `plugins/shell` 里跑）：
-
-```powershell
-# 剔掉选择器带 .dockview- 的块（跟 build.ts 同口径）→ 扫剩下的裸引用 → 跟我们表里声明的比对
-node -e "const p=require('postcss'),f=require('fs');const r=p.parse(f.readFileSync(require.resolve('dockview-react/dist/styles/dockview.css'),'utf8'));r.walkRules(u=>{if(u.selectors.every(s=>s.includes('.dockview-')))u.remove()});const used=new Set([...r.toString().matchAll(/var\(\s*(--dv-[\w-]+)/g)].map(m=>m[1]));const mine=new Set([...f.readFileSync('src/client/dockview-theme.css','utf8').matchAll(/^\s*(--dv-[\w-]+)\s*:/gm)].map(m=>m[1]));console.log('用到',used.size,'个，我们定义了',mine.size,'个');console.log('缺:',[...used].filter(v=>!mine.has(v)))"
-```
-
-口径要跟 `build.ts` 对齐：它裁的是**所有** `.dockview-`，不只是 `.dockview-theme-`
-（`.dockview-spaced` 那个 modifier 也在里头）。按「只裁 theme」的口径数出来是 62，
-那个数跟产物对不上。
-
-**没做成构建期守卫**，写过一版又砍了（90 行，核心 22 行）。判据是准入第二关：dockview 钉在
-8.2.0、没有升级计划，这条防的是「将来某次升级」，典型的「将来可能要」。而且「静默塌陷」
-这个说法要打折——**升级是个有意动作**，做的人总会开一次应用，标签条高度没了那种当场看得
-见；真藏得住的只有拖放指示器颜色这类要特定交互才出现的。那 22 行随时能写回来。
-
-### 8.2.0 里标签之间那条分隔线，它自己的规则是死的
-
-`--dv-tab-divider-color` 我们接了 `--border`，实机量下来 `::before` 的 `content` 是 `none`
-——**线根本没画**。而规则明明在产物里（不是被我们裁掉的）：
-
-```css
-.dv-tabs-container.dv-horizontal .dv-tab:not(:first-child)::before { content: " "; … }
-```
-
-问题在选择器：**标签条的方向类早改成了 `dv-tabs-container-vertical`**（水平态干脆不挂
-modifier），而 `dv-horizontal` / `dv-vertical` 现在只属于 split-view。那三条分隔线规则
-匹配不上任何 DOM，**它自带 18 套主题里那些 `--dv-tab-divider-color` 也就一起空转了**。
-是上游的 bug，跟我们裁不裁表无关。
-
-我们的形态是**矩形分割**——标签紧贴、方角，非活动标签跟标签条底同色，全靠这条线划开。
-所以照它原本的意图重写了一遍，只换成能命中的选择器（`.dv-tab` 的 `position: relative`
-在基础规则里，不用我们给）。
-
-一般教训：**接了变量不等于那条规则会跑**。量的时候要量最终效果（`getComputedStyle(el,
-'::before').content`），不能只量变量读没读空——这次那 20 个变量一个都没读空，线却没有。
-
-### `addPanel` 撞 id 是同步抛，而抛出去的后果比「少开一格」重
-
-`api.addPanel({ id })` 撞上已经存在的 id **同步抛 Error**（`_doAddPanel` 头一句就是这个
-守卫），不覆盖、不返回已有的那个。
-
-第三刀的 `onReady` 里是裸 `addPanel`，**没预检也没 try/catch**。当时不炸纯粹是运气好——
-注册表的 Map 键 `(entryId, 窗格 id)` 在上游保证了不会有同键两条。而它一旦炸：
-
-1. `onReady` 是在 dockview-react 的 `useEffect(…, [])` 里**同步**调的，异常从 effect 里
-   冲出去 → React 把整棵树卸掉 → **白页**
-2. 那个 effect 的 `return () => api.dispose()` **从来没被返回**，DockviewComponent 连同
-   它的 ResizeObserver 一起泄漏
-3. `bootShell` 的 `.catch` 接不到——它接的是 `boot()` 那条 Promise，不是 React 渲染
-
-所以开格只有一条路：**先算好唯一 id 再 addPanel**，`onReady` 与 `openPane` 同吃这一处。
-
-顺带一条查证掉的顾虑：**panel id 不进 DOM**。tab 与 tabpanel 的 DOM id 是自增计数器
-（`dv-tab-N`），dockview 全文的 `querySelector` 查的都是 `.dv-*` 类名。所以 id 里用什么
-字符都安全——`:` 作分隔的理由不是「怕 querySelector」，是「就一种分隔符」。
-
-另有一条**格式硬要求**：落盘时 panel 表是**按 id 做键的对象**（`_doFromJSON` 里
-`Object.keys(data.panels)`），所以序列化格式根本表达不出重复 id。实例 id 全局唯一不是
-「最好这样」，是格式要求。
-
-### 窗格 id 里不许有 `:`，否则查重会静默认错格
-
-`entryId` 自己就带冒号（实机 `home:hello`），而面板 id 是 `plugin:<entryId>:<窗格 id>`。
-窗格 id 里再有一个冒号的话，两组不同的「条目 × 窗格」能拼出同一个基名：
-
-- `home:hello` + `main` → `plugin:home:hello:main`
-- `home` + `hello:main` → `plugin:home:hello:main`
-
-**加了实例查重之后这个洞反而更难查**：以前是 `addPanel` 当场抛，现在查重把它当成
-「已经开着」，静默追个 `:2` 上去。人看到的是自己的窗格标题莫名多了个「(2)」，而源头
-在另一个件的注册参数里。
-
-注册那一步直接拒了，跟空 id 一样抛、话里带包名。
-
-### 产物守卫的正则得锚在行首，不然被它自己的错误消息骗
-
-shell 的产物守卫头一次跑就报「`dockview-enterprise` 泄漏进束里了」。**束是干净的**
-——那个字符串出自 dockview 的一句错误消息，文案里嵌着一段示例代码：
-
-```
-  npm install dockview-enterprise
-  import 'dockview-enterprise'; // self-registers every enterprise module
-```
-
-第一版正则满文件找 `import '…'`，773KB 的束里什么文本都有。改成 `^import` 锚行首：
-认的是**产物的形状**——tsc 与 esbuild 都把顶层 import 顶格写，字符串字面量里的那种
-总带着缩进。跟 shared-react 那条补丁正则同属一类，是个明摆着的脆弱点，但比满文件
-找三个字母可靠得多。
-
-同一份守卫里查「dockview.css 不许有 scope 规则」那条也被自己绊了一次：两张表的**头注
-里都在讲这件事**，`toContain('data-gwb-plugin')` 查到的是文案不是规则。查规则之前先
-剥注释。
-
----
-
-## 组件与 shadcn CLI
-
-### `components.json` 的 `tailwind` 是必填的，件因此得有个样式入口
-
-schema 的顶层 required 是 `style` / `tailwind` / `rsc` / `aliases`，而 `tailwind` 自己的
-required 是 `config` / `css` / `baseColor` / `cssVariables`——**一个都不能省**。省了报的是
-一句没有细节的 `Invalid configuration found in …/components.json`。
-
-`tailwind.css` 得指一个真实路径。件本来没有 CSS 入口（构建输入由 `tools/build-styles.ts`
-在内存里拼），所以补了一个 `src/client/styles.css`。**这不是被工具逼出来的负担**——件作者
-本来就需要一个地方写自己的 CSS 规则，构建线把它 `@import` 到输入末尾。
-
-Tailwind v4 下 `tailwind.config` 填空字符串（v4 没有配置文件了）。
-
-### 别写 `baseUrl`——TS 7 把它移除了
-
-{/* ref file="../plugins/hello/tsconfig.json" lines="1-12" */}
-
-shadcn 文档教的是 `baseUrl` + `paths` 那套老写法，照抄会撞
-`error TS5102: Option 'baseUrl' has been removed`。TS 7 里 `paths` 直接相对 tsconfig
-所在目录解析，把 `baseUrl` 删掉就行，别的不用动。
-
-`@/` 别名一共要配三处，都指 `src/client`：件根的 tsconfig（**给 CLI 读**，它据此决定把
-拉下来的组件放哪）、`src/client` 那份（给 typecheck）、`build.ts` 里 esbuild 的 `alias`
-（给打包）。
-
-### 件根少配那处 `paths`，CLI 会把组件放进一个**字面叫 `@` 的目录**
-
-上一条原先写着「少配一处都是构建期就炸，不会拖到运行时」——**那句不全对，件根那处不是**。
-
-CLI 拿件根的 tsconfig 去解析 `components.json` 里的 `@/components/ui`。件根没有 `paths` 时
-它**不报错、也不回落**，照字面建出一个目录：
-
-```
-plugins/logger/@/components/ui/button.tsx   ← 四个组件全落这儿
-```
-
-**症状**：CLI 高高兴兴说 `✔ Created 4 files`，只是路径写的是 `@\components\ui\button.tsx`
-——那一行是唯一的线索，而且很容易当成别名的显示写法扫过去。真正的报错要等到 typecheck，
-说的是「找不到 `@/components/ui/button`」，跟根因隔着一层。
-
-**修**：件根 tsconfig 补上 `paths`，删掉误建的 `@` 目录重拉一次。写这个件时就是这么撞的。
-
-### 新版 shadcn 不再生成 `lib/utils.ts`，改用 `cn` 这个包
-
-拉下来的组件头一行是 `import { cn } from "cn"`——那是 shadcn 官方发的包
-（`github.com/shadcn-ui/cn`，MIT），定位是 clsx + tailwind-merge 的 drop-in 替代。
-所以 **`lib/utils.ts` 没有了**，`clsx` 与 `tailwind-merge` 也跟着退场。
-
-CLI 把 `cn` 装进 **`dependencies`**。按本仓判据「打进本束的算 dev」要挪到 devDependencies
-——它会被 esbuild 打进 `client.js`，留在 dependencies 只会让装这个件的人多下一份用不上的包。
-
-### new-york 的组件满是 `animate-in`，样式入口不引 `tw-animate-css` 它们静默为空
-
-`animate-in` / `fade-in-0` / `zoom-in-95` / `slide-in-from-*` 这一族**不是 Tailwind 自带的**，
-出自 `tw-animate-css` 那个包。而 shadcn 的 new-york 风格从 `dropdown-menu` 到 `dialog`
-到处在用它们——样式入口里没引这个包，Tailwind 就**一个字节都不生成**：类名照写、构建照绿、
-菜单永远不动画。
-
-**没有任何一处会报错**，因为「编不出规则」在 Tailwind 眼里跟「这不是个类名」是同一回事
-（同一条性质在换成前缀围栏之后另有一副面孔，见[定过的事](/docs/decisions)那条 2026-09-09）。
-
-**scope 方案的件一直如此，没人报过**——`tools/build-styles.ts`（那条线 2026-09-09 已删）
-拼的输入里也没有这一行，所以那些件的菜单本来就是硬切的。是写 hello 那份独立样式入口时
-逐条问「这行不引会怎样」才发现的，不是撞出来的。
-
-写清在样式入口的头注里，跟另外三条 import 一起，一条都不能省：
-
-{/* ref file="../plugins/hello/src/client/styles.css" lines="20-23" */}
-
-### CSS 头注里写 `--tw-enter-*` 那个 `*/` 会提前闭合注释，报的错完全不指根因
-
-跟本页上面那条「块注释里出现 `*/`」是**同一个坑的 CSS 版**，但症状换了一副更难认的面孔。
-
-`tw-animate-css` 带出来的是十七个 `--tw-enter-…` `--tw-exit-…` 的 `@property`。头注里想把
-这批变量名用通配写出来，写成 `--tw-enter-*`、后面紧跟一个 `/`，**那个 `*/` 当场关掉了
-`/* … */`**，注释的后半段变成了真 CSS。
-
-报出来的是一句
-
-```
-Could not resolve value for theme function: theme(reference)
-```
-
-——**它指的是文件开头那几行 import，跟真正出事的地方隔着整段注释**。第一反应会去查
-`theme(reference)` 是不是写错了、令牌包的映射面是不是没装上，而那儿一点问题都没有。
-
-修法跟 TS 那条一样：把通配的 `*` 换成省略号，别让 `*` 挨着 `/`：
-
-{/* has file="../plugins/hello/src/client/styles.css" text="--tw-enter-…" */}
-
-**判据**：往块注释里写 glob、通配、路径样式的东西之前，先看一眼里头有没有 `*/`——
-这条对 TS 和 CSS 一样成立，而 CSS 这边的报错更不指路。
-
-### `group` 这类标记类也要带前缀，不带就永远不命中
-
-迁 logger 到前缀围栏时撞的。日志行上挂 `group`、行里的来源名写 `logger:group-hover:…`
-——**类名全在、规则也编得出来、就是不生效**，鼠标划过去毫无反应。
-
-根因是 Tailwind 编 `group-hover:` 时会去找那个**锚**，而带前缀之后它找的是带前缀的那个：
-
-```css
-/* logger:group-hover:text-foreground/90 编出来的 */
-:is(:where(.logger\:group):hover *) { … }
-```
-
-锚要是写成裸的 `group`，DOM 上就没有 `.logger\:group` 这个类，选择器**永远匹配不上**。
-
-**没有任何一处会报错**——跟本页上面那条「不引 `tw-animate-css` 就静默为空」是同一种性质
-的另一副面孔：这次规则编出来了，只是它认的名字和你挂上去的名字不是一个。
-
-{/* ref file="../plugins/logger/src/client/index.tsx" lines="333-336" */}
-
-{/* ref file="../plugins/logger/src/client/index.tsx" lines="348-350" */}
-
-上下两段是同一对：行上挂 `logger:group`，行里的来源名用 `logger:group-hover:` 去找它，
-**两头都带前缀**才对得上。
-
-**判据**：凡是「一个类当锚、另一个类的变体去找它」的搭配——`group` / `peer` 这一族，还有
-`group/<名>` 这种具名变体——两头一起带前缀。守卫抓不住这一条：`group` 本身在无前缀的
-编译下也编不出规则（它不是工具类，是个纯标记），所以 `prefix.test.ts` 那条「编得出的就是
-漏了前缀」的判据对它天然沉默。
-
-### lucide 图标身上的 `.lucide` 不是围栏泄漏
-
-验前缀围栏时在 DOM 里看到一堆 `class="lucide lucide-chevron-down"`，第一反应是「有裸类名
-漏出来了」。**不是。** 那是 lucide 烤进 SVG 的**身份属性**，跟容器上的 `data-gwb-plugin`
-同性质：全站的样式表里**没有任何一条规则匹配 `.lucide`**，它挂在那儿只是给人和探针一个
-认图标的把手。
-
-**围栏的判据在样式表这一侧，不在 DOM 这一侧**：泄漏的定义是「产物里有一条不带前缀的类
-选择器」，产物守卫查的正是这个。DOM 上有一个没人给它写规则的类名，一个字节的样式都不会
-因此串门。
-
-**所以别顺手去掉它**（改 `iconNode`、加 `className` 覆盖都够得着）：去掉之后围栏一点没变强，
-调试时反倒少了一个把手。反过来，**验围栏时也别拿 DOM 里的类名清单当证据**——要看的是
-`dist/*.css` 里的选择器。
-
----
 
 ## MCP 与 skill
-
 ### 块注释里出现 `*/` 会把注释提前关掉
 
 写 MCP 那段头注释时提了一句「发不出 `notifications/*/list_changed`」——**那个 `/*/`
@@ -895,9 +339,10 @@ hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 
 
 两对命令的差别只在登记的写法。前一对经运行器登记，运行器内部替调用方挂在它的 effect 上；
 后一对是 hello 自己直接 `cli.register`，**没包 `ctx.effect`**——`register` 回的注销函数
-没人调，条目停了、fiber 灭了、表上的名字还在：
+没人调，条目停了、fiber 灭了、表上的名字还在。hello 已迁验收仓（钉码跟过去钉得住），
+本仓现在的正面写法在 logger：
 
-{/* ref file="../plugins/hello/src/index.ts" lines="90-99" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="132-142" */}
 
 症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
 「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是

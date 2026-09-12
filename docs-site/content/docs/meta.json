@@ -2,15 +2,13 @@
   "pages": [
     "overview",
     "commands",
-    "shell",
-    "styles",
     "logger",
     "skills",
     "mcp",
     "node-cli",
     "py-cli",
     "settings",
-    "plugins",
+    "plugin-manager",
     "decisions",
     "walls"
   ]

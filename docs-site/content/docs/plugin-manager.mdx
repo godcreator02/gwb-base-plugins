@@ -1,44 +1,46 @@
 ---
-title: gwb-plugins：插件管理
+title: gwb-plugin-manager：插件管理
 description: 包与条目两层怎么对起来，装卸检升怎么走，装件时 peer 谁装谁跳过，一键更新为什么是热重挂而不是重启
 docfirst: none
 ---
 
-# gwb-plugins
+# gwb-plugin-manager
 
-包名 `@godcreator02/gwb-plugins`，服务 `ctx.gwbPlugins`。它管两样东西，而这两样是两回事：
+包名 `@godcreator02/gwb-plugin-manager`，服务 `ctx.gwbPluginManager`。它管两样东西，而这两样是两回事：
 
 - **包**——npm 包，pnpm 装进 home 的 `node_modules`。装了包**什么都不会发生**，它只是躺在盘上
 - **条目**——`cordis.yml` 里的一行，指向一个包。挂上条目，件的代码才真的跑起来
 
 这个件的全部工作就是把两层对起来：装（`install`）、卸（`uninstall`）、查新版（`outdated`）、
-升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名，外加一格「插件」
-窗格（已装 / 可装两段）。市场件为什么并进来、白名单为什么退场、卸载为什么第一版不做后来
+升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名。操作那格「插件」
+窗格（已装 / 可装两段）不住这儿——2026-09-12 三仓拆分时浏览器半随劈 core 搬去了
+`@godcreator02/gwb-baseui`，本件只剩 node 半的服务与命令；同一趟里原 `gwb-plugins` 断代
+改名，新包从 0.1.0 起。市场件为什么并进来、白名单为什么退场、卸载为什么第一版不做后来
 又做了，见[定过的事](/docs/decisions)那三条 2026-09-08。
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="25-55" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="24-57" */}
 
 ## 两层怎么对起来
 
 盘上那份清单（home 的 `package.json`）与内存里那棵条目树，`reconcile` 对成一张表，
 **两边都不丢**：
 
-{/* ref file="../plugins/plugins/src/inventory.ts" lines="127-154" */}
+{/* ref file="../plugins/plugin-manager/src/inventory.ts" lines="127-154" */}
 
 清单里有、树上没有的包报成 `entries: []`——它可能是装了没挂的件，也可能是共享包
 （`gwb-shared-react`、`gwb-tokens` 这种，永远不该有条目）。这儿不下结论，界面拿
-`plugins.shared` 那张表把共享包摘出去。树上有、清单里没有的（手改过 yml、或包被 `pnpm remove`
+`plugin-manager.shared` 那张表把共享包摘出去。树上有、清单里没有的（手改过 yml、或包被 `pnpm remove`
 掉了）报成 `installed: false`，界面上是一排 ghost——**卸载先摘条目后卸包**就是为了不制造它。
 
 **改条目树只有一条路**：经 loader 那棵树的 `create` / `remove` / `update`，不自己写 yml。
 loader 把盘上那份 yml 跟内存里挂着的条目绑在一起，绕过它写文件，内存不知道，下一次
 `write()` 就拿旧的内存态把盘上的盖回去：
 
-{/* ref file="../plugins/plugins/src/tree.ts" */}
+{/* ref file="../plugins/plugin-manager/src/tree.ts" */}
 
 ## 装：件的 peer 也进 home
 
-`plugins.install` 是三步不是两步：`pnpm add` 进 home → **把该进 home 的 peer 也装成 home 的
+`plugin-manager.install` 是三步不是两步：`pnpm add` 进 home → **把该进 home 的 peer 也装成 home 的
 直接依赖** → 加一条条目。中间那步 0.4.0 才有。
 
 ### 为什么非装不可
@@ -46,7 +48,7 @@ loader 把盘上那份 yml 跟内存里挂着的条目绑在一起，绕过它�
 件如果依赖一个**会独立升级**的 npm 包，而且只是读它的文件、起它的进程（不 import 它的
 代码），那个包就该是件的 peer——件每次现查 `<home>/node_modules/<包名>`：
 
-{/* ref file="../plugins/plugins/src/peers.ts" lines="4-20" */}
+{/* ref file="../plugins/plugin-manager/src/peers.ts" lines="4-20" */}
 
 **那条路径只有在包进了 home 的 `package.json` 时才存在**，而且它是一条**会被 pnpm 改指的
 junction**，指向永远是当前版本。反过来，`import.meta.resolve` 拿到的是一次性解开的、带
@@ -61,24 +63,24 @@ junction**，指向永远是当前版本。反过来，`import.meta.resolve` 拿
 
 ### 判据：谁装、谁跳过
 
-{/* ref file="../plugins/plugins/src/peers.ts" lines="80-131" */}
+{/* ref file="../plugins/plugin-manager/src/peers.ts" lines="80-131" */}
 
 按顺序四条。**已经在 home 的 `package.json` 里的一个字不动**——不降级、不改写别人钉好的
 版本，那条依赖是谁装的、为什么钉在那儿，这儿一概不知道。`cordis` 跳过：件
 `extends Service` 的那个基类必须是宿主手上那一份，home 里再装一份就是第二张服务注册表。
 `@godcreator02/gwb-*` 里还要再分一次——**共享包装、件跳过**，判据是清单里有没有
-`gwb.shared`（内核扫它拼 importmap、`plugins.shared` 读同一批，是本生态既有的标记）：
+`gwb.shared`（内核扫它拼 importmap、`plugin-manager.shared` 读同一批，是本生态既有的标记）：
 
 - **共享包**（`gwb-shared-react` / `gwb-tokens`）**本来就该是 home 的直接依赖**——内核只扫
   home 的 dependencies 拼 importmap，它不在那张清单里等于没有。跟这次要装的 peer 同一个形状
-- **件**有自己的进 home 之路（`plugins.install`，装完还落一条条目），从 peer 这条路顺手塞
+- **件**有自己的进 home 之路（`plugin-manager.install`，装完还落一条条目），从 peer 这条路顺手塞
   进来只会在「已装、没挂条目」区里堆一排没人挂的包
 
 种类要读那个包自己的清单，而它**不在** `<home>/node_modules/<件>/node_modules/` 下——
 pnpm 把 peer 跟件并排放在虚拟仓那一层，`<home>/node_modules/<件>` 只是指过去的一条 junction。
 所以先解软链、按包名有几段往上退几层，退到的才是件的解析面：
 
-{/* ref file="../plugins/plugins/src/home.ts" lines="40-69" */}
+{/* ref file="../plugins/plugin-manager/src/home.ts" lines="40-69" */}
 
 两处都读不到就**保守当件跳过**（常见原因：它是条 `optional` 的 peer，pnpm 不为这种自动补）
 ——多装一个包只是占磁盘，可把一个件当普通包塞进 home 会在界面上凭空多出一行「装了没挂
@@ -86,7 +88,7 @@ pnpm 把 peer 跟件并排放在虚拟仓那一层，`<home>/node_modules/<件>`
 
 ### 执行：装 latest、一条一趟、永不让装机失败
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="605-645" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="582-622" */}
 
 **装 latest 不装清单上那条 range**：这个生态的 peer range 一律写 `>=`（`//peerRange`），
 latest 通常都满足；按 range 装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进
@@ -99,16 +101,16 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而件挂
 
 ### 回执
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="98-130" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="90-122" */}
 
 `action` 四种：`installed`（这次装成了直接依赖）、`present`（本来就在，版本没动）、
 `skipped`（不该由这条路装，`note` 里是理由）、`failed`（装不上，`note` 里带 pnpm 尾巴）。
-有 `failed` 时顶层 `note` 点名，窗格那侧把整条提示压成红的——件是装上了，可那条依赖跑起来
-会扑空。
+有 `failed` 时顶层 `note` 点名，窗格那侧（住 gwb-baseui 的那格）把整条提示压成红的——件是
+装上了，可那条依赖跑起来会扑空。
 
 ### 卸载不动 peer
 
-`plugins.uninstall` 只拿走这个包与它的条目，**不去追谁还在用那些 peer、一条都不删。**
+`plugin-manager.uninstall` 只拿走这个包与它的条目，**不去追谁还在用那些 peer、一条都不删。**
 这不是漏了，是判过的：**代价不对称**——残留一个没人用的包只是占磁盘，误删一个还有件在用的
 包是运行时故障。真要清，人自己在 home 里 `pnpm remove`。
 
@@ -118,14 +120,14 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而件挂
 
 ## 一键更新：热重挂
 
-`plugins.update-all`，无参数（或 `{ only?: string[] }` 限定包名）。agent 发完一批新版本、
+`plugin-manager.update-all`，无参数（或 `{ only?: string[] }` 限定包名）。agent 发完一批新版本、
 人在工作台点一颗键，**全升、不重启**。它一条命令做完三件事：查清单 → 一趟 pnpm →
 逐条重挂 → 整页重载。**判据与经过在[定过的事](/docs/decisions)那条 2026-09-09
 「一键更新是热重挂，不重启」**，这儿讲它怎么转。
 
 ### 为什么「停用再启用」就是重 import
 
-{/* ref file="../plugins/plugins/src/update-all.ts" lines="5-21" */}
+{/* ref file="../plugins/plugin-manager/src/update-all.ts" lines="5-21" */}
 
 loader 那棵树上一条条目的 `update(id, { disabled: true })` 会 `fiber.dispose()`；再
 `update(id, { disabled: null })`（`null` 是「删掉这个字段」）时它看到 fiber 没了走 `init()`，
@@ -140,7 +142,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 计划是纯函数：一趟 pnpm、自己最后
 
-{/* ref file="../plugins/plugins/src/update-all.ts" lines="63-96" */}
+{/* ref file="../plugins/plugin-manager/src/update-all.ts" lines="63-96" */}
 
 三件事在这段里定死：
 
@@ -153,7 +155,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 执行：升级与重挂同一条命令，不留窗口
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="730-753" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="707-730" */}
 
 pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件若读盘（惰性 import 一个子模块、
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
@@ -161,7 +163,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件�
 
 一条条目的重挂是四步，不是两步：
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="1010-1024" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="987-1001" */}
 
 **等旧的拆完再启用**这一步不能省：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
 **不等它**，而 Service 件的 `provide` 是在卸载那趟里撤的。不等就启用，新 fiber 起来时旧服务
@@ -170,11 +172,11 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件�
 （PENDING 时 inertia 是空的）；会挂死的只有某个件的 `apply` 自己不回来，那种情况到点就走，
 读到什么状态报什么：
 
-{/* ref file="../plugins/plugins/src/update-all.ts" lines="119-144" */}
+{/* ref file="../plugins/plugin-manager/src/update-all.ts" lines="119-144" */}
 
 ### 自己最后，而且在回执之后
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="755-781" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="732-758" */}
 
 处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
 「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
@@ -188,7 +190,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件�
 
 ### 回执
 
-{/* ref file="../plugins/plugins/src/index.ts" lines="152-192" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="144-184" */}
 
 每条条目的去向有四种：`remounted`（重 import 了新版本）、`skipped`（本来就停用，保持停用）、
 `deferred`（本件自己那条）、`failed`（动树时抛了，`state` 里是那句错）。`state` 照 cordis
@@ -201,27 +203,24 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧件�
 还是旧的，而 ESM 没有卸载、外壳内部重建做不到。所以收尾是 [`shell.reload`](/docs/shell)
 ——就是状态栏那颗「刷新」的命令版，归外壳。
 
-窗格那侧因此有一条跟别的动作不一样：**reload 在路上时 busy 不撤**——页面随时会被整页
-重载（自己也升了的话先是这一格关掉再开），撤了只会让人在最后一帧点到什么。没在路上
-（命令表里没 `shell.reload`、或者没成）才照常重取表、撤 busy：
-
-{/* ref file="../plugins/plugins/src/client/index.tsx" lines="866-891" */}
-
-点「全部更新」先在格内列 `from → to` 让人看一眼（照卸载确认框的做法），确认才调命令；
-有过期包才亮——没查过与查了全新都是灰的。
+窗格那侧的两条行为语义——**reload 在路上时 busy 不撤**（页面随时会被整页重载，自己也升了
+的话先是这一格关掉再开，撤了只会让人在最后一帧点到什么；没在路上才照常重取表、撤 busy），
+与点「全部更新」先在格内列 `from → to` 让人看一眼（照卸载确认框的做法，确认才调命令；
+有过期包才亮，没查过与查了全新都是灰的）——随浏览器半一起搬去了 `@godcreator02/gwb-baseui`
+（`plugin-manager` 那格窗格），正本在那边的仓里，跨仓钉不住，这儿只留这两句指路。
 
 ### agent 那头
 
 发完新版本调它，是写进 mcp 的 instructions 里的：
 
-{/* has file="../plugins/mcp/instructions.md" text="plugins.update-all" */}
+{/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update-all" */}
 
-升到 mcp 自己时这条回执会丢——桥随件重挂，连接断在半路——重连后 `plugins.list` 核对
-版本与 active。升到 gwb-plugins 自己时回执还在，只是自己那条 `deferred`。
+升到 mcp 自己时这条回执会丢——桥随件重挂，连接断在半路——重连后 `plugin-manager.list` 核对
+版本与 active。升到 gwb-plugin-manager 自己时回执还在，只是自己那条 `deferred`。
 
 ## 卸载：先摘条目后卸包
 
-{/* ref file="../plugins/plugins/src/uninstall.ts" */}
+{/* ref file="../plugins/plugin-manager/src/uninstall.ts" */}
 
 一个包在树上的全部条目，逐条 `tree.remove`（写回 yml、当场卸 fiber），再 `pnpm remove`。
 顺序反过来就是上面说的 ghost。**pnpm 失败不回滚**：条目已摘是正当落点，包落进「已装、

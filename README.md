@@ -1,26 +1,22 @@
 # gwb-base-plugins
 
-`gwb-kernel`（最小内核，单元 `26090705ymz`）的基础件仓。
+gwb 的**无头基础件仓**——九个无 UI 的件，零 UI 依赖（产物守卫钉着）。2026-09-12 三仓拆分后，
+UI 平台（shell / theme / baseui / shared-react / tokens）住 `26091217uiz\gwb-ui-plugins`，
+装配级验收位（hello）住 `26091217hkq\gwb-hello`，方案与判据见本站 spec 区。
 
-| 件        | 包名                           | 服务                 |
-| -------- | ---------------------------- | ------------------ |
-| commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands`  |
-| data     | `@godcreator02/gwb-data`     | `ctx.gwbData`      |
-| shell    | `@godcreator02/gwb-shell`    | `ctx.gwbShell`     |
-| hello    | `@godcreator02/gwb-hello`    | —（验收件）             |
-| skills   | `@godcreator02/gwb-skills`   | `ctx.gwbSkills`    |
-| mcp      | `@godcreator02/gwb-mcp`      | —（不 provide，只开一道口） |
-| logger   | `@godcreator02/gwb-logger`   | —                  |
-| settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings`  |
-| theme    | `@godcreator02/gwb-theme`    | —                  |
-| plugins  | `@godcreator02/gwb-plugins`  | `ctx.gwbPlugins`   |
-| node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli`   |
-| py-cli   | `@godcreator02/gwb-py-cli`   | `ctx.gwbPyCli`     |
+| 件              | 包名                                 | 服务                           |
+| -------------- | ---------------------------------- | ---------------------------- |
+| commands       | `@godcreator02/gwb-commands`       | `ctx.gwbCommands`            |
+| data           | `@godcreator02/gwb-data`           | `ctx.gwbData`                |
+| settings       | `@godcreator02/gwb-settings`       | `ctx.gwbSettings`            |
+| mcp            | `@godcreator02/gwb-mcp`            | —（不 provide，只开一道口）           |
+| skills         | `@godcreator02/gwb-skills`         | `ctx.gwbSkills`              |
+| node-cli       | `@godcreator02/gwb-node-cli`       | `ctx.gwbNodeCli`             |
+| py-cli         | `@godcreator02/gwb-py-cli`         | `ctx.gwbPyCli`               |
+| logger         | `@godcreator02/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）     |
+| plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升） |
 
 **各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
-
-`packages/` 下另有两个**共享包**（不是件，是件的依赖，跟件平级装进 home）：
-`@godcreator02/gwb-shared-react`（运行时环境）与 `@godcreator02/gwb-tokens`（设计令牌）。
 
 ## 跑起来
 

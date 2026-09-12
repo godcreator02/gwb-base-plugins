@@ -265,7 +265,7 @@ unpublish、测试 home 已删。**没升 default home。**
 核过的）是：条目 `disabled: true` → `fiber.dispose()`；再把 `disabled` 抹掉 → `update()` 见
 fiber 没了走 `init()`，而 `_init()` **每次重新 `tree.import(name)`**。所以「停用再启用」本身
 就是一次干净的重 import，不用 remove / create，条目在 yml 里的 id 与位置一字不动，设置与
-数据的归属（都按 id 分区）也就不动。做法见[插件管理](/docs/plugins)。
+数据的归属（都按 id 分区）也就不动。做法见[插件管理](/docs/plugin-manager)。
 
 **为什么升级与重挂要在同一条命令里**：pnpm 升级会**删掉旧版本目录**。分成两条命令
 （先 `update` 再 `remount`）的话，两条之间旧件若读盘（惰性 import 一个子模块、读自己
@@ -699,3 +699,27 @@ client 半自绘 + 一套取数轮询，比一扇窗格多一层服务、一层�
 **与 remove-entry 的分工**：删一条条目、包留着（服务第二条实例的场合），走
 `plugins.remove-entry`；整包走人，走 `plugins.uninstall`。两个动作、两个入口，不是同一
 个的两种写法——对话框里把这句写给了人。
+
+## 2026-09-12 三仓拆分：本仓瘦成无头九件，UI 平台与验收各自开仓
+
+**立场先立住**：shell 是一个 UI 平台的整体，**要换就整套换**——tokens（视觉契约）与
+shared-react（react 运行时口粮）跟 shell 同仓同进退，不为假想的第二外壳实现维护独立契约
+包。cordis 服务注入免费保留底线可换性（新外壳提供同名服务 `gwbShell`、同形 `mountPane`
+就接得上），这是副产品不是承诺。
+
+**判据（劈件三关，全过才劈）**：服务半有无头场景的真实消费者；UI 半是薄皮（逻辑沉在
+node 半）；core 暴露给 ui 的契约面小而稳。logger（mcp 查日志；且原 inject 硬赖 gwbShell，
+无壳 home 整件挂不上——这是修病）与 plugins（`plugins.install` 第一消费者就是无 UI 的
+agent）过堂劈 core；theme（服务半消费者是 shell 自己）与 hello（UI 即本体）不劈。
+
+**落地**：本仓九件零 UI 依赖（产物守卫钉着）；plugins 断代改名 **plugin-manager**
+（七面改穿，旧包停版留 registry）；两件的浏览器半合进新件 **gwb-baseui** 住 UI 平台仓
+（`26091217uiz\gwb-ui-plugins`，三规矩见那边文档站：嵌套注入缺谁少画谁、一窗格一模块、
+只收劈过件的皮）；hello 单件住验收仓（`26091217hkq\gwb-hello`，依赖全走 registry——
+验的是装配态不是开发态）。方案全案与执行记录在本站 git 历史的 spec 页
+`2026-09-12-three-repos-split`（做完拆解归梁删除）。
+
+**途中两刀**：logger 补挂薄服务 `gwbLogger`（面刻意留空——baseui 嵌套注入按服务名等待，
+没有它日志窗格永远 PENDING，有壳隔离 home 实机验出）；mcp 的 instructions 同步改名
+（0.3.3）。**已知墙**：default 上旧版 mcp 桥不解析 args 字符串，带参命令经 MCP 全进不去
+——已投 devkit 的 feedback/inbox，修好前绕法是 CDP 直调。
