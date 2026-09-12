@@ -93,15 +93,19 @@ export function PluginPane({
     let dispose: (() => void) | undefined
     // 桶按条目取。这一格松手时引用计数减一，最后一格走了整个桶才拆
     const bus = busRegistry.acquire(entryId)
-    // 桌面那两样从 DOM 祖先现认（井里的格永远是某口桌面的后代），不存「格 → 桌面」的账
-    const desktopId = desktopIdOf(container)
+    // 桌面那两样**现查现给，不拍快照**：挂载那一刻 dockview 的面板 DOM 可能还没接进
+    // 桌面那一节，`closest` 找不到就兜底 body，而快照永不刷新——浮层从此一直挂 body、
+    // 桌面切走藏不掉（实机撞过：带着开着的菜单切桌面，菜单漏到别人的桌面上）。getter
+    // 在件真用它的那一刻解析（开菜单的 render、订可见性的调用），那时 DOM 早已就位
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
       setPaneTitle: (title) => setTitleRef.current(title),
       keepPane: () => keepPaneRef.current(),
       bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
-      portal: portalHostOf(container),
-      onVisibility: (listener) => subscribeDesktopVisibility(desktopId, listener),
+      get portal() {
+        return portalHostOf(container)
+      },
+      onVisibility: (listener) => subscribeDesktopVisibility(desktopIdOf(container), listener),
     }
     setError(null)
     setReady(false)
