@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    // 产物是拼出来的 css（见 build.ts），tsc 只用来 typecheck
-    "noEmit": true
-  },
-  "include": ["build.ts", "tests"]
-}
