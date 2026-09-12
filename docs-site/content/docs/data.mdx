@@ -1,0 +1,78 @@
+---
+title: gwb-data：件的数据落盘
+description: 一件一份数据目录，归属是条目不是包；readDoc 没有坏了都回 undefined，writeDoc 原子落盘
+---
+
+# gwb-data
+
+包名 `@godcreator02/gwb-data`，服务 `ctx.gwbData`。无界面，零第三方依赖。
+
+件要往盘上存自己的东西（JSON 文档、图片、日志），不用自己拼路径、不用自己写原子
+落盘——写 `inject: ['gwbData']`，拿一格绑着自己身份的目录。
+
+## 它的面
+
+@@docfirst ref ../plugins/data/src/index.ts:23-31 @@
+
+`dir` 是那个件的专属目录，存非 JSON 时用它；`readDoc` / `writeDoc` 管的是
+`<dir>/<文档名>.json` 一份一份的整档读写。
+
+## 数据落在哪：归属是条目，不是包
+
+`<home>/data/<条目 id 的末段>/`。**按条目 id 切、不按包名切**——`id` 才是 cordis
+条目模型里的身份，`name` 只说「装哪个包」；同一个包挂两条条目是两份独立配置的实例，
+按包名切的话它们共用一个目录、互相覆盖。姊妹件 `gwb-settings` 的分区键是同一个答案：
+
+@@docfirst ref ../plugins/data/src/paths.ts:66-79 @@
+
+entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么当场抛，撞墙经过与判据在
+[撞过的墙](/docs/walls)那页，两处代码钉着同一段论断。
+
+## 一格自动绑定到取它的那个件
+
+`ctx.gwbData` 交出来的那一格认得调用方是谁——件不报名字，也就没法报别人的名字去读
+别人的数据。靠的是 cordis `Service` 的机制：方法里的 `this.ctx` 是**消费者**的 ctx，
+它的 `fiber.entry.id` 就是那个件在 `cordis.yml` 里那条条目的 id。
+
+`accessor` 为什么不行、`Service` 为什么行，实测经过在[撞过的墙](/docs/walls)；
+这个件里的写法：
+
+@@docfirst ref ../plugins/data/src/index.ts:6-13 @@
+
+## 读与写的语义
+
+**readDoc：没有 / 坏了都回 undefined**——第一次跑没文件，调用方直接用默认值；但坏了
+要 warn 一声，数据烂掉悄悄变成「用默认值」是最难查的那种。
+
+**writeDoc：整份替换、原子落盘**——先写同目录的临时文件再 rename 覆盖。直接往目标写
+的话，写到一半崩了会留下半个文件，那份数据就毁了；rename 只在同一分区上原子，所以
+临时文件必须跟目标同目录：
+
+@@docfirst ref ../plugins/data/src/store.ts:6-9 @@
+
+@@docfirst ref ../plugins/data/src/store.ts:27-31 @@
+
+写失败不静默：异常照抛给调用方，但先 error 一句——很多调用方一吞，数据丢了都没声没响。
+
+## 条目没写 id，只 warn 一声
+
+home 级数据按条目 id 落目录，而条目不写 `id` 时 loader 发的是 8 位随机十六进制串、
+每次启动都变，那条条目的数据每次启动都新建一份。`dir` 每读写一次认一遍，认出随机
+id 就 warn——**不抛错**（那条件本来能跑），**也不静默**（对不上是最难查的那种），
+一条条目只说一次：
+
+@@docfirst ref ../plugins/data/src/index.ts:89-100 @@
+
+## 一个坑：私有字段用 TS 的 `private`，不用 `#`
+
+cordis 给每个消费者派生一份 `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，
+派生对象上一读就炸。这个件的字段声明钉着这条：
+
+@@docfirst ref ../plugins/data/src/index.ts:36-43 @@
+
+## 怎么单独测
+
+`paths.ts` 与 `store.ts` 是纯逻辑加真 fs（临时目录），单测直接喂：路径规则三件
+（文档名 kebab、entryId 段数与字符集、随机 id 认形）、读写的容错（没有、坏了、写失败
+清临时文件）。`index.ts` 的接线（身份绑定、构造时取 home）靠实机——探针件挂上、
+落盘的目录是不是探针自己那条条目的。

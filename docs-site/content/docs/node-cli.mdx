@@ -103,9 +103,10 @@ await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj
 
 `timeoutMs` 默认 60 秒，**上限钉死 110 秒，超过当场拒绝注册**。
 
-因为内核那条 fd3 命令通道是 **120 秒硬超时**：超了它把 pending 摘掉，宿主再回也没人接。
-那时调用方看到的是内核那句「命令超时」——不是这边给的 `timedOut` 回执，更没有
-`spillPath`。留 10 秒余量，保证超时永远由这边先报，现场才查得动。
+这条线最早卡的是旧内核那条 fd3 命令通道的 **120 秒硬超时**——超了它把 pending 摘掉，
+调用方看到的是内核那句「命令超时」，不是这边给的 `timedOut` 回执。单进程内核里那道
+闸没了（件与桥同进程），上限却留着：**一条 CLI 跑过两分钟还不回，人要的是一句
+`timedOut` 加一份 `spillPath`，不是一个永远不回的 promise**。
 
 {/* ref file="../plugins/node-cli/src/registry.ts" lines="10-16" */}
 

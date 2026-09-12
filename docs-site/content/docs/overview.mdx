@@ -14,14 +14,17 @@ docfirst: none
 | --- | --- | --- | --- |
 | commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | 命令总线 |
 | data | `@godcreator02/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
-| shell | `@godcreator02/gwb-shell` | `ctx.gwbShell` | dockview 外壳 + 窗格注册 |
-| hello | `@godcreator02/gwb-hello` | — | 验收件兼样板，两格窗格 |
-| logger | `@godcreator02/gwb-logger` | — | 日志窗格 |
+| logger | `@godcreator02/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
 | skills | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
 | mcp | `@godcreator02/gwb-mcp` | — | 开一个 MCP 口给 agent 连 |
 | node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
 | py-cli | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
+| plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager` | 管包与条目 |
+
+2026-09-12 三仓拆分后这个仓只剩这九个**无头**件：外壳与窗格的皮住 UI 平台仓
+（`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包），验收件住验收仓
+（`26091217hkq\gwb-hello`）。劈分判据见[定过的事](/docs/decisions)那条 2026-09-12。
 
 **状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，而这张表已经漂过
 一轮（`cli` 停在 0.0.3、`shell` 还写着「待做」，实际那时它已经发到 0.0.4 了）。
@@ -73,9 +76,9 @@ plugins/<件名>/
 构建是 `tsc`，不打包——产物给 node 直接加载。所以有两条硬要求，都配了守卫：
 **相对 import 必须带 `.js`**、**产物里不许有裸名 import**。为什么，见[撞过的墙](/docs/walls)。
 
-**带界面的件另有一半**（`src/client/` 与一张自己编的样式表）：多个件的界面落在同一张页面上，
-值怎么共享一份、规则怎么各一份且互相隔离、组件怎么复用源头、React 怎么只有一份实例——
-整条原理在[样式与组件](/docs/styles)那一页，动手写第一个带界面的件之前先读它。
+带界面的件**不在这个仓**（三仓拆分，2026-09-12）：它们的浏览器半（`src/client/` 与
+样式表）、值与规则怎么共享、组件怎么复用——原理页随 UI 平台仓
+（`26091217uiz\gwb-ui-plugins` 的文档站）走了，动手写带界面的件之前先读那边。
 
 ## 母仓那批是参考，不是模板
 
