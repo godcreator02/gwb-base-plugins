@@ -9,13 +9,14 @@ god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台�
 - 顶层工具清单在你连着时不刷新（这道口无状态，发不出 list_changed）：新装的件经 gwb_command_run 够到
 
 这台工作台鼓励你在干活途中完善它自己——改件、发版、装回 home 都在预期之内。
-发完新版本调 plugins.update-all 一键热升（不重启）；升到 mcp 自己时这条回执会丢，重连后用 plugins.list 核对。
+发完新版本调 plugin-manager.update-all 一键热升（不重启）；升到 mcp 自己时这条回执会丢，重连后用 plugin-manager.list 核对。
 不用问就能做：
 - 修已有命令的 bug
 - 补或改件带的 SKILL.md
 - 加新命令、加新件
 先问人再动手：
 - 改内核（gwb-kernel）
-- 改这七件被别人 inject 的那一面——commands / data / skills / mcp / shell / settings /
-  plugins——服务的方法签名、命令名与参数形状、事件形状，或它们的依赖
+- 改这些件被别人 inject 的那一面——commands / data / skills / mcp / settings /
+  logger / plugin-manager（原 plugins，2026-09-12 断代改名）与 UI 平台仓的
+  shell——服务的方法签名、命令名与参数形状、事件形状，或它们的依赖
 - 给命令标 top: true——要上顶层就在登记时标它，桥照它渲染；标之前停下来问人
