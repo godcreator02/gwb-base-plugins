@@ -67,6 +67,19 @@ export interface ShellBridge {
     /** 挂一个听众，回注销函数 */
     on(type: string, listener: (detail: unknown) => void): () => void
   }
+  /**
+   * 本格所在桌面的**浮层户口**：件里 radix Portal 的 `container` 指到它。指过去之后
+   * 浮层物理上住在本桌桌面里，桌面切走它跟着一起藏——挂 `body` 的浮层不属于任何桌面，
+   * 藏不掉，那正是多桌面要防的那类「后面的桌面盖住前面的」。不在井里（或外壳是旧版）
+   * 时它是 `document.body`，跟 radix 缺省一个效果，件不必判空。
+   */
+  portal: HTMLElement
+  /**
+   * 本格所在桌面的可见性：切走收 `false`、切回收 `true`，**注册时先回一次当下值**，
+   * 回注销函数。协作式——件拿它停订阅、停渲染、停媒体（视频音频切走照响，DOM 副作用
+   * 谁也替你停不了），外壳只通知不强制。不需要的件一个字都不用写。
+   */
+  onVisibility(listener: (visible: boolean) => void): () => void
 }
 
 /**

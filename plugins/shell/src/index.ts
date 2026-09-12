@@ -8,7 +8,8 @@ import type {} from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 import { createPaneRegistry, type PaneOwner, type PaneRegistry, type PaneSpec, type RegisteredPane } from './pane-registry.js'
 import { createPluginRegistry, type PluginInfo, type PluginRegistry, type RegisteredPlugin } from './plugin-registry.js'
-import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, parseLayoutDoc } from './layout.js'
+import { LAYOUT_DOC, LAYOUT_GET_COMMAND, LAYOUT_SAVE_COMMAND, defaultDoc, parseLayoutDoc } from './layout.js'
+import { DESKTOP_EVENT } from './desktops.js'
 import { electronWindows, reloadWindows, type ReloadDeps } from './reload.js'
 
 export type { PaneSpec, PaneOwner, RegisteredPane } from './pane-registry.js'
@@ -67,6 +68,11 @@ function shellEnv(home: string): ShellEnv {
  * 重注 importmap；状态栏那颗「刷新」是同一件事的人手版。做法在 `reload.ts`
  */
 export const RELOAD_COMMAND = 'shell.reload'
+
+/** 桌面那三条命令。**井在页面那半**，switch / new 只是经内核事件口把动作转进去执行 */
+export const DESKTOP_LIST_COMMAND = 'shell.desktop.list'
+export const DESKTOP_SWITCH_COMMAND = 'shell.desktop.switch'
+export const DESKTOP_NEW_COMMAND = 'shell.desktop.new'
 
 /** 消费方拿到的那一格。写 `inject: ['gwbShell']` 才有 */
 export interface GwbShellApi {
@@ -179,11 +185,49 @@ export default class GwbShell extends Service implements GwbShellApi {
         },
       ),
     )
+    // 桌面那三条。井在页面那半（一口桌面一口、常驻保活），node 这侧只做两件事：
+    // 读盘上的档答 list，把 switch / new 经内核事件口转给页面执行——页面那边收到后
+    // 自己切、自己落盘。回执只代表「转发了」；要确认结果，稍等一下再 list（页面切换
+    // 时同步 flush 一次档）
+    this.ctx.effect(() =>
+      cli.register(
+        { name: DESKTOP_LIST_COMMAND, description: '此刻有哪些桌面。无参数。回 { desktops: [{id,name}], active }（读盘上布局档，认不出回一口缺省）', plugin: 'gwb-shell' },
+        async () => {
+          const raw = await this.ctx.gwbData.readDoc(LAYOUT_DOC)
+          const doc = parseLayoutDoc(raw) ?? defaultDoc()
+          return { desktops: doc.desktops.map(({ id, name }) => ({ id, name })), active: doc.active }
+        },
+      ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        { name: DESKTOP_SWITCH_COMMAND, description: '切到某口桌面。参数 { id?, name? }（id 优先，二者给一）。井在页面那半，这条只把动作转发进去，回执 ok 代表转发了不是切完了', plugin: 'gwb-shell' },
+        (args) => {
+          const a = args as { id?: unknown; name?: unknown } | undefined
+          const id = typeof a?.id === 'string' && a.id !== '' ? a.id : undefined
+          const name = typeof a?.name === 'string' && a.name !== '' ? a.name : undefined
+          if (id === undefined && name === undefined) return { ok: false, error: 'id 与 name 至少给一个' }
+          this.kernel.emit({ t: DESKTOP_EVENT, action: 'switch', ...(id === undefined ? {} : { id }), ...(name === undefined ? {} : { name }) })
+          return { ok: true, relayed: true }
+        },
+      ),
+    )
+    this.ctx.effect(() =>
+      cli.register(
+        { name: DESKTOP_NEW_COMMAND, description: '新建一口桌面并切过去。参数 { name? }（缺省叫「桌面 N」）。同 switch：转发给页面执行，回执 ok 代表转发了', plugin: 'gwb-shell' },
+        (args) => {
+          const a = args as { name?: unknown } | undefined
+          const name = typeof a?.name === 'string' && a.name.trim() !== '' ? a.name.trim() : undefined
+          this.kernel.emit({ t: DESKTOP_EVENT, action: 'new', ...(name === undefined ? {} : { name }) })
+          return { ok: true, relayed: true }
+        },
+      ),
+    )
     // 把页面根要过来。入口是本包的 client.js，effect 包着：本件卸载页面根自动收回
     const entry = new URL('./client.js', import.meta.url).href
     this.ctx.effect(() => this.kernel.setShell(entry))
     this.ctx.logger('gwb-shell').info(
-      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}；页面根已要来，入口 ${entry}`,
+      `窗格注册就绪（ctx.gwbShell），取表走 ${PANES_COMMAND} 与 ${PLUGINS_COMMAND}，布局档走 ${LAYOUT_GET_COMMAND} 与 ${LAYOUT_SAVE_COMMAND}，整页重载走 ${RELOAD_COMMAND}，桌面走 ${DESKTOP_LIST_COMMAND} / ${DESKTOP_SWITCH_COMMAND} / ${DESKTOP_NEW_COMMAND}；页面根已要来，入口 ${entry}`,
     )
   }
 

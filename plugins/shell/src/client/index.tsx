@@ -39,19 +39,29 @@ import {
   LAYOUT_GET_COMMAND,
   LAYOUT_SAVE_COMMAND,
   LAYOUT_VERSION,
+  defaultDoc,
+  nextDesktopId,
   parseLayoutDoc,
   upsertSaved,
+  type DesktopRow,
   type LayoutDoc,
   type SavedLayout,
 } from '../layout.js'
+import { defaultDesktopName, isDesktopAction, resolveDesktop } from '../desktops.js'
+import { notifyDesktopVisibility } from '../visibility.js'
+import { DESKTOP_ATTR } from './desktop-context.js'
 import type { HostBridge, ShellArgs, ShellBridge } from './types.js'
 
 /**
- * 外壳的浏览器半：一口 dockview 窗格井，把注册表里的每一格开出来。
+ * 外壳的浏览器半：多口 dockview 窗格井（一口桌面一口，常驻保活），把注册表里的每一格
+ * 开出来。多桌面第一波（0.0.14）做过又撤回，这是第二波重做——语义、向量与判据见文档站
+ * decisions「多桌面第二波」。
  *
- * 布局落盘（第四刀欠的那半）在这份里落地：井一变就防抖整档写进 gwbData 的 `layout`
- * 档，重启回到上次的井；人还能把当前布局**起名存进清单**，日后点开哪套就铺哪套。
- * 多桌面（一张桌面一口井、井常驻保活）做到 0.0.14 后撤回——现场与理由见文档站。
+ * 保活的形状：一口桌面一个 section，全部绝对定位叠在主区里，**非活动的只是不显示**
+ * （visibility:hidden + pointer-events:none + inert），DOM、定时器、订阅全活着；开机只挂
+ * 活动那口，别的桌面第一次切到才挂、挂上常驻。每口井各自防抖落盘，档是 v3（active +
+ * desktops + saved）。切换 = 记账 → flush → 显隐 → 可见性通知 → 焦点接管 → body 探雷。
+ *
  * 第四刀剩下的：导航。
  */
 
@@ -359,6 +369,28 @@ const TAB_COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelHeade
   [TAB_COMPONENT]: GwbTab,
 }
 
+/**
+ * 切换后扫一眼 body：**探雷器，不是灭火器**。件的浮层若没把 radix Portal 的 container
+ * 指到 `args.shell.portal`，它就挂在 body 上、不跟任何桌面走——藏掉桌面也藏不掉它
+ * （0.0.14 那桩「后面的桌面盖住前面的」最可信的向量）。扫到只点名（console.warn），
+ * **不删别人的 DOM**。状态栏自己的菜单也挂 body——它在桌面体系之外，应该常驻；radix
+ * 的菜单在焦点离开时自己关，所以扫到的多半是没接容器那半的残影。
+ */
+function sweepBodyPortals(activeName: string): void {
+  const strays: string[] = []
+  for (const el of document.body.children) {
+    // 根节点与三类非浮层的常态节点不算
+    if (el.id === 'root' || /^(STYLE|SCRIPT|LINK|NOSCRIPT)$/.test(el.tagName)) continue
+    const cls = el.getAttribute('class') ?? ''
+    strays.push(`<${el.tagName.toLowerCase()}${cls === '' ? '' : ` class="${cls}"`}>`)
+  }
+  if (strays.length > 0) {
+    console.warn(
+      `[shell] 切到「${activeName}」时 body 上还挂着 ${strays.length} 个节点（多半是哪个件的浮层没跟着自己桌面走——radix Portal 的挂载点该指到 args.shell.portal）：${strays.join('、')}`,
+    )
+  }
+}
+
 function App({
   specs,
   home,
@@ -366,34 +398,51 @@ function App({
 }: {
   specs: OpenableSpec[]
   home: string
-  /** 盘上的档。null = 第一次开机（或档废了），走默认铺格 */
-  initialDoc: LayoutDoc | null
+  /** 盘上的档（已并好缺省：第一次开机或档废了就是 defaultDoc()，v2 在解析那层已迁成 v3） */
+  initialDoc: LayoutDoc
 }): ReactElement {
-  // 井外面那条状态栏要用 api（开格）与「点哪条是聚焦」（标已开），而 api 只在 onReady
-  // 的回调里出现——接住它
-  const [api, setApi] = useState<DockviewApi | null>(null)
-  /** 状态栏那张表上点了会走成聚焦的那几条（spec 的基名）。判据归 `willFocus` */
+  /** 每口挂着的井各自的 api。井常驻（保活），挂上就不拆——「活动的那口」只是其中之一 */
+  const [apis, setApis] = useState<Record<string, DockviewApi>>({})
+  /** 已挂井的桌面 id。开机只挂 active 那口，别的桌面第一次切到才挂（冷挂）、挂上常驻 */
+  const [mountedIds, setMountedIds] = useState<string[]>(() => [initialDoc.active])
+  const [desktops, setDesktops] = useState<DesktopRow[]>(initialDoc.desktops)
+  const [activeId, setActiveId] = useState(initialDoc.active)
+  /** 状态栏那张表上点了会走成聚焦的那几条（spec 的基名）。判据归 `willFocus`，只看活动那口井 */
   const [focusIds, setFocusIds] = useState<string[]>([])
   /** 人起名存下来的布局清单，档里那半 */
-  const [saved, setSaved] = useState<SavedLayout[]>(initialDoc?.saved ?? [])
+  const [saved, setSaved] = useState<SavedLayout[]>(initialDoc.saved)
   const [saveFailed, setSaveFailed] = useState(false)
 
   // 回调读的都走 ref：防抖保存醒来时要读「当下」，不能读进闭包那一刻的旧账
-  const apiRef = useRef(api)
-  apiRef.current = api
+  const apisRef = useRef(apis)
+  apisRef.current = apis
+  const mountedRef = useRef(mountedIds)
+  mountedRef.current = mountedIds
+  const rowsRef = useRef(desktops)
+  rowsRef.current = desktops
+  const activeIdRef = useRef(activeId)
+  activeIdRef.current = activeId
   const savedRef = useRef(saved)
   savedRef.current = saved
   const timerRef = useRef<number | undefined>(undefined)
+  /** 每口井的 onDidLayoutChange 订阅。井常驻，跟着 App 卸载一起拆 */
+  const wellSubsRef = useRef(new Map<string, { dispose(): void }>())
+
+  const activeApi = apis[activeId] ?? null
 
   const flushSave = useCallback((): void => {
     window.clearTimeout(timerRef.current)
     if (hostBridge === undefined) return
-    // **整档为写单位**：current 问井自己（活着的那份才是真相），saved 用清单原文。
-    // 迟到的旧定时器走不到这儿——schedule 每次重排，醒来的一定是最新这份
-    const live = apiRef.current
+    // **整档为写单位**：desktops 逐口问井自己（活着的那份才是真相；还没挂井的桌面用它
+    // 那条存着的），saved 用清单原文。迟到的旧定时器走不到这儿——schedule 每次重排，
+    // 醒来的一定是最新这份
     const doc: LayoutDoc = {
       v: LAYOUT_VERSION,
-      current: live === null ? null : (live.toJSON() as unknown as Record<string, unknown>),
+      active: activeIdRef.current,
+      desktops: rowsRef.current.map((row) => {
+        const api = apisRef.current[row.id]
+        return api === undefined ? row : { ...row, layout: api.toJSON() as unknown as Record<string, unknown> }
+      }),
       saved: savedRef.current,
     }
     void hostBridge.call(LAYOUT_SAVE_COMMAND, doc).then(
@@ -422,47 +471,125 @@ function App({
     }
   }, [flushSave])
 
+  // 井常驻，订阅也常驻——App 卸载那趟统一拆
+  useEffect(() => {
+    const subs = wellSubsRef.current
+    return () => {
+      for (const sub of subs.values()) sub.dispose()
+      subs.clear()
+    }
+  }, [])
+
   const openDefaults = (target: DockviewApi): void => {
     // 走跟 openPane 同一条路：算唯一 id 再开。裸 addPanel 的话，specs 里万一出现
     // 两条同 id，第二条会同步抛、异常冲出 onReady，**整口井起不来**而不是少开一格
     for (const spec of specs) addInstance(target, spec)
   }
 
-  const onReady = (event: DockviewReadyEvent): void => {
-    const current = initialDoc?.current ?? null
-    if (current !== null) {
+  /** 状态栏「已开」记号重算：问的是**活动那口井**的 `planOpen` 判据 */
+  const syncFocus = useCallback((): void => {
+    const api = apisRef.current[activeIdRef.current]
+    if (api === undefined) return
+    setFocusIds(specs.filter((spec) => willFocus(api, spec)).map((spec) => spec.id))
+  }, [specs])
+
+  /** 一口井挂上（冷挂那一刻）：按它那条档恢复，或铺默认；订阅布局变化。井常驻，只走一次 */
+  const onWellReady = (id: string, event: DockviewReadyEvent): void => {
+    const row = rowsRef.current.find((r) => r.id === id)
+    let restored = false
+    if (row?.layout != null) {
       try {
-        event.api.fromJSON(current as unknown as SerializedDockview)
+        event.api.fromJSON(row.layout as unknown as SerializedDockview)
+        restored = true
       } catch (err) {
-        // 上次的井恢复不了（存档坏了 / dockview 升了版本）：回默认，不拦外壳起
-        console.warn(`[shell] 上次的布局恢复不了，回默认：${String(err)}`)
-        openDefaults(event.api)
+        // 这口桌面存着的井恢复不了（存档坏了 / dockview 升了版本）：回默认，不拦井起
+        console.warn(`[shell] 桌面「${row.name}」的布局恢复不了，回默认：${String(err)}`)
       }
-    } else {
-      openDefaults(event.api)
     }
-    setApi(event.api)
+    if (!restored) openDefaults(event.api)
+    apisRef.current[id] = event.api
+    setApis({ ...apisRef.current })
+    // 井一变：活动的那口顺带重算「已开」记号（**换 params 也在这条上**——dockview 8.2.0
+    // 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange）；哪口变了都要落盘
+    wellSubsRef.current.set(
+      id,
+      event.api.onDidLayoutChange(() => {
+        if (activeIdRef.current === id) syncFocus()
+        scheduleSave()
+      }),
+    )
   }
 
+  // 切到一口已挂井的桌面时记号也得重算（那口井没有新事件）
   useEffect(() => {
-    if (api === null) return
-    const sync = (): void => setFocusIds(specs.filter((spec) => willFocus(api, spec)).map((spec) => spec.id))
-    sync()
-    // 两个用途一个事件：状态栏的「已开」跟着新，布局落盘也订它。**换 params 也在这条上**
-    // ——dockview 把每一组的 onDidPanelParametersChange 接进了 onDidLayoutChange（8.2.0），
-    // 所以一格被软换、或者转正了，这个记号跟着重算，不会停在上一轮
-    const sub = api.onDidLayoutChange(() => {
-      sync()
-      scheduleSave()
-    })
-    return () => sub.dispose()
-  }, [api, scheduleSave, specs])
+    syncFocus()
+  }, [activeApi, syncFocus])
 
-  /** 点开哪套已存布局，就把哪套铺回井上。变化照常走防抖落盘（current 跟着换） */
+  /** 切桌面。顺序是机制的一部分：先记账再 flush（档里的 active 跟这一趟走），显隐交给
+   * React，可见性通知与焦点接管跟在后面。 */
+  const switchTo = useCallback(
+    (id: string): void => {
+      if (id === activeIdRef.current) return
+      const row = rowsRef.current.find((r) => r.id === id)
+      if (row === undefined) return
+      const prev = activeIdRef.current
+      activeIdRef.current = id
+      if (!mountedRef.current.includes(id)) setMountedIds((list) => [...list, id])
+      flushSave()
+      setActiveId(id)
+      notifyDesktopVisibility(prev, false)
+      notifyDesktopVisibility(id, true)
+      // 键盘焦点从被藏的那口里被吐出来（visibility:hidden 不可聚焦）。接住：给新那口
+      // 焦点，切回时人不用先点一下才能用键盘。rAF 等新那口真上了屏再找它
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(`[${DESKTOP_ATTR}="${id}"]`)?.focus({ preventScroll: true })
+      })
+      sweepBodyPortals(row.name)
+    },
+    [flushSave],
+  )
+
+  /** 新建一口桌面并切过去。名字缺省「桌面 N」；layout 留 null（第一次切到铺默认） */
+  const createDesktop = useCallback(
+    (name?: string): void => {
+      const id = nextDesktopId(rowsRef.current)
+      const trimmed = name?.trim()
+      rowsRef.current = [
+        ...rowsRef.current,
+        { id, name: trimmed === undefined || trimmed === '' ? defaultDesktopName(id) : trimmed, layout: null },
+      ]
+      setDesktops(rowsRef.current)
+      switchTo(id)
+    },
+    [switchTo],
+  )
+
+  // node 半转来的桌面动作（shell.desktop.switch / new）：井在页面这半，命令只是转发
+  useEffect(() => {
+    const off = window.gwb.on((payload) => {
+      if (!isDesktopAction(payload)) return
+      if (payload.action === 'switch') {
+        const row = resolveDesktop(rowsRef.current, { id: payload.id, name: payload.name })
+        if (row === undefined) {
+          console.warn(
+            `[shell] 要切的桌面认不出：${JSON.stringify({ id: payload.id, name: payload.name })}——盘上的档可能比这条命令旧，shell.desktop.list 现查`,
+          )
+          return
+        }
+        switchTo(row.id)
+      } else if (payload.action === 'new') {
+        createDesktop(typeof payload.name === 'string' ? payload.name : undefined)
+      }
+    })
+    return off
+  }, [switchTo, createDesktop])
+
+  /** 点开哪套已存布局，就把哪套铺回**活动那口井**上。变化照常走防抖落盘。照片是模板，
+   * 铺开即弃——它跟桌面是两回事（桌面各自自动存），判据见文档站 decisions */
   const applySaved = (row: SavedLayout): void => {
-    if (api === null) return
+    if (activeApi === null) return
     try {
-      api.fromJSON(row.layout as unknown as SerializedDockview)
+      activeApi.fromJSON(row.layout as unknown as SerializedDockview)
     } catch (err) {
       // 只报不回默认：人点名要的是这一套，铺不回去得让他知道是这套的存档坏了，
       // 而不是悄悄换回默认布局装没事
@@ -470,10 +597,10 @@ function App({
     }
   }
 
-  /** 把此刻的井起名存进清单。**同名覆盖**（名字就是钥匙），空名不存 */
+  /** 把**活动那口井**起名存进清单。**同名覆盖**（名字就是钥匙），空名不存 */
   const saveCurrent = (name: string): void => {
-    if (api === null || name === '') return
-    setSaved((prev) => upsertSaved(prev, name, api.toJSON() as unknown as Record<string, unknown>))
+    if (activeApi === null || name === '') return
+    setSaved((prev) => upsertSaved(prev, name, activeApi.toJSON() as unknown as Record<string, unknown>))
     scheduleSave()
   }
 
@@ -482,31 +609,68 @@ function App({
     scheduleSave()
   }
 
-  /** 重置：清掉井，照「表里有几格开几格」重铺。逐格关，**不走 `api.clear()`**——它内部
-   * 账对不上时会抛（母仓撞过），而这儿用不着它：关完重开，id 查重问的是当下真有哪些 */
+  /** 重置**活动那口**：清掉井，照「表里有几格开几格」重铺。逐格关，**不走 `api.clear()`**
+   * ——它内部账对不上时会抛（母仓撞过），而这儿用不着它：关完重开，id 查重问的是当下真有哪些 */
   const resetLayout = (): void => {
-    if (api === null) return
-    for (const panel of api.panels) api.removePanel(panel)
-    openDefaults(api)
+    if (activeApi === null) return
+    for (const panel of activeApi.panels) activeApi.removePanel(panel)
+    openDefaults(activeApi)
   }
 
   // fixed inset-0 而不是 h-screen:#root 没有高度样式,而外壳不该去改宿主那张 html。
-  // 井那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕
+  // 主区那格 **min-h-0 少不了**:flex 子项默认 min-height:auto,内容一高就把状态栏挤出屏幕。
+  //
+  // **桌面那一节上绝不加 transform / filter / perspective / will-change**：fixed 浮层的
+  // 定位基准一旦从视口改成这层，户口迁进本桌的浮层坐标全漂——这条是 CSS 的硬规矩，
+  // 不是风格偏好。
   return (
     <div className="shell:fixed shell:inset-0 shell:flex shell:flex-col">
-      <div className="shell:min-h-0 shell:flex-1">
-        <DockviewReact components={COMPONENTS} tabComponents={TAB_COMPONENTS} onReady={onReady} theme={GWB_THEME} />
+      <div className="shell:relative shell:min-h-0 shell:flex-1">
+        {mountedIds.map((id) => {
+          const on = id === activeId
+          return (
+            <section
+              key={id}
+              data-gwb-desktop={id}
+              tabIndex={-1}
+              aria-hidden={!on}
+              inert={!on}
+              className={
+                on
+                  ? 'shell:absolute shell:inset-0 shell:visible'
+                  : 'shell:absolute shell:inset-0 shell:invisible shell:pointer-events-none'
+              }
+            >
+              <div className="shell:absolute shell:inset-0">
+                <DockviewReact
+                  components={COMPONENTS}
+                  tabComponents={TAB_COMPONENTS}
+                  theme={GWB_THEME}
+                  onReady={(event) => onWellReady(id, event)}
+                />
+              </div>
+              {/* 这口桌面的浮层户口：件里 radix Portal 的 container 指到它（args.shell.portal）。
+                  自身不挡鼠标（pointer-events-none），radix 内容自己带 auto；**不带 z 轴**——
+                  让 radix 内容的 z-50 直接参与根层叠，状态栏（z 更高）才压得住模态遮罩 */}
+              <div className={`gwb-portal-host shell:pointer-events-none shell:absolute shell:inset-0`} />
+            </section>
+          )
+        })}
       </div>
       <StatusBar
         specs={specs}
         focusIds={focusIds}
         home={home}
+        desktops={desktops}
+        activeDesktopId={activeId}
         savedLayouts={saved}
         saveFailed={saveFailed}
         onOpen={(spec) => {
-          if (api === null) return
-          openSpec(api, spec)
+          if (activeApi === null) return
+          openSpec(activeApi, spec)
         }}
+        onSwitchDesktop={(id) => switchTo(id)}
+        onNewDesktop={(name) => createDesktop(name)}
         onApplyLayout={applySaved}
         onSaveLayout={saveCurrent}
         onDeleteLayout={removeSaved}
@@ -562,13 +726,14 @@ async function boot(args: ShellArgs, root: HTMLElement): Promise<Root> {
   // 导航还没有,把它从表里滤掉——listOpenable 排的第一条是导航那格,而画它的组件
   // 第四刀才有。留着的话 dockview 会拿不到 'nav' 组件
   const specs = listOpenable(panes).filter((s) => s.component === PLUGIN_COMPONENT)
-  // 档赶在首帧之前到手——先铺默认再跳恢复，闪的那一下藏不住
-  const initialDoc = await fetchLayoutDoc(args.host)
+  // 档赶在首帧之前到手——先铺默认再跳恢复，闪的那一下藏不住。没有档（第一次开机 /
+  // 档废了）就地取缺省：一口「桌面 1」
+  const initialDoc = (await fetchLayoutDoc(args.host)) ?? defaultDoc()
+  const activeRow = initialDoc.desktops.find((d) => d.id === initialDoc.active)
   console.log(
     `[shell] 表里 ${specs.length} 格可开：${specs.map((s) => s.id).join('、') || '（表是空的）'}；` +
-      (initialDoc === null
-        ? '没有档，从默认布局起'
-        : `按档恢复（存着 ${initialDoc.saved.length} 套布局）`),
+      `${initialDoc.desktops.length} 口桌面（活动：「${activeRow?.name ?? initialDoc.active}」），` +
+      `存着 ${initialDoc.saved.length} 套布局`,
   )
 
   const reactRoot = createRoot(root)
@@ -599,10 +764,14 @@ export function bootShell(args: ShellArgs, root: HTMLElement): { dispose(): void
   }
 }
 
-/** 页面的公共面里本件用得着的一条。按形状收，正本在内核的词汇表包 */
+/** 页面的公共面里本件用得着的两条。按形状收，正本在内核的词汇表包 */
 declare global {
   interface Window {
-    gwb: { command(command: string, args?: unknown): Promise<unknown> }
+    gwb: {
+      command(command: string, args?: unknown): Promise<unknown>
+      /** 内核事件口的页面那半：node 半 gwbKernel.emit 推的载荷全从这儿出（logger 推日志同一条路） */
+      on(listener: (payload: unknown) => void): () => void
+    }
   }
 }
 

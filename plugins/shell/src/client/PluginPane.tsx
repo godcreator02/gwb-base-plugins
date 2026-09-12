@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { loadStyle } from './asset.js'
 import { fetchPanes } from './panes.js'
+import { desktopIdOf, portalHostOf } from './desktop-context.js'
 import { describeHandle, pickDispose, pickMountPane, pickRetarget } from '../mount-handle.js'
 import { paramsKeyOf } from '../panels.js'
 import { createBusRegistry } from '../bus.js'
+import { subscribeDesktopVisibility } from '../visibility.js'
 import type { HostBridge, ShellBridge } from './types.js'
 
 /**
@@ -91,11 +93,15 @@ export function PluginPane({
     let dispose: (() => void) | undefined
     // 桶按条目取。这一格松手时引用计数减一，最后一格走了整个桶才拆
     const bus = busRegistry.acquire(entryId)
+    // 桌面那两样从 DOM 祖先现认（井里的格永远是某口桌面的后代），不存「格 → 桌面」的账
+    const desktopId = desktopIdOf(container)
     const shell: ShellBridge = {
       openPane: (target, options) => openPaneRef.current(target, options),
       setPaneTitle: (title) => setTitleRef.current(title),
       keepPane: () => keepPaneRef.current(),
       bus: { emit: (type, detail) => bus.emit(type, detail), on: (type, fn) => bus.on(type, fn) },
+      portal: portalHostOf(container),
+      onVisibility: (listener) => subscribeDesktopVisibility(desktopId, listener),
     }
     setError(null)
     setReady(false)
