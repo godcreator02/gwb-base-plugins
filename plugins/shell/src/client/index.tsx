@@ -139,11 +139,20 @@ const GWB_THEME: DockviewTheme = {
  * 内核交出来的命令口。**存在模块级而不是经 params 传**：面板组件表必须是模块级常量
  * （换引用会让 dockview 重建全部格），组件因此拿不到 `bootShell` 的闭包；而塞进
  * `params` 会跟着布局一起落盘，第四刀就得在序列化时把它挑出去。
- *
- * **只剩这一样**：dockview 的 api 走面板组件自己的 `props.containerApi`，注册表
- * 每次开格现取（表是会变的——件挂上/卸掉都改它，存一份快照迟早过期）。
  */
 let hostBridge: HostBridge | undefined
+
+/**
+ * 全部井的注册表（desktopId → api）。井常驻，挂上就住到外壳拆。**桌面是分组不是宇宙**
+ * （0.4.0）：开格的聚焦与查重要看**全井**——同一格开在别的桌面也算一份，key 命中就
+ * 走聚焦（切过去激活），实例 id 全页唯一。面板组件因此连 `containerApi` 都不用传——
+ * 判断全在模块层，喂表喂的是全井聚合。
+ */
+const wellApis = new Map<string, DockviewApi>()
+/** 活动桌面 id。同样住模块级（同 hostBridge 的路子）：面板组件的闭包够不着 App 的状态 */
+let activeDesktop = ''
+/** 切桌面的分派（App 注入，同 flushLayoutSave 的路子）：聚焦落到别的井时由它切到台前 */
+let switchDesktop: ((id: string) => void) | undefined
 
 /** 布局落盘的防抖窗口：一阵拖拽 / 开关格合并成一次写。母仓量下来的一档 */
 const SAVE_DEBOUNCE_MS = 400
@@ -154,28 +163,35 @@ const SAVE_DEBOUNCE_MS = 400
  */
 let flushLayoutSave: (() => void) | undefined
 
-/** 这个 id 在井里已经有格了吗。默认布局铺格（`addInstance`）查重用 */
-function takenIn(api: DockviewApi): (id: string) => boolean {
-  return (id) => api.getPanel(id) !== undefined
+/** 这个 id 在**任何一口井**里已经有格了吗。井是分组不是宇宙：实例 id 全页唯一，查重看全井 */
+function takenAnywhere(id: string): boolean {
+  for (const api of wellApis.values()) {
+    if (api.getPanel(id) !== undefined) return true
+  }
+  return false
 }
 
 /**
- * **这一格此刻开着的几份**：`planOpen` 认身份、挑预览格、查重、算新那份摆哪儿，
- * 都吃这张表。
+ * **这一格此刻开着的几份——全井聚合**：`planOpen` 认身份、挑预览格、查重都吃这张表。
+ * 开在别的桌面的份带 `here: false`（聚焦认它、预览槽与落位不认，判据归 planOpen）。
  *
- * 现从井里摘，不存快照——格是人随时关得掉的。滤的是「同一条条目的同一格」：`key` 与
- * `preview` 都是这一格之内的概念，掺进别的格会让查重把别人的 id 也算上。
- *
- * **顺序是 dockview 的布局序，不是开格的先后**：`api.panels` 回的是「组按建组先后」
- * flatMap「组内标签先后」（dockview-core 8.2.0 的 `DockviewComponent.panels` 与
- * `BaseGrid.groups`）。同一刻读两次一样，但人拖过标签、挪过格、或者按存档 `fromJSON`
- * 恢复之后，它就不再等于谁先开。所以 `planOpen` 挑参照时**只依赖「哪一份不是基名」**，
- * 表里取最后一份只是要个确定的答案（见 `placeNext`）。
+ * 现从各口井里摘，不存快照——格是人随时关得掉的。滤的是「同一条条目的同一格」：`key`
+ * 与 `preview` 都是这一格之内的概念，掺进别的格会让查重把别人的 id 也算上。
  */
-function openInstances(api: DockviewApi, who: { entryId: string; paneId: string }): OpenPane[] {
-  return api.panels
-    .filter((panel) => entryIdOf(panel) === who.entryId && paneIdOf(panel) === who.paneId)
-    .map((panel) => ({ id: panel.id, key: paneKeyOf(panel), preview: isPreviewPanel(panel) }))
+function openInstancesAll(who: { entryId: string; paneId: string }): OpenPane[] {
+  const out: OpenPane[] = []
+  for (const [desktop, api] of wellApis) {
+    for (const panel of api.panels) {
+      if (entryIdOf(panel) !== who.entryId || paneIdOf(panel) !== who.paneId) continue
+      out.push({
+        id: panel.id,
+        key: paneKeyOf(panel),
+        preview: isPreviewPanel(panel),
+        ...(desktop === activeDesktop ? {} : { here: false as const }),
+      })
+    }
+  }
+  return out
 }
 
 /** 这一条 spec 背后是谁的哪一格。导航那格没有 params，两段都回空串 */
@@ -187,15 +203,15 @@ function whoOf(spec: OpenableSpec): { entryId: string; paneId: string } {
  * 状态栏那张表上点这一条会不会走成**聚焦**——那个「已开」记号标的就是它。
  *
  * **记号必须跟点下去的效果对齐**：那条入口不给 `key`（等于空串），所以它开/聚焦的是
- * 「没装特定内容的那一份」。拿「这一格有没有开着」当判据的话两者会岔开——件拿几个 key
- * 开了几份、而空身份那一份没开着时，人看见「已开」点下去却多一格空白，那一下看着就是坏的。
+ * 「没装特定内容的那一份」——而**那一份可以在别的桌面**（全局表）：此时点下去走成
+ * 切过去聚焦，记号照样标，任务栏语义。
  *
  * **问的就是 `planOpen` 自己**：在这儿另写一条「key 为空的那份在不在」就是第二份真相，
  * 两处迟早漂，而漂了没有任何现象——只是那个记号开始说谎。
  */
-function willFocus(api: DockviewApi, spec: OpenableSpec): boolean {
+function willFocus(spec: OpenableSpec): boolean {
   const who = whoOf(spec)
-  return planOpen(spec, undefined, openInstances(api, who), who).kind === 'focus'
+  return planOpen(spec, undefined, openInstancesAll(who), who).kind === 'focus'
 }
 
 /** dockview 的标签组件表按键取用，开格时 `tabComponent` 指到这个键 */
@@ -216,14 +232,14 @@ function panelParams(spec: OpenableSpec): Record<string, unknown> {
 }
 
 /**
- * 开一格：算出这一份的实例 id 再 `addPanel`。
+ * 开一格：算出这一份的实例 id 再 `addPanel`。**查重看全井**（`takenAnywhere`）——桌面
+ * 是分组不是宇宙，实例 id 全页唯一，第二份在任何一口井都叫 `:2`。
  *
  * **`addPanel` 撞已存在的 id 是同步抛 Error**（dockview 的 `_doAddPanel` 头一句就是
- * 这个守卫），所以 id 必须先算好——不能指望它回一个「已经有了」。`taken` 问的是
- * dockview 当下真有哪些格，因此恢复存档布局之后再开也不会撞。
+ * 这个守卫），所以 id 必须先算好——不能指望它回一个「已经有了」。
  */
 function addInstance(api: DockviewApi, spec: OpenableSpec): void {
-  const { id, ordinal } = uniquePanelId(spec.id, takenIn(api))
+  const { id, ordinal } = uniquePanelId(spec.id, takenAnywhere)
   api.addPanel({
     id,
     component: spec.component,
@@ -234,7 +250,8 @@ function addInstance(api: DockviewApi, spec: OpenableSpec): void {
 }
 
 /**
- * 件说「打开我的某一格」。判断全在 `planOpen` 那个纯函数里，这儿只按 kind 分派。
+ * 件说「打开我的某一格」。判断全在 `planOpen` 那个纯函数里，喂它的是**全井聚合**的表；
+ * 这儿只按 kind 分派（聚焦可能落在别的井——`applyPlan` 会把那口井切到台前）。
  *
  * `entryId` 由 `PluginPane` 那边闭包绑好，件报不出别人的条目，也就打不开别人的窗格。
  *
@@ -245,36 +262,36 @@ function addInstance(api: DockviewApi, spec: OpenableSpec): void {
  * 两次并发的 openPane 会算出同一个 id，第二个 addPanel 当场抛。
  */
 async function openOwnPane(
-  api: DockviewApi,
   host: HostBridge,
   who: { entryId: string; paneId: string },
   options: OpenPaneOptions | undefined,
 ): Promise<void> {
   const panes = await fetchPanes(host)
-  applyPlan(api, planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, openInstances(api, who), who))
+  applyPlan(planOpen(specForOwnPane(panes, who.entryId, who.paneId), options, openInstancesAll(who), who))
 }
 
 /**
  * 外壳自己开一格（状态栏那张「可开的窗格」列表点的就是这条）。**走跟件调 `openPane`
- * 同一个 `planOpen`**——所以行为一致：打开这一格，已经开着就聚焦。
- *
- * 跟 `openOwnPane` 的差别只在入口：那边件只给得出 `paneId`、要现取表查 spec，这边 spec
- * 本来就在手上（那张列表就是拿它排出来的）。
+ * 同一个 `planOpen`、同一张全局表**——所以行为一致：打开这一格，已经开着（**任何桌面**）
+ * 就切过去聚焦，任务栏语义。
  */
-function openSpec(api: DockviewApi, spec: OpenableSpec): void {
+function openSpec(spec: OpenableSpec): void {
   const who = whoOf(spec)
-  applyPlan(api, planOpen(spec, undefined, openInstances(api, who), who))
+  applyPlan(planOpen(spec, undefined, openInstancesAll(who), who))
 }
 
 /** 把 `planOpen` 的判断落成动作。副作用全在这儿，判断一条都不在 */
-function applyPlan(api: DockviewApi, plan: OpenPlan): void {
+function applyPlan(plan: OpenPlan): void {
   // 四种 kind 都可能带话：开出来了也可能顺带说了句「你传的保留键摘掉了」
   if (plan.notice !== undefined) console.warn(`[shell] ${plan.notice}`)
   if (plan.kind === 'none') return
   if (plan.kind === 'focus') {
-    api.getPanel(plan.id)?.api.setActive()
+    focusAcross(plan.id)
     return
   }
+  // 预览槽与落位都只在本井找（planOpen 已保证 id 在活动井），新份也开在活动井
+  const api = wellApis.get(activeDesktop)
+  if (api === undefined) return
   if (plan.kind === 'retarget') {
     const panel = api.getPanel(plan.id)
     // 表是刚从井里摘的，这一格不该凭空没了。真没了就当什么都没发生——补开一格的话，
@@ -307,6 +324,21 @@ function applyPlan(api: DockviewApi, plan: OpenPlan): void {
 }
 
 /**
+ * **全局聚焦**：这一份在哪口井，就把那口井切到台前再激活——任务栏点一个在别的虚拟
+ * 桌面上的窗口，Windows 干的就是这件事。井各管各的 panel 表，id 的属主唯一。井常驻
+ * （保活），激活不必等显隐真落地（api 活着，CSS 只是衣裳）。
+ */
+function focusAcross(panelId: string): void {
+  for (const [desktop, api] of wellApis) {
+    const panel = api.getPanel(panelId)
+    if (panel === undefined) continue
+    if (desktop !== activeDesktop) switchDesktop?.(desktop)
+    panel.api.setActive()
+    return
+  }
+}
+
+/**
  * 面板组件表。**必须是模块级常量**：dockview 拿它的引用做比对，每轮渲染换一个新对象
  * 会让它把所有格拆了重建。标签表同理——同一个理由，同一个待遇。
  */
@@ -329,8 +361,9 @@ const COMPONENTS: Record<string, React.FunctionComponent<IDockviewPanelProps>> =
     }
     const bridge = hostBridge
     const openPane: ShellBridge['openPane'] = (target, options) => {
-      // 件不等返回值（它是 click 回调），但这条链上的错得有出口
-      void openOwnPane(props.containerApi, bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
+      // 件不等返回值（它是 click 回调），但这条链上的错得有出口。井不传——判断在模块层
+      // 看全井（聚焦可能落到别的桌面），面板组件连 containerApi 都不用了
+      void openOwnPane(bridge, { entryId, paneId: target }, options).catch((err: unknown) => {
         console.error(`[shell] 开 ${target} 失败：${String(err)}`)
       })
     }
@@ -422,6 +455,9 @@ function App({
   rowsRef.current = desktops
   const activeIdRef = useRef(activeId)
   activeIdRef.current = activeId
+  // 模块级的活动桌面（面板组件的开格链读它），跟 ref 同一步走——switchTo 里另有一处同步赋值，
+  // 保证聚焦分派在同一拍里看到新值
+  activeDesktop = activeId
   const savedRef = useRef(saved)
   savedRef.current = saved
   const timerRef = useRef<number | undefined>(undefined)
@@ -471,12 +507,14 @@ function App({
     }
   }, [flushSave])
 
-  // 井常驻，订阅也常驻——App 卸载那趟统一拆
+  // 井常驻，订阅与注册表也常驻——App 卸载那趟统一拆
   useEffect(() => {
     const subs = wellSubsRef.current
     return () => {
       for (const sub of subs.values()) sub.dispose()
       subs.clear()
+      wellApis.clear()
+      activeDesktop = ''
     }
   }, [])
 
@@ -486,11 +524,9 @@ function App({
     for (const spec of specs) addInstance(target, spec)
   }
 
-  /** 状态栏「已开」记号重算：问的是**活动那口井**的 `planOpen` 判据 */
+  /** 状态栏「已开」记号重算：问的是**全局表**的 `planOpen` 判据（别桌已开的也算，点它切过去） */
   const syncFocus = useCallback((): void => {
-    const api = apisRef.current[activeIdRef.current]
-    if (api === undefined) return
-    setFocusIds(specs.filter((spec) => willFocus(api, spec)).map((spec) => spec.id))
+    setFocusIds(specs.filter((spec) => willFocus(spec)).map((spec) => spec.id))
   }, [specs])
 
   /** 一口井挂上（冷挂那一刻）：按它那条档恢复，或铺默认；订阅布局变化。井常驻，只走一次 */
@@ -507,6 +543,7 @@ function App({
       }
     }
     if (!restored) openDefaults(event.api)
+    wellApis.set(id, event.api)
     apisRef.current[id] = event.api
     setApis({ ...apisRef.current })
     // 井一变：活动的那口顺带重算「已开」记号（**换 params 也在这条上**——dockview 8.2.0
@@ -534,6 +571,8 @@ function App({
       if (row === undefined) return
       const prev = activeIdRef.current
       activeIdRef.current = id
+      // 模块层同一拍看到新活动桌面（focusAcross 的聚焦分派跟着切换走）
+      activeDesktop = id
       if (!mountedRef.current.includes(id)) setMountedIds((list) => [...list, id])
       flushSave()
       setActiveId(id)
@@ -563,6 +602,14 @@ function App({
     },
     [switchTo],
   )
+
+  // 跨井聚焦的切桌分派（模块层 focusAcross 经它够到 switchTo，跟 flushLayoutSave 同一个路子）
+  useEffect(() => {
+    switchDesktop = switchTo
+    return () => {
+      switchDesktop = undefined
+    }
+  }, [switchTo])
 
   // node 半转来的桌面动作（shell.desktop.switch / new）：井在页面这半，命令只是转发
   useEffect(() => {
@@ -665,10 +712,7 @@ function App({
         activeDesktopId={activeId}
         savedLayouts={saved}
         saveFailed={saveFailed}
-        onOpen={(spec) => {
-          if (activeApi === null) return
-          openSpec(activeApi, spec)
-        }}
+        onOpen={openSpec}
         onSwitchDesktop={(id) => switchTo(id)}
         onNewDesktop={(name) => createDesktop(name)}
         onApplyLayout={applySaved}

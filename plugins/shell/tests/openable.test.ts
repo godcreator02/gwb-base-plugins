@@ -419,3 +419,43 @@ describe('planOpen 的 params：件说这一份是给谁的', () => {
     expect(plan.kind === 'retarget' ? plan.notice : '').toMatch(/保留键/)
   })
 })
+
+/** 开在**别的桌面**的那几份（here: false）——桌面是分组不是宇宙，它们也在这张全局表上 */
+function elsewhere(...entries: ReadonlyArray<{ key: string; preview?: boolean }>): OpenPane[] {
+  return entries.map((e, i) => ({ id: `${BASE}:e${String(i + 1)}`, key: e.key, preview: e.preview === true, here: false as const }))
+}
+
+describe('planOpen 的全局表：桌面是分组不是宇宙（0.4.0）', () => {
+  const counter = specForPane({ ...echo, id: 'counter', title: '计数器' })
+  const who = { entryId: 'echo', paneId: 'counter' }
+
+  it('key 命中**别桌的份**也走聚焦——切过去激活归接线侧，不造第二份', () => {
+    const far = [{ id: 'plugin:echo:counter:far', key: 'a', preview: false, here: false as const }]
+    expect(planOpen(counter, { key: 'a' }, far, who)).toEqual({ kind: 'focus', id: 'plugin:echo:counter:far' })
+  })
+
+  it('查重看全表：别桌占着的序号不能用，新一份跳到下一个空号', () => {
+    // 本井 BASE 开着 a，别桌的 :2 开着 x——新开 b 得 :3，不能撞别桌的 :2
+    const open = [...kept('a'), { id: `${BASE}:2`, key: 'x', preview: false, here: false as const }]
+    expect(planOpen(counter, { key: 'b' }, open, who)).toMatchObject({ kind: 'open', id: `${BASE}:3` })
+  })
+
+  it('预览槽只在本井找：别桌的预览格顶不掉，本井没有就新开一份并标预览', () => {
+    const open = [...kept('a'), ...elsewhere({ key: 'pv', preview: true })]
+    const plan = planOpen(counter, { key: 'b', preview: true }, open, who)
+    expect(plan).toMatchObject({ kind: 'open', id: `${BASE}:2` })
+    if (plan.kind === 'open') expect(plan.spec.params?.preview).toBe(true)
+  })
+
+  it('落位只看本井：别桌开几份都不影响本井的摆放档位', () => {
+    // 本井 0 份、别桌 2 份 → 不给 direction（落当前组），不参照别桌
+    const farTwo = elsewhere({ key: 'a' }, { key: 'b' })
+    const plan = planOpen(counter, { key: 'c' }, farTwo, who)
+    expect(plan).not.toHaveProperty('direction')
+    // 本井 1 份、别桌 1 份 → 本井计数是 1，走 right 不给参照
+    const mixed = [...kept('a'), ...elsewhere({ key: 'x' })]
+    const plan2 = planOpen(counter, { key: 'b' }, mixed, who)
+    expect(plan2).toMatchObject({ kind: 'open', direction: 'right' })
+    expect(plan2).not.toHaveProperty('referencePanel')
+  })
+})

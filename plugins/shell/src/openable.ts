@@ -92,9 +92,17 @@ export interface OpenableSpec {
 /**
  * 这一格**此刻开着的几份**：`planOpen` 认身份、挑预览格、查重都吃这一张表。
  *
- * 由调用方从 dockview 现摘（按 `entryId` + `paneId` 滤），所以这个判断在 node 里直接
- * 测得了。**只装同一格的那几份**：`key` 与 `preview` 都是「这一格之内」的概念，掺进
- * 别的格会让查重把别人的 id 也算上。
+ * **桌面是分组不是宇宙**（0.4.0 起）：表是**全井聚合**的——同一格开在别的桌面也算一份，
+ * `here: false` 标出来。两条口径各看各的半边：
+ *
+ * - **聚焦与查重看全表**——key 命中别桌的份也走聚焦（接线侧切过去再激活，任务栏语义）；
+ *   实例 id 的查重更得全表，跨井撞名正是上一版「井内唯一」翻掉的原因
+ * - **预览槽与落位只看本井**（`here` 不是 false 的那些）——预览是本井的快速翻看（全案
+ *   唯一保留的桌面特例），dockview 的 position 参照也不能跨井
+ *
+ * 由调用方从各口井现摘（按 `entryId` + `paneId` 滤），所以这个判断在 node 里直接测得了。
+ * **只装同一格的那几份**：`key` 与 `preview` 都是「这一格之内」的概念，掺进别的格会让
+ * 查重把别人的 id 也算上。
  */
 export interface OpenPane {
   /** 这一份的 panel id */
@@ -103,6 +111,8 @@ export interface OpenPane {
   key: string
   /** 这一份是不是预览格 */
   preview: boolean
+  /** 这一份开在**别的桌面**。省略＝在活动那口井。聚焦认它、预览与落位不认 */
+  here?: false
 }
 
 /**
@@ -219,7 +229,8 @@ function takenIn(open: readonly OpenPane[]): (id: string) => boolean {
   return (id) => open.some((p) => p.id === id)
 }
 
-/** 新开的这一份摆哪儿：`OpenPlan` 的 `open` 那一档里那两格 */
+/** 新开的这一份摆哪儿：`OpenPlan` 的 `open` 那一档里那两格。**只看本井**（here 非 false 的那些）——
+ * dockview 的 position 参照不能跨井，摆放的视觉语境也是本井的 */
 interface Placement {
   direction?: 'right' | 'below'
   referencePanel?: string
@@ -250,8 +261,9 @@ interface Placement {
  * 那条分支只是把「找不到」退回上一档，不靠它。
  */
 function placeNext(spec: OpenableSpec, open: readonly OpenPane[]): Placement {
-  if (open.length === 0) return {}
-  const under = open.length < 2 ? undefined : open.findLast((p) => p.id !== spec.id)
+  const local = open.filter((p) => p.here !== false)
+  if (local.length === 0) return {}
+  const under = local.length < 2 ? undefined : local.findLast((p) => p.id !== spec.id)
   return under === undefined ? { direction: 'right' } : { direction: 'below', referencePanel: under.id }
 }
 
@@ -293,8 +305,9 @@ export function planOpen(
     return { kind: 'none', notice: `条目 ${who.entryId} 要开的窗格 ${who.paneId} 不在注册表里` }
   }
   const want = options?.key ?? ''
+  // 装着这份内容的那一格已经开着——预览格也好正式格也好、**本井还是别的桌面**（here:false）
+  // 都算它：桌面是分组不是宇宙，key 命中就走聚焦，切过去激活归接线侧
   const already = open.find((p) => p.key === want)
-  // 装着这份内容的那一格已经开着——预览格也好正式格也好，都是它
   if (already !== undefined) return { kind: 'focus', id: already.id }
   const reserved = shellParamKeysIn(options?.params)
   const notice =
@@ -302,7 +315,8 @@ export function planOpen(
   const preview = options?.preview === true
   const next = withOpenParams(spec, options?.params, want, preview)
   const nextParams = panelParamsOf(next)
-  const slot = preview ? open.find((p) => p.preview) : undefined
+  // 预览槽只在本井找：预览是本井的快速翻看，顶掉别桌的预览格毫无意义（全案唯一的桌面特例）
+  const slot = preview ? open.find((p) => p.preview && p.here !== false) : undefined
   // 预览格至多一份：有一份活着就原地换掉它装的东西，格数不变
   if (slot !== undefined && nextParams !== undefined) {
     return { kind: 'retarget', id: slot.id, params: nextParams, ...(notice === undefined ? {} : { notice }) }
