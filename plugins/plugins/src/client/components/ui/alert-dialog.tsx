@@ -47,12 +47,15 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  container,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm"
+  /** 浮层挂哪。不给就是 radix 缺省（body）；多桌面下该指 args.shell.portal，浮层才跟着本桌走 */
+  container?: HTMLElement
 }) {
   return (
-    <AlertDialogPortal>
+    <AlertDialogPortal container={container}>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"

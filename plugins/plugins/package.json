@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-plugins",
-  "version": "0.4.1",
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）。0.2 起样式走 Tailwind 前缀围栏（类名一律 plugins: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：下拉与两个确认框照 radix 默认 portal 到 body 也有样式，那层 portal 上下文连同两处手改一起退场。0.3.0 加 plugins.update-all 一键热升，不重启：一趟 pnpm add 把全部过期包升到精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载；窗格上「全部更新」按钮配确认框。0.4.0 起 plugins.install 把件的 peer 也装成 home 的直接依赖（cordis 与本生态的件跳过、共享包与生态外的包装、已在 home 的版本一个字不动、装不上不让整条 install 失败），这样件现查 <home>/node_modules/<包名> 才拿得到会被 pnpm 改指的 junction，outdated 也才看得见它；卸载一如既往不动 peer",
+  "version": "0.4.2",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包、卸载、升级、查新版本、检索、加删条目、启停、改显示名，外加一格「插件」窗格（已装与可装两段）。0.1 对应单进程内核：窗格自报地址，共享包那张表自己读盘（内核没有 kernel.info 了）。0.2 起样式走 Tailwind 前缀围栏（类名一律 plugins: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：下拉与两个确认框照 radix 默认 portal 到 body 也有样式，那层 portal 上下文连同两处手改一起退场。0.3.0 加 plugins.update-all 一键热升，不重启：一趟 pnpm add 把全部过期包升到精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载；窗格上「全部更新」按钮配确认框。0.4.0 起 plugins.install 把件的 peer 也装成 home 的直接依赖（cordis 与本生态的件跳过、共享包与生态外的包装、已在 home 的版本一个字不动、装不上不让整条 install 失败），这样件现查 <home>/node_modules/<包名> 才拿得到会被 pnpm 改指的 junction，outdated 也才看得见它；卸载一如既往不动 peer。0.4.2：下拉与确认框的浮层户口迁到本桌（radix Portal 挂 args.shell.portal），桌面切走浮层跟着藏——多桌面下挂 body 的浮层藏不掉",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

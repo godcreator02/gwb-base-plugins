@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-hello",
-  "version": "0.2.1",
-  "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表、「几格各画各的」与「同一格开两份互不干扰」，外加自带一 node 一 python 两条 CLI。0.2 起样式走 Tailwind 前缀围栏（类名一律 hello: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：弹层 portal 到 body 也有样式，容器查询按窗格宽度判。0.2.1：hello.probe / hello.bump 的登记包进 ctx.effect（停用条目时名字随之注销），描述写明无参数",
+  "version": "0.2.2",
+  "description": "验收件（两格窗格）：验运行时环境、样式、两张注册表、「几格各画各的」与「同一格开两份互不干扰」，外加自带一 node 一 python 两条 CLI。0.2 起样式走 Tailwind 前缀围栏（类名一律 hello: 开头，不再靠 data-gwb-plugin 祖先选择器 scope）：弹层 portal 到 body 也有样式，容器查询按窗格宽度判。0.2.1：hello.probe / hello.bump 的登记包进 ctx.effect（停用条目时名字随之注销），描述写明无参数。0.2.2：演示下拉的浮层户口迁到本桌（radix Portal 的挂载点指 args.shell.portal），验收点从「挂 body 也有样式」改成「浮层跟着本桌桌面走」——多桌面下挂 body 的浮层藏不掉",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

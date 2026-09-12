@@ -95,6 +95,10 @@ interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
   shell: {
     openPane: (paneId: string, options?: { key?: string; params?: Record<string, unknown>; preview?: boolean }) => void
+    /** 本格所在桌面的浮层户口：radix Portal 的挂载点指它，桌面切走浮层跟着一起藏 */
+    portal: HTMLElement
+    /** 本格所在桌面的可见性：切走 false、切回 true，注册即回当下值。本件拿它停渲染 */
+    onVisibility: (listener: (visible: boolean) => void) => () => void
     bus: {
       emit: (type: string, detail?: unknown) => void
       on: (type: string, listener: (detail: unknown) => void) => () => void
@@ -137,7 +141,9 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
     const off = window.gwb.on((payload) => {
       if (payload === null || typeof payload !== 'object') return
       const p = payload as { t?: unknown; line?: unknown }
-      if (p.t === EVENT) take([p.line])
+      // 桌面切走时到货的直接丢——本格还活着（保活），只是不显示；node 半照常缓冲，
+      // 切回那一刻重取历史段补上（见下面那条 onVisibility）
+      if (p.t === EVENT && visibleRef.current) take([p.line])
     })
     args.host.call(BACKLOG_COMMAND).then(
       (res) => {
@@ -154,6 +160,27 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
       off()
     }
   }, [])
+
+  // 协作式降级（`shell.onVisibility`，本件是第一个示范）：桌面切走时停渲染——实时事件
+  // 直接丢、重算全停；切回时重取一次历史段把丢的那段补上，seq 去重挡住交叠。不订这条
+  // 也完全合法（渲染照旧、只是白烧），这正是契约「通知不强制」的软义务形态
+  const visibleRef = useRef(true)
+  useEffect(() => {
+    const off = args.shell.onVisibility((visible) => {
+      visibleRef.current = visible
+      if (visible === false) return
+      args.host.call(BACKLOG_COMMAND).then(
+        (res) => {
+          const r = res as { ok?: boolean; data?: unknown }
+          if (r.ok === true) setEntries((prev) => mergeEntries(prev, acceptEntries(r.data), CAP))
+        },
+        () => {
+          /* 补不上的话下一条实时事件照来，不值得打断什么 */
+        },
+      )
+    })
+    return off
+  }, [args.host, args.shell])
 
   useEffect(() => {
     let alive = true
@@ -256,7 +283,7 @@ function LoggerPane({ args }: { args: PaneArgs }): ReactElement {
             <SelectTrigger size="sm" className="logger:w-40 logger:shrink-0">
               <SelectValue placeholder="全部来源" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent container={args.shell.portal}>
               <SelectItem value={ALL_KEY}>全部来源</SelectItem>
               {groups.map((g) => (
                 <SelectGroup key={g.source}>

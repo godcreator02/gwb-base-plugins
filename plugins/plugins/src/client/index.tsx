@@ -94,6 +94,8 @@ const PANE_ID = 'installed'
 /** 外壳调 `mountPane` 时给的那几样。按形状收，只收用得着的两格（正本在 shell 件的 client/types.ts） */
 interface PaneArgs {
   host: { call: (command: string, args?: unknown) => Promise<unknown> }
+  /** 本件眼下只用得着外壳那两样：浮层户口（下拉与确认框全挂它，跟着本桌桌面走） */
+  shell: { portal: HTMLElement }
   pane: { id: string; instance: string }
 }
 
@@ -301,6 +303,7 @@ function SettingLine({
 /** 展开区里的一格：设置行序列 + 暂存语义的 footer。数据与动作都由上层供 */
 function EntryCard({
   card,
+  portal,
   face,
   open,
   onToggleOpen,
@@ -328,6 +331,8 @@ function EntryCard({
     spec?: string
     settings: SettingRow[]
   }
+  /** 本格所在桌面的浮层户口：行尾那颗「更多」下拉挂它，桌面切走跟着藏 */
+  portal: HTMLElement
   face: Face | undefined
   open: boolean
   onToggleOpen: () => void
@@ -434,7 +439,7 @@ function EntryCard({
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" container={portal}>
               <DropdownMenuItem onSelect={onRenameStart}>
                 <Pencil /> 改名
               </DropdownMenuItem>
@@ -1086,6 +1091,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
               <EntryCard
                 key={card.entry.entryId}
                 card={card}
+                portal={args.shell.portal}
                 face={faces[card.entry.entryId]}
                 open={openIds.has(card.entry.entryId)}
                 onToggleOpen={() => toggleOpen(card.entry.entryId)}
@@ -1316,7 +1322,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
       )}
 
       <AlertDialog open={asking !== null} onOpenChange={(v) => !v && setAsking(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
             <AlertDialogTitle>删条目 {asking?.card.entry.label ?? asking?.card.entry.id}？</AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -1358,7 +1364,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
       {/* 一键热升：先把 from → to 列出来让人看一眼再动手，照卸载确认框的做法。升级中不许关（onOpenChange 不收） */}
       <AlertDialog open={askingUpdateAll} onOpenChange={(v) => !v && !updatingAll && setAskingUpdateAll(false)}>
-        <AlertDialogContent>
+        <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
             <AlertDialogTitle>全部更新 {outdatedRows.length} 个包？</AlertDialogTitle>
             <AlertDialogDescription asChild>
@@ -1396,7 +1402,7 @@ function PluginsPane({ args }: { args: PaneArgs }): ReactElement {
 
       {/* 卸载是包级动作，与删一条条目是两回事——对话框把两边的边界说清楚 */}
       <AlertDialog open={askingUninstall !== null} onOpenChange={(v) => !v && setAskingUninstall(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent container={args.shell.portal}>
           <AlertDialogHeader>
             <AlertDialogTitle>卸载 {askingUninstall?.pkg}？</AlertDialogTitle>
             <AlertDialogDescription asChild>

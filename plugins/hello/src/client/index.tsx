@@ -71,6 +71,8 @@ interface PaneArgs {
     openPane: (paneId: string, options?: { key?: string; params?: Record<string, unknown>; preview?: boolean }) => void
     /** 把这一格留住：它不再是预览格，下一次预览打开顶不掉它 */
     keepPane: () => void
+    /** 本格所在桌面的浮层户口：radix Portal 的挂载点指它，桌面切走浮层跟着一起藏 */
+    portal: HTMLElement
     bus: {
       emit: (type: string, detail?: unknown) => void
       on: (type: string, listener: (detail: unknown) => void) => () => void
@@ -353,20 +355,20 @@ function MainPane({ args }: { args: PaneArgs }): ReactElement {
       </div>
 
       {/*
-        **这颗菜单验的是「弹层挂 body 也有样式」**：radix 把 `DropdownMenuContent`
-        portal 到 `<body>` 上，它压根不是窗格容器的后代。选择器 scope 那套方案下这层
-        浮层必然裸奔（一堆无边框无底色的裸文字）；前缀方案下类名自己就是围栏，
-        规则照样命中。
+        **这颗菜单验的是「弹层的户口跟本桌走」**：radix 的 Portal 指到 `args.shell.portal`
+        ——本桌桌面里的一个节点。浮层从此物理上是本桌的后代，桌面切走它跟着一起藏；
+        指到 body（radix 缺省）的话它不属于任何桌面，藏桌面藏不掉它。前缀围栏两种挂法
+        都有样式（规则跟 DOM 位置无关），所以这条验的是**归属**不是样式。
       */}
       <div className="hello:space-y-2 hello:rounded-lg hello:border hello:bg-card hello:p-4 hello:text-card-foreground">
-        <p className="hello:text-sm hello:font-semibold">弹层（portal 到 body）</p>
+        <p className="hello:text-sm hello:font-semibold">弹层（户口在本桌）</p>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button data-probe="menu-trigger" variant="outline">
               打开菜单
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent data-probe="menu-content" align="start">
+          <DropdownMenuContent data-probe="menu-content" align="start" container={args.shell.portal}>
             <DropdownMenuLabel>这层不在窗格容器里</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem data-probe="menu-open-counter" onSelect={() => openCounter(0)}>

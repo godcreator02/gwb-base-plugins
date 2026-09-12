@@ -1,7 +1,7 @@
 {
   "name": "@godcreator02/gwb-logger",
-  "version": "0.2.1",
-  "description": "日志件：自己挂 cordis exporter 收全量、自己缓冲、经内核事件口推给窗格。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.2 起样式走 Tailwind 前缀围栏（类名一律 logger: 开头，不再靠 data-gwb-plugin 祖先选择器 scope），Select 的弹层因此照常挂 body、Portal 补丁退场",
+  "version": "0.2.2",
+  "description": "日志件：自己挂 cordis exporter 收全量、自己缓冲、经内核事件口推给窗格。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.2 起样式走 Tailwind 前缀围栏（类名一律 logger: 开头，不再靠 data-gwb-plugin 祖先选择器 scope），Select 的弹层因此照常挂 body、Portal 补丁退场。0.2.2：Select 的浮层户口迁到本桌（挂 args.shell.portal——0.1 删 container 补丁是为样式围栏，这回重接是为桌面归属，两个理由两码事）；订 shell.onVisibility 协作降级：桌面切走停渲染（实时事件直接丢，node 半照常缓冲两千条），切回重取历史段补上，seq 去重挡住交叠",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,7 +26,7 @@
     "prepublishOnly": "pnpm build"
   },
   "//deps": "词汇表包是**运行时真 import**（requireKernel）；shell 与 commands 一行值都没 import，但 inject 它们是运行期硬依赖——home 里没有它们这个件永远挂不上；两个共享包是浏览器半跑起来的前提（react 系经内核注的 importmap、令牌表由外壳注）",
-  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖，但**打进本束**——它们不在 importmap 里，外置成裸名就是运行期炸，所以按本仓判据算 dev。这个件用了门户组件（Select）：0.2 起**它的 Portal 一个字都不用配**——弹层照 radix 的默认挂到 body 下，而围栏是类名前缀 `logger:`，全页有效、只匹配本件画出来的元素，挂哪儿都有样式。0.1 那会儿围栏是 `[data-gwb-plugin]` 祖先选择器，弹层出了容器就一条规则都匹配不上（症状是「下拉打开是一片没样式的白板」），才有了那份 src/client/portal.tsx 与 Portal 上的 container 补丁；那两样已经整个删掉，别再加回来",
+  "//components": "radix / cva / cn 是 shadcn 组件的运行时依赖，但**打进本束**——它们不在 importmap 里，外置成裸名就是运行期炸，所以按本仓判据算 dev。这个件用了门户组件（Select）：0.2 起**它的 Portal 一个字都不用配**——弹层照 radix 的默认挂到 body 下，而围栏是类名前缀 `logger:`，全页有效、只匹配本件画出来的元素，挂哪儿都有样式。0.1 那会儿围栏是 `[data-gwb-plugin]` 祖先选择器，弹层出了容器就一条规则都匹配不上（症状是「下拉打开是一片没样式的白板」），才有了那份 src/client/portal.tsx 与 Portal 上的 container 补丁；那两样在 0.2 整个删了（样式不再需要）。0.2.2 加的只是 SelectContent 的 container 入参、由使用点传 args.shell.portal——那是为多桌面的浮层归属（浮层跟着本桌桌面藏），不是把样式时代的补丁请回来",
   "//cn": "shadcn CLI 拉组件时自己装的那几个（cn 是 clsx + tailwind-merge 的官方替代，出自 shadcn-ui/cn；radix-ui 与 lucide-react 是组件本体要的），CLI 一律写进 dependencies；这里全挪到 dev——按本仓判据**打进本束的算 dev**。cn 对 logger:h-9 / logger:h-8 这类带前缀的冲突合并本来就对，不用为前缀配任何东西",
   "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入：件自己编自己那张表（`tailwindcss` 这个 bin 出自 cli 包），版本对齐仓根的 ^4.3.0。tw-animate-css 给 animate-in / fade-in-0 这类类名——不引就一个字节都不出，Select 的弹层从来不动画。@tailwindcss/node 是 tests/prefix.test.ts 用的：那条守卫要在**不带前缀**的同一份输入下试编每个 token。它本来就是 cli 的依赖，但 pnpm 的严格布局下 logger 解析不到，所以显式写一条。四条都只在构建/测试期用，运行期没人 import，所以是 dev",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
