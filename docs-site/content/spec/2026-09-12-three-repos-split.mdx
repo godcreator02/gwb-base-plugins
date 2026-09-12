@@ -1,0 +1,259 @@
+---
+title: 三仓拆分
+description: 无头基础仓 / UI 平台仓 / 验收仓——logger 与 plugin-manager 劈 core，baseui 收皮，hello 独立
+docfirst: none
+---
+
+# 三仓拆分
+
+**本页回答**：base-plugins 怎么拆成三个仓、四个件（logger、plugins、baseui、hello）怎么动、
+按什么顺序动。立场与判据已与主人对齐（2026-09-12 总控台会话），本页是执行方案。
+
+## 验收清单
+
+做完逐条勾，然后拆解归梁（设计进现状区、决定记 decisions、没做的回未来区）删本页。
+
+- [ ] **基础仓无头化**：`gwb-base-plugins` 的 `plugins/` 只剩九件——commands、data、
+  settings、mcp、skills、node-cli、py-cli、logger(core)、plugin-manager(core)；任何一件的
+  peer 与产物里没有 shell / shared-react / tokens 三件套；产物守卫在
+- [ ] **logger core 化发版**：包名、服务名 `gwbLogger`、命令 `logger.*` 一字不动；无壳
+  home 里件挂得上、`logger.backlog` 可查（现状 inject 硬赖 gwbShell，无壳整件挂不上——这是本页修的病）
+- [ ] **plugin-manager 断代发版**：新包 `@godcreator02/gwb-plugin-manager`，七面改穿
+  （件名/目录/包名/服务名/命令前缀/skill 名/导出类型）；旧包 `gwb-plugins` 停版留 registry
+- [ ] **baseui 0.0.1 发版**：`@godcreator02/gwb-baseui`，日志与插件管理两窗格；缺
+  logger / plugin-manager 时对应窗格不画、其余照常；前缀围栏守卫在
+- [ ] **hello 独立仓发版**：新单元新仓，包名 `@godcreator02/gwb-hello` 不变，依赖全走
+  registry 不再 `workspace:*`；实机验收全链路通
+- [ ] **两个新单元开好**：UI 平台仓（shell、theme、baseui、tokens、shared-react）、
+  验收仓（hello），各自六区文档站立起、`pnpm check` 绿
+- [ ] **旧名清理**：总控台 console 仓 `AGENTS.md` 里 `plugins.install` / `plugins.update-all`
+  改成新命令名；devkit 说明书里的旧命令名扫一遍；旧包最后一版 log 里指路新包
+
+## 立场：先立后拆
+
+这场讨论从「说能换 shell，实际换不动」的痛点开始，最终落点不是「修到能换」，是**改口**：
+
+**shell 是一个 UI 平台的整体，要换就整套换。** tokens（视觉契约）与 shared-react
+（react 运行时口粮）跟 shell 同仓同进退；不为假想的第二外壳实现维护独立契约包
+（「窗格契约进词汇表」方案随此立场作废）。cordis 服务注入免费保留底线可换性——
+新外壳只要提供同名服务 `gwbShell`、同形 `mountPane` 就接得上，这是副产品，不是承诺。
+
+分层不用层号表达，用**依赖判据**表达：依赖图是唯一真相，层号是人编的第二份真相。
+本页所有「层」都翻译成 peer / import 事实。
+
+## 判据
+
+**件劈不劈 core/ui，三条全过才劈：**
+
+1. 服务半有**无头场景的真实消费者**（agent / mcp / 其他件经服务用它）
+2. UI 半是**薄皮**（逻辑沉在 node 半，浏览器半只是操作面；逻辑沉在浏览器半的件
+   本来就该整体在 UI 层，劈是撕件）
+3. 劈开后 core 暴露给 ui 的契约面**小而稳**
+
+过堂结果：logger（mcp 查日志——**现状有病**，inject 硬赖 gwbShell，无壳 home 里
+日志聚合整个不存在）、plugin-manager（`plugins.install` 的第一消费者就是无 UI 的
+agent 会话）**劈**；theme 不劈（服务半 `theme.startupCss` 的消费者是 shell 自己）；
+hello 不劈（UI 即本体）。
+
+**baseui 三规矩（缺一条它就吸成上帝件）：**
+
+1. 对每个 core 服务**一律嵌套注入**，`export const inject` 只有 `gwbShell`——缺谁
+   少画谁的窗格，永不「全有或全无」
+2. **一窗格一模块**：`panes/` 下窗格之间零 import，只准 import `shared/`；发布聚合、
+   开发分立，保住并行会话不挡道
+3. **只收「劈过件的皮」**：进 baseui 的唯一资格是它是某个 core 件的官方脸。
+   UI 即本体的件（hello、theme、将来功能件）自带皮，不进
+
+## 三仓格局
+
+| 仓 | 单元 | 装什么 |
+| --- | --- | --- |
+| `gwb-base-plugins`（原地瘦身） | `26090709qzp` | 九个无头件：七件不动 + logger core + plugin-manager core |
+| `gwb-ui-plugins`（新） | `260912` + 掷码 | shell、theme、baseui 三件 + packages/{shared-react, tokens} |
+| `gwb-hello`（新） | `260912` + 掷码 | 单件仓：验收件 hello（不改名） |
+
+依赖流向单向：UI 仓与验收仓 peer 基础仓（registry 版本号，`>=`），永不反向。
+
+### 基础仓（瘦身后）
+
+```text
+gwb-base-plugins/
+├── docs-site/                          # shell/hello/theme/baseui 的页迁去新仓站
+├── design/                             # 留（按内容复核，若实为 UI 设计稿则随迁）
+└── plugins/
+    ├── commands/ data/ settings/ mcp/ skills/ node-cli/ py-cli/   # 七件不动
+    ├── logger/                         # core 化，包名服务名命令名全不动（存量无感）
+    │   ├── package.json                #   peer 瘦成 plugin-api + commands
+    │   ├── build.ts                    #   删 esbuild 打 client 步，只剩 tsc
+    │   ├── src/index.ts                #   inject 由 ['gwbShell','gwbCommands'] 改 ['gwbCommands']；
+    │   │                               #   exporter / 缓冲 / logger.backlog / where / emit 全留；
+    │   │                               #   registerPane / describeSelf 段删（去 baseui）
+    │   └── tests/artifact.test.ts      #   留（core 自己的产物守卫）
+    └── plugin-manager/                 # ★ 原 plugins/ 改名 + core 化 + 断代新包
+        ├── package.json                #   @godcreator02/gwb-plugin-manager，peer: plugin-api + cordis
+        ├── src/index.ts                #   服务名 gwbPluginManager；命令前缀 plugin-manager.*；
+        │                               #   registerPane / describeSelf 段删
+        ├── src/{home,ids,inventory,outdated,peers,pnpm,pnpm-path,
+        │        search,tree,uninstall,update-all}.ts               # node 半十一文件逻辑不动
+        ├── skills/gwb-plugin-manager/SKILL.md                      # 改名；补「面板装 gwb-baseui 后可见」
+        └── tests/{artifact,home,ids,inventory,outdated,peers,pnpm-path,
+                 search,tree,uninstall,update-all}.test.ts          # node 半测试全留
+```
+
+`packages/` 目录空了删掉。pnpm-workspace 通配不变。
+
+### UI 平台仓（新）
+
+```text
+gwb-ui-plugins/
+├── pnpm-workspace.yaml                 # plugins/* + packages/* + docs-site；allowBuilds 照抄基础仓
+├── tsconfig.base.json / tsconfig.json / vitest.config.ts            # 抄基础仓骨架
+├── AGENTS.md / CLAUDE.md / README.md   # 新写；规矩抄基础仓，「无头」换成「UI 平台」
+├── packages/
+│   ├── shared-react/                   # ← 原样搬（react 系运行时，gwb.shared 四条）
+│   └── tokens/                         # ← 原样搬（视觉契约）
+├── plugins/
+│   ├── shell/                          # ← 原样搬（0.3.x 不动）
+│   ├── theme/                          # ← 原样搬（全局样式 + 外观窗格，不劈）
+│   └── baseui/                         # ★ 新件：基础件的官方窗格集
+│       ├── package.json                # peer: shell(硬)、plugin-api、shared-react、tokens、cordis；
+│       │                               #       logger、plugin-manager 标 peerDependenciesMeta.optional
+│       ├── build.ts                    # esbuild 打 client.js + tailwind 出 style.css，前缀 baseui:
+│       ├── components.json             # shadcn 配置，生成目标指 src/client/shared/
+│       ├── src/
+│       │   ├── index.ts                # inject=['gwbShell'] 硬依赖只此一个；
+│       │   │                          #   ctx.inject(['gwbLogger']) → 注册「日志」窗格
+│       │   │                          #   ctx.inject(['gwbPluginManager']) → 注册「插件管理」面板
+│       │   │                          #   describeSelf 报一次 baseui 自己
+│       │   └── client/
+│       │       ├── index.tsx           # mountPane 按 pane.id 分派（照 hello 两格分派抄）
+│       │       ├── styles.css          # tailwind 入口，@source 覆盖 shared + panes
+│       │       ├── shared/ui/          # 两窗格 shadcn 组件去重合并：
+│       │       │                       #   button、badge、input、select、dropdown-menu、
+│       │       │                       #   alert-dialog、collapsible、switch
+│       │       └── panes/              # 窗格间零 import，只准 import ../../shared
+│       │           ├── logger/         # ← logger/src/client/ 的 index.tsx、entries.ts、filter.ts
+│       │           └── plugin-manager/ # ← plugins/src/client/ 的 index.tsx、market.tsx、market-rows.ts、
+│       │                               #   peers.ts、rows.ts、settings.ts、update-all.ts
+│       └── tests/
+│           ├── artifact.test.ts        # baseui 产物守卫
+│           ├── prefix.test.ts          # baseui: 前缀围栏守卫
+│           └── panes/                  # ← logger tests/{entries,filter} +
+│                                           #   plugins tests/{market-rows,rows,peers-text,update-all-text}
+└── docs-site/                          # 新站：站件建骨架 + docfirst 装配六区；口别撞 4315
+```
+
+### 验收仓（新，单件仓）
+
+```text
+gwb-hello/
+├── pnpm-workspace.yaml                 # plugins/* + docs-site
+├── AGENTS.md / README.md / docs-site/  # 新写；单元 purpose 写明「装配级验收」
+└── plugins/hello/                      # ← 原 plugins/hello/ 原样搬入（不改名）
+                                        #   件内逻辑一行不动——它本来就按形状收、不 import 别件产物；
+                                        #   依赖全换 registry 版本（peer >= / dev 从 registry 装）
+```
+
+## 件级方案
+
+### logger：劈 core，沿用包名
+
+- **存量无感**：包名 `@godcreator02/gwb-logger`、服务 `gwbLogger`、命令
+  `logger.backlog` / `logger.where` 全不动。升版后唯一变化是窗格没了，装 baseui 找回
+- **修的病**：现状 `inject = ['gwbShell','gwbCommands']` 硬赖外壳，无壳 home 里
+  日志聚合、缓冲、查询命令整个不存在。劈后 `['gwbCommands']`，无头可用
+- 底线澄清：日志落盘（`<home>/gwb.log`）是内核保证的，与本件无关；本件卖的是
+  聚合缓冲 + agent 查询命令 + 页面事件流，前两样是无头场景的真实增值
+
+### plugin-manager：改名断代 + 劈 core
+
+名字的三层病灶：仓内路径 `plugins/plugins/` 双层重名；件名与概念撞（所有件都是插件，
+唯独管理插件的件叫「插件件」）；agent 说明书里指称打架。改名趁断代版一趟改穿：
+
+| 面 | 旧 | 新 |
+| --- | --- | --- |
+| 件名 / 目录 | plugins / `plugins/plugins/` | plugin-manager / `plugins/plugin-manager/` |
+| 包名 | `@godcreator02/gwb-plugins` | `@godcreator02/gwb-plugin-manager` |
+| 服务名 | `ctx.gwbPlugins` | `ctx.gwbPluginManager` |
+| 命令前缀 | `plugins.install` 等 | `plugin-manager.install` 等（前缀 = 件名，零转换） |
+| skill 名 | `skills/gwb-plugins/` | `skills/gwb-plugin-manager/` |
+| 导出类型 | `GwbPlugins` 等 | `GwbPluginManager` 等 |
+| baseui 窗格 id | （旧件的）plugins | `plugin-manager`（新包无存量，无布局迁移） |
+
+- **断代策略**与 livedoc→docfirst 同一先例：旧包停版留 registry，新包新号起，
+  最后一版旧包发一条 log 指路
+- **为什么此刻便宜**：拼 core 正要发破坏性版；依赖图里没有任何现存件 peer 它
+  （mcp 只 peer commands/data/settings，shell 也不依赖）；baseui 是新写的。
+  错过这次，agent 生态把 `plugins.*` 写进更多说明书后成本单调上涨
+
+### baseui：新件，官方窗格集
+
+- 定位照 VS Code 内置视图抄：聚合的是**发布**不是**开发**
+- 三规矩见上；技术参照都有现成先例——嵌套注入照 theme / hello 抄，多窗格一件
+  注册照 hello 两格抄（client.js 一份、`pane.id` 分派）
+- 组件去重是第一笔收益：logger 的 button/badge/input/select 与 plugins 的
+  button/badge/dropdown-menu/alert-dialog/collapsible/switch/input 合并进 `shared/ui/`
+- **搬家别搬反**：`plugins/src/client/peers.ts`、`update-all.ts` 是浏览器半，与
+  node 半同名文件 `src/peers.ts`、`src/update-all.ts` 是**两个东西**
+- 说明书归属：窗格用法说明住 baseui 自己的 skills；core 件的 skills 里补一句
+  「UI 面板装 gwb-baseui 后可见」。别让 baseui 长出自己的大说明书——能力正本在 core
+
+### hello：不改名，独立验收仓
+
+- **包名、命令、CLI 全不动**：`@godcreator02/gwb-hello`、`hello.probe` / `hello.bump`、
+  `hello.node` / `hello.python` 一字不改——它只搬家（旧仓 → 新单元单件仓），
+  依赖从 `workspace:*` 换 registry 版本
+- **独立单元的身份**：它是验收器不是平台件——验的就是「装出来的生态」，全
+  registry 依赖（不再 `workspace:*` 直连）反而名实相符：直连验的是开发态不是装配态
+- 它走后 UI 仓的验收两层解决：仓内 `pnpm check` + hello 仓的实机装配验收
+
+## 依赖面变化
+
+| 件 | peer 变化 |
+| --- | --- |
+| logger (core) | 去掉 shell / shared-react / tokens；剩 plugin-api + commands |
+| plugin-manager (core) | 去掉 shared-react / tokens（shell 本就不在 peer）；剩 plugin-api + cordis |
+| baseui (新) | shell(硬) + plugin-api + shared-react + tokens + cordis；logger、plugin-manager 标 optional |
+| shell / theme / hello | peer 内容不变；hello 的 dev 从 `workspace:*` 全换 registry 版本 |
+| UI 仓各件对基础仓件 | 从 `workspace:*` 变 registry 版本号（`>=`，不写 `^`——0.0.x 上 caret 锁死 patch） |
+
+## 执行顺序
+
+**先劈后搬**：劈分是语义改动，搬仓是纯目录搬运；分开做每步可验证、可发版、可回退。
+混在一趟里出了问题分不清是哪个半拉的。
+
+1. **旧仓内劈 + 改名**（不动仓）：建 `plugins/baseui`，logger 瘦 core，plugins 改名
+   plugin-manager 瘦 core——一趟 `pnpm check` 全绿
+2. **隔离 home 验两种形态**（`devkit.home.new`）：无头 home（logger / plugin-manager
+   挂、命令在；baseui 缺 shell 不挂是**预期**）；有壳 home（日志 + 插件管理窗格齐、
+   装卸检升全通）
+3. **发版升 default**：gwb-logger（core 化 minor）、gwb-plugin-manager（断代首版）、
+   gwb-baseui 0.0.1——发版说明写清：存量 home 升级后日志/插件窗格
+   消失装 baseui 找回；gwb-plugins 换装 gwb-plugin-manager
+4. **开两单元搬仓**：UI 仓（shell、theme、baseui + 两共享包）、验收仓（hello）；
+   抄仓骨架、建各自 docs-site
+5. **基础仓清场**：删走掉的目录与空 `packages/`，重生成 README / AGENTS
+   （正本在 outputs，改完 `docfirst render --target ai` 重摆），两站文档对齐
+
+## 风险与连锁
+
+- **optional peer 实测**：`peerDependenciesMeta.optional` + 嵌套注入的组合，
+  theme 已有先例，但 baseui 是首次多窗格形态，隔离 home 里专门验一遭
+- **文档连锁**（旧名清理）：总控台 console 仓 `AGENTS.md` 手写段里的
+  `plugins.install` / `plugins.update-all` / `plugins.list`；devkit 说明书；本仓
+  AGENTS 里「十二件正在迁到 0.1 契约」的表述
+- **窗格消失的存量体验**：logger 升版即无脸——发版说明必须写，否则像回归
+- **`plugins/` 目录与件目录重名**在搬走后不复存在，但 plugin-manager 未搬走前
+  （第 1-3 步）路径是 `plugins/plugin-manager/`，已消歧
+
+## 明确不做（防回头）
+
+- **窗格契约进词汇表**：随「shell = UI 平台整体」立场作废。cordis 服务注入的
+  底线可换性是副产品不是承诺，不为它付维护费
+- **层号体系**（第 0/1/2 层）：用依赖判据表达层，不用人编层号
+- **theme / hello 劈件**：theme 服务半消费者是 shell 自己；hello UI 即本体
+- **baseui 吸收一切 UI**：界线钉死——只收劈过件的皮；将来功能件（编辑器、终端类）
+  自带皮。**这条不立住，baseui 就是下一个「说能拆实际拆不动」的耦合点，只是从
+  shell 挪到它身上**
+- **共享组件独立成包**（shared-ui 之类）：两窗格的组件合进 baseui 内部 `shared/`
+  够用；真出现第三消费者再议（YAGNI，内核仓准入判据同款）
