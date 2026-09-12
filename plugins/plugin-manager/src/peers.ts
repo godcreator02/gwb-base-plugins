@@ -14,7 +14,7 @@ import { toShared } from './inventory.js'
  * **但 pnpm 自动补的 peer 顶不上这个用**（内核仓 `probes/2609101500_peer-dep-live-swap` 实测）：
  * 自动补的只塞进 `.pnpm/`、只软链进件自己的私有 `node_modules/`，`<home>/node_modules/<包名>`
  * 这条路径**根本不存在**；于是 `pnpm outdated`（只看 `package.json`）永远看不见它，
- * `plugins.update-all` 也就永远升不到它。`auto-install-peers` 那个开关帮不上忙——默认本来
+ * `plugin-manager.update-all` 也就永远升不到它。`auto-install-peers` 那个开关帮不上忙——默认本来
  * 就是开的，开着也只塞进 `.pnpm/`，而且它在 pnpm 11 上写 `.npmrc` 完全不认。
  * **只有写进 home 的 `package.json` 才有那条 junction**，所以这一步只能由这个件来做。
  */
@@ -33,12 +33,12 @@ const GWB_NAMESPACE = /^@godcreator02\/gwb-/
 
 /**
  * 一个 peer 是哪一种。**只对 `@godcreator02/gwb-*` 里的包问这个问题**，判据是清单里有没有
- * `gwb.shared`——那是本生态既有的标记（内核扫它拼页面 importmap，`plugins.shared` 读同一批）：
+ * `gwb.shared`——那是本生态既有的标记（内核扫它拼页面 importmap，`plugin-manager.shared` 读同一批）：
  *
  * - `shared`：共享包（`gwb-shared-react` / `gwb-tokens`）。**本来就该是 home 的直接依赖**
  *   ——内核只扫 home 的 dependencies 拼 importmap，它不在那张清单里等于没有。跟这次要装的
  *   peer 是同一个形状，所以装
- * - `plugin`：件。件有自己的进 home 之路（`plugins.install`，装完还要落一条 `cordis.yml`
+ * - `plugin`：件。件有自己的进 home 之路（`plugin-manager.install`，装完还要落一条 `cordis.yml`
  *   条目），从 peer 这条路顺手塞进来只会在「已装、没挂条目」区里堆一排没人挂的包
  */
 export type PeerKind = 'shared' | 'plugin'
@@ -114,7 +114,7 @@ export function planPeers(
       if (kind === 'shared') {
         out.push({ pkg, range, decision: 'install' })
       } else if (kind === 'plugin') {
-        out.push({ pkg, range, decision: 'skipped', note: '本生态的件，要装走 plugins.install（那条还会落一条 cordis.yml 条目）' })
+        out.push({ pkg, range, decision: 'skipped', note: '本生态的件，要装走 plugin-manager.install（那条还会落一条 cordis.yml 条目）' })
       } else {
         out.push({
           pkg,

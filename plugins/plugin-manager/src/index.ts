@@ -6,7 +6,6 @@ import { isRecord, requireKernel, type GwbContext, type GwbResult } from '@godcr
 import type { GwbCommands } from '@godcreator02/gwb-commands'
 import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
-import type {} from '@godcreator02/gwb-shell'
 import type {} from '@godcreator02/gwb-skills'
 import { readHomeDependencies, readInstalledManifest, readPeerManifest, readSharedPackages } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
@@ -41,17 +40,20 @@ export type { PeerKind, PeerPlanItem } from './peers.js'
  * 有解：先摘条目后卸包，pnpm 失败报一句不回滚（改判记在件仓文档站 decisions）。只摘
  * 一条条目、包留着，走 `removeEntry`——两个动作分工，不是同一个的两种写法。
  *
- * 界面那半是一格窗格（`installed`，见 `src/client/`），**「已装」与「可装」两段**：
- * 已装是包 → 条目两层，操作全在条目那一层；可装是 **registry 检索**（`search`，npm 标准
- * 协议、基址从 pnpm 配置来——装从哪来搜就到哪去；原先是一份手工白名单，2026-09-08 一天
- * 内两改：先随市场件并入，同日白名单也退了场），「装」这个动作也归这个件（`install`）。
- * 外加查新版本（`outdated`）与升到最新（`update`，**不建条目**——条目引的是包名，包换
- * 版本条目原样有效）。
+ * **可装什么**走 registry 检索（`search`，npm 标准协议、基址从 pnpm 配置来——装从哪来
+ * 搜就到哪去；原先是一份手工白名单，2026-09-08 一天内两改：先随市场件并入，同日白名单
+ * 也退了场），「装」这个动作也归这个件（`install`）。外加查新版本（`outdated`）与升到
+ * 最新（`update`，**不建条目**——条目引的是包名，包换版本条目原样有效）。
  *
  * **一键热升（`updateAll`）= 一趟 pnpm 升完全部过期包，再逐条停用→启用重挂，不重启。**
  * 计划（谁升、谁重挂、谁最后）是 `update-all.ts` 里的纯函数；这儿只按计划执行。升级与
  * 重挂必须在**同一条命令**里做完：pnpm 会删旧版本目录，中间留一条命令的窗口，旧件读盘
  * 就读空。本件自己那条条目排最后、回执之后才动——处理器里停用自己等于把回执一起拔掉。
+ *
+ * **改名史**：原 `gwb-plugins`（包 `@godcreator02/gwb-plugins`），2026-09-12 断代改名为
+ * `plugin-manager`——浏览器半（`src/client/` 那格窗格）随三仓拆分搬去
+ * `@godcreator02/gwb-baseui`，本件只剩 node 半的服务与命令。旧包名在 registry 上弃用，
+ * 新包从 0.1.0 起；**操作面板住 `@godcreator02/gwb-baseui`**。
  */
 
 /** 停用/启用之后等 fiber 把手头的事做完，最多等这么久。到点就走，读到什么状态报什么 */
@@ -60,17 +62,7 @@ const SETTLE_MS = 5_000
 /** 外壳的整页重载命令。**按名探**，不 import 外壳的常量——那会把 shell 变成运行时依赖 */
 const SHELL_RELOAD_COMMAND = 'shell.reload'
 
-const NAME = 'gwb-plugins'
-
-/** 窗格 id。跟 `src/client/index.tsx` 里那个常量对着，认不出的 id 那半会画一句错 */
-const PANE_ID = 'installed'
-
-/** 窗格与自述共用一份显示名与图标（lucide 的名字，kebab-case） */
-const FACE = { title: '插件', icon: 'puzzle' }
-
-/** 浏览器半与样式表的地址，注册窗格时报给外壳。dist/ 下三个文件是邻居，从本模块算 */
-const CLIENT_URL = new URL('./client.js', import.meta.url).href
-const STYLE_URL = new URL('./style.css', import.meta.url).href
+const NAME = 'gwb-plugin-manager'
 
 /** 显示名落在本件自己的数据里，一份 裸 id → label 的文档 */
 const LABELS_DOC = 'labels'
@@ -81,19 +73,19 @@ const LABELS_DOC = 'labels'
  */
 const PNPM_PATH_KEY = 'pnpm-path'
 
-export const LIST_COMMAND = 'plugins.list'
-export const INSTALL_COMMAND = 'plugins.install'
-export const ADD_ENTRY_COMMAND = 'plugins.add-entry'
-export const REMOVE_ENTRY_COMMAND = 'plugins.remove-entry'
-export const ENABLE_COMMAND = 'plugins.enable'
-export const DISABLE_COMMAND = 'plugins.disable'
-export const SET_LABEL_COMMAND = 'plugins.set-label'
-export const OUTDATED_COMMAND = 'plugins.outdated'
-export const UPDATE_COMMAND = 'plugins.update'
-export const UPDATE_ALL_COMMAND = 'plugins.update-all'
-export const SEARCH_COMMAND = 'plugins.search'
-export const UNINSTALL_COMMAND = 'plugins.uninstall'
-export const SHARED_COMMAND = 'plugins.shared'
+export const LIST_COMMAND = 'plugin-manager.list'
+export const INSTALL_COMMAND = 'plugin-manager.install'
+export const ADD_ENTRY_COMMAND = 'plugin-manager.add-entry'
+export const REMOVE_ENTRY_COMMAND = 'plugin-manager.remove-entry'
+export const ENABLE_COMMAND = 'plugin-manager.enable'
+export const DISABLE_COMMAND = 'plugin-manager.disable'
+export const SET_LABEL_COMMAND = 'plugin-manager.set-label'
+export const OUTDATED_COMMAND = 'plugin-manager.outdated'
+export const UPDATE_COMMAND = 'plugin-manager.update'
+export const UPDATE_ALL_COMMAND = 'plugin-manager.update-all'
+export const SEARCH_COMMAND = 'plugin-manager.search'
+export const UNINSTALL_COMMAND = 'plugin-manager.uninstall'
+export const SHARED_COMMAND = 'plugin-manager.shared'
 
 /** 装件时顺带处理的一条 peer。判据与理由在 `peers.ts` */
 export interface PeerResult {
@@ -229,8 +221,8 @@ interface SettingsSlot {
   get(key: string): unknown
 }
 
-/** 消费方拿到的那一格。写 `inject: ['gwbPlugins']` 才有 */
-export interface GwbPluginsApi {
+/** 消费方拿到的那一格。写 `inject: ['gwbPluginManager']` 才有 */
+export interface GwbPluginManagerApi {
   /** 已装的包 → 它们各自的条目。两边都不丢，判据见 `reconcile` */
   list(): Promise<PluginPackageView[]>
   /**
@@ -317,7 +309,7 @@ export interface GwbPluginsApi {
   setLabel(entryId: string, label: string): Promise<GwbResult>
 }
 
-export default class GwbPlugins extends Service implements GwbPluginsApi {
+export default class GwbPluginManager extends Service implements GwbPluginManagerApi {
   /**
    * 提供方自己的 ctx。方法里的 `this.ctx` 是**消费者**的，而这个件干的每一件事都以
    * **自己**的身份进行（改的是整棵树、写的是自己那份数据），所以一律用这一份。
@@ -359,7 +351,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
   private registry: string | undefined
 
   constructor(ctx: GwbContext) {
-    super(ctx, 'gwbPlugins')
+    super(ctx, 'gwbPluginManager')
     this.own = ctx
     this.home = requireKernel(ctx).dataDir
     this.tree = treeOf(ctx)
@@ -373,9 +365,8 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
     this.wireData()
     this.wireSettings()
     this.wireCommands()
-    this.wireShell()
     this.wireSkills()
-    this.info(`件管理就绪（ctx.gwbPlugins），自己那条条目是 ${ownEntryId(this.own)}，看表走 ${LIST_COMMAND}`)
+    this.info(`件管理就绪（ctx.gwbPluginManager），自己那条条目是 ${ownEntryId(this.own)}，看表走 ${LIST_COMMAND}`)
   }
 
   /** 说明书局部注入:skills 件不在时本件照常挂。skills/ 目录得进 package.json 的 files */
@@ -488,7 +479,7 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugins.update-all）。参数 { pkg }', async (args) => {
+      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all）。参数 { pkg }', async (args) => {
         const result = await this.update(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
@@ -512,26 +503,12 @@ export default class GwbPlugins extends Service implements GwbPluginsApi {
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UNINSTALL_COMMAND, '卸载一个包：它的全部条目与包一起拿掉，设置与数据留盘（只删一条条目走 plugins.remove-entry）。参数 { pkg }', async (args) => {
+      on(UNINSTALL_COMMAND, '卸载一个包：它的全部条目与包一起拿掉，设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }', async (args) => {
         const result = await this.uninstall(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
         return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
       })
-    })
-  }
-
-  /**
-   * 外壳也是可选的：**没装外壳就没有窗格，服务面与命令面照常在**。
-   *
-   * 这个件跟 logger 反过来——那个件没有外壳就该整个挂不上（一格窗格是它的全部），
-   * 这儿窗格只是可选的那一层。
-   */
-  private wireShell(): void {
-    this.own.inject(['gwbShell'], (ctx) => {
-      // 两条都不用自己包 ctx.effect：件卸载时表上那两条自动摘掉
-      ctx.gwbShell.registerPane({ id: PANE_ID, ...FACE, client: CLIENT_URL, style: STYLE_URL })
-      ctx.gwbShell.describeSelf(FACE)
     })
   }
 
@@ -1046,7 +1023,7 @@ function noteOf(notes: readonly string[]): { note?: string } {
   return notes.length === 0 ? {} : { note: notes.join('；') }
 }
 
-/** `plugins.update-all` 的参数：不传、传空对象都是「全升」；给了 only 就得是非空字符串数组 */
+/** `plugin-manager.update-all` 的参数：不传、传空对象都是「全升」；给了 only 就得是非空字符串数组 */
 function onlyList(args: unknown): string[] | undefined {
   if (args === undefined || args === null) return undefined
   const only = asRecord(args)['only']
@@ -1085,6 +1062,6 @@ function label(raw: Record<string, unknown>): string {
 
 declare module 'cordis' {
   interface Context {
-    gwbPlugins: GwbPluginsApi
+    gwbPluginManager: GwbPluginManagerApi
   }
 }

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  // **只收 src/index.ts**（其余文件靠 import 链带进来）。浏览器半（src/client/）已随
+  // 2026-09-12 三仓拆分搬去 @godcreator02/gwb-baseui，这个件只剩 node 半
+  "include": ["src/index.ts"]
+}

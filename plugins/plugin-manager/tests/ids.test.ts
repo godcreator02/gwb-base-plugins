@@ -54,7 +54,7 @@ describe('包名 → 默认 id', () => {
   it('去掉 scope 与 gwb- 前缀', () => {
     expect(defaultIdFor('@godcreator02/gwb-py-cli')).toBe('py-cli')
     expect(defaultIdFor('@godcreator02/gwb-commands')).toBe('commands')
-    expect(defaultIdFor('@godcreator02/gwb-plugins')).toBe('plugins')
+    expect(defaultIdFor('@godcreator02/gwb-plugin-manager')).toBe('plugin-manager')
   })
 
   it('没 scope 没前缀的原样', () => {

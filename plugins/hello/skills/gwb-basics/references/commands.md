@@ -8,19 +8,19 @@
 内核不认识任何命令名——`gwb:command` 收到什么就原样派给 `ctx.gwbCommands`，没装总线件
 就是一句「认不出」。所以下面每一条都来自某个件。
 
-摸不清状况时先问 `plugins.list`：它把 home 里装了哪些包、各自在 `cordis.yml` 里有哪些
+摸不清状况时先问 `plugin-manager.list`：它把 home 里装了哪些包、各自在 `cordis.yml` 里有哪些
 条目、每条挂上没有（`active`）一次说清。
 
 ## 件带来的
 
 | 命令 | 来自 | 回什么 |
 | --- | --- | --- |
-| `plugins.list` | `gwb-plugins` | home 里装了哪些包，各自有哪些条目、启用没有、active 没有 |
-| `plugins.install` | `gwb-plugins` | pnpm add 一个包进 home，再自动加一条条目（默认启用），回 `entryId` |
-| `plugins.add-entry` / `plugins.remove-entry` | `gwb-plugins` | 给已装的包加/删条目。删条目**不删包**，没有卸载 |
-| `plugins.enable` / `plugins.disable` | `gwb-plugins` | 启用/停用一条条目，`{ "entryId": "..." }` |
-| `plugins.set-label` | `gwb-plugins` | 改条目的显示名，空串是抹掉 |
-| `plugins.shared` | `gwb-plugins` | home 里哪些包是共享包（清单里声明了 `gwb.shared`），各自提供哪些裸名 |
+| `plugin-manager.list` | `gwb-plugin-manager` | home 里装了哪些包，各自有哪些条目、启用没有、active 没有 |
+| `plugin-manager.install` | `gwb-plugin-manager` | pnpm add 一个包进 home，再自动加一条条目（默认启用），回 `entryId` |
+| `plugin-manager.add-entry` / `plugin-manager.remove-entry` | `gwb-plugin-manager` | 给已装的包加/删条目。删条目**不删包**，没有卸载 |
+| `plugin-manager.enable` / `plugin-manager.disable` | `gwb-plugin-manager` | 启用/停用一条条目，`{ "entryId": "..." }` |
+| `plugin-manager.set-label` | `gwb-plugin-manager` | 改条目的显示名，空串是抹掉 |
+| `plugin-manager.shared` | `gwb-plugin-manager` | home 里哪些包是共享包（清单里声明了 `gwb.shared`），各自提供哪些裸名 |
 | `shell.env` | `gwb-shell` | 外壳浏览器半开机要的环境：home 目录与三张样式表的 `file://` 地址 |
 | `logger.backlog` / `logger.where` | `gwb-logger` | 日志历史段；日志落在哪（home 与 `gwb.log`） |
 | `settings.all` / `settings.get` / `settings.set` | `gwb-settings` | 设置的读与写，位置是 `{ scope, section, key }` |

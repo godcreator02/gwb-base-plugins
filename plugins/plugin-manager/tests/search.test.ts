@@ -18,7 +18,7 @@ const entry = (name: string, patch: Record<string, unknown> = {}): unknown => ({
 
 describe('isGwbLine：scope 下、gwb- 前缀', () => {
   it('正线与废弃线的 gwb-* 都算——规则是字面的，不认正废', () => {
-    expect(isGwbLine('@godcreator02/gwb-plugins')).toBe(true)
+    expect(isGwbLine('@godcreator02/gwb-plugin-manager')).toBe(true)
     expect(isGwbLine('@godcreator02/gwb-api')).toBe(true)
   })
 
@@ -39,12 +39,12 @@ describe('parseSearch', () => {
   it('一份正经的响应原样收下，用不着的字段（downloads/score/publisher）不看', () => {
     const got = parseSearch(
       response([
-        entry('@godcreator02/gwb-plugins', { version: '0.0.8', description: '管 home 里的包与条目' }),
+        entry('@godcreator02/gwb-plugin-manager', { version: '0.0.8', description: '管 home 里的包与条目' }),
         entry('@godcreator02/gwb-shell'),
       ]),
     )
     expect(got).toEqual([
-      { pkg: '@godcreator02/gwb-plugins', version: '0.0.8', description: '管 home 里的包与条目' },
+      { pkg: '@godcreator02/gwb-plugin-manager', version: '0.0.8', description: '管 home 里的包与条目' },
       { pkg: '@godcreator02/gwb-shell', version: '0.0.1', description: '@godcreator02/gwb-shell 的一句话' },
     ])
   })
