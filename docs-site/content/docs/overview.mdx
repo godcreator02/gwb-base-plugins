@@ -29,7 +29,7 @@ docfirst: none
 **状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，而这张表已经漂过
 一轮（`cli` 停在 0.0.3、`shell` 还写着「待做」，实际那时它已经发到 0.0.4 了）。
 
-`gwb-commands` 排第一不是随便定的：**内核的 `dispatch` 除两条自省命令外全走 `ctx.gwbCommands`**，
+`gwb-commands` 排第一不是随便定的：**内核的 `dispatch` 收到什么就全走 `ctx.gwbCommands`**，
 没有它，界面调不到任何 node 侧的能力。
 
 ## 两条命名规矩
