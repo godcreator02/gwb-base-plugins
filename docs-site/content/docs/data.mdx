@@ -12,7 +12,7 @@ description: 一件一份数据目录，归属是条目不是包；readDoc 没�
 
 ## 它的面
 
-@@docfirst ref ../plugins/data/src/index.ts:23-31 @@
+{/* ref file="../plugins/data/src/index.ts" lines="23-31" */}
 
 `dir` 是那个件的专属目录，存非 JSON 时用它；`readDoc` / `writeDoc` 管的是
 `<dir>/<文档名>.json` 一份一份的整档读写。
@@ -23,7 +23,7 @@ description: 一件一份数据目录，归属是条目不是包；readDoc 没�
 条目模型里的身份，`name` 只说「装哪个包」；同一个包挂两条条目是两份独立配置的实例，
 按包名切的话它们共用一个目录、互相覆盖。姊妹件 `gwb-settings` 的分区键是同一个答案：
 
-@@docfirst ref ../plugins/data/src/paths.ts:66-79 @@
+{/* ref file="../plugins/data/src/paths.ts" lines="66-79" */}
 
 entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么当场抛，撞墙经过与判据在
 [撞过的墙](/docs/walls)那页，两处代码钉着同一段论断。
@@ -37,7 +37,7 @@ entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么
 `accessor` 为什么不行、`Service` 为什么行，实测经过在[撞过的墙](/docs/walls)；
 这个件里的写法：
 
-@@docfirst ref ../plugins/data/src/index.ts:6-13 @@
+{/* ref file="../plugins/data/src/index.ts" lines="6-13" */}
 
 ## 读与写的语义
 
@@ -48,9 +48,9 @@ entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么
 的话，写到一半崩了会留下半个文件，那份数据就毁了；rename 只在同一分区上原子，所以
 临时文件必须跟目标同目录：
 
-@@docfirst ref ../plugins/data/src/store.ts:6-9 @@
+{/* ref file="../plugins/data/src/store.ts" lines="6-9" */}
 
-@@docfirst ref ../plugins/data/src/store.ts:27-31 @@
+{/* ref file="../plugins/data/src/store.ts" lines="27-31" */}
 
 写失败不静默：异常照抛给调用方，但先 error 一句——很多调用方一吞，数据丢了都没声没响。
 
@@ -61,14 +61,14 @@ home 级数据按条目 id 落目录，而条目不写 `id` 时 loader 发的是
 id 就 warn——**不抛错**（那条件本来能跑），**也不静默**（对不上是最难查的那种），
 一条条目只说一次：
 
-@@docfirst ref ../plugins/data/src/index.ts:89-100 @@
+{/* ref file="../plugins/data/src/index.ts" lines="89-100" */}
 
 ## 一个坑：私有字段用 TS 的 `private`，不用 `#`
 
 cordis 给每个消费者派生一份 `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，
 派生对象上一读就炸。这个件的字段声明钉着这条：
 
-@@docfirst ref ../plugins/data/src/index.ts:36-43 @@
+{/* ref file="../plugins/data/src/index.ts" lines="36-43" */}
 
 ## 怎么单独测
 

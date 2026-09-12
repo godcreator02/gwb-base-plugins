@@ -60,7 +60,7 @@ devDependencies**。
 
 ## 注销只收自己那份
 
-同一段里那个 `if (table.get(def.name) === record)`：撞名之后**先卸载的那个件，不该把接手的
+同一段里那个 `if (byName.get(def.name) === record)`：撞名之后**先卸载的那个件，不该把接手的
 那份一起带走**。少了这个判等，卸一个件会让另一个件注册的命令跟着消失。
 
 

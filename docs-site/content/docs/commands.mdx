@@ -55,7 +55,7 @@ handler 就是个普通 JS 函数，跑在宿主这个 node 进程里——**这
 而它们把自己登记的命令**也挂进这条总线**：所以那两个件跟这个是叠着的、不是并列的。
 看见命令名里带 `cli` 就来这儿找 spawn，找不着——spawn 在那两个件里。
 
-@@docfirst ref ../plugins/commands/src/index.ts:9-15 @@
+{/* ref file="../plugins/commands/src/index.ts" lines="9-15" */}
 
 ## 回执的形状
 
@@ -95,7 +95,7 @@ instructions，每个连上来的 agent 都会读到。
 而**不写进 `export const inject`**：没装 skills 件的 home 里，命令总线照样得能挂上——
 **说明书不是它能不能干活的前提**。写进 `inject` 的话，少那一件整个总线就 PENDING 了。
 
-@@docfirst ref ../plugins/commands/src/index.ts:35-40 @@
+{/* ref file="../plugins/commands/src/index.ts" lines="35-40" */}
 
 局部注入这个模式别的件也用（[skills](/docs/skills) 那页讲了为什么），钉在这儿的是
 这个件自己的那一处。
