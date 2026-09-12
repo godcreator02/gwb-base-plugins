@@ -1,6 +1,6 @@
 ---
 title: README（仓根正本）
-description: 仓根 README.md 由这一页摆出去
+description: 仓根 README.md 由这一页摆出去——改这里，跑 docfirst render，一起提交
 docfirst: none
 ---
 
@@ -18,6 +18,10 @@ docfirst: none
 | mcp | `@godcreator02/gwb-mcp` | —（不 provide，只开一道口） |
 | logger | `@godcreator02/gwb-logger` | — |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` |
+| theme | `@godcreator02/gwb-theme` | — |
+| plugins | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` |
+| node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` |
+| py-cli | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` |
 
 **各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
 
@@ -36,7 +40,7 @@ pnpm doc            # docfirst check：钉住的代码变了会报黄
 发一个件到本机 registry、再装进 home 验：
 
 ```powershell
-cd plugins/cli
+cd plugins/commands
 pnpm publish --registry http://127.0.0.1:4873/ --no-git-checks
 # 然后在 home 目录 pnpm add @godcreator02/gwb-commands@<版本>，改 cordis.yml 加条目
 ```
@@ -56,6 +60,6 @@ pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 
 **代码注释只写现状**——为什么这么写、撞过什么，全在文档站的「撞过的墙」那页，并且用
 docfirst 钉在对应代码上：代码一改文档就报黄。这份 README 是生成物，正本是
-`docs-site/content/docs/readme.mdx`。
+`docs-site/content/outputs/readme.mdx`；仓根 `AGENTS.md` 同理，正本是同目录的 `agents.mdx`。
 
 规则（准入判据、服务命名、依赖三档）的正本在**内核仓**，这个站只记件自己的事。

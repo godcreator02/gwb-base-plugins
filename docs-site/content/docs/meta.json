@@ -1,7 +1,6 @@
 {
   "pages": [
     "overview",
-    "roadmap",
     "commands",
     "shell",
     "styles",
@@ -13,8 +12,6 @@
     "settings",
     "plugins",
     "decisions",
-    "walls",
-    "feedback",
-    "readme"
+    "walls"
   ]
 }

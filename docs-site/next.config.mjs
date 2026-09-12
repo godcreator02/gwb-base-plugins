@@ -14,6 +14,10 @@ const config = {
   redirects: async () => [
     { source: '/', destination: '/docs/overview', permanent: true },
     { source: '/docs', destination: '/docs/overview', permanent: true },
+    // 六区装配（2026-09-12）：路线升未来区、反馈与 README 正本各归各的区，老 URL 全保
+    { source: '/docs/roadmap', destination: '/future/roadmap', permanent: true },
+    { source: '/docs/feedback', destination: '/feedback/inbox', permanent: true },
+    { source: '/docs/readme', destination: '/outputs/readme', permanent: true },
   ],
 }
 

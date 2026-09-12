@@ -1,3 +1,9 @@
+---
+title: AGENTS（仓根正本）
+description: 仓根 AGENTS.md 由这一页摆出去——每次会话都得知道的硬约束；改这里，跑 docfirst render，一起提交
+docfirst: none
+---
+
 # gwb-base-plugins
 
 **单进程内核 `gwb-kernel-min`（`D:\unitfolders\26090705ymz\gwb-kernel-min`，单元 `26090705ymz`）
@@ -13,17 +19,17 @@
 
 ## 内核给的面就这么大
 
-* `ctx.gwbKernel`（用 `requireKernel(ctx)` 取，**不写进 `inject`**）：`dataDir` / `emit` /
+- `ctx.gwbKernel`（用 `requireKernel(ctx)` 取，**不写进 `inject`**）：`dataDir` / `emit` /
   `setShell`，就三样；`ctx.loader` 管条目树，改条目就是热挂卸；一条内核命令都没有
-* 页面公共面 `window.gwb`：`command` / `on` / `onShell`
-* 件跑在 Electron 主进程里，`import('electron')` 够得着
+- 页面公共面 `window.gwb`：`command` / `on` / `onShell`
+- 件跑在 Electron 主进程里，`import('electron')` 够得着
 
 ## 命名与依赖
 
-* 包名 `@godcreator02/gwb-<件名>`；服务名一律 `gwb` 开头小驼峰，默认跟件名对应
-* 依赖三档：运行时真 import 写 peer；只 import type 但出现在导出的类型里，也写 peer；
+- 包名 `@godcreator02/gwb-<件名>`；服务名一律 `gwb` 开头小驼峰，默认跟件名对应
+- 依赖三档：运行时真 import 写 peer；只 import type 但出现在导出的类型里，也写 peer；
   只在实现内部用写 dev
-* 相对 import 必须带 `.js`、产物里不许有裸名 import——两条都有产物守卫
+- 相对 import 必须带 `.js`、产物里不许有裸名 import——两条都有产物守卫
 
 ## 写件与验机
 
