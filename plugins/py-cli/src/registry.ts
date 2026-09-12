@@ -120,29 +120,29 @@ export function normalize(plugin: string, spec: PyCliSpec): RegisteredPyCli {
 }
 
 export function createRegistry(warn: (message: string) => void): PyCliRegistry {
-  const table = new Map<string, RegisteredPyCli>()
+  const byName = new Map<string, RegisteredPyCli>()
 
   return {
     register(plugin, spec) {
       const record = normalize(plugin, spec)
-      const prev = table.get(record.name)
+      const prev = byName.get(record.name)
       // 撞名后来者赢,但要告警
       if (prev !== undefined) {
         warn(`命令 ${record.name} 被重复注册,后来者生效：${prev.plugin} → ${record.plugin}`)
       }
-      table.set(record.name, record)
+      byName.set(record.name, record)
       // 只收自己那份:HMR 时新的先注册覆盖、旧的后 dispose,无条件删会把新的一起带走
       return () => {
-        if (table.get(record.name) === record) table.delete(record.name)
+        if (byName.get(record.name) === record) byName.delete(record.name)
       }
     },
 
     list() {
-      return [...table.values()]
+      return [...byName.values()]
     },
 
     get(name) {
-      return table.get(name)
+      return byName.get(name)
     },
   }
 }

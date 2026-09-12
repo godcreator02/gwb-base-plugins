@@ -34,32 +34,32 @@ export interface RegistryLog {
  * 日志里却毫无痕迹——「谁在什么时候调了什么、成没成」是命令总线最基本的账。
  */
 export function createRegistry(log: RegistryLog): GwbCommands {
-  const table = new Map<string, { def: Required<GwbCommandDef>; handler: (args?: unknown) => unknown }>()
+  const byName = new Map<string, { def: Required<GwbCommandDef>; handler: (args?: unknown) => unknown }>()
 
   return {
     register(def, handler) {
       const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin, top: def.top ?? false }
       const record = { def: entry, handler }
-      const prev = table.get(def.name)
+      const prev = byName.get(def.name)
       // 撞名后来者赢，但要告警
       if (prev !== undefined) {
         log.warn(`命令 ${def.name} 被重复注册，后来者生效：${prev.def.plugin} → ${entry.plugin}`)
       } else {
         log.info(`命令 ${def.name} 登记上了（${entry.plugin}）`)
       }
-      table.set(def.name, record)
+      byName.set(def.name, record)
       // 只收自己那份
       return () => {
-        if (table.get(def.name) === record) table.delete(def.name)
+        if (byName.get(def.name) === record) byName.delete(def.name)
       }
     },
 
     list() {
-      return [...table.values()].map((r) => r.def)
+      return [...byName.values()].map((r) => r.def)
     },
 
     async run(name, args) {
-      const found = table.get(name)
+      const found = byName.get(name)
       if (found === undefined) {
         log.warn(`跑了条不存在的命令：${name}`)
         return { ok: false, error: `没有这条命令：${name}` }

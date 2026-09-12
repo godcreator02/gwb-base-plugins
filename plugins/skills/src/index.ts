@@ -59,7 +59,7 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
    * **用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份 `Object.create(this)`，
    * 而 `#` 私有字段的内部槽不在原型链上，派生对象上一读就炸。
    */
-  private readonly table = new Map<string, CollectedSkill>()
+  private readonly byName = new Map<string, CollectedSkill>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbSkills')
@@ -77,7 +77,7 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     this.ctx.effect(() =>
       cli.register(
         { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）。无参数', plugin: 'gwb-skills', top: true },
-        () => ({ count: this.table.size, skills: this.list() }),
+        () => ({ count: this.byName.size, skills: this.list() }),
       ),
     )
     this.ctx.effect(() =>
@@ -125,20 +125,20 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
 
     const taken: string[] = []
     for (const found of skills) {
-      const clash = this.table.get(found.skill.name)
+      const clash = this.byName.get(found.skill.name)
       if (clash !== undefined) {
         // 静默覆盖会让 agent 读到另一个件的说明书，而症状只是「它照着做但做错了」
         log.warn(`[${owner}] skill 名 ${found.skill.name} 已被 ${clash.skill.plugin} 占着，这一份没挂`)
         continue
       }
-      this.table.set(found.skill.name, found)
+      this.byName.set(found.skill.name, found)
       taken.push(found.skill.name)
     }
     if (taken.length > 0) log.info(`[${owner}] 挂上 ${taken.length} 份 skill：${taken.join('、')}`)
 
     const off = (): void => {
       // 只撤自己挂上的那几个：别人后来挂的同名一份不动
-      for (const key of taken) this.table.delete(key)
+      for (const key of taken) this.byName.delete(key)
     }
     // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘
     this.ctx.effect(() => off)
@@ -146,11 +146,11 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
   }
 
   list(): GwbSkill[] {
-    return [...this.table.values()].map((found) => found.skill)
+    return [...this.byName.values()].map((found) => found.skill)
   }
 
   async read(name: string, file: string = SKILL_ENTRY): Promise<string | undefined> {
-    const found = this.table.get(name)
+    const found = this.byName.get(name)
     if (found === undefined) return undefined
     // 只认登记表里的那几份——这张表是扫出来的，条目里不会有 `..`
     if (!found.skill.files.includes(file)) return undefined
