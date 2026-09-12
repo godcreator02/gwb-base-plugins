@@ -100,7 +100,7 @@ export function normalize(plugin: string, spec: PyCliSpec): RegisteredPyCli {
   if (timeoutMs > MAX_TIMEOUT_MS) {
     throw new Error(
       `命令 ${name} 的 timeoutMs ${timeoutMs} 超了上限 ${MAX_TIMEOUT_MS}——` +
-        '内核那条命令通道 120 秒就硬超时了,再长这边也报不出来',
+        '跑过两分钟还不回的话,人要的是一句 timedOut 加一份 spillPath,不是一个永远不回的 promise',
     )
   }
   return {
