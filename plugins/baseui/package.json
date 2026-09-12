@@ -1,0 +1,71 @@
+{
+  "name": "@godcreator02/gwb-baseui",
+  "version": "0.0.1",
+  "description": "基础界面：基础件（logger、plugin-manager）的官方窗格集。一件多格、按 pane.id 分派；对每个 core 服务嵌套注入——缺谁少画谁的窗格，其余照常。窗格之间零 import，共享组件住 src/client/components/ui。2026-09-12 三仓拆分第一刀：logger 与 plugin-manager 劈 core，各自的浏览器半整体迁入本件（panes/logger 与 panes/plugin-manager），类名前缀统一换 baseui:，命令名随 plugin-manager 断代改名",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "//gwb": "整段没有。浏览器半与样式表的地址由 node 半从 import.meta.url 算成 file://，随 registerPane 交出去；这个件不是共享包，gwb.shared 没人读",
+  "scripts": {
+    "//build": "三步：tsc 出 node 半（dist/index.js 与 .d.ts）、esbuild 打浏览器半（dist/client.js，react 系外置走页面 importmap、其余打进束）、tailwindcss 出本件那张 dist/style.css（前缀 baseui:）",
+    "build": "tsc -p tsconfig.json && node build.ts && tailwindcss -i src/client/styles.css -o dist/style.css",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p src/client/tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test 不构建，少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "prepublishOnly": "pnpm build"
+  },
+  "//deps": "peer 分两类。硬前提只有外壳与词汇表：gwb-shell 运行时真 inject（registerPane），plugin-api 的 requireKernel 是真函数。浏览器半那两条共享包：react 系经内核注的 importmap 解析、令牌表由外壳按 file:// 注——home 里没它们界面那半跑不起来。logger 与 plugin-manager 是 **optional peer**：本件对它们一律嵌套注入（局部 ctx.inject），home 里缺谁就少画谁的窗格、其余照常——写进 peer 只是装包时顺带带上，标 optional 后 pnpm 不强制。cordis 是运行时真 import（inject 声明走 Context 类型）。node 半不 import 任何 core 件的代码，只有 `import type {}` 激活 declare module",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
+  "peerDependencies": {
+    "@godcreator02/gwb-logger": ">=0.2.2",
+    "@godcreator02/gwb-plugin-api": ">=0.1.0",
+    "@godcreator02/gwb-plugin-manager": ">=0.1.0",
+    "@godcreator02/gwb-shared-react": ">=0.0.2",
+    "@godcreator02/gwb-shell": ">=0.1.0",
+    "@godcreator02/gwb-tokens": ">=0.0.2",
+    "cordis": "^4.0.0-rc.9"
+  },
+  "peerDependenciesMeta": {
+    "@godcreator02/gwb-logger": {
+      "optional": true
+    },
+    "@godcreator02/gwb-plugin-manager": {
+      "optional": true
+    }
+  },
+  "//styleDeps": "tailwindcss 与 @tailwindcss/cli 是构建输入（本件自己编自己那张 dist/style.css，版本对齐仓根 ^4.3.0）；@tailwindcss/node 是 tests/prefix.test.ts 用的；tw-animate-css 给 animate-in 一族类名；react/@types/cn/radix-ui/class-variance-authority/lucide-react 是浏览器半的束内依赖（esbuild 打进 dist/client.js）；@types/node 归 node 半。全都在构建/测试期，运行期没人 import 它们，所以是 dev",
+  "devDependencies": {
+    "@godcreator02/gwb-logger": "workspace:*",
+    "@godcreator02/gwb-plugin-api": "0.1.0",
+    "@godcreator02/gwb-plugin-manager": "workspace:*",
+    "@godcreator02/gwb-shared-react": "workspace:*",
+    "@godcreator02/gwb-shell": "workspace:*",
+    "@godcreator02/gwb-tokens": "workspace:*",
+    "@tailwindcss/cli": "^4.3.0",
+    "@tailwindcss/node": "^4.3.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.2.5",
+    "cordis": "4.0.0-rc.9",
+    "esbuild": "^0.27.0",
+    "lucide-react": "^1.41.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwindcss": "^4.3.0",
+    "tw-animate-css": "^1.4.0",
+    "typescript": "^7.0.2"
+  }
+}
