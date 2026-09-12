@@ -13,21 +13,34 @@ docfirst: none
 
 做完逐条勾，然后拆解归梁（设计进现状区、决定记 decisions、没做的回未来区）删本页。
 
-- [ ] **基础仓无头化**：`gwb-base-plugins` 的 `plugins/` 只剩九件——commands、data、
+- [x] **基础仓无头化**：`gwb-base-plugins` 的 `plugins/` 只剩九件——commands、data、
   settings、mcp、skills、node-cli、py-cli、logger(core)、plugin-manager(core)；任何一件的
-  peer 与产物里没有 shell / shared-react / tokens 三件套；产物守卫在
-- [ ] **logger core 化发版**：包名、服务名 `gwbLogger`、命令 `logger.*` 一字不动；无壳
-  home 里件挂得上、`logger.backlog` 可查（现状 inject 硬赖 gwbShell，无壳整件挂不上——这是本页修的病）
-- [ ] **plugin-manager 断代发版**：新包 `@godcreator02/gwb-plugin-manager`，七面改穿
+  peer 与产物里没有 shell / shared-react / tokens 三件套；产物守卫在（2026-09-12，pnpm check 全绿）
+- [x] **logger core 化发版**：包名、服务名 `gwbLogger`、命令 `logger.*` 一字不动；无壳
+  home 里件挂得上、`logger.backlog` 可查（现状 inject 硬赖 gwbShell，无壳整件挂不上——这是本页修的病）。
+  0.3.0 劈 core；0.3.1 补挂薄服务 `gwbLogger`——baseui 的日志窗格按服务名嵌套注入，没有它
+  那格永远 PENDING（有壳隔离 home 实机验出后补的刀）
+- [x] **plugin-manager 断代发版**：新包 `@godcreator02/gwb-plugin-manager`，七面改穿
   （件名/目录/包名/服务名/命令前缀/skill 名/导出类型）；旧包 `gwb-plugins` 停版留 registry
-- [ ] **baseui 0.0.1 发版**：`@godcreator02/gwb-baseui`，日志与插件管理两窗格；缺
-  logger / plugin-manager 时对应窗格不画、其余照常；前缀围栏守卫在
+  （0.1.0，13 条命令前缀、类型名、skill 名全换；hello 的命令参考同步换新名）
+- [x] **baseui 0.0.1 发版**：`@godcreator02/gwb-baseui`，日志与插件管理两窗格；缺
+  logger / plugin-manager 时对应窗格不画、其余照常；前缀围栏守卫在（隔离 home 双形态验过：
+  无头 home 两 core 挂上命令在、无 baseui；有壳 home 三窗格齐、面板取数真跑）
 - [ ] **hello 独立仓发版**：新单元新仓，包名 `@godcreator02/gwb-hello` 不变，依赖全走
   registry 不再 `workspace:*`；实机验收全链路通
 - [ ] **两个新单元开好**：UI 平台仓（shell、theme、baseui、tokens、shared-react）、
   验收仓（hello），各自六区文档站立起、`pnpm check` 绿
-- [ ] **旧名清理**：总控台 console 仓 `AGENTS.md` 里 `plugins.install` / `plugins.update-all`
-  改成新命令名；devkit 说明书里的旧命令名扫一遍；旧包最后一版 log 里指路新包
+- [x] **旧名清理**：总控台 console 仓 `AGENTS.md` 里 `plugins.install` / `plugins.update-all`
+  改成新命令名 ✓；devkit 说明书里 22 处旧命令名已投它仓 feedback/inbox（说明书随包发，
+  要 devkit 自己发版才进 home）；旧包最后一版 log 里指路新包——未做，旧包已从 default
+  换装下岗，指路 log 的必要性降了，留待 devkit 处理 inbox 时一并定
+
+**default home 已换装重启**（2026-09-12）：gwb-plugin-manager 0.1.0 + gwb-baseui 0.0.1 +
+gwb-logger 0.3.1 上位，gwb-plugins 卸载，九格窗格全开（含 baseui 的 logger 与
+plugin-manager 两格），MCP 桥恢复 2870。**实测撞见的一堵墙**：default 上旧版 mcp 件的
+`gwb_command_run` 桥不解析 args 字符串（带参命令全进不去，"参数要是个对象"）——本轮装卸
+全走了手动 pnpm + cordis.yml + 重启；这条投给 devkit 的 inbox 也在路上，桥修复或 devkit
+发版前，第 4 步建站的 `docs-site.create` / `docfirst.attach`（都要传参）同样够不着。
 
 ## 立场：先立后拆
 
