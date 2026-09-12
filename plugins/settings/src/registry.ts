@@ -93,10 +93,6 @@ function viewKey(slot: Slot): string {
  * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
  * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
  */
-/**
- * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
- * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
- */
 export function toSettingsFile(raw: unknown, warn: (message: string) => void, where: string): SettingsFile {
   if (!isRecord(raw)) {
     warn(`${where} 顶层不是一个对象，当没有处理`)
