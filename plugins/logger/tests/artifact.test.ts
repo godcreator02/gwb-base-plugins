@@ -46,11 +46,11 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('裸名只许词汇表包——requireKernel 是真函数，别的一条都没有', () => {
+  it('裸名只许词汇表包与 cordis——requireKernel 是真函数，薄服务 extends 的是宿主那份 cordis', () => {
     const bare: string[] = []
     for (const file of files) {
       for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:') && spec !== '@godcreator02/gwb-plugin-api') bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:') && spec !== '@godcreator02/gwb-plugin-api' && spec !== 'cordis') bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])
