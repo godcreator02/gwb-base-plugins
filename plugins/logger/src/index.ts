@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { Service } from 'cordis'
 import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
 // 只为激活那个件的 `declare module 'cordis'`——给 ctx 加上 gwbCommands
 import type {} from '@godcreator02/gwb-commands'
@@ -26,6 +27,20 @@ export const WHERE_COMMAND = 'logger.where'
 
 /** 缓冲多少条。够翻回开机那一段，又不至于占太多内存 */
 const CAP = 2000
+
+/**
+ * 薄服务：消费方的嵌套注入按**服务名**等待，而本件 0.2 时代只有命令没有服务——
+ * gwb-baseui 那格日志窗格等的 `gwbLogger` 永远 PENDING、静默不注册（2026-09-12
+ * 三仓拆分实机验出）。服务面刻意**留空**：取数走命令（`logger.backlog` / `where`）、
+ * 页面推送走内核事件口——谁都别往这儿加方法，除非出现第二个绕不开服务的消费者。
+ */
+class GwbLogger extends Service {}
+
+declare module 'cordis' {
+  interface Context {
+    gwbLogger: GwbLogger
+  }
+}
 
 export type LogSource = 'plugin' | 'kernel' | 'renderer'
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug'
@@ -66,6 +81,9 @@ export function apply(ctx: GwbContext): void {
   const cli = ctx.gwbCommands
   // inject 保证了它在，这句只是把类型收窄（commands 件把它声明成可选的）
   if (cli === undefined) return
+
+  // 先把服务挂上再干活：消费方的嵌套注入等的就是它，晚了人家那格窗格就开不出来
+  new GwbLogger(ctx, 'gwbLogger')
 
   // Logger 类从一个实例的 constructor 上取，不 import cordis 的内部；format 是静态方法，%s/%o/Error 它都会
   const factory = ctx.logger as unknown as {
