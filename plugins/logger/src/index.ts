@@ -1,21 +1,23 @@
 import path from 'node:path'
 import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活那两个件的 `declare module 'cordis'`——给 ctx 加上 gwbShell 与 gwbCommands
-import type {} from '@godcreator02/gwb-shell'
+// 只为激活那个件的 `declare module 'cordis'`——给 ctx 加上 gwbCommands
 import type {} from '@godcreator02/gwb-commands'
 
 /**
- * node 半：**这回真的是日志件了**。
+ * 纯 core：**无头场景的日志件**。
  *
  * 内核只做一件事：cordis 的日志全量进 stderr 与 `<home>/gwb.log`，人不靠任何件也看得见。
- * 其余全在这儿：挂第二个 exporter 收全量、自己缓冲、历史段从 cordis 自带的那圈 buffer 补、
- * 实时经内核事件口（`gwbKernel.emit`）推给窗格。三路（件、内核、渲染层）都经 cordis logger
- * 过来——内核把渲染层 console 转进了 `ctx.logger('renderer')`，所以这儿一个 exporter 收齐。
+ * 这儿卖的是聚合缓冲、agent 查询命令、页面事件流：挂第二个 exporter 收全量、自己缓冲、
+ * 历史段从 cordis 自带的那圈 buffer 补、实时经内核事件口（`gwbKernel.emit`）推给页面。
+ * 三路（件、内核、渲染层）都经 cordis logger 过来——内核把渲染层 console 转进了
+ * `ctx.logger('renderer')`，所以这儿一个 exporter 收齐。
+ *
+ * 窗格（UI 面板）不住这儿——0.3 劈 core 后它住 `@godcreator02/gwb-baseui`，装它找回。
  */
 export const name = 'gwb-logger'
 
-/** 没有外壳就没有窗格；没有总线历史段出不去。两个都是硬等待 */
-export const inject = ['gwbShell', 'gwbCommands']
+/** 没有总线历史段出不去（命令注册不上）。外壳不再是依赖——窗格住 gwb-baseui */
+export const inject = ['gwbCommands']
 
 /** 事件载荷的记号：`{ t: EVENT, line: LogEntry }`。页面上谁订 window.gwb.on 都收得到，靠它认 */
 export const EVENT = 'gwb-logger'
@@ -64,16 +66,6 @@ export function apply(ctx: GwbContext): void {
   const cli = ctx.gwbCommands
   // inject 保证了它在，这句只是把类型收窄（commands 件把它声明成可选的）
   if (cli === undefined) return
-  const here = import.meta.url
-  // 两条都不用自己包 ctx.effect：件卸载时表上那两条自动摘掉。地址从本模块算：dist/ 下三个文件是邻居
-  ctx.gwbShell.registerPane({
-    id: 'main',
-    title: '日志',
-    icon: 'scroll-text',
-    client: new URL('./client.js', here).href,
-    style: new URL('./style.css', here).href,
-  })
-  ctx.gwbShell.describeSelf({ title: '日志', icon: 'scroll-text' })
 
   // Logger 类从一个实例的 constructor 上取，不 import cordis 的内部；format 是静态方法，%s/%o/Error 它都会
   const factory = ctx.logger as unknown as {
@@ -131,6 +123,7 @@ export function apply(ctx: GwbContext): void {
     ),
   )
 
-  // 这句不是客套：它应该**出现在自己的窗格里**（来源 plugin、名字 gwb-logger），是整条链路最省事的一次自检
-  ctx.logger(name).info(`日志件就绪：补了历史 ${ring.length} 条，窗格已注册`)
+  // 这句不是客套：它是整条链路（exporter → 缓冲 → 事件口）最省事的一次自检——装了 gwb-baseui
+  // 的话，它就出现在日志窗格里（来源 plugin、名字 gwb-logger）
+  ctx.logger(name).info(`日志件就绪：补了历史 ${ring.length} 条`)
 }

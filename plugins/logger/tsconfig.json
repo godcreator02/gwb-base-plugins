@@ -2,15 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
-    // 只给 shadcn CLI 看：它读件根的 tsconfig 解析 components.json 里的 @/ 别名，
-    // 据此决定把拉下来的组件放到哪。node 半自己一个 @/ 都不用。
-    // 漏了这段的下场是组件被放进一个**字面叫 `@` 的目录**。
-    // **不写 baseUrl**——TS 7 把它移除了（TS5102），paths 现在直接相对本文件所在目录解析
-    "paths": {
-      "@/*": ["./src/client/*"]
-    }
+    "rootDir": "src"
   },
-  // 浏览器半另有一份 tsconfig（jsx + DOM + 无 node 全局），产物走 esbuild 不走 tsc
+  // 0.3 劈 core 后只剩 node 半——浏览器半（原 src/client 与它那份 tsconfig、@/ 别名）住 gwb-baseui
   "include": ["src/index.ts"]
 }
