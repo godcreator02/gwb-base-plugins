@@ -635,11 +635,11 @@ function App({
               tabIndex={-1}
               aria-hidden={!on}
               inert={!on}
-              className={
-                on
-                  ? 'shell:absolute shell:inset-0 shell:visible'
-                  : 'shell:absolute shell:inset-0 shell:invisible shell:pointer-events-none'
-              }
+            className={
+              on
+                ? 'shell:absolute shell:inset-0 shell:visible shell:pointer-events-auto'
+                : 'shell:absolute shell:inset-0 shell:invisible shell:pointer-events-none'
+            }
             >
               <div className="shell:absolute shell:inset-0">
                 <DockviewReact

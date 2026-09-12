@@ -232,10 +232,13 @@ export function StatusBar({
   }
 
   return (
-    // **relative + z-[60]**：状态栏要压过桌面里户口迁进本桌的模态遮罩（radix 内容
-    // z-50 参与根层叠）——模态从此只盖本桌主区，状态栏永远可点（含切桌面逃出模态）。
-    // 这是有意的改判，判据见文档站 decisions「多桌面第二波」
-    <footer className="shell:relative shell:z-[60] shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
+    // **relative + z-[60] + pointer-events-auto**：z 压过桌面里户口迁进本桌的模态遮罩
+    //（radix 内容 z-50 参与根层叠）——模态从此只盖本桌主区，状态栏永远可点（含切桌面
+    // 逃出模态）。pointer-events 得**显式**给：radix 的模态开着时会把 body 整个锁成
+    // pointer-events:none（锁页的标准手法），而那把锁**不跟着桌面走**——模态藏在别的
+    // 桌面时锁还扣着，继承它的话连活动桌面带状态栏全变成「看得见点不动」。这两处显式
+    // auto 不靠 body 的继承，锁再扣也只锁得住桌面以外的空白。判据见文档站 decisions
+    <footer className="shell:relative shell:z-[60] shell:pointer-events-auto shell:bg-card shell:text-card-foreground shell:flex shell:h-8 shell:flex-none shell:items-center shell:gap-0.5 shell:border-t shell:px-1 shell:text-xs">
       <DesktopBar desktops={desktops} activeId={activeDesktopId} onSwitch={onSwitchDesktop} onNew={onNewDesktop} />
 
       <LayoutBar
