@@ -33,23 +33,3 @@ home、停用再启用重挂、取证。那条链**有意绕开了 `plugins.inst
 
 一手记录原在总控台周转区（2026-09-12 收件箱退役时随处理清掉）
 主体投给了 devkit，这一条是抄送。
-
-## 2026-09-12 `gwb_command_run` 的 args 通道带参调用全拒：参数要是个对象
-
-来源：总控台（单元 `26090520ntn/console`，hello 仓 self-explaining 扫描发版时撞上）
-
-经 MCP 调 `gwb_command_run`，无参命令（`registry.status`、`plugin-manager.update-all`、`hello.probe` 等）回执一切正常；**任何带 args 的调用一律报「执行失败：参数要是个对象」**并附该命令自己的用法提示。当天撞了三处：`skill.read {name:…}`（顶层 `skill_read` 工具同样症状）、`devkit.home.new {short:…}`——args 传 JSON 字符串与传对象两种形态都拒。绕路：说明书走包内文件 Read；home.new 走内核仓 AGENTS 的 `run.cmd` 手搭。default home 里 gwb-mcp 是 0.3.3。怀疑客户端或 mcp 件把 args 序列化/解析弄丢了一层，值得在件里给 args 通道补一条自检。
-
-## 2026-09-12 mcp 件的 gwb_command_run：args 带字符串值时被当成非对象拒收
-
-来源：总控台（26090520ntn/console，令牌国有化那轮发版时撞上的）
-
-现象：经 MCP 调 `gwb_command_run`，`args` 传 `{}` 或 `{"skipBuild": true}` 都正常到达命令，
-但只要带**字符串值**（如 `{"short":"token-nat"}`）就被命令端报「参数要是个对象」——疑似
-桥在某一层把字符串值里的双引号剥掉了，JSON.parse 失败后以字符串形态传给了命令。布尔值
-不经引号所以幸存。本轮的绕法：无参数命令不传 args；带字符串参数的（home 系列、cdp）走
-`bin/cdp.mjs`（同样的命令从命令行全通）。`plugin-manager.update-all` 缺省参数可省，没受影响。
-
-建议：桥端收到字符串 args 先 JSON.parse 再传命令，或至少 parse 失败时报「args 不是合法
-JSON」而不是让它流到命令端变成「参数要是个对象」——两个报错都误导（后者让人以为传参
-姿势错，其实是桥剥了引号）。

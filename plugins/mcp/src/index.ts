@@ -15,7 +15,7 @@ import { bearerMatches, loadOrCreateToken } from './auth.js'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
 import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
 import { baseInstructions, skillResources, type SkillsSlot } from './skills.js'
-import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
+import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolNameOf, toolResult, type ToolResult } from './tools.js'
 import { selectTop } from './top.js'
 
 /**
@@ -175,7 +175,9 @@ export function apply(ctx: GwbContext): void {
    * 风格——`function` 声明会 hoist，TS 认为它可能在上面那句
    * `if (cli === undefined) return` 之前就被调用，于是不给 `cli` 保留窄化
    */
-  const runCommand = async (command: string, args: unknown): Promise<ToolResult> => {
+  const runCommand = async (command: string, rawArgs: unknown): Promise<ToolResult> => {
+    // 有的客户端发对象参数时把它序列化成了字符串（见 coerceArgs 头注），这儿收口
+    const args = coerceArgs(rawArgs)
     const result = await cli.run(command, args)
     // 这道口是露在外面的：agent 每次调用都得留痕。commands.run 记不了「是 agent
     // 调的」——这一条补的正是来源

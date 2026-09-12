@@ -298,9 +298,22 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="172-178" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="175-185" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
+
+### args 被客户端串化——无参命令幸存，带参全灭
+
+2026-09-12 起多轮撞到：经 MCP 调 `gwb_command_run`，无参命令一切正常，**带 args 的调用
+一律被命令端拒成「参数要是个对象」**，两天里投了两条 feedback 才定位。对照实验判的层：
+同一调用 curl 直发对象就成——桥与命令面都没病，`args` 的 schema 是 `z.unknown()`，
+协议层什么形状都放行，**是客户端把嵌套对象序列化成 JSON 字符串才发**；`isRecord(字符串)`
+为假，命令端拒收。
+
+修在桥上不赌客户端：`runCommand` 入口一道 `coerceArgs`，字符串先 `JSON.parse`，解析成
+就用，解析不了原样送——JSON 字面量是无损 round-trip，真要传字符串参数的命令不受伤。
+
+{/* ref file="../plugins/mcp/src/tools.ts" lines="23-46" */}
 
 ### `Accept` 少一个值就是 406
 

@@ -21,6 +21,24 @@ export function textResult(value: unknown): ToolResult {
 }
 
 /**
+ * args 的宽容收口。`args` 的 schema 是 `z.unknown()`，任何形状都在协议层放行——而有的
+ * 客户端把嵌套对象参数**序列化成 JSON 字符串**才发（实测 2026-09-13：经 ZCode 调
+ * `settings.get`，`args` 到达命令端时已是字符串，`isRecord` 一律拒收；同一个调用换
+ * curl 直发对象就成。带字符串值的命令因此全军覆没，无参命令幸存）。
+ *
+ * 所以字符串先 `JSON.parse` 一把：解析成了用解析的；解析不了原样往下送，让命令自己
+ * 的校验说话。JSON 字面量（`"123"`、`"true"`）解析后是无损 round-trip，不伤合法调用。
+ */
+export function coerceArgs(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw
+  try {
+    return JSON.parse(raw) as unknown
+  } catch {
+    return raw
+  }
+}
+
+/**
  * `GwbResult` 信封摊成 MCP 回执。
  *
  * **业务失败不是协议错误**：命令不存在、参数不对这些回 `isError` 的文本，让 agent

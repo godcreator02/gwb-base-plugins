@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { cliRunResult, isCliRunResult, textResult, toolNameOf, toolResult, type CliRunResultView } from '../src/tools.js'
+import {
+  cliRunResult,
+  coerceArgs,
+  isCliRunResult,
+  textResult,
+  toolNameOf,
+  toolResult,
+  type CliRunResultView,
+} from '../src/tools.js'
+
+describe('coerceArgs', () => {
+  it('对象原样过——健康的客户端不受影响', () => {
+    const args = { section: 'devkit', key: 'registry-dir' }
+    expect(coerceArgs(args)).toBe(args)
+    expect(coerceArgs(undefined)).toBeUndefined()
+  })
+
+  it('JSON 字符串解开——客户端把对象序列化成字符串的那类调用活过来', () => {
+    expect(coerceArgs('{"section":"devkit","key":"registry-dir"}')).toEqual({
+      section: 'devkit',
+      key: 'registry-dir',
+    })
+    expect(coerceArgs('{"skipBuild":true}')).toEqual({ skipBuild: true })
+  })
+
+  it('不是 JSON 的字符串原样送——让命令自己的校验说话', () => {
+    expect(coerceArgs('abc')).toBe('abc')
+    expect(coerceArgs('{oops')).toBe('{oops')
+  })
+
+  it('JSON 字面量是无损 round-trip——真要传字符串参数的命令不受伤', () => {
+    expect(coerceArgs('"123"')).toBe('123')
+    expect(coerceArgs('true')).toBe(true)
+  })
+})
 
 describe('textResult', () => {
   it('包成一条文本内容,JSON 缩进两格', () => {
