@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-node-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "跑 node 写的 CLI：件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状",
   "type": "module",
   "main": "dist/index.js",
