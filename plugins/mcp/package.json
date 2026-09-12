@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "MCP 桥：工具面只有几件——固定 gwb_command_list / gwb_command_run 两枚，加登记时标了 top 的命令；其余经 command_run 按名调；token 鉴权。0.3：工具面收窄（逐条渲染退场），port 改走 gwbSettings（硬 inject settings），instructions 改成固定文本不再列说明书清单，mcp.info 多回 top.rendered。0.3.1：instructions 加一行——发完新版本调 plugins.update-all 一键热升，升到 mcp 自己时回执会丢、重连后 plugins.list 核对。0.3.2：绑成之后把这道口补进 home 的 runtime.json（只补自己那格，内核那几格原样留着）——端口运行时才定，下游靠这份记录「说出 home 名就连得上它」",
   "type": "module",
   "main": "dist/index.js",
