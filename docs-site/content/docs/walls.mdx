@@ -146,7 +146,7 @@ dispose、再 release」，所以件在自己的 dispose 里喊一嗓子有效�
 所以窗格 id 是个**不透明的键**，别回头拆它。要 `entryId` 或 `paneId` 就从面板的 `params`
 里取，那儿本来就分开存着。
 
-{/* ref file="../plugins/shell/src/openable.ts" lines="108-126" */}
+{/* ref file="../plugins/shell/src/openable.ts" lines="118-136" */}
 
 ### 一份数据的主人是**条目**，不是包
 
@@ -803,9 +803,9 @@ Could not resolve value for theme function: theme(reference)
 **没有任何一处会报错**——跟本页上面那条「不引 `tw-animate-css` 就静默为空」是同一种性质
 的另一副面孔：这次规则编出来了，只是它认的名字和你挂上去的名字不是一个。
 
-{/* ref file="../plugins/logger/src/client/index.tsx" lines="306-309" */}
+{/* ref file="../plugins/logger/src/client/index.tsx" lines="333-336" */}
 
-{/* ref file="../plugins/logger/src/client/index.tsx" lines="321-323" */}
+{/* ref file="../plugins/logger/src/client/index.tsx" lines="348-350" */}
 
 上下两段是同一对：行上挂 `logger:group`，行里的来源名用 `logger:group-hover:` 去找它，
 **两头都带前缀**才对得上。

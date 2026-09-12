@@ -18,7 +18,7 @@ docfirst: none
 
 ## 它的面
 
-{/* ref file="../plugins/shell/src/index.ts" lines="71-91" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="77-97" */}
 
 件给的那几样，与服务替它填上的身份：
 
@@ -68,7 +68,7 @@ await args.host.call('shell.plugins')
 `registerPane` 只收 `{ id, title, icon?, client?, style? }`，`describeSelf` 只收
 `{ title, icon? }`。`pkg` 与 `entryId` 由服务从**调用方的 fiber** 上取：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="190-205" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="234-249" */}
 
 靠的是 cordis `Service` 的机制——方法里的 `this.ctx` 是消费者的 ctx，不是提供方的
 （`gwb-data` 的 `owner()` 是同一个套路）。件报不出名字，也就没法冒充别人的窗格。
@@ -446,7 +446,7 @@ bootShell → 取注册表 → 取布局档 → 恢复）原样重跑一遍；�
 **没有窗口回 `ok: false`**，不静默回成功——回成功的话调用方以为界面刷了，其实什么都没发生。
 登记那头把「拿不到 electron」也收成回执：
 
-{/* ref file="../plugins/shell/src/index.ts" lines="162-181" */}
+{/* ref file="../plugins/shell/src/index.ts" lines="168-187" */}
 
 **＋列表走跟件调 `openPane` 同一个 `planOpen`**，所以行为一致。**已开的那条不 disable**
 ——点它是聚焦，那是个有用的动作，标一下就够。
@@ -514,7 +514,7 @@ Portal 默认挂 `body`——挂出去之后菜单一个类名都不生效。所
 
 件那一格的容器上因此只剩两样东西，一样在围栏之外，一样是围栏换代后的遗留：
 
-{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="189-200" */}
+{/* ref file="../plugins/shell/src/client/PluginPane.tsx" lines="199-210" */}
 
 - **`@container` 让这一格成为容器查询的根。** **窗格不是视口**——件里写的 `@sm:` / `@md:`
   这类变体按**这一格现在有多宽**判，跟整窗大小无关。同一个件在窄格里竖排、在宽格里横排，
