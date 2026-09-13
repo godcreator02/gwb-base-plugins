@@ -5,6 +5,7 @@
     "data",
     "logger",
     "skills",
+    "http",
     "mcp",
     "node-cli",
     "py-cli",

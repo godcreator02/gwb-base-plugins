@@ -1,20 +1,22 @@
 # gwb-base-plugins
 
-gwb 的**无头基础件仓**——九个无 UI 的件，零 UI 依赖（产物守卫钉着）。2026-09-12 三仓拆分后，
+gwb 的**无头基础件仓**——无 UI 的件，零 UI 依赖（产物守卫钉着）。2026-09-12 三仓拆分后，
 UI 平台（shell / theme / baseui / shared-react / tokens）住 `26091217uiz\gwb-ui-plugins`，
-装配级验收位（hello）住 `26091217hkq\gwb-hello`，方案与判据见本站 spec 区。
+装配级验收位（hello）住 `26091217hkq\gwb-hello`，方案与判据见[定过的事](/docs/decisions)。
+2026-09-13 起十件在册、九件在役：mcp 搁置、http 接班。
 
-| 件              | 包名                                 | 服务                           |
-| -------------- | ---------------------------------- | ---------------------------- |
-| commands       | `@godcreator02/gwb-commands`       | `ctx.gwbCommands`            |
-| data           | `@godcreator02/gwb-data`           | `ctx.gwbData`                |
-| settings       | `@godcreator02/gwb-settings`       | `ctx.gwbSettings`            |
-| mcp            | `@godcreator02/gwb-mcp`            | —（不 provide，只开一道口）           |
-| skills         | `@godcreator02/gwb-skills`         | `ctx.gwbSkills`              |
-| node-cli       | `@godcreator02/gwb-node-cli`       | `ctx.gwbNodeCli`             |
-| py-cli         | `@godcreator02/gwb-py-cli`         | `ctx.gwbPyCli`               |
-| logger         | `@godcreator02/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）     |
-| plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升） |
+| 件              | 包名                                 | 服务                                |
+| -------------- | ---------------------------------- | --------------------------------- |
+| commands       | `@godcreator02/gwb-commands`       | `ctx.gwbCommands`                 |
+| data           | `@godcreator02/gwb-data`           | `ctx.gwbData`                     |
+| settings       | `@godcreator02/gwb-settings`       | `ctx.gwbSettings`                 |
+| http           | `@godcreator02/gwb-http`           | —（不 provide，只开一道口）                |
+| mcp            | `@godcreator02/gwb-mcp`            | —（MCP 桥，2026-09-13 搁置，门由 http 接班） |
+| skills         | `@godcreator02/gwb-skills`         | `ctx.gwbSkills`                   |
+| node-cli       | `@godcreator02/gwb-node-cli`       | `ctx.gwbNodeCli`                  |
+| py-cli         | `@godcreator02/gwb-py-cli`         | `ctx.gwbPyCli`                    |
+| logger         | `@godcreator02/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）          |
+| plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升）      |
 
 **各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
 

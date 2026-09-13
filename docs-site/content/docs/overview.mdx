@@ -16,15 +16,17 @@ docfirst: none
 | data | `@godcreator02/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
 | logger | `@godcreator02/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
 | skills | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
-| mcp | `@godcreator02/gwb-mcp` | — | 开一个 MCP 口给 agent 连 |
+| http | `@godcreator02/gwb-http` | — | 无状态 JSON 门：GET /surface 现拼清单、POST /run 按名调命令 |
+| mcp | `@godcreator02/gwb-mcp` | — | MCP 桥，**2026-09-13 搁置**（门由 http 接班） |
 | node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
 | py-cli | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
 | plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager` | 管包与条目 |
 
-2026-09-12 三仓拆分后这个仓只剩这九个**无头**件：外壳与窗格的皮住 UI 平台仓
+2026-09-12 三仓拆分后这个仓只剩**无头**件：外壳与窗格的皮住 UI 平台仓
 （`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包），验收件住验收仓
 （`26091217hkq\gwb-hello`）。劈分判据见[定过的事](/docs/decisions)那条 2026-09-12。
+2026-09-13 起十件在册、九件在役：mcp 搁置、http 接班（判据见轨迹卡「HTTP 门接班」）。
 
 **状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，而这张表已经漂过
 一轮（`cli` 停在 0.0.3、`shell` 还写着「待做」，实际那时它已经发到 0.0.4 了）。

@@ -1,0 +1,83 @@
+---
+title: gwb-http：无状态 JSON 门
+description: GET /surface 现拼命令与说明书清单，POST /run 按名调命令——没有会话，重挂后下一发自动好
+docfirst: none
+---
+
+# gwb-http
+
+把 [`ctx.gwbCommands`](/docs/commands) 那份命令注册表开成一个**本机无状态 JSON 接口**。
+2026-09-13 接 mcp 件的班（mcp 搁置、default 卸载，判据见轨迹卡「HTTP 门接班」）——端口
+策略、token 鉴权、runtime.json 那格，三样纪律原样继承，信道从会话态的 MCP 换成无会话的
+裸 HTTP。
+
+包名 `@godcreator02/gwb-http`，无界面、**零运行时依赖**（mcp 那串 SDK 解包 4.3MB 随门
+退役）。`inject: ['gwbCommands', 'gwbData', 'gwbSettings']`——settings 是硬依赖，端口
+从它来。
+
+## 怎么连
+
+起来之后日志里有两行：
+
+```
+[I] gwb-http HTTP 门就绪（default home）：http://127.0.0.1:2870
+[I] gwb-http token（仅本机使用，勿外传）：<43 个字符>
+```
+
+token 落 `<home>/data/@godcreator02/gwb-http/token.json`，重启沿用。另一条出口是命令
+`http.info`——url + token + 两条 curl 例句一起回。日常就两条路：
+
+```
+curl -s http://127.0.0.1:2870/surface -H "Authorization: Bearer <token>"
+curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d '{"command":"skill_list"}'
+```
+
+台没起时 curl 直接 connection refused，一眼见骨——把台起起来再调，没有重连这个概念。
+
+## 两条路由
+
+@@docfirst ref ../plugins/http/src/index.ts:247-271 @@
+
+**GET /surface 现拼**：命令注册表 + 说明书清单 + 自报 home 名 + instructions（门上的
+纪律）一条回执全带——它是 agent 的发现面，热挂上来的件下一次 GET 就在。**POST /run
+按名调**：body `{"command": 名字, "args": {...}}`，参数形状在命令描述里、命令自己校验；
+命令自身失败回 `{"ok":false,…}`、HTTP 仍是 200——那是业务回执，不是门的错误。
+
+## 没有会话
+
+每个请求自包含。本件热重挂（比如 update-all 升到自己）或工作台重启，在途那一发会断，
+**下一个请求自动就好**——重发即可。这正是接班的理由：mcp 那条会话态信道断一次要人敲
+`/mcp`，而这台工作台的件以分钟级热重挂为节拍，会话的寿命跟不上件的节拍。
+
+@@docfirst ref ../plugins/http/src/index.ts:156-183 @@
+
+三段门与 mcp 同款：token 拿不到 503、鉴权不过 401（「没给」与「给错」逐字相同——拒绝面
+一旦有差别就是给外面一个试探面）、方法不对 405——方法与路径的判断在各路由手里，就是
+上面那段 `handle`。
+
+## default 的口是契约，不是首选
+
+@@docfirst ref ../plugins/http/src/endpoint.ts:52-66 @@
+
+**`default` 认死 2870，被占就不开这道门。** 日常车道认死这个基址，退让就是把它送给先
+起来占住 2870 的那台测试 home——那台会老老实实收下请求，命令面、数据、说明书全是另一
+套，两头都不报错。其它 home 缺省系统随机口（多 home 同开是常态，没有哪个串是它的
+契约），显式给了口被占才退让。
+
+## 绑成那一刻补 runtime.json 的 `http` 格
+
+@@docfirst ref ../plugins/http/src/runtime.ts:39-64 @@
+
+内核开机整份重写 `pid` / `startedAt` / `appDir` / `cdp` 四格，本件绑成之后**读改写**
+补自己那格。格子名从 mcp 的 `mcp` 换成诚实的 `http`；mcp 留下的旧格属于「认不得的
+字段」，原样保留不碰。没绑成不写（写一格假的比不写坏得多）、写失败不影响门、进程退了
+不删——验活是读的人的事（核 pid 还在、且那个 pid 真持着那个口）。
+
+## instructions：门上的纪律随 /surface 发
+
+@@docfirst ref ../plugins/http/instructions.md @@
+
+mcp 那份 instructions（怎么干活 + agent 自改的门：哪些改动不用问、哪些先问人）由本件
+接着养。差别只在送法：MCP 是 initialize 时白送进上下文，这边是 `/surface` 回执里带
+一份——agent 的第一份 GET 就是它的「连上先读」，而 GET 是现拼的，改一个字发一版就跟着
+走，没有「清单是连接时快照」那回事。

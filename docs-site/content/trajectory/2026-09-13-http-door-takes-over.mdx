@@ -1,0 +1,70 @@
+---
+title: HTTP 门接班：无状态 JSON 口接替 mcp；mcp 搁置、default 卸载
+born-at: 2026-09-13T23:10
+type: choice
+label: HTTP 门接班
+domain: 件
+---
+
+## 背景
+
+mcp 件把命令面开给 agent，协议本身押着三个假设：消费者是无壳宿主（要 schema 注入）、
+工具少而稳（清单连接时快照是合理默认）、分发与信任是难点（OAuth/consent）。而这台
+工作台把三个假设全反了：日常 agent 全有壳（Bash + curl 就够）、命令面**多而变**（件以
+分钟级热重挂）、单机 loopback + token（信任早解决）。
+
+于是同一个病发作了三回：工作台在会话之后才起——MCP 工具整场灰着；装了新件——顶层
+清单是快照，要人敲 `/mcp` 重连；update-all 升到 mcp 自己——在途回执丢、连接断，还是
+要人重连。桥自己已经把面收窄到两枚哑工具（工具面 volatility 全塞进调用参数），等于
+**用 MCP 的壳装 dumb HTTP 的魂，交了协议税才回到起点**。
+
+## 结论与边界
+
+- **新件 `gwb-http` 接班**：两条路由（`GET /surface` 现拼命令 + 说明书清单 + instructions
+  + 自报 home 名；`POST /run` 按名调命令），零运行时依赖（mcp 那串 SDK 解包 4.3MB 随门
+  退役）；端口策略（default 认死 2870 不退让）、token 鉴权（首启生成、timingSafeEqual、
+  拒绝面不泄露）、runtime.json 补格，三样纪律原样继承，格子名换诚实的 `http`
+- **mcp 件搁置**：代码留仓、default 卸载；门面位（无壳宿主可达、schema 原生注入、宿主
+  权限轨道）等真出现无壳宿主的需求再重做——「真遇到需求才加」，包留在 registry 上，
+  加回来比拿掉容易
+- **instructions 的门由 http 接着养**：agent 自改的边界（修 bug / 补说明书 / 加命令加件
+  不问；动内核、动被 inject 的契约面、标 `top: true` 先问）原样搬进 http 的
+  `instructions.md`，随 `/surface` 回执发——不再依赖 MCP 的 server instructions 通道
+- **说明书正文走 `/run`**：`skill_list` / `skill_read` 本来就是总线命令，经门按名调；
+  `skill://` resources 随 mcp 一起退场
+- 人拍板（2026-09-13）。
+
+## 否掉的候选
+
+- **在 mcp 件里加 dumb 路由再择期断代改名**——少建一个件，但名字说谎期长，且 mcp 正在
+  别人的在途工作区上（tools.ts 有未提交改动），在它身上动刀撞车
+- **机械新鲜度检查（跨仓钉码实现成测试）**——09-10 已判过的墙：钉的是 node_modules 里
+  的版本不是 home 里跑的版本，还把发布火车耦死
+- **什么都不做，只补运营纪律（先起台再连 /mcp）**——重连债照欠，三次发作一次不少
+- **双门都开**——2870 是独占的（default 认死、被占不开），物理上不能并存；为不存在的
+  无壳宿主付日常会话债，正是这次要停的
+
+## 依据
+
+断连代价的对照是决定性的：无状态信道没有会话可断，桥重挂完**下一个请求自动好**；
+会话态信道断一次欠一次人工 `/mcp`。节拍错配是结构性的——件的节拍是分钟级热重挂，
+MCP 会话的寿命是会话级（小时），任何把新鲜度绑在连接上的通道都跟不上。
+
+零依赖 vs 4.3MB：mcp 件为协议标准付的 SDK 解包 4.3MB、693 个文件跟着装进每个 home；
+http 门用 node:http / node:crypto 直写，一个依赖都不带（产物守卫钉着）。
+
+三次发作全是实锤，其中一次就发生在拍板当天的会话里（台没起，MCP 工具全灰，靠 CLI
+把台起起来）。
+
+## 代价与遗留
+
+- `skill://` resources 没了——主会话读说明书改走 `POST /run` 的 `skill_read` 或直接
+  Read 包内 `skills/` 目录；子代理本来就走命令（没有读 resource 的工具）
+- 无壳宿主（Claude Desktop 这类）暂时无门——真出现时按判据重做门面，mcp 的代码与
+  这张卡就是那时的起点
+- runtime.json 的格子名换了：下游凡读 `mcp` 格的（devkit 的 home 清单显示「MCP 口」）
+  要跟进读 `http` 格——记录遗物不删，过渡期两头都在盘上
+- 内核仓 AGENTS、总控台 AGENTS、devkit skill 里凡写「.mcp.json / gwb_command_run /
+  /mcp 重连 / mcp.info」的话术都要改口——分仓各自改，不在本卡范围
+- default 的 token 换新（http 是新件新数据格），总控台的连接配置随 `.mcp.json` 一起
+  重写

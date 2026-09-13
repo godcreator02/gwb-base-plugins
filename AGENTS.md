@@ -1,20 +1,21 @@
 # gwb-base-plugins
 
-**gwb 的无头基础件仓**——2026-09-12 三仓拆分后只剩**九个无 UI 的件**：commands、data、
-settings、mcp、skills、node-cli、py-cli、logger(core)、plugin-manager(core)，全部对着词汇表
-（`@godcreator02/gwb-plugin-api`）。**这个仓的件零 UI 依赖**：peer 与产物里不许出现 shell /
+**gwb 的无头基础件仓**——无 UI 的件全部对着词汇表（`@godcreator02/gwb-plugin-api`）。
+在役九件：commands、data、settings、http、skills、node-cli、py-cli、logger(core)、
+plugin-manager(core)；另有搁置中的 mcp（2026-09-13 门由 http 接班、default 已卸载，判据
+见轨迹卡「HTTP 门接班」）。**这个仓的件零 UI 依赖**：peer 与产物里不许出现 shell /
 shared-react / tokens 三件套（产物守卫钉着）。
 
 UI 那半住 `D:\unitfolders\26091217uiz\gwb-ui-plugins`（shell、theme、baseui 与两个共享包），
 验收位住 `D:\unitfolders\26091217hkq\gwb-hello`（单件仓，依赖全走 registry 的装配态验收）。
-劈分方案与判据见本站 spec 区 `2026-09-12-three-repos-split`。旧内核 `gwb-kernel` 已退役
+劈分方案与判据见[定过的事](/docs/decisions)那条 2026-09-12。旧内核 `gwb-kernel` 已退役
 ——宿主子进程、fd3、`gwb://`、`kernel.info` 都不在了。
 
 ## 件的三条通用规矩
 
 1. **配置一律走 `gwbSettings.define`，不吃 `cordis.yml` 的 `config`**——配置面只留一条
-2. **命令描述必须写参数形状**（`{ entryId }` 这种；无参数写「无参数」）——经 mcp 出去，
-   agent 手上除了名字就只有这一句
+2. **命令描述必须写参数形状**（`{ entryId }` 这种；无参数写「无参数」）——经 HTTP 门的
+   /surface 出去，agent 手上除了名字就只有这一句
 3. **上顶层在登记命令时标 `top: true`**；agent 标之前先问人
 
 ## 内核给的面就这么大
