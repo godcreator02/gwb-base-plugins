@@ -1,6 +1,6 @@
 ---
 title: gwb-mcp：把命令面开给 agent
-description: 自己起 node:http，无状态 streamableHTTP，工具面只有几个——固定两枚加登记时标了 top 的
+description: 自己起 node:http，无状态 streamableHTTP，工具面只有几个——固定两个加登记时标了 top 的
 docfirst: none
 ---
 
@@ -87,8 +87,8 @@ Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户�
 
 **`default` 这个 home 认死 2870，被占就不开这个入口。**
 
-「首选 2870、被占退让到系统随机口」看着体面——多 home 同开是常态——但危险的是这条
-时间线：**一台测试 home 先起来占住 2870，随后起的 default 退让到随机口**。连工作台的
+「首选 2870、被占退让到系统随机端口」看着体面——多 home 同开是常态——但危险的是这条
+时间线：**一台测试 home 先起来占住 2870，随后起的 default 退让到随机端口**。连工作台的
 agent 会话手上那份 `.mcp.json` 早就写死了 2870，于是它连上的是**那台测试 home**——命令面、
 数据、说明书全是另一套，而两头都不报错。
 
@@ -118,7 +118,7 @@ agent 会话手上那份 `.mcp.json` 早就写死了 2870，于是它连上的�
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="196-273" */}
 
-**固定两枚**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
+**固定两个**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
 的那几条命令；其余命令一律经 `gwb_command_run` 按名调。挑法是一个纯函数：
 
 {/* ref file="../plugins/mcp/src/top.ts" */}
@@ -185,7 +185,7 @@ agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON
 所以按「少一句就漏事、多一句就是废话」裁，二十来行，守卫钉着上限。
 
 instructions 不列 skill 清单，理由就是上面那条截断：清单一长就被客户端切掉后半截，
-而且 skill 一多就是一页白占上下文的废话。说明书的发现面是 `skill_list` 那枚顶层工具的
+而且 skill 一多就是一页白占上下文的废话。说明书的发现面是 `skill_list` 那个顶层工具的
 **回执**——它是现取的，不是快照；instructions 只说「连上先调 `gwb_command_list` 与
 `skill_list` 各一次」。正文仍另挂成
 `skill://gwb/<名>/<文件>` resources，`skill_read` 与 resources 两条路都读得到。
