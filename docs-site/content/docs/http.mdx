@@ -36,7 +36,7 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 
 ## 两条路由
 
-@@docfirst ref ../plugins/http/src/index.ts:247-271 @@
+{/* ref file="../plugins/http/src/index.ts" lines="247-271" */}
 
 **GET /surface 现拼**：命令注册表 + 说明书清单 + 自报 home 名 + instructions（门上的
 纪律）一条回执全带——它是 agent 的发现面，热挂上来的件下一次 GET 就在。**POST /run
@@ -49,7 +49,7 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 **下一个请求自动就好**——重发即可。这正是接班的理由：mcp 那条会话态信道断一次要人敲
 `/mcp`，而这台工作台的件以分钟级热重挂为节拍，会话的寿命跟不上件的节拍。
 
-@@docfirst ref ../plugins/http/src/index.ts:156-183 @@
+{/* ref file="../plugins/http/src/index.ts" lines="156-183" */}
 
 三段门与 mcp 同款：token 拿不到 503、鉴权不过 401（「没给」与「给错」逐字相同——拒绝面
 一旦有差别就是给外面一个试探面）、方法不对 405——方法与路径的判断在各路由手里，就是
@@ -57,7 +57,7 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 
 ## default 的口是契约，不是首选
 
-@@docfirst ref ../plugins/http/src/endpoint.ts:52-66 @@
+{/* ref file="../plugins/http/src/endpoint.ts" lines="52-66" */}
 
 **`default` 认死 2870，被占就不开这道门。** 日常车道认死这个基址，退让就是把它送给先
 起来占住 2870 的那台测试 home——那台会老老实实收下请求，命令面、数据、说明书全是另一
@@ -66,7 +66,7 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 
 ## 绑成那一刻补 runtime.json 的 `http` 格
 
-@@docfirst ref ../plugins/http/src/runtime.ts:39-64 @@
+{/* ref file="../plugins/http/src/runtime.ts" lines="39-64" */}
 
 内核开机整份重写 `pid` / `startedAt` / `appDir` / `cdp` 四格，本件绑成之后**读改写**
 补自己那格。格子名从 mcp 的 `mcp` 换成诚实的 `http`；mcp 留下的旧格属于「认不得的
@@ -75,7 +75,7 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 
 ## instructions：门上的纪律随 /surface 发
 
-@@docfirst ref ../plugins/http/instructions.md @@
+{/* ref file="../plugins/http/instructions.md" */}
 
 mcp 那份 instructions（怎么干活 + agent 自改的门：哪些改动不用问、哪些先问人）由本件
 接着养。差别只在送法：MCP 是 initialize 时白送进上下文，这边是 `/surface` 回执里带
