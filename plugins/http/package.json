@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-http",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "HTTP 门：无状态本机 JSON 接口——GET /surface 现拼命令与说明书清单（带 instructions），POST /run {\"command\",\"args\"} 按名调命令；Bearer token 鉴权；没有会话，本件热重挂或工作台重启后下一个请求自动恢复。2026-09-13 接 mcp 件的班（mcp 搁置，default 已卸载）",
   "type": "module",
   "main": "dist/index.js",

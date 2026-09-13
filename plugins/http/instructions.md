@@ -4,7 +4,7 @@ god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台�
 怎么干活：
 - 先 GET /surface 一遍：命令面与说明书以那条回执为准——它每次现拼，装了新件下一次 GET 就包含
 - 调命令一律 POST /run，body 是 `{"command": 名字, "args": {...}}`；参数怎么给看 /surface 里那条命令的描述，命令自己校验
-- 读说明书走同一条 /run：skill_list 列有哪些、skill_read 读正文，参数形状看它们在 /surface 里的描述
+- 读说明书走同一条 /run：skill.list 列有哪些、skill.read 读正文，参数形状看它们在 /surface 里的描述
 - 命令自身失败（不存在、参数不对）回的是 `{"ok":false,…}` 的 JSON，HTTP 状态仍是 200——照常往下读，那不是门的错
 - 这道门没有会话：本件热重挂或工作台重启后，下一个请求自动就好——不用重连，重发即可
 - 台没起时 curl 直接 connection refused，先把台起起来再调

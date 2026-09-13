@@ -24,7 +24,7 @@ import { buildSurface, type SkillsSlot } from './surface.js'
  *   这是对 mcp 那条「断连要人工重连」的直接回答
  * - **零依赖**：只用 node:http / node:crypto / node:module——mcp 件那串 SDK（解包 4.3MB）
  *   随门退役
- * - **说明书从这条门出的是清单**：正文读走 `POST /run` 调 `skill_read`（skills 件登记的
+ * - **说明书从这条门出的是清单**：正文读走 `POST /run` 调 `skill.read`（skills 件登记的
  *   命令）；skills 件不在时门照开，清单那格是空表
  * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
  *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`）；
@@ -367,7 +367,7 @@ export function apply(ctx: GwbContext): void {
             token,
             example: {
               surface: `curl -s ${url}/surface -H "${auth}"`,
-              run: `curl -s -X POST ${url}/run -H "${auth}" -d '{"command":"skill_list"}'`,
+              run: `curl -s -X POST ${url}/run -H "${auth}" -d '{"command":"skill.list"}'`,
             },
           },
         }

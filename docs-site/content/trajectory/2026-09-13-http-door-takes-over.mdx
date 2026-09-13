@@ -31,7 +31,7 @@ mcp 件把命令面开给 agent，协议本身押着三个假设：消费者是�
 - **instructions 的门由 http 接着养**：agent 自改的边界（修 bug / 补说明书 / 加命令加件
   不问；动内核、动被 inject 的契约面、标 `top: true` 先问）原样搬进 http 的
   `instructions.md`，随 `/surface` 回执发——不再依赖 MCP 的 server instructions 通道
-- **说明书正文走 `/run`**：`skill_list` / `skill_read` 本来就是总线命令，经门按名调；
+- **说明书正文走 `/run`**：`skill.list` / `skill.read` 本来就是总线命令，经门按名调；
   `skill://` resources 随 mcp 一起退场
 - 人拍板（2026-09-13）。
 
@@ -59,7 +59,7 @@ http 门用 node:http / node:crypto 直写，一个依赖都不带（产物守�
 
 ## 代价与遗留
 
-- `skill://` resources 没了——主会话读说明书改走 `POST /run` 的 `skill_read` 或直接
+- `skill://` resources 没了——主会话读说明书改走 `POST /run` 的 `skill.read` 或直接
   Read 包内 `skills/` 目录；子代理本来就走命令（没有读 resource 的工具）
 - 无壳宿主（Claude Desktop 这类）暂时无门——真出现时按判据重做门面，mcp 的代码与
   这张卡就是那时的起点
