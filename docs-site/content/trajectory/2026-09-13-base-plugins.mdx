@@ -1,0 +1,24 @@
+---
+title: gwb-base-plugins 这条线
+born-at: 2026-09-13T23:40
+type: root
+label: 件仓
+domain: 这条线
+---
+
+## 项目定义与边界
+
+gwb 正线的**无头基础件仓**：对着词汇表（`@godcreator02/gwb-plugin-api`）的那批件——命令
+总线、数据、设置、说明书、两条 CLI、日志、插件管理，外加开给 agent 的门。**零 UI 依赖**：
+peer 与产物里不许出现 shell / shared-react / tokens 三件套（产物守卫钉着）；带皮的件住
+UI 平台仓（`26091217uiz\gwb-ui-plugins`），装配级验收住验收仓（`26091217hkq\gwb-hello`）。
+
+件的规矩、命名与依赖判据的正本在内核仓的 AGENTS 与它文档站的规则页；这个站只记件自己的
+事。2026-09-13 起十件在册、九件在役（mcp 搁置，见里程碑）。
+
+## 里程碑
+
+（只追加。日期｜标题｜一句话说明）
+
+- 2026-09-13｜立根卡｜轨迹区从空起步，此前的卡都记在内核仓那条线上
+- 2026-09-13｜HTTP 门接班｜gwb-http 0.1.0 接 mcp 的班：无状态 JSON 门（GET /surface + POST /run、零依赖），mcp 搁置、default 卸载（见[那张卡](/trajectory/2026-09-13-http-door-takes-over)）
