@@ -76,6 +76,30 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  plugins/command-http:
+    devDependencies:
+      '@godcreator02/gwb-commands':
+        specifier: workspace:*
+        version: link:../commands
+      '@godcreator02/gwb-data':
+        specifier: workspace:*
+        version: link:../data
+      '@godcreator02/gwb-plugin-api':
+        specifier: 0.1.0
+        version: 0.1.0(cordis@4.0.0-rc.9)
+      '@godcreator02/gwb-settings':
+        specifier: workspace:*
+        version: link:../settings
+      '@godcreator02/gwb-skills':
+        specifier: workspace:*
+        version: link:../skills
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   plugins/commands:
     devDependencies:
       '@godcreator02/gwb-plugin-api':
@@ -96,30 +120,6 @@ importers:
       '@godcreator02/gwb-plugin-api':
         specifier: 0.1.0
         version: 0.1.0(cordis@4.0.0-rc.9)
-      cordis:
-        specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
-  plugins/http:
-    devDependencies:
-      '@godcreator02/gwb-commands':
-        specifier: workspace:*
-        version: link:../commands
-      '@godcreator02/gwb-data':
-        specifier: workspace:*
-        version: link:../data
-      '@godcreator02/gwb-plugin-api':
-        specifier: 0.1.0
-        version: 0.1.0(cordis@4.0.0-rc.9)
-      '@godcreator02/gwb-settings':
-        specifier: workspace:*
-        version: link:../settings
-      '@godcreator02/gwb-skills':
-        specifier: workspace:*
-        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9

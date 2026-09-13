@@ -1,0 +1,49 @@
+---
+title: 命令 HTTP 口正名：gwb-http → gwb-command-http，/surface 补过滤
+born-at: 2026-09-13T23:55
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 命令口正名
+domain: 件
+---
+
+## 背景
+
+「HTTP 门接班」落地当天，用户点名名字不对：**`http` 是拿协议当名字**——提起来像一个通用
+HTTP 服务，看不出它开的是**命令面**。同时全量 `/surface` 实测约八千 token（72 条命令占
+七成，随插件数线性涨），没有过滤的路子，agent 只能整张搬。
+
+## 结论与边界
+
+- **正名 `gwb-command-http`**（包名、插件名、目录、命令前缀 `command-http.info`、
+  runtime.json 格名一起改）。语法贴家法：与 node-cli / py-cli 同款**「对象-载体」**——
+  cli 是载体、node/python 限定；http 是载体、command 限定
+- **`/surface` 补四个查询参数**，全部服务端筛、生效条件在回执 `filter` 格自证：
+  `?plugin=` 按登记插件、`?prefix=` 按命令名前缀、`?q=` 名字描述里找子串、`?slim=true`
+  只回名字+插件索引（约五百 token）。分页刻意不做——这个量级按组筛比翻页好用
+- 用法节奏写进 instructions：陌生 home 全量一次就够，此后定向取，反复全量是坏味道
+- 人拍板（2026-09-13）。
+
+## 否掉的候选
+
+- **`gwb-command-gate`**——贴「门」隐喻，但 gate 是隐喻不是事实；载体写进名字更耐读
+- **`gwb-command-api`**——最直白，但「api」宽，将来口上多载点东西就名不副实
+- **不改名只加过滤**——名字每天被念一遍（curl、日志、文档），错一天多付一天
+- **分页（page/size）**——72 条的量级翻页是把一张表撕碎给人看
+
+## 依据
+
+- token 实测：全量 18,082 字 ≈ 7,900 tok（commands 69% / skills 25% / instructions 7%）；
+  `?plugin=gwb-plugin-manager` 一组 13 条 ≈ 800 tok；slim 索引 ≈ 500 tok——过滤把
+  「每步 8K」压到「首扫 8K + 此后 0.5–1K」
+- 参数不用猜：家法第二条「命令描述必须写参数形状」实测成立（skill.read 带
+  `{ name, file? }`、registry.status 连回执形状都写），/surface 原样带描述——
+  结构化 schema 按「真遇到需求才加」不做
+
+## 代价与遗留
+
+- registry 上 `@godcreator02/gwb-http` 0.1.0 / 0.1.1 佚版留档不再发（gwb-status 先例）；
+  新包 `gwb-command-http` 从 0.1.0 起
+- default 的 token 换新（数据目录按条目末段分家：`data/command-http/`），旧
+  `data/http/` 留作遗物；runtime.json 旧 `http` 格同理
+- 昨天刚写的总控台 AGENTS 八处话术再改一遍——正名早一天，这种返工少一轮

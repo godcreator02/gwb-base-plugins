@@ -17,7 +17,7 @@ docfirst: none
 | **hello** | `@godcreator02/gwb-hello` | — | **已发 0.2.0**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger`。**它是前缀方案的样板**——件自己就是一个完整的 Tailwind 入口（`src/client/styles.css` 五行，`@tailwindcss/cli` 直出），类名一律 `hello:` 开头 |
 | **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.2.0**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航。**0.1.1 起件的那一格是容器查询的根**（`@container`）——件里的 `@sm:` / `@md:` 按这一格现在有多宽判，跟整窗大小无关；**0.2.0 起自己那张 `style.css` 也是前缀方案**（`shell:`），`dockview.css` 不套围栏、一字未动 |
 | **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.1.0**，收集与查询验通，见[它的页](/docs/skills) |
-| **http** | `@godcreator02/gwb-http` | —（不 provide） | **已发 0.1.0**（2026-09-13），无状态 JSON 门：`GET /surface` 现拼命令与说明书清单（带 instructions 与自报 home 名）、`POST /run` 按名调命令，零运行时依赖；端口策略/token/runtime 格三样纪律继承自 mcp，见[它的页](/docs/http) |
+| **command-http** | `@godcreator02/gwb-command-http` | —（不 provide） | **已发 0.1.0**（2026-09-13，正名自一天的 `gwb-http`）：无状态命令 JSON 口——`GET /surface` 现拼命令与说明书清单（`?plugin` / `?prefix` / `?q` / `?slim` 过滤，全量约八千 token）、`POST /run` 按名调，零运行时依赖；端口策略/token/runtime 格三样纪律继承自 mcp，见[它的页](/docs/command-http) |
 | **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.3.5，此后搁置（2026-09-13）**：门由 gwb-http 接班、default 已卸载，代码留仓等无壳宿主的真需求再重做门面，判据见轨迹卡「HTTP 门接班」；在职期间的记录见[它的页](/docs/mcp) |
 | **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.1.0**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
 | **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.1.0**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
