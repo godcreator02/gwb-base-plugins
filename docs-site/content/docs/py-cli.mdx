@@ -1,6 +1,6 @@
 ---
 title: gwb-py-cli：跑 python 写的 CLI
-description: 件包根下用 uv 建一个 venv——件装在 node_modules 里，venv 也就在 node_modules 里
+description: 插件包根下用 uv 建一个 venv——插件装在 node_modules 里，venv 也就在 node_modules 里
 docfirst: none
 ---
 
@@ -11,12 +11,12 @@ docfirst: none
 比 [gwb-node-cli](/docs/node-cli) 多两层：**守卫**（venv 在不在、对不对）与**自愈**
 （被外力抹掉了自己重建）。
 
-**这个件自己不带 python 项目。** 它只做运行器——`py/` 与 venv 都住在**消费方件**的包根下。
-样板是 `plugins/hello`。
+**这个插件自己不带 python 项目。** 它只做运行器——`py/` 与 venv 都住在**消费方插件**的包根下。
+样板是 gwb-hello 仓（`26091217hkq`）的 hello 插件。
 
 ## venv 落在哪
 
-`<消费方件的包根>/py/.venv`。件装进 `node_modules` 之后，venv 就在 `node_modules` 里——
+`<消费方插件的包根>/py/.venv`。插件装进 `node_modules` 之后，venv 就在 `node_modules` 里——
 实机长这样（这是 hello 那份的真实路径形状）：
 
 ```
@@ -53,7 +53,7 @@ docfirst: none
    `gwb-pycli-selftest`，盘上是 `gwb_pycli_selftest-0.0.1.dist-info`
 2. **同步带 `--inexact`** —— 开发工位上 `py/.venv` 与项目自己的开发环境一份两吃
 3. **失败不抛** —— uv 不在 PATH、退出非零，一律收敛成 `{ ready: false, reason }`。
-   件本身照常挂上，只是这批命令跑不了
+   插件本身照常挂上，只是这批命令跑不了
 4. **`Scripts` / `Lib` 是 Windows 专属段** —— Windows-only 是本生态的分发前提
 
 ### 出身记号
@@ -71,7 +71,7 @@ postinstall 用不上那个场景，但 home 被整体拷贝或改名时一模�
 ### 自愈不是单独一条路径
 
 `run` 每次都先过一遍守卫。**幂等**：已就绪时只是三次 fs 调用、零进程；venv 被抹掉了当场
-重建。所以「垫片 ENOENT 了再重试一刀」那种事后补救根本不需要写。
+重建。所以「垫片 ENOENT 了再重试一次」那种事后补救根本不需要写。
 
 同一个包根上并发调只会真跑一趟（`inflight` 按包根去重），不会同时起两个 `uv sync`。
 
@@ -133,10 +133,10 @@ export function apply(ctx: GwbContext) {
 {/* ref file="../plugins/py-cli/src/index.ts" lines="213-224" */}
 
 校验那份纯函数 `invoke.ts` 是 node 那半的副本，跟 `run.ts` 同一个待遇——改一处就得改另一处。
-挂进总线的描述由运行器补上参数形状那一句，件只写自己那半。
+挂进总线的描述由运行器补上参数形状那一句，插件只写自己那半。
 
-自带一条 `py-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
-验收归消费方件，样板是 `plugins/hello`。超时的上限同 node 那半，110 秒。
+自带一条 `py-cli.list`（此刻登记了哪些）。**没有自检命令**——这个插件只做运行器，
+验收归消费方插件，样板是 gwb-hello 仓的 hello 插件。超时的上限同 node 那半，110 秒。
 
 ## 编码
 
@@ -149,7 +149,7 @@ hello 那份的输出里特意带一个中文字段和 `sys.stdout.encoding`，�
 
 ## 怎么验
 
-装 `plugins/hello`（它同时带着一 node 一 python 两条 CLI），打开「验收件」那一格，
+装 hello（gwb-hello 仓，同时带一 node 一 python 两条 CLI），打开「验收件」窗格，
 点那三颗按钮。实测的三条回执：
 
 | 点哪颗 | 回执 |
@@ -158,5 +158,5 @@ hello 那份的输出里特意带一个中文字段和 `sys.stdout.encoding`，�
 | 跑 python CLI | `exitCode=0 ok=true 168ms`，`prefix` 指着 hello 包根下那个 `.venv`，中文不乱码 |
 | 跑一条注定失败的 | `exitCode=1 ok=false`，stderr 原样回到界面 |
 
-把 `cordis.yml` 里两条运行器摘掉再起一次，**hello 照常挂上、两格照常画**，点按钮回的是
+把 `cordis.yml` 里两条运行器摘掉再起一次，**hello 照常挂上、两个窗格照常画**，点按钮回的是
 「没有这条命令：hello.node」——那就是可选注入该有的样子。

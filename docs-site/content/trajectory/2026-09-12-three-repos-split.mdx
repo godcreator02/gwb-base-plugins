@@ -1,0 +1,32 @@
+---
+title: 三仓拆分：本仓瘦成无头九插件，UI 平台与验收各自开仓
+born-at: 2026-09-12T17:05
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 三仓拆分
+domain: 仓库
+---
+
+**立场先立住**：shell 是一个 UI 平台的整体，**要换就整套换**——tokens（视觉契约）与
+shared-react（react 运行时口粮）跟 shell 同仓同进退，不为假想的第二外壳实现维护独立契约
+包。cordis 服务注入免费保留底线可换性（新外壳提供同名服务 `gwbShell`、同形 `mountPane`
+就接得上），这是副产品不是承诺。
+
+**判据（劈插件三关，全过才劈）**：服务半有无头场景的真实消费者；UI 半是薄界面层（逻辑
+沉在 node 半）；core 暴露给 ui 的契约面小而稳。logger（mcp 查日志；且原 inject 硬赖
+gwbShell，无壳 home 整个插件挂不上——这是修病）与 plugins（`plugins.install` 第一消费者
+就是无 UI 的 agent）过堂劈 core；theme（服务半消费者是 shell 自己）与 hello（UI 即本体）
+不劈。
+
+**落地**：本仓九插件零 UI 依赖（产物守卫钉着）；plugins 断代改名 **plugin-manager**
+（目录/包名/服务名/13 条命令前缀/skill 名全改穿，旧包停版留 registry，新号从 0.1.0 起）；
+logger 与 plugin-manager 的浏览器半合进新插件 **gwb-baseui** 住 UI 平台仓
+（`26091217uiz\gwb-ui-plugins`，三规矩见那边文档站：嵌套注入缺谁少画谁、一窗格一模块、
+只收劈过插件的界面）；hello 单插件住验收仓（`26091217hkq\gwb-hello`，依赖全走 registry
+——验的是装配态不是开发态）。方案全案与执行记录在本仓 git 历史的 spec 页
+`2026-09-12-three-repos-split`（`55514f6` 起案、`7781b0b` 归梁删页）。
+
+**途中两步**：logger 补挂薄服务 `gwbLogger`（面刻意留空——baseui 嵌套注入按服务名等待，
+没有它日志窗格永远 PENDING，有壳隔离 home 实机验出）；mcp 的 instructions 同步改名
+（0.3.3）。**已知墙**：default 上旧版 mcp 桥不解析 args 字符串，带参命令经 MCP 全进不去
+——已投 devkit 的 feedback/inbox，修好前绕法是 CDP 直调。

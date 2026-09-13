@@ -1,49 +1,48 @@
 ---
 title: 总览：这个仓是什么
-description: gwb-kernel 的基础件仓——有哪些件、两条命名规矩、内核给的面就这么大
+description: gwb-kernel 的基础插件仓——有哪些插件、两条命名规矩、内核给的面就这么大
 docfirst: none
 ---
 
 # gwb-base-plugins
 
-`gwb-kernel`（最小内核，单元 `26090705ymz`）的基础件仓。
+`gwb-kernel`（最小内核，单元 `26090705ymz`）的基础插件仓。
 
-## 件
+## 插件
 
-| 件 | 包名 | 服务 | 干什么 |
+| 插件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
 | commands | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | 命令总线 |
-| data | `@godcreator02/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
+| data | `@godcreator02/gwb-data` | `ctx.gwbData` | 插件的数据落盘 |
 | logger | `@godcreator02/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
 | skills | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
-| http | `@godcreator02/gwb-http` | — | 无状态 JSON 门：GET /surface 现拼清单、POST /run 按名调命令 |
-| mcp | `@godcreator02/gwb-mcp` | — | MCP 桥，**2026-09-13 搁置**（门由 http 接班） |
+| http | `@godcreator02/gwb-http` | — | 无状态 JSON 入口：GET /surface 现拼清单、POST /run 按名调命令 |
+| mcp | `@godcreator02/gwb-mcp` | — | MCP 桥，**搁置中**（入口由 http 接班） |
 | node-cli | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
 | py-cli | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
 | settings | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | 设置 |
 | plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager` | 管包与条目 |
 
-2026-09-12 三仓拆分后这个仓只剩**无头**件：外壳与窗格的皮住 UI 平台仓
-（`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包），验收件住验收仓
-（`26091217hkq\gwb-hello`）。劈分判据见[定过的事](/docs/decisions)那条 2026-09-12。
-2026-09-13 起十件在册、九件在役：mcp 搁置、http 接班（判据见轨迹卡「HTTP 门接班」）。
+三仓拆分后这个仓只剩**无头**插件：外壳与窗格的界面外观住 UI 平台仓
+（`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包），验收插件住验收仓
+（`26091217hkq\gwb-hello`），判据见轨迹卡 `2026-09-12-three-repos-split`。
+此刻十个插件在册、九个在役：mcp 搁置、http 接班（判据见轨迹卡「HTTP 门接班」）。
 
-**状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，而这张表已经漂过
-一轮（`cli` 停在 0.0.3、`shell` 还写着「待做」，实际那时它已经发到 0.0.4 了）。
+**状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，这张表就漂过一轮。
 
 `gwb-commands` 排第一不是随便定的：**内核的 `dispatch` 收到什么就全走 `ctx.gwbCommands`**，
 没有它，界面调不到任何 node 侧的能力。
 
 ## 两条命名规矩
 
-**包名 `@godcreator02/gwb-<件名>`。** 加 `gwb-` 前缀跟已废弃的那批错开——
+**包名 `@godcreator02/gwb-<插件名>`。** 加 `gwb-` 前缀跟已废弃的那批错开——
 `@godcreator02/cli`、`/shell`、`/logger`、`/settings` 被那批占着。
 
-**服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-commands` → `ctx.gwbCommands`）。cordis 官方件
-的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。
+**服务名一律 `gwb` 开头小驼峰**，默认跟插件名对应（`gwb-commands` → `ctx.gwbCommands`）。
+cordis 官方插件的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。
 
 判据与理由在**内核仓的文档站**（`26090705ymz/gwb-kernel/docs-site`）——规则住那边，
-这个站只记件自己的事。
+这个站只记插件自己的事。
 
 ## 内核给的面就这么大
 
@@ -53,22 +52,19 @@ docfirst: none
   自己所在的那棵树是 `ctx.fiber.entry?.parent?.tree`
 - **一条内核命令都没有**：`gwb:command` 收到什么就原样派给 `ctx.gwbCommands`
 - **页面的公共面 `window.gwb`**：`command(name, args)` / `on(cb)` / `onShell(cb)`
-- **窗格件自报浏览器半的地址**：`registerPane({ …, client, style })`，值从自己的
+- **窗格插件自报浏览器半的地址**：`registerPane({ …, client, style })`，值从自己的
   `import.meta.url` 算成 `file://`；内核不认识任何包名与导出名
-- **件跑在 Electron 主进程里**，`import('electron')` 是件够得着的
+- **插件跑在 Electron 主进程里**，`import('electron')` 是插件够得着的
 
 契约包 `@godcreator02/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
 `GwbResult` / `GwbWindowApi` / `ShellBoot` / `requireKernel` / `isRecord`）。**内核的面本来
-就这么小**，别指望有更多。
+就这么小**，别指望有更多。旧内核 `gwb-kernel` 的宿主子进程、fd3、`gwb://`、`kernel.info`
+都已退役，正文再提到它们的是留档。
 
-> ⚠️ 这一段 2026-09-09 换过一次：件仓从旧内核 `gwb-kernel` 迁到单进程内核 `gwb-kernel-min`
-> 与词汇表 0.1。本站其余页面里凡提到 `gwb://`、`kernel.info`、fd3、宿主子进程的段落
-> **还没跟上**，读到时以这一段与 `decisions` 里 2026-09-09 那条为准。
-
-## 一个件长什么样
+## 一个插件长什么样
 
 ```
-plugins/<件名>/
+plugins/<插件名>/
   package.json      name / exports / gwb 段 / peer 与 dev
   tsconfig.json     extends ../../tsconfig.base.json
   src/index.ts      export const name / apply(ctx)
@@ -78,14 +74,14 @@ plugins/<件名>/
 构建是 `tsc`，不打包——产物给 node 直接加载。所以有两条硬要求，都配了守卫：
 **相对 import 必须带 `.js`**、**产物里不许有裸名 import**。为什么，见[撞过的墙](/docs/walls)。
 
-带界面的件**不在这个仓**（三仓拆分，2026-09-12）：它们的浏览器半（`src/client/` 与
-样式表）、值与规则怎么共享、组件怎么复用——原理页随 UI 平台仓
-（`26091217uiz\gwb-ui-plugins` 的文档站）走了，动手写带界面的件之前先读那边。
+带界面的插件**不在这个仓**：它们的浏览器半（`src/client/` 与样式表）、值与规则怎么共享、
+组件怎么复用——原理页在 UI 平台仓（`26091217uiz\gwb-ui-plugins` 的文档站），动手写带界面
+的插件之前先读那边。
 
 ## 母仓那批是参考，不是模板
 
-废弃的件仓在 `26090623hyz/gwb-plugins`。去查某个件当初为什么那么做、踩过什么坑，值得；
+废弃的插件仓在 `26090623hyz/gwb-plugins`。去查某个插件当初为什么那么做、踩过什么坑，值得；
 **结构、分层、包划分一概不抄**。
 
 它那套有几样这里明确不要：`gwb.minAppVersion` 与精确 peer 号的双份准入、`platform` 分区与
-`window.confirm` 拦截、为具体某个件写的硬编码分支。
+`window.confirm` 拦截、为具体某个插件写的硬编码分支。

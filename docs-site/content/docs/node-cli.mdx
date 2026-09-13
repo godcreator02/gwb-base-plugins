@@ -1,6 +1,6 @@
 ---
 title: gwb-node-cli：跑 node 写的 CLI
-description: 件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它
+description: 插件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它
 docfirst: none
 ---
 
@@ -8,12 +8,12 @@ docfirst: none
 
 包名 `@godcreator02/gwb-node-cli`，服务 `ctx.gwbNodeCli`。node-only，没有界面那半。
 
-件要跑一条命令行时，本来得自己写一遍 spawn、超时、杀进程树、输出截断、编码——这几样
-**正是最容易写错的部分**，而且写错了都不当场报错。这个件把它们收成一处。
+插件要跑一条命令行时，本来得自己写一遍 spawn、超时、杀进程树、输出截断、编码——这几样
+**正是最容易写错的部分**，而且写错了都不当场报错。这个插件把它们收成一处。
 
 ## 它不做取址
 
-**CLI 是消费方件自己 build 出来的产物**，跟件同一个包发出去。所以路径由件自己算，
+**CLI 是消费方插件自己 build 出来的产物**，跟插件同一个包发出去。所以路径由插件自己算，
 登记时递一个绝对路径进来：
 
 ```ts
@@ -24,7 +24,7 @@ const CLI_ENTRY = path.join(
 ```
 
 这儿**不读 `bin` 字段、不认 `node_modules/.bin` 垫片、不查 PATH、不过 shell**，
-`argv[0]` 一律是 `process.execPath`（正在跑本件的那个 node）。
+`argv[0]` 一律是 `process.execPath`（正在跑本插件的那个 node）。
 
 两个好处：Windows 上的引号地狱与带空格的路径一次根除；pnpm 的隔离结构下「运行器
 resolve 不到消费方那一层的包」这个问题根本不会出现——**压根不需要解析**。
@@ -54,7 +54,7 @@ export function apply(ctx: GwbContext) {
 }
 ```
 
-**不用自己包 `ctx.effect`**——件卸载时这条命令自动从表上、也从命令总线上摘掉。
+**不用自己包 `ctx.effect`**——插件卸载时这条命令自动从表上、也从命令总线上摘掉。
 要提前摘就收 `register` 回的那个函数。
 
 `cwd` 不给的话落在 `entry` 自己旁边（也就是 `dist/`）。**不继承宿主的 cwd**——那是内核的
@@ -72,7 +72,7 @@ await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj
 
 {/* ref file="../plugins/node-cli/src/invoke.ts" lines="17-29" */}
 
-挂进总线的描述由运行器补上参数形状那一句（`{ args?: string[], cwd?: string }`），件只写
+挂进总线的描述由运行器补上参数形状那一句（`{ args?: string[], cwd?: string }`），插件只写
 自己那半——形状是运行器定的，agent 只看描述就得知道怎么给。
 
 ## 按次给 cwd
@@ -95,18 +95,16 @@ await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj
 
 于是 `run` 回的是 `CliRunOutcome`——跑过了是进程回执，没跑是那句拒绝。调用方照旧只看 `ok`。
 
-自带一条 `node-cli.list`（此刻登记了哪些）。**没有自检命令**——这个件只做运行器，
-验收归消费方件；`plugins/hello` 就是那个样板，它自带的 `src/cli.ts` 编译成 `dist/cli.js`
-之后登记进来，界面上点一下就跑。
+自带一条 `node-cli.list`（此刻登记了哪些）。**没有自检命令**——这个插件只做运行器，
+验收归消费方插件；样板是 gwb-hello 仓（`26091217hkq`）的 hello 插件，它自带的
+`src/cli.ts` 编译成 `dist/cli.js` 之后登记进来，界面上点一下就跑。
 
 ## 超时的天花板是 110 秒，不是随便定的
 
 `timeoutMs` 默认 60 秒，**上限钉死 110 秒，超过当场拒绝注册**。
 
-这条线最早卡的是旧内核那条 fd3 命令通道的 **120 秒硬超时**——超了它把 pending 摘掉，
-调用方看到的是内核那句「命令超时」，不是这边给的 `timedOut` 回执。单进程内核里那道
-闸没了（件与桥同进程），上限却留着：**一条 CLI 跑过两分钟还不回，人要的是一句
-`timedOut` 加一份 `spillPath`，不是一个永远不回的 promise**。
+**一条 CLI 跑过两分钟还不回，人要的是一句 `timedOut` 加一份 `spillPath`，不是一个永远
+不回的 promise**——上限就是为这个钉的（插件与桥同进程，这条线上没有比它更长的硬超时兜底）。
 
 {/* ref file="../plugins/node-cli/src/registry.ts" lines="10-16" */}
 

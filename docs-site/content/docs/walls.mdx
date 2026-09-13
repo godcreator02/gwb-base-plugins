@@ -1,12 +1,12 @@
 ---
 title: 撞过的墙
-description: 件这边为什么写成这样——每条连着它钉住的那段代码
+description: 插件这边为什么写成这样——每条连着它钉住的那段代码
 docfirst: none
 ---
 ## 相对 import 必须带 `.js`，而它是个静默失败
 
 产物给 node 直接加载（loader 不打包），ESM 不做扩展名补全。少了 `.js` 的症状是
-**件挂不上，而日志一个字都没有**——第一个件就是这么撞的，查了几分钟才定位。
+**插件挂不上，而日志一个字都没有**——第一个插件就是这么撞的，查了几分钟才定位。
 
 （内核后来补了保底 error 出口，同样的错现在当场是一行 `ERR_MODULE_NOT_FOUND` 带路径。）
 
@@ -22,7 +22,7 @@ docfirst: none
 
 {/* ref file="../plugins/commands/tests/artifact.test.ts" lines="21-43" */}
 
-顺带钉住第二条：**产物里不许有裸名 import**。件该是自包含的——契约包与 cordis 都只
+顺带钉住第二条：**产物里不许有裸名 import**。插件该是自包含的——契约包与 cordis 都只
 `import type`、编译期擦除，`gwb-commands` 的产物里除了一条 `./registry.js` 什么都没有。
 
 缺产物时整组跳过，门禁不依赖 `build`。
@@ -36,7 +36,7 @@ docfirst: none
 
 {/* has file="../plugins/commands/package.json" text="peerDependencies" */}
 
-`gwbCommands.run` 回的是 `GwbResult`——它出现在**导出的类型**里，消费方装了这个件之后必须
+`gwbCommands.run` 回的是 `GwbResult`——它出现在**导出的类型**里，消费方装了这个插件之后必须
 解析得到。写成 `devDependency` 的症状是消费方那边全解析不到，因为**发布出去的包不带
 devDependencies**。
 
@@ -54,14 +54,14 @@ devDependencies**。
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="29-42" */}
 
-件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个件的处理器上，
+插件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个插件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
 
 
 ## 注销只收自己那份
 
-同一段里那个 `if (byName.get(def.name) === record)`：撞名之后**先卸载的那个件，不该把接手的
-那份一起带走**。少了这个判等，卸一个件会让另一个件注册的命令跟着消失。
+同一段里那个 `if (byName.get(def.name) === record)`：撞名之后**先卸载的那个插件，不该把接手
+的那份一起带走**。少了这个判等，卸一个插件会让另一个插件注册的命令跟着消失。
 
 
 ## 一条命令抛出来不该炸到调用方
@@ -77,7 +77,7 @@ devDependencies**。
 
 {/* ref file="../plugins/commands/src/index.ts" lines="17-25" */}
 
-本件卸载时服务自动撤销。不包的话，件卸了而 `ctx.gwbCommands` 还挂在那，调用方打到一个
+本插件卸载时服务自动撤销。不包的话，插件卸了而 `ctx.gwbCommands` 还挂在那，调用方打到一个
 已经没人维护的注册表上。
 
 ---
@@ -86,15 +86,15 @@ devDependencies**。
 ## 服务
 ### 要认出「是谁在取我」，用 `Service` 基类，别用 `accessor`
 
-`ctx.gwbData` 交出来的那一格得**自动绑定到取它的那个件**——件不报名字，也就没法报别人的
+`ctx.gwbData` 交出来的那个目录得**自动绑定到取它的那个插件**——插件不报名字，也就没法报别人的
 名字去读别人的数据。cordis 有两条路能做到「服务感知调用方」，实测过才知道只有一条能走：
 
 {/* ref file="../plugins/data/src/index.ts" lines="52-71" */}
 
 - **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` **确实**是访问者的 ctx（实测
-  `child.probe === child`）。但**`inject` 不认它**——件写 `inject: ['那个名字']` 会永远等下去，
-  fiber 建出来了、`apply` 不跑，**而且一声不吭**。查这个现象只能靠「件挂上了但什么都没发生」
-- **`Service` 基类**：`inject` 认它，而且方法里的 `this.ctx` 就是**消费者**的 ctx。实测两个件
+  `child.probe === child`）。但**`inject` 不认它**——插件写 `inject: ['那个名字']` 会永远等下去，
+  fiber 建出来了、`apply` 不跑，**而且一声不吭**。查这个现象只能靠「插件挂上了但什么都没发生」
+- **`Service` 基类**：`inject` 认它，而且方法里的 `this.ctx` 就是**消费者**的 ctx。实测两个插件
   各自取同一个服务，拿到的身份互不相同
 
 身份从 `this.ctx.fiber.entry` 上取两样：**`entry.id` 是身份**（数据落哪按它算），
@@ -104,7 +104,7 @@ devDependencies**。
 
 顺带一条：`extends Service` 意味着 **cordis 是运行时依赖，得写 peer**（两份 cordis 的
 `instanceof` 对不上）。对照 `gwb-commands`——它只在 `apply` 的参数类型里用 cordis，那边是 dev。
-同一个包在两个件里档位不同，这正是三档判据要一条条判的原因。
+同一个包在两个插件里档位不同，这正是三档判据要一条条判的原因。
 
 ### 一份数据的主人是**条目**，不是包
 
@@ -114,8 +114,8 @@ devDependencies**。
 **共用一个数据目录、互相覆盖**。
 
 **这条不是撞出来的，是改归属时认出来的**：`gwb-settings` 一开始就按条目 id 分区，两个
-姊妹件对「谁是一份数据的主人」给出了两个答案。不一致本身就是坑——将来扫「无主的数据 /
-无主的设置」的那个件得同时懂两套规则。
+姊妹插件对「谁是一份数据的主人」给出了两个答案。不一致本身就是坑——将来扫「无主的数据 /
+无主的设置」的那个插件得同时懂两套规则。
 
 现在两边同一个答案：`gwb-data` 落 `<home>/data/<末段>/`，`gwb-settings` 的 home 级分区也是
 那个末段（机器级那档仍是包名，那是有意的，理由在[设置](/docs/settings)那页）。
@@ -126,7 +126,7 @@ devDependencies**。
 
 - **冒号在 Windows 上是保留字符**（盘符分隔）。`mkdir home:hello` 不是干净地失败，
   而是可能造出一个 NTFS 备用数据流——目录看不见，写进去的字节也找不回来
-- **`home` 那段不是件的东西**：它是**内核**的 `ENTRY_ROOT` 常量（承载 `cordis:include`
+- **`home` 那段不是插件的东西**：它是**内核**的 `ENTRY_ROOT` 常量（承载 `cordis:include`
   那条条目的 id），`:` 是 cordis 的 `EntryTree.sep`，`Entry.id` 的 getter 拿它把父条目 id
   跟自己的拼起来。内核改一次那个常量，所有目录名跟着变
 - **末段才是人在 `cordis.yml` 里手写的那个 id**
@@ -142,9 +142,9 @@ id 现在要当目录名与分区名用，比包名危险，于是跟文档名�
 
 {/* ref file="../plugins/data/src/paths.ts" lines="35-64" */}
 
-**两个件的这段算法必须给同一个答案**，而它们是两份拷贝（`gwb-data` 的 `entryDirName`、
+**两个插件的这段算法必须给同一个答案**，而它们是两份拷贝（`gwb-data` 的 `entryDirName`、
 `gwb-settings` 的 `entrySection`）。十几行纯逻辑，为它新建一个共享包过不了准入判据第二关；
-两边注释里互相点名，改一处就得改另一处。**下一处要用到它的件出现时，这个判断要重看。**
+两边注释里互相点名，改一处就得改另一处。**下一处要用到它的插件出现时，这个判断要重看。**
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="52-84" */}
 
@@ -174,9 +174,9 @@ id 现在要当目录名与分区名用，比包名危险，于是跟文档名�
 - **依赖不满足是完全静默的**：无日志、无超时、无报错
 
 所以「可选依赖」只能靠 `ctx.inject([...], cb)` 开一个子 fiber——子 fiber 缺服务就永远
-PENDING，父件照常挂上。hello 给 `gwbSkills` 与两条 CLI 用的都是这一招。
+PENDING，父插件照常挂上。hello 给 `gwbSkills` 与两条 CLI 用的都是这一招。
 
-**跨件的版本约束因此只剩 `peer` 的 range 一个执行点**，就在 pnpm 装包那一刻。件调一个
+**跨插件的版本约束因此只剩 `peer` 的 range 一个执行点**，就在 pnpm 装包那一刻。插件调一个
 新版才有的字段、而 home 里装着老版时，老版的 `normalize` 直接忽略那个字段——全链路零提示。
 代价不对称：写了而不必要，只是多一条声明；该写而没写，是静默失效。所以**服务依赖也写 peer**，
 哪怕产物里对它零 import。
@@ -191,14 +191,14 @@ ctx.plugin(x)` 之后立刻去调 `x` 提供的服务，服务可能压根还不
 ## 发版
 ### `pnpm check` 不构建——不加 `prepublishOnly` 就会静默发出旧产物
 
-`pnpm check` 是 typecheck + lint + test，**它不跑 build**。而件的 `package.json` 里如果没有
+`pnpm check` 是 typecheck + lint + test，**它不跑 build**。而插件的 `package.json` 里如果没有
 `prepublishOnly`，`pnpm publish` 就把上一版的 `dist/` 原样发出去了。
 
 **这次就中招了**：hello 0.0.4 加了 store 探针，发出去、装进 home、日志里明明写着「挂上
 home:hello」，可是探针的输出一行都没有，盘上也没出现文件。查了一圈代码才想起来——**发的是
 0.0.3 那版的产物**（那时 `apply` 还是空的）。
 
-症状极难认：件挂上了、不报错、只是新写的东西全没生效。
+症状极难认：插件挂上了、不报错、只是新写的东西全没生效。
 
 所有包都补上 `"prepublishOnly": "pnpm build"`。
 
@@ -207,36 +207,36 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 
 ## 验收方法
-### 装件时**共享包要显式带上**——pnpm 自动装的 peer 不算数
+### 装插件时**共享包要显式带上**——pnpm 自动装的 peer 不算数
 
-验收开的干净 home 里装了 `cli` / `shell` / `logger` / `hello` 四个件，起来之后**页面一片空白**。
+验收开的干净 home 里装了 `cli` / `shell` / `logger` / `hello` 四个插件，起来之后**页面一片空白**。
 
-**症状**：日志里一句挂载错误都没有，四个件全报「挂上」，外壳也认出来了；错在渲染层的最后一行：
+**症状**：日志里一句挂载错误都没有，四个插件全报「挂上」，外壳也认出来了；错在渲染层的最后一行：
 
 ```
 19:02:46.548 I renderer SHARED （空）
 19:02:46.581 E renderer 起不来:TypeError: Failed to resolve module specifier "react".
 ```
 
-**为什么**：件的 `peerDependencies` 里写着两个共享包，而 pnpm 的 `auto-install-peers` 确实
+**为什么**：插件的 `peerDependencies` 里写着两个共享包，而 pnpm 的 `auto-install-peers` 确实
 把它们装进了 `node_modules`——**但没写进 home 的 `dependencies`**。而内核收 `gwb.shared`
-声明时**只扫 `dependencies`**（共享包不是件、不在条目树上，那是唯一看得见它们的地方）。
-于是 importmap 是空的，任何带界面的件都解析不到 `react`。
+声明时**只扫 `dependencies`**（共享包不是插件、不在条目树上，那是唯一看得见它们的地方）。
+于是 importmap 是空的，任何带界面的插件都解析不到 `react`。
 
 **修**：`kernel.install` 的 specs 里把 `@godcreator02/gwb-shared-react` 与
-`@godcreator02/gwb-tokens` 一起写上。**验收清单里但凡有带界面的件，这两个就得跟着装。**
+`@godcreator02/gwb-tokens` 一起写上。**验收清单里但凡有带界面的插件，这两个就得跟着装。**
 
 这条容易被「peer 会被 pnpm 自动装进 home」那句话骗过去——**那句话没错，错在「装进来」不等于
 「进了 dependencies」**。
 
-### 验 node-only 的件不必起 electron，但 `createRequire` 得先 `realpath`
+### 验 node-only 的插件不必起 electron，但 `createRequire` 得先 `realpath`
 
-无界面的件可以直接在 home 里拿 node 挂一个真的 cordis 上下文验——服务挂得上、命令进得了
+无界面的插件可以直接在 home 里拿 node 挂一个真的 cordis 上下文验——服务挂得上、命令进得了
 总线、执行核起得来进程，全都验得到，比起 electron 快得多。两处讲究：
 
-- **`cordis` 不在 home 顶层**。它是件的 peer，pnpm 把它装在 `.pnpm` 里件的真身那一层。
+- **`cordis` 不在 home 顶层**。它是插件的 peer，pnpm 把它装在 `.pnpm` 里插件的真身那一层。
   探针 `import 'cordis'` 直接报 `ERR_MODULE_NOT_FOUND`
-- **要从件那一层解析，而且得先 `fs.realpathSync`**。`node_modules/@godcreator02/x` 是条
+- **要从插件那一层解析，而且得先 `fs.realpathSync`**。`node_modules/@godcreator02/x` 是条
   软链，`createRequire` 拿软链路径往上找 node_modules 是找不到 cordis 的：
 
   ```
@@ -245,13 +245,13 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
   - <home>\node_modules\@godcreator02\gwb-py-cli\dist\index.js
   ```
 
-  解开软链之后就落在 `.pnpm/<件>@<hash>/node_modules/` 那一层，cordis 在那儿
+  解开软链之后就落在 `.pnpm/<插件>@<hash>/node_modules/` 那一层，cordis 在那儿
 
-**还必须是同一份 cordis**——两份的 `Service` instanceof 对不上，件挂上去会以莫名其妙的
-方式坏掉。所以探针里的 `Context` 也从件那一层解析，不从探针自己的位置。
+**还必须是同一份 cordis**——两份的 `Service` instanceof 对不上，插件挂上去会以莫名其妙的方式坏掉。所以探针里的
+`Context` 也从插件那一层解析，不从探针自己的位置。
 
-顺带：件走 `<home>/node_modules/...` 的路径 import 就好，node 会自己 realpath 到 `.pnpm`
-里的真身——件算出来的包根正是它实际装着的位置，`gwb-py-cli` 的 venv 也就建在那儿，
+顺带：插件走 `<home>/node_modules/...` 的路径 import 就好，node 会自己 realpath 到 `.pnpm`
+里的真身——插件算出来的包根正是它实际装着的位置，`gwb-py-cli` 的 venv 也就建在那儿，
 而那正是要验的东西。
 
 
@@ -262,7 +262,7 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 开头那两个字符**：`"./client": "./dist/client.js"` 这条，地址里写的是 `client`，
 不是 `client.js`，也不是 `dist/client.js`。
 
-第三刀写 `PluginPane` 时想当然写成了 `client.js`，症状是
+第三阶段写 `PluginPane` 时想当然写成了 `client.js`，症状是
 
 ```
 TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@godcreator02/gwb-hello/client.js
@@ -324,12 +324,12 @@ SDK 的 streamable HTTP 要求 POST 同时带 `application/json` **与** `text/e
 406 {"error":{"code":-32000,"message":"Not Acceptable: Client must accept both …"}}
 ```
 
-手工 curl / `Invoke-WebRequest` 试这道口时极容易只写 `application/json`，然后把 406
+手工 curl / `Invoke-WebRequest` 试这个入口时极容易只写 `application/json`，然后把 406
 误判成鉴权挂了或者路由没挂上。这条只在实机试得出来，代码里看不见。
 
 ### 共享包被当 peer 自动装，就不在 home 顶层，importmap 是空的
 
-新开一个 home、`pnpm add` 几个件之后起来，渲染层报
+新开一个 home、`pnpm add` 几个插件之后起来，渲染层报
 
 ```
 [renderer] SHARED （空）
@@ -340,8 +340,8 @@ SDK 的 streamable HTTP 要求 POST 同时带 `application/json` **与** `text/e
 而 `gwb-shared-react` / `gwb-tokens` 是作为别人的 peer 被 pnpm 顺手装进 `node_modules` 的
 ——躺在那儿够得着，但**不在顶层 dependencies 里**，所以一条 importmap 声明都收不到。
 
-`pnpm add` 显式装一次这两个包就好。**node 半的件完全不受影响**，所以验无界面的件时
-这条红字可以先放着——但别把它当成自己刚写的那个件的问题。
+`pnpm add` 显式装一次这两个包就好。**node 半的插件完全不受影响**，所以验无界面的插件时
+这条红字可以先放着——但别把它当成自己刚写的那个插件的问题。
 
 ### 停用条目不等于命令注销：登记命令不包 `effect`，名字就留在表里
 
@@ -359,7 +359,7 @@ hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 
 
 症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
 「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是
-`c.effect(() => c.gwbCommands.register(…))`），样板件自己漏了。修法一行，**2026-09-09
+`c.effect(() => c.gwbCommands.register(…))`），样板插件自己漏了。修法一行，**2026-09-09
 已修**（hello 0.2.1，上面钉的就是修过的样子：两条都包进了 `ctx.effect`）。
 
 同一次实验顺带验了桥那头：无状态桥发不出 `list_changed`，Claude Code 的顶层工具清单在命令表

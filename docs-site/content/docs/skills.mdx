@@ -8,7 +8,7 @@ docfirst: none
 
 skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状照 Anthropic Agent Skills
 那套）。工作台把命令面开给外部 agent 之后，agent 手上只有一张命令名清单——多步流程、
-调用顺序、踩过的坑无处可讲，这个件就是那些话的落点。
+调用顺序、踩过的坑无处可讲，这个插件就是那些话的落点。
 
 包名 `@godcreator02/gwb-skills`，服务 `ctx.gwbSkills`。无界面，零第三方依赖
 （frontmatter 是手写的行解析，没拉 YAML 库）。
@@ -18,28 +18,28 @@ skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状�
 {/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
 
 外加两条命令：`skill.list`（表）与 `skill.read`（正文）。两条登记时都标了 `top: true`
-——它们是 [gwb-mcp](/docs/mcp) 的顶层工具，agent 一连上就看得见：说明书是它第一件要看的
-东西。顶层在登记时就定了，桥照它渲染，没有名单：
+——它们是 [gwb-mcp](/docs/mcp) 的顶层工具，agent 一连上就看得见：说明书是它第一样要看
+的东西。顶层在登记时就定了，桥照它渲染，没有名单：
 
 {/* has file="../plugins/skills/src/index.ts" text="top: true" */}
 
 ## 三条纪律
 
-各挡一种**骗人的局面**——这是这个件全部的设计重量所在。
+各挡一种**骗人的局面**——这是这个插件全部的设计重量所在。
 
 ### 挂载是主动的
 
-件在自己的 `apply` 里挂一个目录，随 `ctx.effect` 卸载回收。**不扫 `node_modules`、
+插件在自己的 `apply` 里挂一个目录，随 `ctx.effect` 卸载回收。**不扫 `node_modules`、
 不问条目树的启停**。
 
-于是表里每一条都对应一个此刻真挂着的件，不会出现「skill 在、它讲的那条命令不在」
+于是表里每一条都对应一个此刻真挂着的插件，不会出现「skill 在、它讲的那条命令不在」
 ——agent 照着一份讲着不存在的能力的说明书干活，症状是它做错了而没人知道为什么。
 
 ### 正文每次现读盘
 
 {/* ref file="../plugins/skills/src/index.ts" lines="152-163" */}
 
-改了 `SKILL.md` 的正文立刻生效，不必重挂件；内存里只留元信息。
+改了 `SKILL.md` 的正文立刻生效，不必重挂插件；内存里只留元信息。
 
 **注册时扫的那部分不吃这个便宜**：加删文件、改 frontmatter 仍要重挂——文件清单是
 `register` 那一刻定下的。
@@ -47,17 +47,17 @@ skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状�
 ### `read` 只查登记表，不拼路径
 
 上面那段的第二个 `if` 就是这道防线。名字来查表、文件名必须在扫出来的清单里——
-**一旦改成路径拼接，一个带 `../` 的参数就能读出件目录以外的任何文件**。
+**一旦改成路径拼接，一个带 `../` 的参数就能读出插件目录以外的任何文件**。
 
 实机验过四种写法（`../package.json`、`../../cordis.yml`、`SKILL.md/../../../` …）全被拒，
 而且拒绝文本跟「没这份 skill」逐字相同——分开报等于告诉外面哪些名字存在。
 
 ## 怎么挂
 
-在你的件里，**走局部注入**：
+在你的插件里，**走局部注入**：
 
 ```ts
-// 不写进 export const inject——写进去,这个件在没装 skills 件的 home 里就整个挂不上了,
+// 不写进 export const inject——写进去,这个插件在没装 skills 插件的 home 里就整个挂不上了,
 // 而说明书不是它能不能干活的前提
 ctx.inject(['gwbSkills'], (scoped) => {
   scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
@@ -70,7 +70,7 @@ ctx.inject(['gwbSkills'], (scoped) => {
 
 {/* has file="../plugins/plugin-manager/package.json" text="skills" */}
 
-漏了这一条，包照发、照装得上，直到那个件挂载去扫目录时才报「读不动」。
+漏了这一条，包照发、照装得上，直到那个插件挂载去扫目录时才报「读不动」。
 
 ## 身份不用自己报
 
@@ -78,11 +78,9 @@ ctx.inject(['gwbSkills'], (scoped) => {
 
 {/* ref file="../plugins/skills/src/index.ts" lines="106-117" */}
 
-跟 `gwb-data` 认数据目录、`gwb-shell` 认窗格归属是同一个套路。**件不报名字，
-也就没法报别人的名字**去挂一份冒名的说明书。
-
-旧线那版是 `register(dir, plugin?)` 加从路径推目录名——推得出来，但它是个可以被随便
-覆盖的参数。
+跟 `gwb-data` 认数据目录、`gwb-shell` 认窗格归属是同一个套路。**插件不报名字，
+也就没法报别人的名字**去挂一份冒名的说明书。身份也不从路径推——推出来的目录名
+是个可以被随便覆盖的参数。
 
 ## 四条上限
 
@@ -95,13 +93,13 @@ ctx.inject(['gwbSkills'], (scoped) => {
 
 ## 它不认识 MCP，但 agent 从 MCP 读它
 
-收集与查询收在 [gwb-mcp](/docs/mcp) 那头：skills 件不认识 MCP，mcp 件把这里的东西翻译成
-MCP 的两格——`skill.list` / `skill.read` 两条命令渲染成**顶层工具**（就是它们标的那个
+收集与查询收在 [gwb-mcp](/docs/mcp) 那头：skills 插件不认识 MCP，mcp 插件把这里的东西翻译成
+MCP 的两项——`skill.list` / `skill.read` 两条命令渲染成**顶层工具**（就是它们标的那个
 `top: true`；`skill_list` 的回执是说明书的发现面，现取的、不是连接时的快照），正文另挂成
 `skill://gwb/<名>/<文件>` resources。server instructions 是固定文本，只说「连上先调
 `skill_list`」，不再逐条点名——清单会被客户端截断，理由在 mcp 那页。resources 是
-**每请求现取 `list()`** 的，热挂的件当场进表；`read` 读不到时 mcp 那头 throw，回 JSON-RPC
+**每请求现取 `list()`** 的，热挂的插件当场进表；`read` 读不到时 mcp 那头 throw，回 JSON-RPC
 错误好过骗对面「说明书是空的」。
 
-局部注入接的两格也是对称的：skills 件停了/卸了，下一台 server 起就没有那两枚工具与
+局部注入接的那两项也是对称的：skills 插件停了/卸了，下一台 server 起就没有那两枚工具与
 resources，桥照开。
