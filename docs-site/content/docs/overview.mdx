@@ -1,6 +1,6 @@
 ---
 title: 总览：这个仓是什么
-description: gwb-kernel 的基础插件仓——有哪些插件、两条命名规矩、内核给的面就这么大
+description: gwb-kernel 的基础插件仓——有哪些插件、一个插件长什么样
 docfirst: none
 ---
 
@@ -34,34 +34,6 @@ docfirst: none
 `gwb-commands` 排第一不是随便定的：**内核的 `dispatch` 收到什么就全走 `ctx.gwbCommands`**，
 没有它，界面调不到任何 node 侧的能力。
 
-## 两条命名规矩
-
-**包名 `@godcreator02/gwb-<插件名>`。** 加 `gwb-` 前缀跟已废弃的那批错开——
-`@godcreator02/cli`、`/shell`、`/logger`、`/settings` 被那批占着。
-
-**服务名一律 `gwb` 开头小驼峰**，默认跟插件名对应（`gwb-commands` → `ctx.gwbCommands`）。
-cordis 官方插件的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。
-
-判据与理由在**内核仓的文档站**（`26090705ymz/gwb-kernel/docs-site`）——规则住那边，
-这个站只记插件自己的事。
-
-## 内核给的面就这么大
-
-- **`ctx.gwbKernel`**（永不撤销，用 `requireKernel(ctx)` 取，**不写进 `inject`**）：
-  `dataDir` / `emit(payload)` / `setShell(url) → 撤销函数`。**就这三样。**
-- **`ctx.loader`**：条目树。改条目就是热挂卸——`create` / `remove` / `update` / `store`。
-  自己所在的那棵树是 `ctx.fiber.entry?.parent?.tree`
-- **一条内核命令都没有**：`gwb:command` 收到什么就原样派给 `ctx.gwbCommands`
-- **页面的公共面 `window.gwb`**：`command(name, args)` / `on(cb)` / `onShell(cb)`
-- **窗格插件自报浏览器半的地址**：`registerPane({ …, client, style })`，值从自己的
-  `import.meta.url` 算成 `file://`；内核不认识任何包名与导出名
-- **插件跑在 Electron 主进程里**，`import('electron')` 是插件够得着的
-
-契约包 `@godcreator02/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
-`GwbResult` / `GwbWindowApi` / `ShellBoot` / `requireKernel` / `isRecord`）。**内核的面本来
-就这么小**，别指望有更多。旧内核 `gwb-kernel` 的宿主子进程、fd3、`gwb://`、`kernel.info`
-都已退役，正文再提到它们的是留档。
-
 ## 一个插件长什么样
 
 ```
@@ -75,9 +47,7 @@ plugins/<插件名>/
 构建是 `tsc`，不打包——产物给 node 直接加载。所以有两条硬要求，都配了守卫：
 **相对 import 必须带 `.js`**、**产物里不许有裸名 import**。为什么，见[撞过的墙](/docs/walls)。
 
-带界面的插件**不在这个仓**：它们的浏览器半（`src/client/` 与样式表）、值与规则怎么共享、
-组件怎么复用——原理页在 UI 平台仓（`26091217uiz\gwb-ui-plugins` 的文档站），动手写带界面
-的插件之前先读那边。
+带界面的插件**不在这个仓**——浏览器半、样式与组件的原理在 UI 平台仓那边。
 
 ## 母仓那批是参考，不是模板
 
