@@ -1,26 +1,26 @@
 import { readFileSync } from 'node:fs'
 
 /**
- * `GET /surface` 那一格的内容。纯函数，从接线里抽出来以便测试。
+ * `surface` 那枚工具回的那一格。纯函数，从接线里抽出来以便测试。
  *
- * 这条回执是 agent 的**发现面**：连上先 GET 一次，命令面、说明书清单、口上的纪律
- * （instructions）都以它为准。它是**现拼的**，不是快照——热挂上来的件下一次 GET 就在。
+ * 这条回执是 agent 的**发现面**：连上先调一次，命令面、说明书清单、口上的纪律
+ * （instructions）都以它为准。它是**现拼的**，不是快照——热挂上来的件下一次调用就在。
+ * 形状与 command-http 时代的 `GET /surface` 一致（0.4 复位时抬过来，`top` 格随门面封顶
+ * 退役）：两代门一个词汇，改口的文档只动「怎么调」，不动「回什么」。
  *
- * 全量回执此刻约八千 token 且随插件数线性涨，于是有过滤（`SurfaceQuery`，路由层收查询串）：
- * `?plugin=` 按登记插件筛、`?prefix=` 按命令名前缀筛、`?q=` 在名字与描述里找子串
- * （不分大小写）、`?slim=true` 只回名字+插件的索引行。生效的过滤在回执 `filter` 那格自证。
+ * 全量回执此刻约八千 token 且随件数线性涨，于是有过滤（`SurfaceQuery`）：`plugin` 按登记
+ * 件筛、`prefix` 按命令名前缀筛、`q` 在名字与描述里找子串（不分大小写）、`slim` 只回
+ * 名字+插件的索引行。生效的过滤在回执 `filter` 那格自证。
  *
  * instructions 是一份真的 markdown——包根 `instructions.md`，模块加载时读一次。
  * 只搬了形状、没搬 skills 件的类型——本地收窄声明，不欠 skills 件一个依赖。
  */
 
-/** 这道口要报的命令那几样。与 `gwb-commands` 的注册表条目对得上，直接传就行 */
+/** 这道门要报的命令那几样。与 `gwb-commands` 的注册表条目对得上，直接传就行 */
 export interface CommandView {
   name: string
   plugin: string
   description: string
-  /** 登记时标了 `top: true` 的——门面位概念，这道门只是如实带出。commands 0.3 起 top 退役，这格改可选以兼容新旧注册表（本件搁置，改到能编译为止） */
-  top?: boolean
 }
 
 /** skill 那几样。与 `gwb-skills` 的 `GwbSkill` 结构对得上，直接传就行 */
@@ -37,13 +37,13 @@ export interface SkillsSlot {
   list(): SkillView[]
 }
 
-/** `?slim=true` 时的索引行：只有名字与插件，不带描述——建索引用 */
+/** `slim` 时的索引行：只有名字与插件，不带描述——建索引用 */
 export interface SlimEntry {
   name: string
   plugin: string
 }
 
-/** `/surface` 的过滤参数 */
+/** `surface` 的过滤参数 */
 export interface SurfaceQuery {
   /** 只留这个插件登记的（commands 与 skills 一起筛） */
   plugin?: string
@@ -61,12 +61,12 @@ export interface SurfaceQuery {
  */
 const INSTRUCTIONS: string = readFileSync(new URL('../instructions.md', import.meta.url), 'utf8').trimEnd()
 
-/** instructions 原样带出，**不随挂着的 skill 变**——它是每个 agent 第一份 GET 都带的固定成本 */
+/** instructions 原样带出，**不随挂着的 skill 变**——initialize 与 surface 都用它 */
 export function loadInstructions(): string {
   return INSTRUCTIONS
 }
 
-/** `/surface` 的应答形状 */
+/** `surface` 的应答形状 */
 export interface Surface {
   /** 自报的 home 名——读的人拿它核对「你连上的实际是哪个」，别只信 runtime.json 那份记录 */
   home: string

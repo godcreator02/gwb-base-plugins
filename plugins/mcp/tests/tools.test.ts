@@ -4,7 +4,6 @@ import {
   coerceArgs,
   isCliRunResult,
   textResult,
-  toolNameOf,
   toolResult,
   type CliRunResultView,
 } from '../src/tools.js'
@@ -107,27 +106,5 @@ describe('cliRunResult', () => {
     const parsed = JSON.parse(cliRunResult(view).content[0]!.text)
     expect(parsed.exitCode).toBe(1)
     expect(parsed.stderr.text).toContain('故意失败')
-  })
-})
-
-describe('toolNameOf', () => {
-  it('`.` 与 `-` 一律压成 `_`', () => {
-    const taken = new Set<string>()
-    expect(toolNameOf('skill.list', taken)).toBe('skill_list')
-    expect(toolNameOf('node-cli.list', taken)).toBe('node_cli_list')
-  })
-
-  it('压平后撞名的按序号让路,先到先得——调用方领了名就回填', () => {
-    const taken = new Set<string>(['a_b'])
-    const first = toolNameOf('a.b', taken)
-    taken.add(first)
-    expect(first).toBe('a_b_2')
-    const second = toolNameOf('a_b', taken)
-    taken.add(second)
-    expect(second).toBe('a_b_3')
-  })
-
-  it('没撞的名不加尾巴', () => {
-    expect(toolNameOf('settings.set', new Set())).toBe('settings_set')
   })
 })

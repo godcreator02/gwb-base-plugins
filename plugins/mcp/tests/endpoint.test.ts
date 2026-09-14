@@ -89,18 +89,17 @@ describe('endpointUrl', () => {
 })
 
 describe('mcpServers', () => {
-  it('形状照 .mcp.json 标准,键是 gwb', () => {
-    expect(mcpServers(endpointUrl(2870), 'T0KEN')).toEqual({
+  it('形状照 .mcp.json 标准,键是 gwb,无 headers——0.4 起无鉴权', () => {
+    expect(mcpServers(endpointUrl(2870))).toEqual({
       gwb: {
         type: 'http',
         url: 'http://127.0.0.1:2870/mcp',
-        headers: { Authorization: 'Bearer T0KEN' },
       },
     })
   })
 
   it('url 原样搬进片段——报的口与片段里的口不许各是各的', () => {
-    const entry = mcpServers(endpointUrl(51234), 'x'.repeat(43)).gwb as McpServerEntry
+    const entry = mcpServers(endpointUrl(51234)).gwb as McpServerEntry
     expect(entry.url).toBe(endpointUrl(51234))
   })
 })

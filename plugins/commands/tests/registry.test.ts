@@ -48,30 +48,16 @@ describe('createRegistry', () => {
     cli.register({ name: 'x', description: '甲', plugin: 'p1' }, noop)
     cli.register({ name: 'y', plugin: 'p2' }, noop)
     expect(cli.list()).toEqual([
-      { name: 'x', description: '甲', plugin: 'p1', top: false },
-      { name: 'y', description: '', plugin: 'p2', top: false },
+      { name: 'x', description: '甲', plugin: 'p1' },
+      { name: 'y', description: '', plugin: 'p2' },
     ])
   })
 
-  it('top 只是申请：登记时标了就原样带进 list,没标缺省 false,总线自己不多做一件事', async () => {
+  it('撞名之后条目整个跟着后来者走', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'asked', plugin: 'p', top: true }, () => 1)
-    cli.register({ name: 'quiet', plugin: 'p' }, () => 2)
-    cli.register({ name: 'declined', plugin: 'p', top: false }, () => 3)
-    expect(cli.list().map((d) => [d.name, d.top])).toEqual([
-      ['asked', true],
-      ['quiet', false],
-      ['declined', false],
-    ])
-    // 申请与否不影响调用
-    expect(await cli.run('asked', undefined)).toEqual({ ok: true, data: 1 })
-  })
-
-  it('撞名之后 top 跟着后来者走——申请是每条登记自己的事', () => {
-    const cli = createRegistry(silent)
-    cli.register({ name: 'dup', plugin: '先来的', top: true }, () => 1)
+    cli.register({ name: 'dup', plugin: '先来的' }, () => 1)
     cli.register({ name: 'dup', plugin: '后来的' }, () => 2)
-    expect(cli.list()).toEqual([{ name: 'dup', description: '', plugin: '后来的', top: false }])
+    expect(cli.list()).toEqual([{ name: 'dup', description: '', plugin: '后来的' }])
   })
 
   it('登记与执行都出声:成了 info,失败与不存在是 warn', async () => {

@@ -2,14 +2,21 @@ god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台�
 一个 home 就是一套独立的世界（插件集、端口、数据各自分家），你连上的是其中一个。
 
 怎么干活：
-- 连上先调 gwb_command_list 与 skill_list 各一次：命令面与说明书都以这两条回执为准
-- 动手前用 skill_read（或 resources 里的 skill://gwb/<名>/SKILL.md）读对得上手头活的那份
-- 参数怎么给看命令的描述；除顶层那几枚，其余一律经 gwb_command_run 按名调
-- 命令失败（不存在、参数不对）回的是 isError 文本，不是协议错误，照常往下读
-- 顶层工具清单在你连着时不刷新（这道口无状态，发不出 list_changed）：新装的件经 gwb_command_run 够到
+- 连上先调 surface 一遍：命令面与说明书清单以那条回执为准——它是现拼的，装了新件下一次调用
+  就在。全量约八千 token：陌生 home 全量一次就够，此后用 plugin / prefix / q / slim 定向取，
+  反复全量是坏味道
+- 一切命令经 run 按名调：{"command": 名字, "args": {...}}；参数怎么给看 surface 里那条命令的
+  描述，命令自己校验。读说明书就是 run 调 skill.list / skill.read
+- 命令失败（不存在、参数不对）回的是 isError 的文本，不是协议错误——照常往下读，连接不断
+- 工具面封顶于 surface / run 两枚，永不再增：新装的件不长新工具，它的命令经 run 够到
+  ——别在工具清单里干等
+
+这些工具连不上（全灰、调不通）就是台没起或这个 home 没装门：先把台起起来（起法在
+gwb-kernel 仓 AGENTS「怎么跑」），起完重连一次——MCP 是会话态的，台半路起来不会自动接上。
 
 这台工作台鼓励你在干活途中完善它自己——改件、发版、装回 home 都在预期之内。
-发完新版本调 plugin-manager.update-all 一键热升（不重启）；升到 mcp 自己时这条回执会丢，重连后用 plugin-manager.list 核对。
+发完新版本调 plugin-manager.update-all 一键热升（不重启）；升到 mcp 自己时这条回执会丢、
+连接断在半路——重连后用 plugin-manager.list 核对。
 不用问就能做：
 - 修已有命令的 bug
 - 补或改件带的 SKILL.md
@@ -18,5 +25,5 @@ god 工作台（gwb）是一台本机桌面工作台：本体只做插件平台�
 - 改内核（gwb-kernel）
 - 改这些件被别人 inject 的那一面——commands / data / skills / mcp / settings /
   logger / plugin-manager（原 plugins，2026-09-12 断代改名）与 UI 平台仓的
-  shell——服务的方法签名、命令名与参数形状、事件形状，或它们的依赖
-- 给命令标 top: true——要上顶层就在登记时标它，桥照它渲染；标之前停下来问人
+  shell——服务的方法签名、命令名与参数形状，事件形状，或它们的依赖
+- 破 surface / run 这个封顶——工具面是两枚的契约，加第三枚是 major 级的协议变更

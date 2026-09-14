@@ -6,11 +6,6 @@ export interface GwbCommandDef {
   /** 给 agent 看的：参数形状必须写在这儿（如 `{ entryId }`；无参数就写「无参数」） */
   description?: string
   plugin: string
-  /**
-   * 标了就是 MCP 的顶层工具：桥看到 `true` 就渲染，没有运行时名单。顶层是稀缺位，agent
-   * 标它之前先问人（写在 mcp 的 instructions 里）。总线对它没有任何动作，只是原样带进 `list()`
-   */
-  top?: boolean
 }
 
 /** 命令总线的面。件之间的契约，住在提供方这个包里 */
@@ -38,7 +33,7 @@ export function createRegistry(log: RegistryLog): GwbCommands {
 
   return {
     register(def, handler) {
-      const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin, top: def.top ?? false }
+      const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin }
       const record = { def: entry, handler }
       const prev = byName.get(def.name)
       // 撞名后来者赢，但要告警

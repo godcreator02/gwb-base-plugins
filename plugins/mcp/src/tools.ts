@@ -96,15 +96,3 @@ export function cliRunResult(result: CliRunResultView): ToolResult {
     stderr: result.stderr,
   })
 }
-
-/**
- * 命令名 → 工具名：`.` 与 `-` 一律压成 `_`（`skill.list`→`skill_list`、
- * `node-cli.list`→`node_cli_list`）。压平后撞名的按序号让路——注册表两段名不同、
- * 压平后同节的场合。
- */
-export function toolNameOf(command: string, taken: ReadonlySet<string>): string {
-  const base = command.replaceAll(/[.-]/g, '_')
-  let name = base
-  for (let n = 2; taken.has(name); n++) name = `${base}_${n}`
-  return name
-}

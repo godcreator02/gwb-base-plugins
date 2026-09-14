@@ -1,8 +1,8 @@
 {
   "name": "@godcreator02/gwb-skills",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "author": {"name": "godcreator"},
-  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.2：skill.list / skill.read 登记时标 top: true（是 MCP 的顶层工具，桥照它渲染），描述写明参数形状",
+  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.3：skill.list / skill.read 摘掉 top 标——MCP 门 0.4 工具面封顶于 surface/run，说明书经 run 按名调",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,7 @@
     "prepublishOnly": "pnpm build"
   },
   "//deps": "三条都是 peer。cordis 与词汇表包同 gwb-data 那两档（Service 基类要 extends，必须是宿主那一份；GwbContext 出现在导出的 constructor 签名里）。gwb-commands 是第三档：这个件只 `import type {}` 引它，但那句副作用类型导入会原样留在 .d.ts 里（它有语义——激活 declare module），消费方解析得到才行",
-  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）。commands 抬到 >=0.2.0：登记时传的 top 字段是 0.2 才认的，老版的注册表静默丢掉它——peer 的 range 是这条链上唯一的版本校验点",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）。commands 维持 >=0.2.0：0.2 与 0.3 对本件没有行为差（top 字段那条链 0.3 起随 MCP 工具面封顶退役）",
   "peerDependencies": {
     "@godcreator02/gwb-commands": ">=0.2.0",
     "@godcreator02/gwb-plugin-api": ">=0.1.0",
