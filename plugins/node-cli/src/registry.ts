@@ -38,7 +38,7 @@ export interface NodeCliSpec {
   timeoutMs?: number
   /**
    * 镜像成总线命令时的 `plugin` 归属。缺省取调用方的身份（包名）——
-   * 那是 `@team/gwb-<名>` 这种全名，`/surface` 按插件名过滤时对不上。
+   * 那是 `@godcreator/gwb-<名>` 这种全名，`/surface` 按插件名过滤时对不上。
    * 登记方知道自己的插件名（`export const name`），点名就能对齐口径
    */
   plugin?: string
