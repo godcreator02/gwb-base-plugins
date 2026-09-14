@@ -1,5 +1,5 @@
 {
-  "name": "@godcreator02/gwb-settings",
+  "name": "@team/gwb-settings",
   "version": "0.2.0",
   "author": {
     "name": "godcreator"
@@ -31,13 +31,13 @@
   "//commands": "commands 件是 **dev**,跟 gwb-shell 那边不一样。两条理由:一、它在这儿是空 `import type {}`（只为激活对方的 declare module），实测产物的 .js 与 .d.ts 里一处都没有它,不占导出面;二、这个件对命令总线是**可选**的——嵌套注入,没有它服务面照样完整。写 peer 会把它强制装进 home,那跟「可选」自相矛盾",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-commands": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-skills": "workspace:*",
+    "@team/gwb-commands": "workspace:*",
+    "@team/gwb-plugin-api": "0.1.0",
+    "@team/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
