@@ -1,4 +1,4 @@
-import type { GwbResult } from '@godcreator02/gwb-plugin-api'
+import type { GwbResult } from '@team/gwb-plugin-api'
 
 /**
  * 命令回执 → MCP 工具回执的翻译。纯函数，从接线里抽出来于是可测。
