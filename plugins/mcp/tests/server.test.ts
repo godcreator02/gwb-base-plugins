@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { describe, expect, it } from 'vitest'
-import { registerTools, type ToolHandlers } from '../src/index.js'
+import { honestListChanged, registerTools, type ToolHandlers } from '../src/index.js'
 import { loadInstructions } from '../src/inventory.js'
 import { textResult } from '../src/tools.js'
 
@@ -37,37 +37,43 @@ function spies(): ToolHandlers & {
 }
 
 /** 连一对内存信道——协议层的真往返，不用起 http */
-async function connect(handlers: ToolHandlers): Promise<Client> {
+async function connect(handlers: ToolHandlers): Promise<{ client: Client; server: McpServer }> {
   const server = new McpServer(
     { name: 'gwb', version: 'test' },
     { instructions: loadInstructions(), capabilities: { tools: { listChanged: false } } },
   )
   registerTools(server, handlers)
+  honestListChanged(server)
   const client = new Client({ name: 't', version: '0' })
   const [a, b] = InMemoryTransport.createLinkedPair()
   await Promise.all([server.connect(a), client.connect(b)])
-  return client
+  return { client, server }
 }
 
 describe('工具面封顶', () => {
   it('tools/list 恰好 index / search / run 三枚,没有第四者', async () => {
-    const client = await connect(spies())
+    const { client } = await connect(spies())
     const listed = await client.listTools()
     expect(listed.tools.map((t) => t.name).sort()).toEqual(['index', 'run', 'search'])
-    // 无状态口发不出清单变更通知——能力位如实关掉,不广告用不了的东西
     expect(listed.tools).toHaveLength(3)
+  })
+
+  it('能力位是实话：initialize 回执里 listChanged 为 false——无状态口发不出那个通知', async () => {
+    // SDK 的 McpServer 注册工具时硬编码 true；不拨正的话这条就是红的
+    const { client } = await connect(spies())
+    expect(client.getServerCapabilities()?.tools?.listChanged).toBe(false)
   })
 
   it('index 无参数直达执行口', async () => {
     const h = spies()
-    const client = await connect(h)
+    const { client } = await connect(h)
     await client.callTool({ name: 'index', arguments: {} })
     expect(h.seenIndex).toBe(1)
   })
 
   it('search 的三个过滤参数递得到,空串当没给', async () => {
     const h = spies()
-    const client = await connect(h)
+    const { client } = await connect(h)
     await client.callTool({ name: 'search', arguments: { plugin: '@team/gwb-skills', q: 'read' } })
     await client.callTool({ name: 'search', arguments: { prefix: 'skill.', q: '' } })
     expect(h.seenSearch).toEqual([
@@ -78,7 +84,7 @@ describe('工具面封顶', () => {
 
   it('run 把 command 与 args 原样递到执行口', async () => {
     const h = spies()
-    const client = await connect(h)
+    const { client } = await connect(h)
     await client.callTool({ name: 'run', arguments: { command: 'skill.read', args: { name: 'mcp' } } })
     expect(h.seenRun).toEqual([['skill.read', { name: 'mcp' }]])
   })

@@ -139,6 +139,20 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   )
 }
 
+/**
+ * 把工具能力位拨成实话：SDK 的 McpServer 注册工具时硬编码广告 `listChanged: true`
+ * （`setToolRequestHandlers` 里写死的），构造项盖不掉；这道门无状态、永远发不出那个
+ * 通知。拨的是私有格，SDK 给正路的那天换掉；server.test 钉着 initialize 回执里它是 false
+ */
+export function honestListChanged(server: McpServer): void {
+  const caps = (
+    server as unknown as {
+      server?: { _capabilities?: { tools?: { listChanged?: boolean } } }
+    }
+  ).server?._capabilities?.tools
+  if (caps !== undefined) caps.listChanged = false
+}
+
 export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
   const version = ownVersion()
@@ -222,15 +236,18 @@ export function apply(ctx: GwbContext): void {
    * 现造一台 MCP server。**每请求一台**：instructions 与工具面是部署期定死的，而 index 与
    * search 的内容每次调用现拼，不在连接里冻结任何会变的东西
    */
-  const buildServer = (): McpServer =>
-    new McpServer(
+  const buildServer = (): McpServer => {
+    const server = new McpServer(
       { name: 'gwb', version },
       {
         instructions: loadInstructions(),
-        // 无状态口发不出清单变更通知，能力位如实关掉——SDK 缺省会谎报 true
+        // 无状态口发不出清单变更通知——能力位在 handle 里注册完工具后拨回 false
+        // （SDK 的 McpServer 注册工具时硬编码 true，构造项盖不掉，见 handle 里那段注）
         capabilities: { tools: { listChanged: false } },
       },
     )
+    return server
+  }
 
   const server = http.createServer((req, res) => {
     /**
@@ -259,6 +276,7 @@ export function apply(ctx: GwbContext): void {
     }
     const mcp = buildServer()
     registerTools(mcp, { index: indexNow, search: searchNow, run: (command, args) => runCommand(command, args) })
+    honestListChanged(mcp)
     // 空对象 = 无状态：不给 sessionIdGenerator，每请求现造一对、随响应关闭
     const transport = new StreamableHTTPServerTransport({})
     res.on('close', () => {
