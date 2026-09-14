@@ -1,8 +1,8 @@
 import path from 'node:path'
 import { Service } from 'cordis'
-import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
+import { requireKernel, type GwbContext } from '@team/gwb-plugin-api'
 // 只为激活那个件的 `declare module 'cordis'`——给 ctx 加上 gwbCommands
-import type {} from '@godcreator02/gwb-commands'
+import type {} from '@team/gwb-commands'
 
 /**
  * 纯 core：**无头场景的日志件**。
@@ -13,7 +13,7 @@ import type {} from '@godcreator02/gwb-commands'
  * 三路（件、内核、渲染层）都经 cordis logger 过来——内核把渲染层 console 转进了
  * `ctx.logger('renderer')`，所以这儿一个 exporter 收齐。
  *
- * 窗格（UI 面板）不住这儿——0.3 劈 core 后它住 `@godcreator02/gwb-baseui`，装它找回。
+ * 窗格（UI 面板）不住这儿——0.3 劈 core 后它住 `@team/gwb-baseui`，装它找回。
  */
 export const name = 'gwb-logger'
 
@@ -132,11 +132,11 @@ export function apply(ctx: GwbContext): void {
   factory.exporter(exporter)
 
   ctx.effect(() =>
-    cli.register({ name: BACKLOG_COMMAND, description: '开机到此刻的日志', usage: '最近两千条。无参数', plugin: '@godcreator02/gwb-logger' }, () => [...ring]),
+    cli.register({ name: BACKLOG_COMMAND, description: '开机到此刻的日志', usage: '最近两千条。无参数', plugin: '@team/gwb-logger' }, () => [...ring]),
   )
   ctx.effect(() =>
     cli.register(
-      { name: WHERE_COMMAND, description: 'home 与日志文件在哪', usage: '无参数', plugin: '@godcreator02/gwb-logger' },
+      { name: WHERE_COMMAND, description: 'home 与日志文件在哪', usage: '无参数', plugin: '@team/gwb-logger' },
       () => ({ home: kernel.dataDir, logFile: path.join(kernel.dataDir, 'gwb.log') }),
     ),
   )
