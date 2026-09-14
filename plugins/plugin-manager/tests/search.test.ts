@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { isGwbLine, parseSearch } from '../src/search'
 
 /**
- * 检索的解析与过滤。形状是实测钉的（2026-09-08，`/-/v1/search?text=@godcreator02`）：
+ * 检索的解析与过滤。形状是实测钉的（2026-09-08，`/-/v1/search?text=@team`）：
  * 顶层 `{ objects, total, time }`，每条 `object.package` 带 name/version/description。
  * 这组测试同时钉住两件定位上的事：**这里不认识任何具体的 registry**（只有协议），
  * 过滤只认「scope + gwb- 前缀」这一个字面规则。
