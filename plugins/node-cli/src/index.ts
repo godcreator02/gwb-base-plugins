@@ -147,7 +147,8 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     const off = this.registry.register(plugin, spec)
     this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const cli = this.own.gwbCommands
-    const offCli = cli?.register({ name: spec.name, description: describeCommand(spec.description), plugin }, (args) => {
+    // 镜像命令的 plugin 归属：spec 点了名用点名（插件名口径），缺省才是调用方身份（包名口径）
+    const offCli = cli?.register({ name: spec.name, description: describeCommand(spec.description), plugin: spec.plugin ?? plugin }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })
