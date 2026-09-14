@@ -20,6 +20,8 @@ export interface PyCliSpec {
   /** 命令名,同时是挂进 gwbCommands 总线的那个名字 */
   name: string
   description?: string
+  /** 用法（参数形状、行为注意）——commands 0.4 起与 description 分家。缺省用运行器的调用形状说明 */
+  usage?: string
   /**
    * 件自己的包根。venv 建在 `<packageRoot>/py/.venv`,件自己算：
    * `path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')`

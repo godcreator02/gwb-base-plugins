@@ -183,7 +183,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const record = this.registry.get(spec.name)!
     const cli = this.own.gwbCommands
-    const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', usage: INVOKE_SHAPE, plugin }, (args) => {
+    const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })
