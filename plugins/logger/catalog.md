@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/logger/src/index.ts:21-21 · 未确认 -->
+<!-- 来源 ../plugins/logger/src/index.ts:21-21 · 新鲜 -->
 
 ```ts
 export const inject = ['gwbCommands']

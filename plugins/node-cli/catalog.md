@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/node-cli/src/index.ts:84-84 · 未确认 -->
+<!-- 来源 ../plugins/node-cli/src/index.ts:84-84 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands']

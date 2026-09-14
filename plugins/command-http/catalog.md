@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/command-http/src/index.ts:41-41 · 未确认 -->
+<!-- 来源 ../plugins/command-http/src/index.ts:41-41 · 新鲜 -->
 
 ```ts
 export const inject = ['gwbCommands', 'gwbSettings']

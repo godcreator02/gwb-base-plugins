@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/skills/src/index.ts:55-55 · 未确认 -->
+<!-- 来源 ../plugins/skills/src/index.ts:55-55 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands']

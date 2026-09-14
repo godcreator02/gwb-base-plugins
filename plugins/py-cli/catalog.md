@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/py-cli/src/index.ts:94-94 · 未确认 -->
+<!-- 来源 ../plugins/py-cli/src/index.ts:94-94 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands']
