@@ -1,8 +1,10 @@
 {
   "name": "@godcreator02/gwb-skills",
-  "version": "0.3.0",
-  "author": {"name": "godcreator"},
-  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.3：skill.list / skill.read 摘掉 top 标——MCP 门 0.4 工具面封顶于 surface/run，说明书经 run 按名调",
+  "version": "0.4.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "skill 服务：谁有说明书谁自己挂上来，收集与查询。0.3：skill.list / skill.read 摘掉 top 标——MCP 门 0.4 工具面封顶于 surface/run，说明书经 run 按名调。0.4：skill.list/read 随 commands 0.4 拆 description/usage，plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

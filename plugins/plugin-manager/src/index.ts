@@ -64,6 +64,9 @@ const SHELL_RELOAD_COMMAND = 'shell.reload'
 
 const NAME = 'gwb-plugin-manager'
 
+/** 登记命令时的归属：包名——agent 侧的操作键认它，不认短名 */
+const PKG = '@godcreator02/gwb-plugin-manager'
+
 /** 显示名落在本件自己的数据里，一份 裸 id → label 的文档 */
 const LABELS_DOC = 'labels'
 
@@ -423,19 +426,20 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       ctx.effect(() => () => {
         this.cli = undefined
       })
-      const on = (name: string, description: string, handler: (args?: unknown) => unknown): void => {
-        ctx.effect(() => cli.register({ name, description, plugin: NAME }, handler))
+      const on = (name: string, description: string, usage: string, handler: (args?: unknown) => unknown): void => {
+        ctx.effect(() => cli.register({ name, description, usage, plugin: PKG }, handler))
       }
 
-      on(LIST_COMMAND, 'home 里装了哪些包，各自在 cordis.yml 里有哪些条目。无参数', () => this.list())
+      on(LIST_COMMAND, 'home 里装了哪些包、各挂了哪些条目', '回执按包列：包名、spec、条目（id、entryId、启停、是否 ACTIVE）。无参数', () => this.list())
 
-      on(SHARED_COMMAND, 'home 里哪些包是共享包（清单里有 gwb.shared），各自提供哪些裸名。无参数', async () => ({
+      on(SHARED_COMMAND, '哪些包是共享包、各自提供哪些裸名', '清单里有 gwb.shared 的就是。无参数', async () => ({
         ok: true,
         data: { packages: await this.shared() },
       }))
 
       on(
         INSTALL_COMMAND,
+        '往 home 装一个包并自动加条目',
         'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目。回执 { ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }，action 是 installed / present / skipped / failed。参数 { pkg, spec? }（spec 是版本或 tag）',
         async (args) => {
           const raw = asRecord(args)
@@ -447,39 +451,39 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         },
       )
 
-      on(ADD_ENTRY_COMMAND, '给已装的包再加一条条目。参数 { pkg, id?, config? }', async (args) => {
+      on(ADD_ENTRY_COMMAND, '给已装的包再加一条条目', '参数 { pkg, id?, config? }', async (args) => {
         const raw = asRecord(args)
         const entryId = await this.addEntry(text(raw, 'pkg'), optional(raw, 'id'), raw['config'])
         return { ok: true, data: { entryId } }
       })
 
-      on(REMOVE_ENTRY_COMMAND, '删一条条目（不删包）。参数 { entryId }', (args) => {
+      on(REMOVE_ENTRY_COMMAND, '删一条条目（不删包）', '参数 { entryId }', (args) => {
         this.removeEntry(text(asRecord(args), 'entryId'))
         return { ok: true }
       })
 
-      on(ENABLE_COMMAND, '启用一条条目。参数 { entryId }', async (args) => {
+      on(ENABLE_COMMAND, '启用一条条目', '参数 { entryId }', async (args) => {
         await this.enable(text(asRecord(args), 'entryId'))
         return { ok: true }
       })
 
-      on(DISABLE_COMMAND, '停用一条条目。参数 { entryId }', async (args) => {
+      on(DISABLE_COMMAND, '停用一条条目', '参数 { entryId }', async (args) => {
         await this.disable(text(asRecord(args), 'entryId'))
         return { ok: true }
       })
 
-      on(SET_LABEL_COMMAND, '改一条条目的显示名。参数 { entryId, label }（label 给空串就是抹掉）', async (args) => {
+      on(SET_LABEL_COMMAND, '改一条条目的显示名', '参数 { entryId, label }（label 给空串就是抹掉）', async (args) => {
         const raw = asRecord(args)
         return this.setLabel(text(raw, 'entryId'), label(raw))
       })
 
-      on(OUTDATED_COMMAND, '查已装的包哪些有新版本（pnpm outdated，不联网到公网）。无参数', async () => {
+      on(OUTDATED_COMMAND, '查已装的包哪些有新版本', 'pnpm outdated，不联网到公网。无参数', async () => {
         const result = await this.outdated()
         if (result.ok) return { ok: true, data: result }
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UPDATE_COMMAND, '把一个已装的包升到最新（不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all）。参数 { pkg }', async (args) => {
+      on(UPDATE_COMMAND, '把一个已装的包升到最新', '不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all。参数 { pkg }', async (args) => {
         const result = await this.update(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
@@ -488,7 +492,8 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
 
       on(
         UPDATE_ALL_COMMAND,
-        '一键热升，不重启：一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
+        '一键热升全部过期包，不重启',
+        '一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
         async (args) => {
           const result = await this.updateAll(onlyList(args))
           if (result.ok) return { ok: true, data: result }
@@ -497,13 +502,13 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         },
       )
 
-      on(SEARCH_COMMAND, '列 registry 上 @godcreator02/gwb-* 的全部（装从哪条源来，搜就到哪去）。无参数', async () => {
+      on(SEARCH_COMMAND, '列 registry 上 @godcreator02/gwb-* 的全部', '装从哪条源来，搜就到哪去。无参数', async () => {
         const result = await this.search()
         if (result.ok) return { ok: true, data: result }
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UNINSTALL_COMMAND, '卸载一个包：它的全部条目与包一起拿掉，设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }', async (args) => {
+      on(UNINSTALL_COMMAND, '卸载一个包：条目与包一起拿掉', '设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }', async (args) => {
         const result = await this.uninstall(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`

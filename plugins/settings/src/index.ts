@@ -34,6 +34,8 @@ export { SHARED_SECTION } from './paths.js'
  */
 
 const NAME = 'gwb-settings'
+/** 登记命令时的归属：包名——agent 侧的操作键认它，不认短名 */
+const PKG = '@godcreator02/gwb-settings'
 
 /** 三条命令。注册与调用两处同吃这几个常量 */
 export const ALL_COMMAND = 'settings.all'
@@ -87,17 +89,17 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       // inject 保证了它在，这句只是把类型收窄
       if (cli === undefined) return
       ctx.effect(() =>
-        cli.register({ name: ALL_COMMAND, description: '此刻所有设置项与它们的值。无参数', plugin: NAME }, () =>
+        cli.register({ name: ALL_COMMAND, description: '此刻所有设置项与它们的值', usage: '无参数', plugin: PKG }, () =>
           this.registry.all(),
         ),
       )
       ctx.effect(() =>
-        cli.register({ name: GET_COMMAND, description: '按位置读一项设置。参数 { section, key }', plugin: NAME }, (args) =>
+        cli.register({ name: GET_COMMAND, description: '按位置读一项设置', usage: '参数 { section, key }', plugin: PKG }, (args) =>
           this.registry.read(toSlot(args)),
         ),
       )
       ctx.effect(() =>
-        cli.register({ name: SET_COMMAND, description: '按位置写一项设置。参数 { section, key, value }', plugin: NAME }, async (args) => {
+        cli.register({ name: SET_COMMAND, description: '按位置写一项设置', usage: '参数 { section, key, value }', plugin: PKG }, async (args) => {
           const raw = asRecord(args)
           await this.putAt(toSlot(raw), raw['value'])
           return { ok: true }
@@ -106,7 +108,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       // 抹值跟写值走同一条「按位置」的路：删条目的界面要能顺手把那件的设置值擦干净，
       // 不擦的话盘上留下一堆无主的值
       ctx.effect(() =>
-        cli.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）。参数 { section, key }', plugin: NAME }, async (args) => {
+        cli.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', usage: '参数 { section, key }', plugin: PKG }, async (args) => {
           const slot = toSlot(args)
           this.registry.drop(slot)
           await this.flush()

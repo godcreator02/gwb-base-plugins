@@ -1,8 +1,10 @@
 {
   "name": "@godcreator02/gwb-settings",
-  "version": "0.1.4",
-  "author": {"name": "godcreator"},
-  "description": "设置：件声明自己有哪些设置项，值落在 <home>/settings.json。0.1.1：四条命令的描述写明参数形状",
+  "version": "0.2.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "设置：件声明自己有哪些设置项，值落在 <home>/settings.json。0.1.1：四条命令的描述写明参数形状。0.2：命令登记随 commands 0.4 拆 description（一句话）与 usage（参数形状），plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

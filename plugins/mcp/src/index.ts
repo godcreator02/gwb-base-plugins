@@ -11,31 +11,40 @@ import type {} from '@godcreator02/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
+import {
+  buildIndex,
+  buildSearch,
+  loadInstructions,
+  type SkillsSlot,
+  type SearchQuery,
+} from './inventory.js'
 import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
-import { buildSurface, loadInstructions, type SkillsSlot, type SurfaceQuery } from './surface.js'
 import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type ToolResult } from './tools.js'
 
 /**
  * MCP 门（`gwb-mcp`）：把命令面开给外部 agent（方向永远是 agent → 工作台）。
- * 2026-09-14 复位——「HTTP 门接班」一天的尝试翻案：shell 往返的税每次调用都付，MCP 工具
- * 原生在 agent 上下文里；判据见轨迹卡「MCP 复位」。command-http 搁置留作逃生门。
+ * 2026-09-14 复位成唯一的门，同日工具面重设计为三枚——判据见轨迹卡「MCP 复位」
+ * 与「三枚面」。command-http 搁置留作逃生门。
  *
  * - **自己起 `node:http`**。渲染层走内核那条 IPC 桥，只有外部 agent 需要真 HTTP，
  *   而这个 server 上眼下就只有本件一个客户——真出现第二个要开口的件，那时再把它拆出去
  * - `/mcp` 是**无状态 streamableHTTP**：每请求现造一对 server + transport，随响应关闭。
- *   代价是发不出 list_changed 那类通知——工具面封顶之后这无所谓：清单里没有会变的东西
- * - **工具面封顶两枚**：`surface`（发现面，可过滤）+ `run`（按名调一切命令），写死在
- *   `registerTools` 里，没有运行时名单，登记方也没有申报顶层的字段（top 随 commands 0.3
- *   退役）。加第三枚是 major 级的协议决定，不是插件登记的事。命令面的多变全在 `run` 的
- *   参数里，每次调用现打总线——与件的热重挂同一个新鲜度
- * - **说明书也从这道门出**：清单进 `surface` 的 `skills` 项，正文经 `run` 调
- *   `skill.read`。`skill://` resources 不复活（http 时代已退场）。skills 件不在时门照开，
+ *   发不出 list_changed 那类通知，而且**如实不广告这个能力**（capabilities 里显式
+ *   false——SDK 缺省会谎报 true，等于邀请客户端等一个永不来的通知）。工具面封顶之后
+ *   清单里没有会变的东西，这个能力本来也用不上
+ * - **工具面封顶三枚**：`index`（地图：全部命令与说明书各带一句话）、`search`（按址取
+ *   详情与兜底搜索，命中行带 usage；裸调＝全貌）、`run`（按名调一切命令）。写死在
+ *   `registerTools`，没有运行时名单，登记方也没有申报顶层的字段。**封顶的粒度**：加一枚
+ *   是 major 级协议变更、给现有枚加可选参数是 minor、改回执形状是 major——测试钉着
+ *   tools/list 恰好这三枚。命令面的多变全在 `run` 的参数里，每次调用现打总线——与件的
+ *   热重挂同一个新鲜度
+ * - **说明书也从这道门出**：清单（一句话）进 `index` 的 skills 项，正文经 `run` 调
+ *   `skill.read`；files 不投影——附件的目录归 SKILL.md 正文自己管。skills 件不在时门照开，
  *   清单那格是空表
  * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
- *   `cordis.yml` 的 config）：`default` 认死 2870（mcp 时代的契约随复位收回）、被占就
- *   不开这道口（判断在 `endpoint.ts`，理由也在那儿）；其它 home 缺省系统随机口
- * - **无鉴权**（0.4 起，token 随复位摘除）：口只绑 127.0.0.1、服务本机，本机进程本就
- *   同权——command-http 0.2 摘 token 时验过的判据，原样继承
+ *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`，
+ *   理由也在那儿）；其它 home 缺省系统随机口
+ * - **无鉴权**（0.4 起摘除，0.5 沿用）：口只绑 127.0.0.1、服务本机，本机进程本就同权
  * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
  *   而下游要的是「说出 home 名就连得上它」。只补自己那格，内核那几格原样保留
  */
@@ -72,37 +81,46 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
   res.end(text)
 }
 
-/** 两枚工具的执行口。抽成可注入的形状——测试用内存信道连一对，不用起 http */
+/** 三枚工具的执行口。抽成可注入的形状——测试用内存信道连一对，不用起 http */
 export interface ToolHandlers {
-  surface(query: SurfaceQuery): ToolResult | Promise<ToolResult>
+  index(): ToolResult | Promise<ToolResult>
+  search(query: SearchQuery): ToolResult | Promise<ToolResult>
   run(command: string, args: unknown): ToolResult | Promise<ToolResult>
 }
 
 /**
- * 工具面的全部：就两次 `registerTool`，**封顶的契约**。测试钉着 tools/list 恰好返回这两枚
- * ——谁想加第三枚，先过 major 版本那场对话，别在这儿顺手。
+ * 工具面的全部：就三次 `registerTool`，**封顶的契约**。测试钉着 tools/list 恰好这三枚
+ * ——谁想加第四枚，先过 major 版本那场对话，别在这儿顺手。
  */
 export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   server.registerTool(
-    'surface',
+    'index',
     {
       description:
-        '一页看完这个 home 此刻的命令面与说明书清单（名字 + 描述 + 登记的件 + 口上的纪律）。' +
-        '它是现拼的，装了新件下一次调用就在。连上先调一次：全量约八千 token，此后用过滤定向取。',
+        '这台工作台的完整地图：全部命令与全部说明书，各带一句话介绍。无参数，连上先调一次——' +
+        '它现拼，装了新件下一次调用就在；约两千 token。',
+    },
+    async () => handlers.index(),
+  )
+
+  server.registerTool(
+    'search',
+    {
+      description:
+        '按条件找命令与说明书，命中行带完整用法（参数形状在 usage 里）。裸调＝不过滤＝' +
+        '全貌全用法（约八千 token，陌生 home 深度进场用一次）；带条件只回命中的一角。',
       inputSchema: {
-        plugin: z.string().optional().describe('只留这个插件登记的（commands 与 skills 一起筛）'),
-        prefix: z.string().optional().describe('命令名前缀，如 "skill."'),
-        q: z.string().optional().describe('名字或描述里含这个子串，不分大小写'),
-        slim: z.boolean().optional().describe('瘦身：commands 与 skills 只回名字+插件的索引行'),
+        plugin: z.string().optional().describe('精确插件名（包名），命令与说明书一起筛'),
+        prefix: z.string().optional().describe('命令名前缀，如 "skill."；说明书表回瘦身行'),
+        q: z.string().optional().describe('名字、一句话或用法里找子串，不分大小写'),
       },
     },
     async (raw) => {
-      const query: SurfaceQuery = {}
+      const query: SearchQuery = {}
       if (typeof raw.plugin === 'string' && raw.plugin !== '') query.plugin = raw.plugin
       if (typeof raw.prefix === 'string' && raw.prefix !== '') query.prefix = raw.prefix
       if (typeof raw.q === 'string' && raw.q !== '') query.q = raw.q
-      if (raw.slim === true) query.slim = true
-      return handlers.surface(query)
+      return handlers.search(query)
     },
   )
 
@@ -110,11 +128,11 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'run',
     {
       description:
-        '按命令名调工作台的一切命令（先用 surface 看有哪些、参数怎么给）。' +
+        '按命令名调工作台的一切命令（先 index 看地图、search 看用法）。' +
         '命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
       inputSchema: {
         command: z.string().describe('命令名，如 skill.read'),
-        args: z.unknown().optional().describe('可选参数，形状看 surface 里那条命令的描述；命令自己校验'),
+        args: z.unknown().optional().describe('可选参数，形状看 search 里那条命令的 usage；命令自己校验'),
       },
     },
     async ({ command, args }) => handlers.run(command, args),
@@ -147,7 +165,7 @@ export function apply(ctx: GwbContext): void {
   /**
    * 说明书清单那格。**局部注入,不写进 export const inject**:skills 件不在时这道门照开——
    * 清单不是它能不能干活的前提。effect 里上下线对称:skills 件停了/卸了置空,
-   * 下一次 surface 就不带清单。门自己也带一份说明书（skills/ 目录得进 package.json 的 files）
+   * 下一次 index 就不带清单。门自己也带一份说明书（skills/ 目录得进 package.json 的 files）
    */
   let skills: SkillsSlot | undefined
   ctx.inject(['gwbSkills'], (scoped) => {
@@ -182,20 +200,37 @@ export function apply(ctx: GwbContext): void {
     return isCliRunResult(result) ? cliRunResult(result) : toolResult(result)
   }
 
-  /** `surface` 那枚的执行口：现拼——每次都现取命令注册表与说明书清单，热挂上来的件当场就在 */
-  const surfaceNow = (query: SurfaceQuery): ToolResult => {
-    const all = cli.list()
-    const surface = buildSurface({ home, version, commands: all, skills: skills?.list(), query })
-    log.info(`agent 现扫了一遍表面（${all.length} 条命令里筛出 ${surface.commands.length}）`)
-    return textResult(surface)
+  /** `index` 那枚的执行口：现拼——每次都现取命令注册表与说明书清单，热挂上来的件当场就在 */
+  const indexNow = (): ToolResult => {
+    const doc = buildIndex({ home, version, commands: cli.list(), skills: skills?.list() })
+    log.info(`agent 看了一遍地图（${doc.commands.length} 条命令、${doc.skills.length} 份说明书）`)
+    return textResult(doc)
+  }
+
+  /** `search` 那枚的执行口：同源现筛 */
+  const searchNow = (query: SearchQuery): ToolResult => {
+    const doc = buildSearch({ commands: cli.list(), skills: skills?.list(), query })
+    log.info(
+      `agent 搜了一遍（命中 ${doc.commands.length} 条命令、${doc.skills.length} 份说明书${
+        doc.filter === undefined ? '，裸调全貌' : ''
+      }）`,
+    )
+    return textResult(doc)
   }
 
   /**
-   * 现造一台 MCP server。**每请求一台**：instructions 与工具面是部署期定死的，而 surface
-   * 的内容每次调用现拼，不在连接里冻结任何会变的东西
+   * 现造一台 MCP server。**每请求一台**：instructions 与工具面是部署期定死的，而 index 与
+   * search 的内容每次调用现拼，不在连接里冻结任何会变的东西
    */
   const buildServer = (): McpServer =>
-    new McpServer({ name: 'gwb', version }, { instructions: loadInstructions() })
+    new McpServer(
+      { name: 'gwb', version },
+      {
+        instructions: loadInstructions(),
+        // 无状态口发不出清单变更通知，能力位如实关掉——SDK 缺省会谎报 true
+        capabilities: { tools: { listChanged: false } },
+      },
+    )
 
   const server = http.createServer((req, res) => {
     /**
@@ -223,7 +258,7 @@ export function apply(ctx: GwbContext): void {
       return
     }
     const mcp = buildServer()
-    registerTools(mcp, { surface: surfaceNow, run: (command, args) => runCommand(command, args) })
+    registerTools(mcp, { index: indexNow, search: searchNow, run: (command, args) => runCommand(command, args) })
     // 空对象 = 无状态：不给 sessionIdGenerator，每请求现造一对、随响应关闭
     const transport = new StreamableHTTPServerTransport({})
     res.on('close', () => {
@@ -298,8 +333,9 @@ export function apply(ctx: GwbContext): void {
     cli.register(
       {
         name: 'mcp.info',
-        description: 'MCP 门的连接信息（url + 可直接抄进 .mcp.json 的 mcpServers 片段，无鉴权本机自用）。无参数',
-        plugin: name,
+        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段）',
+        usage: '无参数。回执 { ok, data: { url, port, mcpServers } }——mcpServers 片段贴进客户端配置即可连；门没开时回 ok:false 说原因',
+        plugin: '@godcreator02/gwb-mcp',
       },
       async () => {
         /**

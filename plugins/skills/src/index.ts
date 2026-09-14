@@ -75,13 +75,13 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     if (cli === undefined) return
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）。无参数', plugin: 'gwb-skills' },
+        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: '@godcreator02/gwb-skills' },
         () => ({ count: this.byName.size, skills: this.list() }),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文。参数 { name, file? }，file 缺省 SKILL.md', plugin: 'gwb-skills' },
+        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@godcreator02/gwb-skills' },
         async (args) => {
           const req = args as { name?: unknown; file?: unknown } | undefined
           const skillName = req?.name

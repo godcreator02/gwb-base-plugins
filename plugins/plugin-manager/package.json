@@ -1,8 +1,10 @@
 {
   "name": "@godcreator02/gwb-plugin-manager",
-  "version": "0.1.2",
-  "author": {"name": "godcreator"},
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator02/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator02/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）",
+  "version": "0.3.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator02/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator02/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

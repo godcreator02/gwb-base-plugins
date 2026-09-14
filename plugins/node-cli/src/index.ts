@@ -75,10 +75,6 @@ export interface GwbNodeCliApi {
 }
 
 /** 挂进总线的描述：件写的那半在前，运行器定的参数形状在后 */
-function describeCommand(description: string | undefined): string {
-  return description === undefined || description === '' ? INVOKE_SHAPE : `${description}。${INVOKE_SHAPE}`
-}
-
 export default class GwbNodeCli extends Service implements GwbNodeCliApi {
   /** 没有命令总线就不挂——inject 是 cordis 的等待机制,不是建议 */
   static inject = ['gwbCommands']
@@ -117,7 +113,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     if (cli === undefined) return
 
     this.own.effect(() =>
-      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI。无参数', plugin: PLUGIN_NAME }, () =>
+      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: '@godcreator02/gwb-node-cli' }, () =>
         this.registry.list(),
       ),
     )
@@ -148,7 +144,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     this.info(`CLI ${spec.name}（${plugin}）登记上了`)
     const cli = this.own.gwbCommands
     // 镜像命令的 plugin 归属：spec 点了名用点名（插件名口径），缺省才是调用方身份（包名口径）
-    const offCli = cli?.register({ name: spec.name, description: describeCommand(spec.description), plugin: spec.plugin ?? plugin }, (args) => {
+    const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', usage: INVOKE_SHAPE, plugin: spec.plugin ?? plugin }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })

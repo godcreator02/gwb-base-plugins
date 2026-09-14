@@ -1,9 +1,9 @@
 {
   "name": "@godcreator02/gwb-commands",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": {"name": "godcreator"},
   "//name": "改名之前叫 @godcreator02/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
-  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.3：top 字段退役——MCP 工具面封顶于 surface/run 两枚，顶层不再由登记方申报（判据见轨迹卡「MCP 复位」）",
+  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.4：description 与 usage 分家——description 一句话进 index（与 skill 的 description 同义），usage 装参数形状与行为注意（search 命中行带）；plugin 改口包名（@scope/pkg），短名 warn 不拦（判据见轨迹卡「三枚面」）",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -1,8 +1,10 @@
 {
   "name": "@godcreator02/gwb-mcp",
-  "version": "0.4.0",
-  "author": {"name": "godcreator"},
-  "description": "MCP 门：把命令面开给 agent——工具面封顶于 surface/run 两枚（永不再增，加第三枚是 major 级协议变更；top 申报字段已随 commands 0.3 退役），一切命令经 run 按名调；无状态 streamableHTTP，无鉴权（绑 127.0.0.1 本机同权），default 认死 2870。0.4 复位接班 command-http（判据见轨迹卡「MCP 复位」）：surface 取代 gwb_command_list、run 取代 gwb_command_run，skill:// resources 与 token 不回来",
+  "version": "0.5.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "MCP 门：把命令面开给 agent——工具面封顶 index / search / run 三枚（index＝完整地图各带一句话；search 命中行带 usage、裸调＝全貌；run 按名调一切），永不再增（加枚＝major、加可选参＝minor、改回执形状＝major）；无状态 streamableHTTP 且如实不广告 listChanged，无鉴权，default 认死 2870。0.5：surface 拆成 index/search、slim 死亡、files 不投影（附件目录归正文）、mcp.info 拆 description/usage（判据见轨迹卡「三枚面」）",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

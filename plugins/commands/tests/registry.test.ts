@@ -45,26 +45,37 @@ describe('createRegistry', () => {
 
   it('list 报出注册过的条目', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'x', description: '甲', plugin: 'p1' }, noop)
+    cli.register({ name: 'x', description: '甲', usage: '参数 { n }', plugin: 'p1' }, noop)
     cli.register({ name: 'y', plugin: 'p2' }, noop)
     expect(cli.list()).toEqual([
-      { name: 'x', description: '甲', plugin: 'p1' },
-      { name: 'y', description: '', plugin: 'p2' },
+      { name: 'x', description: '甲', usage: '参数 { n }', plugin: 'p1' },
+      { name: 'y', description: '', usage: '', plugin: 'p2' },
     ])
+  })
+
+  it('plugin 写短名 warn 一句、照挂不拦——软守卫逮漏网,不升格失败', () => {
+    const log = { info: vi.fn(), warn: vi.fn() }
+    const cli = createRegistry(log)
+    cli.register({ name: 'a.b', plugin: 'gwb-old' }, noop)
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('gwb-old'))
+    expect(cli.list()).toHaveLength(1)
+    log.warn.mockClear()
+    cli.register({ name: 'c.d', plugin: '@godcreator02/gwb-new' }, noop)
+    expect(log.warn).not.toHaveBeenCalled()
   })
 
   it('撞名之后条目整个跟着后来者走', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'dup', plugin: '先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '后来的' }, () => 2)
-    expect(cli.list()).toEqual([{ name: 'dup', description: '', plugin: '后来的' }])
+    cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
+    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
+    expect(cli.list()).toEqual([{ name: 'dup', description: '', usage: '', plugin: '@t/后来的' }])
   })
 
   it('登记与执行都出声:成了 info,失败与不存在是 warn', async () => {
     const log = { info: vi.fn(), warn: vi.fn() }
     const cli = createRegistry(log)
-    cli.register({ name: 'fine', plugin: 'p' }, () => 1)
-    cli.register({ name: 'sad', plugin: 'p' }, () => ({ ok: false, error: '业务上没成' }))
+    cli.register({ name: 'fine', plugin: '@t/p' }, () => 1)
+    cli.register({ name: 'sad', plugin: '@t/p' }, () => ({ ok: false, error: '业务上没成' }))
     await cli.run('fine', undefined)
     await cli.run('sad', undefined)
     await cli.run('nope', undefined)
@@ -80,8 +91,8 @@ describe('createRegistry', () => {
   it('撞名是后来者赢——但不许静默,得告警说清谁换了谁', async () => {
     const warn = vi.fn()
     const cli = createRegistry({ info: noop, warn })
-    cli.register({ name: 'dup', plugin: '先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '后来的' }, () => 2)
+    cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
+    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
     expect(await cli.run('dup', undefined)).toEqual({ ok: true, data: 2 })
     expect(warn).toHaveBeenCalledOnce()
     const msg = String(warn.mock.calls[0]?.[0])
@@ -92,8 +103,8 @@ describe('createRegistry', () => {
 
   it('注销只收自己那份:撞名后先卸的不该把接手的一起带走', async () => {
     const cli = createRegistry(silent)
-    const offFirst = cli.register({ name: 'dup', plugin: '先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '后来的' }, () => 2)
+    const offFirst = cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
+    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
     offFirst()
     expect(await cli.run('dup', undefined)).toEqual({ ok: true, data: 2 })
   })

@@ -132,11 +132,11 @@ export function apply(ctx: GwbContext): void {
   factory.exporter(exporter)
 
   ctx.effect(() =>
-    cli.register({ name: BACKLOG_COMMAND, description: '开机到此刻的日志（最近两千条）。无参数', plugin: name }, () => [...ring]),
+    cli.register({ name: BACKLOG_COMMAND, description: '开机到此刻的日志', usage: '最近两千条。无参数', plugin: '@godcreator02/gwb-logger' }, () => [...ring]),
   )
   ctx.effect(() =>
     cli.register(
-      { name: WHERE_COMMAND, description: 'home 与日志文件在哪。无参数', plugin: name },
+      { name: WHERE_COMMAND, description: 'home 与日志文件在哪', usage: '无参数', plugin: '@godcreator02/gwb-logger' },
       () => ({ home: kernel.dataDir, logFile: path.join(kernel.dataDir, 'gwb.log') }),
     ),
   )

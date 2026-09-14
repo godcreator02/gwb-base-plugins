@@ -3,8 +3,10 @@ import type { GwbResult } from '@godcreator02/gwb-plugin-api'
 /** 一条命令的自述。`plugin` 由注册方自带 */
 export interface GwbCommandDef {
   name: string
-  /** 给 agent 看的：参数形状必须写在这儿（如 `{ entryId }`；无参数就写「无参数」） */
+  /** 一句话介绍，进 index——与 skill 的 description 同义 */
   description?: string
+  /** 用法：参数形状、行为注意——search 命中行带它，run 之前看它（无参数的命令可以不给） */
+  usage?: string
   plugin: string
 }
 
@@ -33,7 +35,12 @@ export function createRegistry(log: RegistryLog): GwbCommands {
 
   return {
     register(def, handler) {
-      const entry = { name: def.name, description: def.description ?? '', plugin: def.plugin }
+      const entry = { name: def.name, description: def.description ?? '', usage: def.usage ?? '', plugin: def.plugin }
+      // 0.4 起的口径：plugin 写包名（@scope/pkg）——它是 agent 侧的操作键（装卸升、反馈投递
+      // 都认包名），短名只住日志与散文。软守卫：旧口径 warn 一句不拦截，漏网的照挂
+      if (!def.plugin.startsWith('@')) {
+        log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @godcreator02/gwb-xxx），收到的是「${def.plugin}」`)
+      }
       const record = { def: entry, handler }
       const prev = byName.get(def.name)
       // 撞名后来者赢，但要告警
