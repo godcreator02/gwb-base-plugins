@@ -47,5 +47,5 @@ MCP 的工具清单是**连接时的快照**，而工作台的件以分钟级热
 ## 逃生门
 
 前一门 command-http 已搁置（default 卸载、registry 留 0.2.2）：MCP 门坏到没救时，手工往
-home 装 `@godcreator02/gwb-command-http`（cordis.yml 加条目 + pnpm add + 重启）就有一条
+home 装 `@team/gwb-command-http`（cordis.yml 加条目 + pnpm add + 重启）就有一条
 无会话的 curl 道可走。判据见轨迹卡「MCP 复位」的代价段。
