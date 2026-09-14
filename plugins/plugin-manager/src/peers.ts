@@ -1,4 +1,4 @@
-import { isRecord } from '@godcreator02/gwb-plugin-api'
+import { isRecord } from '@team/gwb-plugin-api'
 import { toShared } from './inventory.js'
 
 /**
@@ -32,7 +32,7 @@ const HOST_PACKAGES: ReadonlySet<string> = new Set(['cordis'])
 const GWB_NAMESPACE = /^@godcreator02\/gwb-/
 
 /**
- * 一个 peer 是哪一种。**只对 `@godcreator02/gwb-*` 里的包问这个问题**，判据是清单里有没有
+ * 一个 peer 是哪一种。**只对 `@team/gwb-*` 里的包问这个问题**，判据是清单里有没有
  * `gwb.shared`——那是本生态既有的标记（内核扫它拼页面 importmap，`plugin-manager.shared` 读同一批）：
  *
  * - `shared`：共享包（`gwb-shared-react` / `gwb-tokens`）。**本来就该是 home 的直接依赖**
@@ -80,7 +80,7 @@ export function toPeerDependencies(raw: unknown): Record<string, string> {
 /**
  * 出计划：每条 peer 装、还是不装、还是本来就在。按包名排，回执与执行顺序都跟着它。
  *
- * `kinds` 是 `@godcreator02/gwb-*` 那些 peer 各自的种类（由调用方读盘算出来，见
+ * `kinds` 是 `@team/gwb-*` 那些 peer 各自的种类（由调用方读盘算出来，见
  * `peerKindOf`）；**认不出种类的保守当件跳过**——多装一个包只是占磁盘，可把一个件当普通
  * 包塞进 home 会在界面上凭空多出一行「装了没挂条目」，人得回头查它是哪来的。
  *
@@ -89,7 +89,7 @@ export function toPeerDependencies(raw: unknown): Record<string, string> {
  * 1. **已经在 home 的 `package.json` 里 → `present`，一个字不动。** 不降级、不改写别人钉好
  *    的版本：那条依赖是谁装的、为什么钉在那个版本，这儿一概不知道
  * 2. **宿主提供的（`cordis`）→ `skipped`**
- * 3. **`@godcreator02/gwb-*`：共享包装、件跳过**（判据见 `PeerKind`）
+ * 3. **`@team/gwb-*`：共享包装、件跳过**（判据见 `PeerKind`）
  * 4. **其余一律装**——那正是这次要接的形状：会独立升级、被件现查路径读文件/起进程的包
  */
 export function planPeers(
