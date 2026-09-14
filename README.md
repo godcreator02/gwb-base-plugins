@@ -1,9 +1,9 @@
 # gwb-base-plugins
 
 gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物守卫钉着）。UI 平台
-（shell / theme / baseui / shared-react / tokens）住 `26091217uiz\gwb-ui-plugins`，
-装配级验收位（hello）住 `26091217hkq\gwb-hello`，判据见轨迹区拆分卡。
+（shell / theme / baseui / shared-react / tokens）住 `26091217uiz\gwb-ui-plugins`。
 此刻十个插件在册、九个在役：mcp 搁置、command-http 接班。
+验收位（hello 仓）已于 2026-09-13 整体退役——装配态验收改由 devkit 模板现场生成。
 
 | 插件             | 包名                                 | 服务                               |
 | -------------- | ---------------------------------- | -------------------------------- |

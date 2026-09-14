@@ -6,9 +6,9 @@ plugin-manager(core)；另有搁置中的 mcp（入口由 command-http 接班、
 见轨迹卡「HTTP 门接班」）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
 shared-react / tokens 三个包（产物守卫钉着）。
 
-UI 那半住 `D:\unitfolders\26091217uiz\gwb-ui-plugins`（shell、theme、baseui 与两个共享包），
-验收位住 `D:\unitfolders\26091217hkq\gwb-hello`（单插件仓，依赖全走 registry 的装配态验收），
-判据见轨迹卡 `2026-09-12-three-repos-split`。旧内核 `gwb-kernel` 已退役
+UI 那半住 `D:\unitfolders\26091217uiz\gwb-ui-plugins`（shell、theme、baseui 与两个共享包）。
+验收位（hello 仓）已于 2026-09-13 整体退役：装配态验收改由 devkit 模板现场生成，判据见
+devkit 仓轨迹卡「模板即插件」。旧内核 `gwb-kernel` 已退役
 ——宿主子进程、fd3、`gwb://`、`kernel.info` 都不在了。
 
 ## 产物纪律
