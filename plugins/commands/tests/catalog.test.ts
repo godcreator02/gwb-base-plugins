@@ -19,7 +19,7 @@ function srcText(): string {
 describe('catalog.md：身份卡防漏', () => {
   it('四段都在（定位 / 提供 / 依赖 / 命令去向）', () => {
     for (const head of ['定位', '## 提供', '## 依赖']) expect(card).toContain(head)
-    expect(card).toContain('/surface')
+    expect(card).toContain('MCP 门')
   })
 
   it('源码 inject 的每个服务名，卡上都点名了', () => {
