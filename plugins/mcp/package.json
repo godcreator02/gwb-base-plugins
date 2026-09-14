@@ -1,5 +1,5 @@
 {
-  "name": "@godcreator02/gwb-mcp",
+  "name": "@team/gwb-mcp",
   "version": "0.5.0",
   "author": {
     "name": "godcreator"
@@ -34,15 +34,15 @@
   "//peerDependencies": "词汇表包是运行时 import（requireKernel 是真函数）。commands / settings 两件写 peer 的理由不是类型面，是 **inject 那两个服务**——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。commands 维持 >=0.2.0：0.2 与 0.3 对本件没有行为差（top 那条链 0.3 起退役，本件已不读它）。data 那条随 token 摘除退役（0.4 前它唯一的用途是 token 落盘）",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）",
   "peerDependencies": {
-    "@godcreator02/gwb-commands": ">=0.2.0",
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
-    "@godcreator02/gwb-settings": ">=0.1.0"
+    "@team/gwb-commands": ">=0.2.0",
+    "@team/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-settings": ">=0.1.0"
   },
   "devDependencies": {
-    "@godcreator02/gwb-commands": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-settings": "workspace:*",
-    "@godcreator02/gwb-skills": "workspace:*",
+    "@team/gwb-commands": "workspace:*",
+    "@team/gwb-plugin-api": "0.1.0",
+    "@team/gwb-settings": "workspace:*",
+    "@team/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
