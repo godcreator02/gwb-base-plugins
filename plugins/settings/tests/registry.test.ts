@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createRegistry, toSettingsFile, type Owner } from '../src/registry.js'
 
-const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator02/gwb-alice' }
-const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator02/gwb-bob' }
+const alice: Owner = { entryId: 'home:alice', pkg: '@team/gwb-alice' }
+const bob: Owner = { entryId: 'home:bob', pkg: '@team/gwb-bob' }
 /** 同一个包挂的第二条条目——包名一样，entryId 不一样 */
-const alice2: Owner = { entryId: 'home:alice-2', pkg: '@godcreator02/gwb-alice' }
+const alice2: Owner = { entryId: 'home:alice-2', pkg: '@team/gwb-alice' }
 
 function fresh(): { reg: ReturnType<typeof createRegistry>; warn: ReturnType<typeof vi.fn> } {
   const warn = vi.fn()
@@ -138,19 +138,19 @@ describe('撞名与说不清自己是谁', () => {
 
   it('条目 id 不合规当场抛——它要当分区名用,跟 gwb-data 那边一套字符集', () => {
     const { reg } = fresh()
-    const bad: Owner = { entryId: 'home:Alice', pkg: '@godcreator02/gwb-alice' }
+    const bad: Owner = { entryId: 'home:Alice', pkg: '@team/gwb-alice' }
     expect(() => reg.define(bad, { key: 'level', title: '级别', type: 'string' })).toThrow(/kebab-case/)
   })
 
   it('条目 id 超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区', () => {
     const { reg } = fresh()
-    const nested: Owner = { entryId: 'home:group:alice', pkg: '@godcreator02/gwb-alice' }
+    const nested: Owner = { entryId: 'home:group:alice', pkg: '@team/gwb-alice' }
     expect(() => reg.define(nested, { key: 'level', title: '级别', type: 'string' })).toThrow(/段/)
   })
 
   it('抛在动表之前——坏 id 那条不该在定义表里留下半条', () => {
     const { reg } = fresh()
-    const bad: Owner = { entryId: 'home:Alice', pkg: '@godcreator02/gwb-alice' }
+    const bad: Owner = { entryId: 'home:Alice', pkg: '@team/gwb-alice' }
     expect(() => reg.define(bad, { key: 'level', title: '级别', type: 'string' })).toThrow()
     expect(reg.all()).toEqual([])
   })
