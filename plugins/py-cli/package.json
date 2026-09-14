@@ -14,7 +14,7 @@
   },
   "//files": "这个件只做运行器,自己不带 python 项目——`py/` 与 venv 都住在**消费方件**的包根下（样板见 gwb-hello）",
   "files": [
-    "catalog.json",
+    "catalog.md",
     "dist",
     "skills",
     "src"

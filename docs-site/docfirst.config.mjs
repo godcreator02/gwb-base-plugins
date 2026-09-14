@@ -20,6 +20,15 @@ export default {
   trajectory: 'content/trajectory',
   outputs: {
     'content/outputs/readme.mdx': ['../README.md'],
+    'content/outputs/catalog-commands.mdx': ['../plugins/commands/catalog.md'],
+    'content/outputs/catalog-data.mdx': ['../plugins/data/catalog.md'],
+    'content/outputs/catalog-logger.mdx': ['../plugins/logger/catalog.md'],
+    'content/outputs/catalog-skills.mdx': ['../plugins/skills/catalog.md'],
+    'content/outputs/catalog-node-cli.mdx': ['../plugins/node-cli/catalog.md'],
+    'content/outputs/catalog-py-cli.mdx': ['../plugins/py-cli/catalog.md'],
+    'content/outputs/catalog-settings.mdx': ['../plugins/settings/catalog.md'],
+    'content/outputs/catalog-plugin-manager.mdx': ['../plugins/plugin-manager/catalog.md'],
+    'content/outputs/catalog-command-http.mdx': ['../plugins/command-http/catalog.md'],
     'content/outputs/agents.mdx': ['../AGENTS.md'],
   },
   components: {

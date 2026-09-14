@@ -1,0 +1,15 @@
+# gwb-settings
+
+**定位**：设置的唯一正路——插件的配置一律 define 出来，人在界面改、agent 读写；不吃 cordis.yml 的 config。
+
+## 提供
+
+`gwbSettings`：`define({ key, title, type, default?, shared? })` / `get(key)` / `set(key, value)`；类型 string|number|boolean|secret；值跟条目走，shared 才落公共区
+
+## 依赖
+
+`gwbCommands`（局部注入）、`gwbSkills`（局部注入）
+
+## 命令
+
+命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-settings` 取这一组的形状）。

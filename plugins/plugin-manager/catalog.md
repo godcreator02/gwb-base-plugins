@@ -1,0 +1,15 @@
+# gwb-plugin-manager
+
+**定位**：包与条目的全生命周期——装、卸、条目、启停、查新、热升，外加按 registry 检索可装的；市场页直连本机源。
+
+## 提供
+
+`gwbPluginManager`：装卸检升的服务面（窗格与 agent 共用同一套，细节以命令面为主）
+
+## 依赖
+
+`gwbCommands`（局部注入）、`gwbData`（局部注入）、`gwbSettings`（局部注入）、`gwbSkills`（局部注入）
+
+## 命令
+
+命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-plugin-manager` 取这一组的形状）。

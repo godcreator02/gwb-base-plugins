@@ -1,0 +1,13 @@
+# gwb-data
+
+**定位**：插件落盘状态的统一出口——要落盘就用它，不自己拼路径、不碰 fs。
+
+## 提供
+
+`gwbData`：readDoc(doc) / writeDoc(doc, value)（原子落盘），外加 dir（本件那格数据目录）；分家按条目 id 末段，落 `<>`/data/`<>`/
+
+## 依赖
+
+## 命令
+
+命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-data` 取这一组的形状）。
