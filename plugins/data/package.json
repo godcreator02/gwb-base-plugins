@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-data",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON",
   "type": "module",
   "main": "dist/index.js",
@@ -13,6 +13,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "catalog.json",
     "dist",
     "src"
   ],

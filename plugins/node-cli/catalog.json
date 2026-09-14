@@ -1,0 +1,18 @@
+{
+  "plugin": "gwb-node-cli",
+  "summary": "node 命令行运行器——外部 CLI 的稳定入口，登记即自动镜像成同名总线命令（回执带 stdout / exitCode 那套）。",
+  "provides": [
+    {
+      "service": "gwbNodeCli",
+      "shape": "register({ name, description, entry })——entry 指 dist/ 里的编译产物绝对路径，相对路径当场拒"
+    }
+  ],
+  "depends": {
+    "hard": [
+      "gwbCommands"
+    ],
+    "local": [
+      "gwbSkills"
+    ]
+  }
+}

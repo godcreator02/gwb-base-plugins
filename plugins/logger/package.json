@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-logger",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "日志件（core）：挂第二个 cordis exporter 收全量、自己缓冲两千条、历史段从 cordis 自带 buffer 补、实时经内核事件口推给页面；agent 经 logger.backlog / logger.where 查。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.3 起劈 core：inject 不再赖 gwbShell，无壳 home 里件挂得上、命令在；窗格（UI 面板）移住 @godcreator02/gwb-baseui，装它找回。0.2 那些窗格侧的故事（Tailwind 前缀围栏、Select 浮层户口）随浏览器半一并搬了过去。0.3.1 补挂薄服务 gwbLogger（面刻意留空）——gwb-baseui 的日志窗格按服务名嵌套注入，没有它那格永远开不出来",
   "type": "module",
   "main": "dist/index.js",
@@ -14,6 +14,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "catalog.json",
     "dist",
     "src"
   ],

@@ -1,0 +1,16 @@
+{
+  "plugin": "gwb-logger",
+  "summary": "日志管道（core）——kernel / plugin / renderer 三路汇进 <home>/gwb.log 与日志窗格；插件说话的正规出口是 ctx.logger，不是 console。",
+  "provides": [
+    {
+      "service": "gwbLogger",
+      "shape": "薄服务面留空：消费方一律 ctx.logger(名) 写；本件挂第二个 cordis exporter 收历史、经内核桥推窗格"
+    }
+  ],
+  "depends": {
+    "hard": [
+      "gwbCommands"
+    ],
+    "local": []
+  }
+}

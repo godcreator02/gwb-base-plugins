@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-py-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建一个 venv，spawn venv 里的可执行文件。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状",
   "type": "module",
   "main": "dist/index.js",
@@ -14,9 +14,10 @@
   },
   "//files": "这个件只做运行器,自己不带 python 项目——`py/` 与 venv 都住在**消费方件**的包根下（样板见 gwb-hello）",
   "files": [
+    "catalog.json",
     "dist",
-    "src",
-    "skills"
+    "skills",
+    "src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

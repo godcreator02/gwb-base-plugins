@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-commands",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "//name": "改名之前叫 @godcreator02/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.2：GwbCommandDef 加 top（标了就是 MCP 顶层工具，桥照它渲染），list() 原样带出",
   "type": "module",
@@ -14,9 +14,10 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "catalog.json",
     "dist",
-    "src",
-    "skills"
+    "skills",
+    "src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
