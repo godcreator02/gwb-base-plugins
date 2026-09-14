@@ -12,20 +12,20 @@ docfirst: none
 
 | 件 | 包名 | 服务 | 状态 |
 | --- | --- | --- | --- |
-| **commands** | `@godcreator02/gwb-commands` | `ctx.gwbCommands` | **已发 0.1.0**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
-| **data** | `@godcreator02/gwb-data` | `ctx.gwbData` | **已发 0.1.0**，落盘验通；写失败从此 error 出声 |
-| **hello** | `@godcreator02/gwb-hello` | — | **已发 0.2.0**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger`。**它是前缀方案的样板**——件自己就是一个完整的 Tailwind 入口（`src/client/styles.css` 五行，`@tailwindcss/cli` 直出），类名一律 `hello:` 开头 |
-| **shell** | `@godcreator02/gwb-shell` | `ctx.gwbShell` | **已发 0.2.0**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航。**0.1.1 起件的那一格是容器查询的根**（`@container`）——件里的 `@sm:` / `@md:` 按这一格现在有多宽判，跟整窗大小无关；**0.2.0 起自己那张 `style.css` 也是前缀方案**（`shell:`），`dockview.css` 不套围栏、一字未动 |
-| **skills** | `@godcreator02/gwb-skills` | `ctx.gwbSkills` | **已发 0.1.0**，收集与查询验通，见[它的页](/docs/skills) |
-| **command-http** | `@godcreator02/gwb-command-http` | —（不 provide） | **已发 0.2.2，此后搁置（2026-09-14）**：无状态命令 JSON 口——`GET /surface` 现拼命令与说明书清单（`?plugin` / `?prefix` / `?q` / `?slim` 过滤，全量约八千 token）、`POST /run` 按名调，零运行时依赖；门由 mcp 复位接回、default 已卸载，registry 留版当逃生门，判据见轨迹卡「MCP 复位」；在职期间的记录见[它的页](/docs/command-http) |
-| **mcp** | `@godcreator02/gwb-mcp` | —（不 provide） | **已发 0.4.0，复位接班（2026-09-14）**：唯一的门——工具面封顶 `surface` / `run` 两枚（永不再增，测试钉死 tools/list；top 申报链随 commands 0.3 退役），无鉴权，default 认死 2870；判据见轨迹卡「MCP 复位」，见[它的页](/docs/mcp) |
-| **node-cli** | `@godcreator02/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.1.0**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
-| **py-cli** | `@godcreator02/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.1.0**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
-| **logger** | `@godcreator02/gwb-logger` | — | **已发 0.2.0**，四路日志窗格实机验通，见[它的页](/docs/logger)；0.2.0 起类名一律 `logger:`，Select 的弹层照 radix 默认挂 `body` |
-| **theme** | `@godcreator02/gwb-theme` | — | **已发 0.2.0**，外观件：字体与自定义 CSS，一格窗格；0.2.0 起类名一律 `theme:`（没有弹层与 ui 组件，迁移只动了类名） |
-| **settings** | `@godcreator02/gwb-settings` | `ctx.gwbSettings` | **已发 0.1.0**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
-| **plugins** | `@godcreator02/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.2.0**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill；0.2.0 起类名一律 `plugins:`，卸载确认框的遮罩从此盖整窗；0.3.0 加一键热升 `plugins.update-all`（不重启）；**0.4.1 起 `install` 把该进 home 的 peer 一并装成直接依赖**（`cordis` 与本生态的件跳过、共享包与生态外的包装、已在 home 的版本不动、装不上不让整条 install 失败；卸载不动 peer），判据见[定过的事](/docs/decisions) |
-| ~~**status**~~ | `@godcreator02/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
+| **commands** | `@team/gwb-commands` | `ctx.gwbCommands` | **已发 0.1.0**，登记与执行逐条出声（成功 info / 失败 warn）；自带一份 `gwb-commands` skill，见[它的页](/docs/commands) |
+| **data** | `@team/gwb-data` | `ctx.gwbData` | **已发 0.1.0**，落盘验通；写失败从此 error 出声 |
+| **hello** | `@team/gwb-hello` | — | **已发 0.2.0**，验收件兼样板；**窗格件，两格**，`counter` 那格能开多份；探针数据开命令口（`hello.probe` / `hello.bump`）；另挂一份 demo skill；**自带一 node 一 python 两条 CLI**，界面上点得动；node 半日志全走 `ctx.logger`。**它是前缀方案的样板**——件自己就是一个完整的 Tailwind 入口（`src/client/styles.css` 五行，`@tailwindcss/cli` 直出），类名一律 `hello:` 开头 |
+| **shell** | `@team/gwb-shell` | `ctx.gwbShell` | **已发 0.2.0**，第四刀的布局落盘落地（井自动存档＋起名存布局选着开，档落 gwbData；多桌面试到 0.0.14 撤回），状态栏带「刷新」（整页重跑吃新注册表），见[它的页](/docs/shell)；四刀只剩导航。**0.1.1 起件的那一格是容器查询的根**（`@container`）——件里的 `@sm:` / `@md:` 按这一格现在有多宽判，跟整窗大小无关；**0.2.0 起自己那张 `style.css` 也是前缀方案**（`shell:`），`dockview.css` 不套围栏、一字未动 |
+| **skills** | `@team/gwb-skills` | `ctx.gwbSkills` | **已发 0.1.0**，收集与查询验通，见[它的页](/docs/skills) |
+| **command-http** | `@team/gwb-command-http` | —（不 provide） | **已发 0.2.2，此后搁置（2026-09-14）**：无状态命令 JSON 口——`GET /surface` 现拼命令与说明书清单（`?plugin` / `?prefix` / `?q` / `?slim` 过滤，全量约八千 token）、`POST /run` 按名调，零运行时依赖；门由 mcp 复位接回、default 已卸载，registry 留版当逃生门，判据见轨迹卡「MCP 复位」；在职期间的记录见[它的页](/docs/command-http) |
+| **mcp** | `@team/gwb-mcp` | —（不 provide） | **已发 0.4.0，复位接班（2026-09-14）**：唯一的门——工具面封顶 `surface` / `run` 两枚（永不再增，测试钉死 tools/list；top 申报链随 commands 0.3 退役），无鉴权，default 认死 2870；判据见轨迹卡「MCP 复位」，见[它的页](/docs/mcp) |
+| **node-cli** | `@team/gwb-node-cli` | `ctx.gwbNodeCli` | **已发 0.1.0**，只做运行器（自检已拆去 hello）；登记与每趟跑全程出声，见[它的页](/docs/node-cli) |
+| **py-cli** | `@team/gwb-py-cli` | `ctx.gwbPyCli` | **已发 0.1.0**，只做运行器；venv 建在**消费方件**的包根下；跑前重验失败也出声，见[它的页](/docs/py-cli) |
+| **logger** | `@team/gwb-logger` | — | **已发 0.2.0**，四路日志窗格实机验通，见[它的页](/docs/logger)；0.2.0 起类名一律 `logger:`，Select 的弹层照 radix 默认挂 `body` |
+| **theme** | `@team/gwb-theme` | — | **已发 0.2.0**，外观件：字体与自定义 CSS，一格窗格；0.2.0 起类名一律 `theme:`（没有弹层与 ui 组件，迁移只动了类名） |
+| **settings** | `@team/gwb-settings` | `ctx.gwbSettings` | **已发 0.1.0**，node 半验通（界面与插件启停是第二版）；写/删出声（值不进日志）、落盘失败补了 warn，见[它的页](/docs/settings) |
+| **plugins** | `@team/gwb-plugins` | `ctx.gwbPlugins` | **已发 0.2.0**，装包/卸载（`plugins.uninstall`：全部条目 + 包一起走人，设置与数据留盘）/条目/启停/显示名/查新版本（`plugins.outdated`）/升级（`plugins.update`，不建条目）/检索（`plugins.search`，npm 标准协议、基址从 pnpm 配置来）；窗格分「已装」「可装」两段——2026-09-08 **市场件并入本件，`gwb-market` 下架**，同日白名单退场改 registry 检索、卸载补上（判据见[定过的事](/docs/decisions)）；自带一份 `gwb-plugins` skill；0.2.0 起类名一律 `plugins:`，卸载确认框的遮罩从此盖整窗；0.3.0 加一键热升 `plugins.update-all`（不重启）；**0.4.1 起 `install` 把该进 home 的 peer 一并装成直接依赖**（`cordis` 与本生态的件跳过、共享包与生态外的包装、已在 home 的版本不动、装不上不让整条 install 失败；卸载不动 peer），判据见[定过的事](/docs/decisions) |
+| ~~**status**~~ | `@team/gwb-status` | — | **2026-09-08 整个下架**（同日先声明式后自绘、都没离开当天工作区）——要给人看的件各画各的窗格，判据见[定过的事](/docs/decisions)；registry 上 0.0.1–0.0.4 佚版留档不撤 |
 
 **五个带界面的件（hello / theme / shell / logger / plugins）2026-09-09 全部发到 0.2.0，
 样式围栏一律是 Tailwind 前缀方案**：件自己一份五行的 `src/client/styles.css`、
@@ -39,8 +39,8 @@ docfirst: none
 
 | 包 | 装什么 | 状态 |
 | --- | --- | --- |
-| **shared-react** | `@godcreator02/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.2** |
-| **tokens** | `@godcreator02/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.5** |
+| **shared-react** | `@team/gwb-shared-react`：react 系的 CJS→ESM 束，内核收它的 `gwb.shared` 声明拼 importmap | **已发 0.0.2** |
+| **tokens** | `@team/gwb-tokens`：令牌的声明面（页面加载）+ 映射面（件构建期引），亮暗两套值 | **已发 0.0.5** |
 
 **构建线不再是仓里共享的一份。** 选择器 scope 方案的那一半 `tools/build-styles.ts`
 （在内存里拼输入、再拿 postcss 把每条选择器改写成 `:where([data-gwb-plugin="…"]) …`）
