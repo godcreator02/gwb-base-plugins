@@ -1,5 +1,5 @@
 import { Service } from 'cordis'
-import { requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
+import { requireKernel, type GwbContext } from '@team/gwb-plugin-api'
 import { entryDir, looksRandom } from './paths.js'
 import { readDoc, writeDoc } from './store.js'
 
