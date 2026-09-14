@@ -2,9 +2,9 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Service } from 'cordis'
-import type { GwbContext } from '@godcreator02/gwb-plugin-api'
+import type { GwbContext } from '@team/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@godcreator02/gwb-commands'
+import type {} from '@team/gwb-commands'
 import { collectSkills, SKILL_ENTRY, type CollectedSkill, type GwbSkill } from './collect.js'
 
 export type { GwbSkill } from './collect.js'
@@ -75,13 +75,13 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     if (cli === undefined) return
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: '@godcreator02/gwb-skills' },
+        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: '@team/gwb-skills' },
         () => ({ count: this.byName.size, skills: this.list() }),
       ),
     )
     this.ctx.effect(() =>
       cli.register(
-        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@godcreator02/gwb-skills' },
+        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@team/gwb-skills' },
         async (args) => {
           const req = args as { name?: unknown; file?: unknown } | undefined
           const skillName = req?.name
