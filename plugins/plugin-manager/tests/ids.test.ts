@@ -52,9 +52,9 @@ describe('完整 entryId → 裸 id', () => {
 
 describe('包名 → 默认 id', () => {
   it('去掉 scope 与 gwb- 前缀', () => {
-    expect(defaultIdFor('@godcreator02/gwb-py-cli')).toBe('py-cli')
-    expect(defaultIdFor('@godcreator02/gwb-commands')).toBe('commands')
-    expect(defaultIdFor('@godcreator02/gwb-plugin-manager')).toBe('plugin-manager')
+    expect(defaultIdFor('@team/gwb-py-cli')).toBe('py-cli')
+    expect(defaultIdFor('@team/gwb-commands')).toBe('commands')
+    expect(defaultIdFor('@team/gwb-plugin-manager')).toBe('plugin-manager')
   })
 
   it('没 scope 没前缀的原样', () => {
@@ -75,7 +75,7 @@ describe('包名 → 默认 id', () => {
   })
 
   it('编出来的默认 id 自己必须过校验', () => {
-    for (const pkg of ['@godcreator02/gwb-py-cli', '@x/Foo.Bar', '@x/gwb-', 'a_b_c']) {
+    for (const pkg of ['@team/gwb-py-cli', '@x/Foo.Bar', '@x/gwb-', 'a_b_c']) {
       expect(isValidId(defaultIdFor(pkg)), pkg).toBe(true)
     }
   })
@@ -103,7 +103,7 @@ describe('撞名加数字后缀', () => {
 describe('包名与版本范围', () => {
   it('裸名与 scope 名都认', () => {
     expect(() => assertPkgName('cordis')).not.toThrow()
-    expect(() => assertPkgName('@godcreator02/gwb-commands')).not.toThrow()
+    expect(() => assertPkgName('@team/gwb-commands')).not.toThrow()
     expect(() => assertPkgName('a.b_c-d~e')).not.toThrow()
   })
 
@@ -132,8 +132,8 @@ describe('包名与版本范围', () => {
   })
 
   it('拼 pnpm add 的那个参数', () => {
-    expect(installSpec('@godcreator02/gwb-commands')).toBe('@godcreator02/gwb-commands')
-    expect(installSpec('@godcreator02/gwb-commands', '0.0.3')).toBe('@godcreator02/gwb-commands@0.0.3')
+    expect(installSpec('@team/gwb-commands')).toBe('@team/gwb-commands')
+    expect(installSpec('@team/gwb-commands', '0.0.3')).toBe('@team/gwb-commands@0.0.3')
   })
 
   it('坏名字拼不出参数', () => {
