@@ -1,10 +1,10 @@
 import path from 'node:path'
 import { Service } from 'cordis'
-import type { GwbContext } from '@team/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@team/gwb-commands'
+import type {} from '@godcreator/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
-import type {} from '@team/gwb-skills'
+import type {} from '@godcreator/gwb-skills'
 import { checkCwd, parseInvocation } from './invoke.js'
 import { createRegistry, type NodeCliRegistry, type NodeCliSpec, type RegisteredNodeCli } from './registry.js'
 import { runProcess, type CliRunResult } from './run.js'
@@ -113,7 +113,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     if (cli === undefined) return
 
     this.own.effect(() =>
-      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: '@team/gwb-node-cli' }, () =>
+      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: '@godcreator/gwb-node-cli' }, () =>
         this.registry.list(),
       ),
     )
