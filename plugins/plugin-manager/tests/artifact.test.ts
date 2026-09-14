@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * 产物守卫（node 半）。这个件 2026-09-12 断代改名时劈掉了浏览器半（搬去
- * @godcreator02/gwb-baseui），只剩 node 半的规矩：相对 import 带扩展名、裸名只许那两个。
+ * @team/gwb-baseui），只剩 node 半的规矩：相对 import 带扩展名、裸名只许那两个。
  *
  * 裸名名单钉死还有第二层意思：commands / data / settings / skills 四个件在这儿是
  * **可选**的，源码里只有 `import type {}`。哪天有人把它写成运行时 import，这条会当场变红——
@@ -21,7 +21,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-plugin-manager] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** node 半运行时真 import 的两个，一个都不能少、也不该多 */
-const ALLOWED_BARE = new Set(['cordis', '@godcreator02/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['cordis', '@team/gwb-plugin-api'])
 
 function read(file: string): string {
   return fs.readFileSync(path.join(distDir, file), 'utf8')
