@@ -18,7 +18,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-data] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** 运行时真 import 的两个，一个都不能少、也不该多 */
-const ALLOWED_BARE = new Set(['cordis', '@team/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['cordis', '@godcreator/gwb-plugin-api'])
 
 describe.skipIf(!built)('产物', () => {
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
