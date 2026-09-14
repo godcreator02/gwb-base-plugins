@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
  *
  * 跟 `gwb-commands` 那份不同：**这个件不可能自包含**。`Service` 基类必须是宿主跑的那一份
  * cordis（两份 cordis 的 instanceof 对不上），`requireKernel` 与 `isRecord` 也是真函数。
- * `@team/gwb-commands` **不该出现**——它是空 `import type`，只为激活对方的
+ * `@godcreator/gwb-commands` **不该出现**——它是空 `import type`，只为激活对方的
  * `declare module`，`verbatimModuleSyntax` 会把那句整个删掉。它要是冒出来了，说明
  * 有人把它写成了值 import。
  */
@@ -20,7 +20,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-settings] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** 运行时真 import 的两个，一个都不能少、也不该多 */
-const ALLOWED_BARE = new Set(['cordis', '@team/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['cordis', '@godcreator/gwb-plugin-api'])
 
 describe.skipIf(!built)('产物', () => {
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
