@@ -14,4 +14,5 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - '@godcreator/*'
+  - '@team/*'
   - lucide-react@1.43.0
