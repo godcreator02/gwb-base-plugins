@@ -50,7 +50,7 @@ describe.skipIf(!built)('产物', () => {
     const bare: string[] = []
     for (const file of files) {
       for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:') && spec !== '@godcreator02/gwb-plugin-api' && spec !== 'cordis') bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:') && spec !== '@team/gwb-plugin-api' && spec !== 'cordis') bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])
