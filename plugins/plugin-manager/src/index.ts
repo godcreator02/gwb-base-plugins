@@ -1,12 +1,12 @@
 import { Service } from 'cordis'
-import { isRecord, requireKernel, type GwbContext, type GwbResult } from '@godcreator02/gwb-plugin-api'
+import { isRecord, requireKernel, type GwbContext, type GwbResult } from '@team/gwb-plugin-api'
 // 这几条 type import 只为激活对方的 `declare module 'cordis'`——它们给 ctx 加上那几个名字
 // （commands 那条另带一个类型：一键热升要攥着总线的引用）。这些件在这儿**都是可选的**，
 // 所以都走嵌套注入、都写 dev
-import type { GwbCommands } from '@godcreator02/gwb-commands'
-import type {} from '@godcreator02/gwb-data'
-import type {} from '@godcreator02/gwb-settings'
-import type {} from '@godcreator02/gwb-skills'
+import type { GwbCommands } from '@team/gwb-commands'
+import type {} from '@team/gwb-data'
+import type {} from '@team/gwb-settings'
+import type {} from '@team/gwb-skills'
 import { readHomeDependencies, readInstalledManifest, readPeerManifest, readSharedPackages } from './home.js'
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
@@ -50,10 +50,10 @@ export type { PeerKind, PeerPlanItem } from './peers.js'
  * 重挂必须在**同一条命令**里做完：pnpm 会删旧版本目录，中间留一条命令的窗口，旧件读盘
  * 就读空。本件自己那条条目排最后、回执之后才动——处理器里停用自己等于把回执一起拔掉。
  *
- * **改名史**：原 `gwb-plugins`（包 `@godcreator02/gwb-plugins`），2026-09-12 断代改名为
+ * **改名史**：原 `gwb-plugins`（包 `@team/gwb-plugins`），2026-09-12 断代改名为
  * `plugin-manager`——浏览器半（`src/client/` 那格窗格）随三仓拆分搬去
- * `@godcreator02/gwb-baseui`，本件只剩 node 半的服务与命令。旧包名在 registry 上弃用，
- * 新包从 0.1.0 起；**操作面板住 `@godcreator02/gwb-baseui`**。
+ * `@team/gwb-baseui`，本件只剩 node 半的服务与命令。旧包名在 registry 上弃用，
+ * 新包从 0.1.0 起；**操作面板住 `@team/gwb-baseui`**。
  */
 
 /** 停用/启用之后等 fiber 把手头的事做完，最多等这么久。到点就走，读到什么状态报什么 */
@@ -65,7 +65,7 @@ const SHELL_RELOAD_COMMAND = 'shell.reload'
 const NAME = 'gwb-plugin-manager'
 
 /** 登记命令时的归属：包名——agent 侧的操作键认它，不认短名 */
-const PKG = '@godcreator02/gwb-plugin-manager'
+const PKG = '@team/gwb-plugin-manager'
 
 /** 显示名落在本件自己的数据里，一份 裸 id → label 的文档 */
 const LABELS_DOC = 'labels'
@@ -189,7 +189,7 @@ export interface UpdateAllResult {
 /** 检索的回执 */
 export interface SearchReceipt {
   ok: boolean
-  /** 成了才有：registry 上 `@godcreator02/gwb-*` 的全部。**空数组 = 源上一个都没有**，跟「没查成」分得开 */
+  /** 成了才有：registry 上 `@team/gwb-*` 的全部。**空数组 = 源上一个都没有**，跟「没查成」分得开 */
   packages?: SearchRow[]
   /** 没成时的一句话 */
   error?: string
@@ -281,7 +281,7 @@ export interface GwbPluginManagerApi {
    */
   updateAll(only?: readonly string[]): Promise<UpdateAllResult>
   /**
-   * 列 registry 上 `@godcreator02/gwb-*` 的全部（npm 标准检索协议，`/-/v1/search`）。
+   * 列 registry 上 `@team/gwb-*` 的全部（npm 标准检索协议，`/-/v1/search`）。
    *
    * **registry 基址从 pnpm 配置解析**——装从哪来，搜就到哪去；这儿不认识任何具体的源。
    * **不抛**：解析不出基址、网络没成、响应认不出，都收敛成 `ok: false` 的一句话。
@@ -502,7 +502,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         },
       )
 
-      on(SEARCH_COMMAND, '列 registry 上 @godcreator02/gwb-* 的全部', '装从哪条源来，搜就到哪去。无参数', async () => {
+      on(SEARCH_COMMAND, '列 registry 上 @team/gwb-* 的全部', '装从哪条源来，搜就到哪去。无参数', async () => {
         const result = await this.search()
         if (result.ok) return { ok: true, data: result }
         return { ok: false, error: result.error ?? '没说原因' }
@@ -784,7 +784,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     if (this.registry !== undefined) return this.registry
     const found = locatePnpm(this.pnpmPath())
     if (!found.ok) return undefined
-    for (const key of ['@godcreator02:registry', 'registry']) {
+    for (const key of ['@team:registry', 'registry']) {
       const run = await this.queue(() => runPnpmCapture({ pnpmCjs: found.cjs, cwd: this.home, args: ['config', 'get', key] }))
       const value = run.stdout.trim()
       if (run.exitCode === 0 && /^https?:\/\//.test(value)) {
@@ -893,7 +893,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     if (store === undefined) {
       return {
         ok: false,
-        error: '没装数据件（@godcreator02/gwb-data），显示名存不下来。装上它、在 cordis.yml 里加一条条目，再改一次。',
+        error: '没装数据件（@team/gwb-data），显示名存不下来。装上它、在 cordis.yml 里加一条条目，再改一次。',
       }
     }
     // 等头一份读完再改，不然这次写的会被那一下读盘盖回去
@@ -1034,7 +1034,7 @@ function onlyList(args: unknown): string[] | undefined {
   const only = asRecord(args)['only']
   if (only === undefined || only === null) return undefined
   if (!Array.isArray(only) || only.some((item) => typeof item !== 'string' || item === '')) {
-    throw new Error('only 给了就要是个非空字符串数组，比如 { "only": ["@godcreator02/gwb-hello"] }')
+    throw new Error('only 给了就要是个非空字符串数组，比如 { "only": ["@team/gwb-hello"] }')
   }
   return only as string[]
 }
