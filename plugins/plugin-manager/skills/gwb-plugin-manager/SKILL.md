@@ -58,7 +58,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 ## 查有什么可装：plugin-manager.search
 
 不带参数直接调。它查 **npm registry 的标准检索接口**（基址从 pnpm 配置解析——装从哪条
-源来，搜就到哪去），回 `@godcreator02` scope 下全部 `gwb-` 开头的包，每条带 registry 上
+源来，搜就到哪去），回 `@team` scope 下全部 `gwb-` 开头的包，每条带 registry 上
 的 `version` 与 `description`。
 
 - 回的是**字面规则**的结果：废弃线的 `gwb-api`/`gwb-cli` 等也在里头，认正线看装进 home
