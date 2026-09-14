@@ -39,6 +39,15 @@ export function coerceArgs(raw: unknown): unknown {
 }
 
 /**
+ * 总线的规矩是「handler 回值自带 `ok` 就原样透传」——那类回执（比如 glm-quota 的快照，
+ * `ok` 之外还有 `at` / `view` 一堆自己的字段）**不是信封**，摊平只会把字段全丢成
+ * `data: null`。信封的形状是只有 `ok` / `data` / `error` 三个键；多一个键就是原话。
+ */
+function isPassthrough(value: object): boolean {
+  return Object.keys(value).some((k) => k !== 'ok' && k !== 'data' && k !== 'error')
+}
+
+/**
  * `GwbResult` 信封摊成 MCP 回执。
  *
  * **业务失败不是协议错误**：命令不存在、参数不对这些回 `isError` 的文本，让 agent
@@ -46,6 +55,7 @@ export function coerceArgs(raw: unknown): unknown {
  * 是自己叫错了还是这台工作台坏了。
  */
 export function toolResult(value: GwbResult): ToolResult {
+  if (typeof value === 'object' && value !== null && isPassthrough(value)) return textResult(value)
   if (value.ok) return textResult({ ok: true, data: value.data ?? null })
   return { content: [{ type: 'text', text: `执行失败：${value.error ?? '未知错误'}` }], isError: true }
 }

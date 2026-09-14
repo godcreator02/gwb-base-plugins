@@ -52,6 +52,11 @@ describe('toolResult', () => {
     expect(JSON.parse(toolResult({ ok: true }).content[0]!.text)).toEqual({ ok: true, data: null })
   })
 
+  it('带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平——摊平会把字段全丢成 data:null', () => {
+    const snapshot = { ok: true, at: '2026-09-13 00:40:00', configured: true, warnThreshold: 80, view: { level: 'max' } }
+    expect(JSON.parse(toolResult(snapshot).content[0]!.text)).toEqual(snapshot)
+  })
+
   it('业务失败回 isError 的文本,不是协议错误——agent 读得到原因、连接不断', () => {
     const result = toolResult({ ok: false, error: '没有这条命令：nope' })
     expect(result.isError).toBe(true)

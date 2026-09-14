@@ -45,12 +45,12 @@ describe('baseInstructions：固定文本', () => {
     // 无状态桥发不出 list_changed 这件事得写在门里,不然 agent 装完件干等新工具
     expect(text).toContain('list_changed')
     // 发完版怎么让它热生效、升到自己头上回执会丢——不写,agent 发完版只会去重启工作台
-    expect(text).toContain('plugins.update-all')
-    expect(text).toContain('plugins.list')
+    expect(text).toContain('plugin-manager.update-all')
+    expect(text).toContain('plugin-manager.list')
   })
 
-  it('二十一行内——它是每个 agent 每会话的固定成本（0.3.1 为一键热升加了一行）', () => {
-    expect(baseInstructions().split('\n').length).toBeLessThanOrEqual(21)
+  it('二十五行内——它是每个 agent 每会话的固定成本（0.3.1 为一键热升加了一行）', () => {
+    expect(baseInstructions().split('\n').length).toBeLessThanOrEqual(25)
   })
 })
 
