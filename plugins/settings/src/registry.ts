@@ -1,4 +1,4 @@
-import { isRecord } from '@team/gwb-plugin-api'
+import { isRecord } from '@godcreator/gwb-plugin-api'
 import { assertKey, assertSection, entrySection, SHARED_SECTION } from './paths.js'
 
 /** 注册表本体：内存里的两张表 + 定义表 + 解析规则。不碰 ctx、不碰 fs，于是可测 */
