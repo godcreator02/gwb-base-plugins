@@ -1,5 +1,5 @@
 {
-  "name": "@godcreator02/gwb-node-cli",
+  "name": "@team/gwb-node-cli",
   "version": "0.4.1",
   "author": {
     "name": "godcreator"
@@ -29,14 +29,14 @@
   },
   "//deps": "cordis 是运行时真 import（Service 基类要 extends）→ peer。契约包只 import type,但 GwbContext 出现在构造函数签名里、也就出现在导出面上 → 也是 peer。gwb-commands 同理:静态 inject 它,没有它这个件根本挂不上",
   "peerDependencies": {
-    "@godcreator02/gwb-commands": ">=0.0.1",
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-commands": ">=0.0.1",
+    "@team/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-commands": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.1.0",
-    "@godcreator02/gwb-skills": "workspace:*",
+    "@team/gwb-commands": "workspace:*",
+    "@team/gwb-plugin-api": "0.1.0",
+    "@team/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
