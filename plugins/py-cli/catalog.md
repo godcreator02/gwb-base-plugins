@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/py-cli/src/index.ts:94-94 · 新鲜 -->
+<!-- 来源 ../plugins/py-cli/src/index.ts:90-90 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands']
@@ -18,4 +18,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-py-cli` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。

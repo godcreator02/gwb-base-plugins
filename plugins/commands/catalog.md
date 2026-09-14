@@ -4,7 +4,7 @@
 
 ## 提供
 
-`gwbCommands`：register(def, handler)（description 必写参数形状，无参数明写）/ run(name, args) / list()；回执统一 GwbResult 信封
+`gwbCommands`：register(def, handler)（description 一句话、usage 写参数形状，无参数在 usage 明写；plugin 写包名）/ run(name, args) / list()；回执统一 GwbResult 信封
 
 ## 依赖
 
@@ -12,4 +12,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-commands` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。

@@ -12,4 +12,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-settings` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。

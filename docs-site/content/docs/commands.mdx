@@ -13,7 +13,7 @@ docfirst: none
 
 ## 它的面
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-17" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-19" */}
 
 ## 怎么用
 
@@ -25,7 +25,7 @@ export const inject = ['gwbCommands']
 export function apply(ctx: GwbContext) {
   ctx.effect(() =>
     ctx.gwbCommands.register(
-      { name: 'mine.hello', description: '回一句话', plugin: 'mine' },
+      { name: 'mine.hello', description: '回一句话', usage: '参数 { n }', plugin: '@scope/mine' },
       (args) => ({ got: args }),
     ),
   )
@@ -36,6 +36,29 @@ export function apply(ctx: GwbContext) {
 
 `plugin` 这个字段由注册方自带，不从 `ctx.name` 读：那是 cordis 的追踪属性，没 `inject`
 就读会抛。
+
+## description 与 usage 分家
+
+`description` 是**一句话介绍**——与 skill 的 description 同义，是地图层的导航触发文本；
+`usage` 装**参数形状与行为注意**。经 [gwb-mcp](/docs/mcp) 出去时：`index` 的地图行只带
+description（两表同形、约两千 token），`search` 的命中行带 usage——agent 调命令之前看
+的那一行就是它。
+
+所以写法定死：`description` 一句话说清这条命令是什么；`usage` 里带参数的把形状写出来
+（`{ entryId }`、`{ pkg, spec? }` 这种），无参数的写「无参数」。两格挤在一句话里的旧写法
+随 commands 0.4 退役——地图被长描述撑爆的病就是这么来的。
+
+## plugin 写包名
+
+`plugin` 一律写**包名**（`@godcreator02/gwb-xxx`）：它是 agent 侧的操作键——装卸升走
+plugin-manager、反馈投递按包定位仓，短名到时候都得拼回去；门的 `search {plugin}` 也靠它
+跨两张表精确筛。注册表有一道软守卫：见到不带 `@` 的值 warn 一句、照挂不拦——逮漏网，
+不升格失败。
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="36-46" */}
+
+短名没有被废除，只是各回各家：cordis 条目 id、日志、AGENTS 散文照旧用短名——那些是
+运行时与人的词汇，不是跨进程的操作键。
 
 **从界面调**（在你的 client 束里）：
 
@@ -66,26 +89,13 @@ handler **自己判过成败就原样透传**，没判的一律算成了：
 - 抛异常 → `{ ok: false, error: '<异常文本>' }`，不炸到调用方
 - 命令没注册 → `{ ok: false, error: '没有这条命令：xxx' }`
 
-## 描述里必须写参数形状
+## 没有顶层申报位
 
-`description` 不是给人看的简介，是**agent 只看它就得知道参数怎么给**的那一行。经
-[gwb-mcp](/docs/mcp) 出去的每条命令，agent 手上除了名字就只有这一句——参数形状不在
-这儿，它就只能猜，猜错了回的是一句跟形状无关的报错。
-
-所以写法定死：带参数的把形状写出来（`{ entryId }`、`{ pkg, spec? }`、
-`{ args?: string[], cwd?: string }` 这种），无参数的写「无参数」。
-
-## 标顶层：登记时就定了
-
-登记时多标一个 `top: true`，这条命令就带着「该上顶层」的标记。总线对这个字段只做一件事：
-原样带进 `list()`，缺省 `false`——门把它如实带进 /surface，渲染顶层工具是**将来的门面**的事，
-**没有运行时名单、没有「批准」这一步**。
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="9-13" */}
-
-**顶层是开发时定的，不是装进软件之后批的。** 顶层是稀缺位，只留给「连上第一眼就要看」
-的命令。于是「同意」只剩一条纪律：**agent 写插件时给命令标 `top: true` 之前，先停下来问
-人**——这句写进了 command-http 的 instructions，每个连上来的 agent 都会读到。
+命令没有「让 agent 在工具清单顶层直接看见」这个动作——MCP 门 0.5 起工具面封顶
+`index` / `search` / `run` 三枚，一切命令经 `run` 按名调，发现面是 `index` 与 `search`
+的回执。曾经的 `top: true` 申报链（0.2 生、0.3 死）连字段一起拆掉了：顶层是协议形状，
+不是插件能登记的东西。要动那个封顶是 major 级的协议变更，先问人——判据在
+[mcp](/docs/mcp) 的封顶粒度那节。
 
 ## 说明书走局部注入
 

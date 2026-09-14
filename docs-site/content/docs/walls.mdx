@@ -52,7 +52,7 @@ devDependencies**。
 
 ## 撞名是后来者赢，但不许静默地赢
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="24-37" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="26-44" */}
 
 插件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个插件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
@@ -66,7 +66,7 @@ devDependencies**。
 
 ## 一条命令抛出来不该炸到调用方
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="43-55" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="50-62" */}
 
 它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
 
@@ -298,7 +298,7 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="162-174" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="180-192" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
 

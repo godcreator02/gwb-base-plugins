@@ -89,7 +89,7 @@ junction。所以先解软链、按包名有几段往上退几层，退到的才
 
 ### 执行：装 latest、一条一趟、永不让装机失败
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="582-622" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="587-627" */}
 
 **装 latest 不装清单上那条 range**：这个生态的 peer range 一律写 `>=`（`//peerRange`），
 latest 通常都满足；按 range 装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进
@@ -102,7 +102,7 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而插件
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="90-122" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="93-125" */}
 
 `action` 四种：`installed`（这次装成了直接依赖）、`present`（本来就在，版本没动）、
 `skipped`（不该由这条路装，`note` 里是理由）、`failed`（装不上，`note` 里带 pnpm 尾巴）。
@@ -155,7 +155,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 执行：升级与重挂同一条命令，不留窗口
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="707-730" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="712-735" */}
 
 pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插件若读盘（惰性 import 一个子模块、
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
@@ -163,7 +163,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 一条条目的重挂是四步，不是两步：
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="987-1001" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="992-1006" */}
 
 **等旧的拆完再启用**这一步不能省：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
 **不等它**，而 Service 插件的 `provide` 是在卸载那趟里撤的。不等就启用，新 fiber 起来时旧服务
@@ -176,7 +176,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 自己最后，而且在回执之后
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="732-758" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="737-763" */}
 
 处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
 「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
@@ -190,7 +190,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="144-184" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="147-187" */}
 
 每条条目的去向有四种：`remounted`（重 import 了新版本）、`skipped`（本来就停用，保持停用）、
 `deferred`（本插件自己那条）、`failed`（动树时抛了，`state` 里是那句错）。`state` 照 cordis

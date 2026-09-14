@@ -8,7 +8,7 @@
 
 ## 依赖
 
-<!-- 来源 ../plugins/node-cli/src/index.ts:84-84 · 新鲜 -->
+<!-- 来源 ../plugins/node-cli/src/index.ts:80-80 · 新鲜 -->
 
 ```ts
   static inject = ['gwbCommands']
@@ -18,4 +18,4 @@
 
 ## 命令
 
-命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-node-cli` 取这一组的形状）。
+命令清单不存卡——**经门现扫**（MCP 门 `search`，`plugin` 用包名筛这一组）。

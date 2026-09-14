@@ -1,0 +1,73 @@
+---
+title: 三枚面：surface 拆成 index/search，description 与 usage 分家，plugin 改口包名
+born-at: 2026-09-14T15:30
+type: choice
+parent: [2026-09-14-mcp-returns]
+label: 三枚面
+domain: 件
+---
+
+## 背景
+
+MCP 复位当天，对已发的两枚面（surface/run）做补设计时实跑了一趟原始流程，暴露出继承自
+HTTP 门的三处结构病：
+
+- **一 tool 多模式**：surface 靠可选参数在「全量带描述 / 瘦身 / 过滤」之间切换，回执行
+  形状随模式变——MCP 有 schema，一种意图一份契约才是本族写法
+- **捎表**：`prefix` 筛命令时说明书全表带描述原样带回（实测一条定向查询 11.6KB，比瘦身
+  全量还大）——渐进式的正身是**索引 → 按址取件**，搜索只是不知道地址时的兜底，而 surface
+  把「要地图 / 要一条详情 / 找东西」三种意图捏在一张可过滤的平表里
+- **description 身兼两职**：命令的一句话介绍与参数文档挤在一格，塞不进地图层——而手册
+  天生分两层（description 触发文本 / SKILL.md 正文），命令没有这个对称
+
+另有两处小病顺手同案：SDK 缺省把 `listChanged` 谎报成 true（无状态口永远发不出这个通知）；
+`plugin` 字段命令侧写短名、手册侧是包名，`search {plugin}` 跨表筛一张表都筛不中。
+
+## 结论与边界
+
+- **工具面封顶三枚**：`index`（裸调，完整地图——两表同形「名字+插件+一句话」，约两千
+  token，每会话第一调）、`search`（按址取详情与兜底搜索：命中行**恒带 usage**、裸调＝
+  不过滤＝全貌全用法约八千 token、`prefix` 时说明书表回瘦身行——谁也不捎全表）、`run`
+  （按名调一切，不动）。`slim` 死亡、files 不投影（附件目录归 SKILL.md 正文自己管，
+  写手册纪律加「附件必须在正文里提到」）
+- **封顶粒度成文**：加一枚＝major、给现有枚加可选参数＝minor、改回执形状或参数语义＝
+  major——写进 mcp 说明书与 instructions；server.test 经内存信道钉死 tools/list 恰好三枚
+- **commands 0.4：description/usage 分家**——description 一句话（与 skill 的
+  description 同义，导航触发文本）、usage 装参数形状与行为注意；`q` 搜索连 usage 一起搜
+  （概念常住在用法里，「venv 自愈」名字里搜不到）
+- **plugin 改口包名**（@scope/pkg）：agent 侧的操作键认它（装卸升、反馈投递、跨表精确
+  筛）；注册表软守卫——短名 warn 一句、照挂不拦。短名不废除，各回各家：cordis 条目 id、
+  日志、散文照旧短名
+- **listChanged 显式 false**：能力位如实——广告一个用不了的能力，等于邀请客户端等一个
+  永不来的通知
+- 全生态登记方随火车拆描述换包名（default 上 15 家 71 条）；demo 是 devkit 模板产物无
+  持久仓，留给软守卫 warn，模板本身随 devkit 改
+- 人拍板（2026-09-14，经五轮往复：三枚分立 / 裸调全貌 / description 改义 / files 不投影 /
+  plugin 包名）。
+
+## 否掉的候选
+
+- **两枚面＋二级 `command.info` 按址取详情**——门面最小，但详情藏进总线命令要靠 index
+  发现，多一跳且少 schema；三枚契约分立更 MCP 本族
+- **search 至少给一个条件、裸调报教学错**——被「全貌一调」的需求问穿：陌生 home 深度
+  进场要的就是一次全量带用法（http 时代验证过的真需求），裸调＝不过滤语义自洽
+- **brief 字段并存**（description 保持长文、另加一句话字段）——词汇表两套，不如把
+  description 改义干净
+- **门侧渲染时剥 scope 前缀省 token**——门发明第三种口径，agent 用时拼回去，第二份真相
+- **files 有附件才带**——今天 17 份全是 ["SKILL.md"]，字段纯噪音；正文自管目录才是正身
+
+## 依据
+
+原始报文实跑（2026-09-14，curl 打 2870）：`surface {prefix:"skill."}` 回 11631 字节、
+全量瘦身索引才 10611——捎表之病实测；instructions 全文随每份回执重复，initialize 已白送
+过一份。渐进梯成本表：地图 1.5–2k / 全貌 ~8k / 定向数百——连接时固定成本（tools/list 三枚
+约 700 token）恒小，生态大小的成本全部按需取。
+
+## 代价与遗留
+
+- **全生态火车**：15 个登记包逐个拆描述换包名（每条一句话是作者活，不是机械替换），
+  base-plugins 当日收口，ui-plugins / devkit / god-live-doc / docs-site / unit-folder /
+  glm-quota / reimburse 各仓随行
+- 回执形状变更是 major 级对话——本卡就是那场对话；0.5.0 一次落，晚于此时改面只会更贵
+- 老版注册表（commands <0.4）的命令没有 usage——门的 search 行当空串，不炸
+- ZCode 侧工具名随面变为 mcp__gwb__index / search / run；连接串（2870/mcp）不变
