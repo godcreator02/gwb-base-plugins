@@ -33,3 +33,18 @@ home、停用再启用重挂、取证。那条链**有意绕开了 `plugins.inst
 
 一手记录原在总控台周转区（2026-09-12 收件箱退役时随处理清掉）
 主体投给了 devkit，这一条是抄送。
+
+## 2026-09-14 带路径的 JSON 经 curl 必炸；稳法（body 落文件）没进 command-http 说明书
+
+来源：总控台（第三轮 fresh-eyes 自举验收，功能题 gwb-timer）。
+
+经门 `POST /run` 传含 Windows 路径的 JSON，bash 里 curl 的引号与反斜杠转义来回都不对：
+双反斜杠被折一层、`printf` 落文件也折，回执只回 `bad json`，不指根因（正斜杠绕法
+09-12 在 devkit 那边提过，本轮复验还在咬人，且对 devkit 的 scaffold 行不通——那条投给了
+devkit）。本轮代理最后落定的稳法：**用写文件工具把 body 落成 JSON 文件（转义交给它），
+再 `curl --data-binary @file`**，此后全程零踩坑。
+
+**投来的建议**：command-http 说明书补一段「带路径/复杂参数的调用走 body 文件」，把这个
+模式写成推荐姿势；`bad json` 的回执顺带点一句根因（反斜杠进 JSON 的坏转义），省得下一个
+代理再猜。
+
