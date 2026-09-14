@@ -1,5 +1,5 @@
 {
-  "name": "@team/gwb-data",
+  "name": "@godcreator/gwb-data",
   "version": "0.1.1",
   "author": {"name": "godcreator"},
   "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON",
@@ -26,11 +26,11 @@
   },
   "//deps": "两条都是 peer,而且理由不同档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份，两份 cordis 的 instanceof 对不上）；词汇表包也是运行时 import（requireKernel 是个真函数，不是类型）。对照 gwb-commands——它的 cordis 只在 apply 的参数类型里用,所以那边是 dev。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {
-    "@team/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@team/gwb-plugin-api": "0.1.0",
+    "@godcreator/gwb-plugin-api": "0.1.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
