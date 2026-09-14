@@ -6,10 +6,10 @@ docfirst: none
 
 # gwb-logger
 
-包名 `@team/gwb-logger`，**无头 core 插件**：挂第二个 cordis exporter 收全量、
+包名 `@godcreator/gwb-logger`，**无头 core 插件**：挂第二个 cordis exporter 收全量、
 自己缓冲、开 `logger.backlog` / `logger.where` 两条命令、实时经内核事件口推给页面；外加
 一个面刻意留空的薄服务 `gwbLogger`（gwb-baseui 的日志窗格按服务名嵌套注入，等的就是它）。
-**窗格不住这儿**，住 `@team/gwb-baseui`，装它找回。
+**窗格不住这儿**，住 `@godcreator/gwb-baseui`，装它找回。
 
 ## 先看分工：管道整块在这个插件里，窗格不在
 
@@ -19,7 +19,7 @@ exporter 收全量、自己缓冲两千条、历史段从 cordis 自带的那圈
 （`gwbKernel.emit`）推给页面。内核只做一件事：cordis 的日志全量进 stderr 与 `<home>/gwb.log`，
 人不靠任何插件也看得见。
 
-**窗格不住这个插件**：它住 `@team/gwb-baseui`。
+**窗格不住这个插件**：它住 `@godcreator/gwb-baseui`。
 
 判据一句话：**位置由「谁够得着」决定。**「插件挂不上的时候它自己也不在场——那恰恰是
 最该看日志的时候」，所以 stderr 与 `gwb.log` 那条兜底留在内核；汇总与缓冲在这个插件，
@@ -45,7 +45,7 @@ cordis 官方的 `plugin-logger-console` 顶不上这个位子：它只收 cordi
 
 ## 窗格里有什么
 
-**这个窗格住 `@team/gwb-baseui`**——版式与交互的代码在那边；这一节留着的是
+**这个窗格住 `@godcreator/gwb-baseui`**——版式与交互的代码在那边；这一节留着的是
 定稿时的判据（为什么门限、为什么多选、为什么复合键），判据不随代码搬家作废。
 
 版式定稿自一份独立的效果图工程（那份工程已删——定稿先落进插件、窗格随三仓拆分搬去
@@ -158,7 +158,7 @@ peers 三条，各是[三档判据](/docs/overview)里的不同一档：
 
 UI 侧的依赖——`gwb-shell`、`gwb-shared-react` / `gwb-tokens`，与 shadcn 那套
 dev 依赖（radix / cva / cn / lucide、`components.json` 的 `logger` 前缀）——全在
-`@team/gwb-baseui`：窗格侧的依赖故事在那边讲，Tailwind 前缀围栏、Select 浮层户口
+`@godcreator/gwb-baseui`：窗格侧的依赖故事在那边讲，Tailwind 前缀围栏、Select 浮层户口
 那些也随之过去了。
 
 peer 范围一律写 `>=` 不写 `^`：caret 在 `0.0.x` 上锁死 patch（`^0.0.1` 只匹配 `0.0.1`），
