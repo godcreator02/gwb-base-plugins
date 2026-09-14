@@ -108,7 +108,7 @@ devDependencies**。
 
 ### 一份数据的主人是**条目**，不是包
 
-`gwb-data` 原来按包名切目录（`<home>/data/@team/gwb-x/`）。但 cordis 的条目模型里
+`gwb-data` 原来按包名切目录（`<home>/data/@godcreator/gwb-x/`）。但 cordis 的条目模型里
 **`id` 才是身份**，`name` 只说「装哪个包」——同一个包可以在 `cordis.yml` 里挂好几条条目，
 各有各的 config（两条 `gwb-py-cli` 分别配 3.11 与 3.12 的解释器）。按包名切的话这两条
 **共用一个数据目录、互相覆盖**。
@@ -223,8 +223,8 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 声明时**只扫 `dependencies`**（共享包不是插件、不在条目树上，那是唯一看得见它们的地方）。
 于是 importmap 是空的，任何带界面的插件都解析不到 `react`。
 
-**修**：`kernel.install` 的 specs 里把 `@team/gwb-shared-react` 与
-`@team/gwb-tokens` 一起写上。**验收清单里但凡有带界面的插件，这两个就得跟着装。**
+**修**：`kernel.install` 的 specs 里把 `@godcreator/gwb-shared-react` 与
+`@godcreator/gwb-tokens` 一起写上。**验收清单里但凡有带界面的插件，这两个就得跟着装。**
 
 这条容易被「peer 会被 pnpm 自动装进 home」那句话骗过去——**那句话没错，错在「装进来」不等于
 「进了 dependencies」**。
@@ -236,13 +236,13 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 
 - **`cordis` 不在 home 顶层**。它是插件的 peer，pnpm 把它装在 `.pnpm` 里插件的真身那一层。
   探针 `import 'cordis'` 直接报 `ERR_MODULE_NOT_FOUND`
-- **要从插件那一层解析，而且得先 `fs.realpathSync`**。`node_modules/@team/x` 是条
+- **要从插件那一层解析，而且得先 `fs.realpathSync`**。`node_modules/@godcreator/x` 是条
   软链，`createRequire` 拿软链路径往上找 node_modules 是找不到 cordis 的：
 
   ```
   Error: Cannot find module 'cordis'
   Require stack:
-  - <home>\node_modules\@team\gwb-py-cli\dist\index.js
+  - <home>\node_modules\@godcreator\gwb-py-cli\dist\index.js
   ```
 
   解开软链之后就落在 `.pnpm/<插件>@<hash>/node_modules/` 那一层，cordis 在那儿
@@ -265,7 +265,7 @@ home:hello」，可是探针的输出一行都没有，盘上也没出现文件�
 第三阶段写 `PluginPane` 时想当然写成了 `client.js`，症状是
 
 ```
-TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@team/gwb-hello/client.js
+TypeError: Failed to fetch dynamically imported module: gwb://asset/plugins/@godcreator/gwb-hello/client.js
 ```
 
 ——**读着像网络错或者文件不在**，实际是内核拿 `./client.js` 去 `exports` 表里查、查不到。
