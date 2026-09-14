@@ -1,12 +1,12 @@
 import http from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
-import { isRecord, requireKernel, type GwbContext } from '@team/gwb-plugin-api'
+import { isRecord, requireKernel, type GwbContext } from '@godcreator/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbSettings
-import type {} from '@team/gwb-commands'
-import type {} from '@team/gwb-settings'
+import type {} from '@godcreator/gwb-commands'
+import type {} from '@godcreator/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
-import type {} from '@team/gwb-skills'
+import type {} from '@godcreator/gwb-skills'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf } from './endpoint.js'
 import { RUNTIME_FILE, writeRuntimeHttp } from './runtime.js'
 import { buildSurface, type SkillsSlot, type SurfaceQuery } from './surface.js'
