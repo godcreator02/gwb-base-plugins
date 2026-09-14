@@ -4,12 +4,12 @@ import { createRequire } from 'node:module'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
-import { requireKernel, type GwbContext } from '@team/gwb-plugin-api'
+import { requireKernel, type GwbContext } from '@godcreator/gwb-plugin-api'
 // 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbSettings
-import type {} from '@team/gwb-commands'
-import type {} from '@team/gwb-settings'
+import type {} from '@godcreator/gwb-commands'
+import type {} from '@godcreator/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
-import type {} from '@team/gwb-skills'
+import type {} from '@godcreator/gwb-skills'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
 import {
   buildIndex,
@@ -353,7 +353,7 @@ export function apply(ctx: GwbContext): void {
         name: 'mcp.info',
         description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段）',
         usage: '无参数。回执 { ok, data: { url, port, mcpServers } }——mcpServers 片段贴进客户端配置即可连；门没开时回 ok:false 说原因',
-        plugin: '@team/gwb-mcp',
+        plugin: '@godcreator/gwb-mcp',
       },
       async () => {
         /**
