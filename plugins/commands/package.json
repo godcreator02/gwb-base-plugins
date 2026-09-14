@@ -31,7 +31,7 @@
     "@godcreator/gwb-plugin-api": ">=0.1.0"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "0.1.0",
+    "@godcreator/gwb-plugin-api": "0.1.1",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
