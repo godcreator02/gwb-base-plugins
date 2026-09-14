@@ -1,8 +1,8 @@
-import type { GwbContext } from '@godcreator02/gwb-plugin-api'
+import type { GwbContext } from '@team/gwb-plugin-api'
 // 相对 import 必须带 .js
 import { createRegistry, type GwbCommands } from './registry.js'
 // 只为激活 skills 件的 `declare module 'cordis'`——局部注入要用 gwbSkills 这个名字
-import type {} from '@godcreator02/gwb-skills'
+import type {} from '@team/gwb-skills'
 
 export type { GwbCommands, GwbCommandDef } from './registry.js'
 
