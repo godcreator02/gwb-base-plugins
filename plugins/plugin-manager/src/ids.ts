@@ -59,7 +59,7 @@ export function bareId(entryId: string): string {
 
 /**
  * 包名 → 默认 id：去掉 scope 与 `gwb-` 前缀，剩下的收进 kebab-case。
- * `@team/gwb-py-cli` → `py-cli`。撞名归 `uniqueId` 管。
+ * `@godcreator/gwb-py-cli` → `py-cli`。撞名归 `uniqueId` 管。
  */
 export function defaultIdFor(pkg: string): string {
   const bare = pkg.replace(SCOPE_PREFIX, '').replace(GWB_PREFIX, '')
