@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex, buildSearch, type CommandView, type SkillView } from '../src/inventory.js'
 
 const CMDS: CommandView[] = [
-  { name: 'skill.list', plugin: '@team/gwb-skills', description: '此刻挂着的 skill', usage: '无参数' },
-  { name: 'skill.read', plugin: '@team/gwb-skills', description: '读一份 skill 的正文', usage: '参数 { name, file? }' },
-  { name: 'py-cli.bootstrap', plugin: '@team/gwb-py-cli', description: '给一条 python CLI 建 venv', usage: 'venv 建在消费方件的包根下。参数 { entryId }' },
-  { name: 'devkit.home.list', plugin: '@team/gwb-devkit', description: '列出全部测试 home', usage: '无参数' },
+  { name: 'skill.list', plugin: '@godcreator/gwb-skills', description: '此刻挂着的 skill', usage: '无参数' },
+  { name: 'skill.read', plugin: '@godcreator/gwb-skills', description: '读一份 skill 的正文', usage: '参数 { name, file? }' },
+  { name: 'py-cli.bootstrap', plugin: '@godcreator/gwb-py-cli', description: '给一条 python CLI 建 venv', usage: 'venv 建在消费方件的包根下。参数 { entryId }' },
+  { name: 'devkit.home.list', plugin: '@godcreator/gwb-devkit', description: '列出全部测试 home', usage: '无参数' },
 ]
 
 const SKILLS: SkillView[] = [
-  { name: 'mcp', description: '要连一台 gwb 工作台的 MCP 门时读', plugin: '@team/gwb-mcp' },
-  { name: 'gwb-py-cli', description: '要跑 python CLI 时读。讲清 venv 守卫的自愈行为', plugin: '@team/gwb-py-cli' },
+  { name: 'mcp', description: '要连一台 gwb 工作台的 MCP 门时读', plugin: '@godcreator/gwb-mcp' },
+  { name: 'gwb-py-cli', description: '要跑 python CLI 时读。讲清 venv 守卫的自愈行为', plugin: '@godcreator/gwb-py-cli' },
 ]
 
 describe('buildIndex：地图', () => {
@@ -21,10 +21,10 @@ describe('buildIndex：地图', () => {
     expect(doc.instructions).toContain('封顶于 index / search / run')
     expect(doc.commands[0]).toEqual({
       name: 'skill.list',
-      plugin: '@team/gwb-skills',
+      plugin: '@godcreator/gwb-skills',
       description: '此刻挂着的 skill',
     })
-    expect(doc.skills[0]).toEqual({ name: 'mcp', plugin: '@team/gwb-mcp', description: '要连一台 gwb 工作台的 MCP 门时读' })
+    expect(doc.skills[0]).toEqual({ name: 'mcp', plugin: '@godcreator/gwb-mcp', description: '要连一台 gwb 工作台的 MCP 门时读' })
   })
 
   it('skills 件不在（undefined）时清单是空表——门照开', () => {
@@ -45,7 +45,7 @@ describe('buildSearch：按址与兜底', () => {
     expect(doc.commands).toHaveLength(4)
     expect(doc.commands[1]).toEqual({
       name: 'skill.read',
-      plugin: '@team/gwb-skills',
+      plugin: '@godcreator/gwb-skills',
       description: '读一份 skill 的正文',
       usage: '参数 { name, file? }',
     })
@@ -54,10 +54,10 @@ describe('buildSearch：按址与兜底', () => {
   })
 
   it('plugin 精确筛两张表，命中行带描述', () => {
-    const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@team/gwb-skills' } })
+    const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@godcreator/gwb-skills' } })
     expect(doc.commands.map((c) => c.name)).toEqual(['skill.list', 'skill.read'])
     expect(doc.skills).toHaveLength(0)
-    expect(doc.filter).toEqual({ plugin: '@team/gwb-skills' })
+    expect(doc.filter).toEqual({ plugin: '@godcreator/gwb-skills' })
   })
 
   it('prefix 是命令域意图：命令带用法，说明书表回瘦身行（不捎全表）', () => {
@@ -87,9 +87,9 @@ describe('buildSearch：按址与兜底', () => {
   })
 
   it('条件 AND 生效，空结果如实回空表', () => {
-    const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@team/gwb-skills', q: 'venv' } })
+    const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@godcreator/gwb-skills', q: 'venv' } })
     expect(doc.commands).toEqual([])
     expect(doc.skills).toEqual([])
-    expect(doc.filter).toEqual({ plugin: '@team/gwb-skills', q: 'venv' })
+    expect(doc.filter).toEqual({ plugin: '@godcreator/gwb-skills', q: 'venv' })
   })
 })
