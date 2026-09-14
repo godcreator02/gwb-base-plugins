@@ -1,4 +1,4 @@
-import type { GwbResult } from '@team/gwb-plugin-api'
+import type { GwbResult } from '@godcreator/gwb-plugin-api'
 
 /** 一条命令的自述。`plugin` 由注册方自带 */
 export interface GwbCommandDef {
@@ -39,7 +39,7 @@ export function createRegistry(log: RegistryLog): GwbCommands {
       // 0.4 起的口径：plugin 写包名（@scope/pkg）——它是 agent 侧的操作键（装卸升、反馈投递
       // 都认包名），短名只住日志与散文。软守卫：旧口径 warn 一句不拦截，漏网的照挂
       if (!def.plugin.startsWith('@')) {
-        log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @team/gwb-xxx），收到的是「${def.plugin}」`)
+        log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @godcreator/gwb-xxx），收到的是「${def.plugin}」`)
       }
       const record = { def: entry, handler }
       const prev = byName.get(def.name)
