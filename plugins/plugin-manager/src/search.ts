@@ -4,7 +4,7 @@
  * **这里不认识任何具体的 registry**——Verdaccio、npmjs、哪个 npm 兼容源实现的都是同一份
  * 协议；基址由调用方从 pnpm 配置解析（装从哪来，搜就到哪去）。
  *
- * 返回形状是实测钉的（2026-09-08，`text=@godcreator02&size=100`）：顶层 `{ objects, total,
+ * 返回形状是实测钉的（2026-09-08，`text=@team&size=100`）：顶层 `{ objects, total,
  * time }`，每条 `object.package` 里有 `name` / `version` / `description`。字段缺失的单条
  * 跳过，整份认不出回 undefined 让调用方给一句人话。
  */
@@ -20,7 +20,7 @@ export interface SearchRow {
 export type ParsedSearch = SearchRow[] | undefined
 
 /**
- * 这条线上的包才算：`@godcreator02` scope 下、`gwb-` 前缀。
+ * 这条线上的包才算：`@team` scope 下、`gwb-` 前缀。
  *
  * scope 与前缀不是口味是**名字本身**（scope 不换，前缀是当年跟废弃那批错开用的）。
  * 按这条字面规则列，registry 上一整条废弃的 `gwb-*` 与共享包、词汇表包也会一并进来——
