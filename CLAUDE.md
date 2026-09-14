@@ -7,7 +7,7 @@
 
 **旧内核 `gwb-kernel` 退役**——宿主子进程、fd3、`gwb://`、`kernel.info`、内核那条日志管道，
 全都不在了。这个仓从 0.1.0 起对着 `gwb-kernel-min` 与**词汇表 0.1**
-（`@team/gwb-plugin-api@0.1.0`）。变的就这几处：
+（`@godcreator/gwb-plugin-api@0.1.0`）。变的就这几处：
 
 | 从前 | 现在 |
 | --- | --- |
@@ -24,22 +24,22 @@
 
 | 件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
-| commands | `@team/gwb-commands` | `ctx.gwbCommands` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核收到什么就原样派给它 |
-| shell | `@team/gwb-shell` | `ctx.gwbShell` | dockview 外壳,占整页;窗格注册表 |
-| logger | `@team/gwb-logger` | — | 日志件:管道 + 一格窗格 |
-| settings | `@team/gwb-settings` | `ctx.gwbSettings` | 设置 |
-| data | `@team/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
-| skills | `@team/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
-| theme | `@team/gwb-theme` | — | 外观:字体与自定义 CSS,一格窗格 |
-| plugins | `@team/gwb-plugins` | `ctx.gwbPlugins` | 管包与条目,一格窗格 |
-| mcp | `@team/gwb-mcp` | — | MCP 桥,命令面开给外部 agent |
-| node-cli / py-cli | `@team/gwb-node-cli` / `-py-cli` | `ctx.gwbNodeCli` / `ctx.gwbPyCli` | 两个 CLI 运行器 |
-| hello | `@team/gwb-hello` | — | 验收件,两格窗格 + 两条 CLI |
+| commands | `@godcreator/gwb-commands` | `ctx.gwbCommands` | 命令总线。**没有它,界面调不到任何 node 侧能力**——内核收到什么就原样派给它 |
+| shell | `@godcreator/gwb-shell` | `ctx.gwbShell` | dockview 外壳,占整页;窗格注册表 |
+| logger | `@godcreator/gwb-logger` | — | 日志件:管道 + 一格窗格 |
+| settings | `@godcreator/gwb-settings` | `ctx.gwbSettings` | 设置 |
+| data | `@godcreator/gwb-data` | `ctx.gwbData` | 件的数据落盘 |
+| skills | `@godcreator/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
+| theme | `@godcreator/gwb-theme` | — | 外观:字体与自定义 CSS,一格窗格 |
+| plugins | `@godcreator/gwb-plugins` | `ctx.gwbPlugins` | 管包与条目,一格窗格 |
+| mcp | `@godcreator/gwb-mcp` | — | MCP 桥,命令面开给外部 agent |
+| node-cli / py-cli | `@godcreator/gwb-node-cli` / `-py-cli` | `ctx.gwbNodeCli` / `ctx.gwbPyCli` | 两个 CLI 运行器 |
+| hello | `@godcreator/gwb-hello` | — | 验收件,两格窗格 + 两条 CLI |
 
 ## 两条命名规矩
 
-**包名 `@team/gwb-<件名>`。** 加 `gwb-` 前缀是为了跟已废弃的那批错开——
-`@team/cli`、`/shell`、`/logger`、`/settings` 被那批占着。
+**包名 `@godcreator/gwb-<件名>`。** 加 `gwb-` 前缀是为了跟已废弃的那批错开——
+`@godcreator/cli`、`/shell`、`/logger`、`/settings` 被那批占着。
 
 **服务名一律 `gwb` 开头小驼峰**，默认跟件名对应（`gwb-commands` → `ctx.gwbCommands`）。cordis 官方件
 的服务照它自己的（`timer`、`loader`），那不是这个生态的东西。判据与理由在内核仓的
@@ -56,7 +56,7 @@
 - **件跑在 Electron 主进程里**，所以 `import('electron')` 是件够得着的——开窗、菜单、
   托盘、对话框全归件
 
-契约包 `@team/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
+契约包 `@godcreator/gwb-plugin-api` 0.1 只有这几个名字（`GwbContext` / `GwbKernelApi` /
 `GwbResult` / `GwbWindowApi` / `ShellBoot` / `requireKernel` / `isRecord`）——**内核的面本来
 就这么小**，别指望有更多。正本在 `gwb-kernel-min/packages/plugin-api/src/index.ts`。
 
