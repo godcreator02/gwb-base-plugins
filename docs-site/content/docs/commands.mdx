@@ -9,7 +9,7 @@ docfirst: none
 **没有这个插件，界面调不到任何 node 侧的能力**——内核一条命令名都不认识，`gwb:command`
 收到什么就原样派给 `ctx.gwbCommands`；没装这个插件就是一句「认不出」。
 
-包名 `@team/gwb-commands`，服务 `ctx.gwbCommands`。产物 4 个文件、零运行时依赖。
+包名 `@godcreator/gwb-commands`，服务 `ctx.gwbCommands`。产物 4 个文件、零运行时依赖。
 
 ## 它的面
 
@@ -50,7 +50,7 @@ description（两表同形、约两千 token），`search` 的命中行带 usage
 
 ## plugin 写包名
 
-`plugin` 一律写**包名**（`@team/gwb-xxx`）：它是 agent 侧的操作键——装卸升走
+`plugin` 一律写**包名**（`@godcreator/gwb-xxx`）：它是 agent 侧的操作键——装卸升走
 plugin-manager、反馈投递按包定位仓，短名到时候都得拼回去；门的 `search {plugin}` 也靠它
 跨两张表精确筛。注册表有一道软守卫：见到不带 `@` 的值 warn 一句、照挂不拦——逮漏网，
 不升格失败。
