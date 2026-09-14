@@ -1,4 +1,4 @@
-import { isRecord, type GwbContext } from '@team/gwb-plugin-api'
+import { isRecord, type GwbContext } from '@godcreator/gwb-plugin-api'
 
 /**
  * 承载 `cordis.yml` 的那棵条目树。
