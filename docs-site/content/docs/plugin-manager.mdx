@@ -6,17 +6,17 @@ docfirst: none
 
 # gwb-plugin-manager
 
-包名 `@godcreator02/gwb-plugin-manager`，服务 `ctx.gwbPluginManager`。它管两样东西，而这两样是两回事：
+包名 `@team/gwb-plugin-manager`，服务 `ctx.gwbPluginManager`。它管两样东西，而这两样是两回事：
 
 - **包**——npm 包，pnpm 装进 home 的 `node_modules`。装了包**什么都不会发生**，它只是躺在盘上
 - **条目**——`cordis.yml` 里的一行，指向一个包。挂上条目，插件的代码才真的跑起来
 
 这个插件的全部工作就是把两层对起来：装（`install`）、卸（`uninstall`）、查新版（`outdated`）、
 升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名。「插件」窗格
-（已装 / 可装两段）的界面不住这儿——浏览器半在 `@godcreator02/gwb-baseui`，本插件只剩
+（已装 / 可装两段）的界面不住这儿——浏览器半在 `@team/gwb-baseui`，本插件只剩
 node 半的服务与命令。检索与安装同源：`search` 查 npm registry 标准检索协议
 （`/-/v1/search`）列 `@godcreator02` scope 下 `gwb-` 前缀的全部，基址从 pnpm 配置解析
-（`@godcreator02:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
+（`@team:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
 地址**——装从哪来、搜就到哪去。
 
 {/* ref file="../plugins/plugin-manager/src/index.ts" lines="24-57" */}
@@ -69,7 +69,7 @@ junction**，指向永远是当前版本。反过来，`import.meta.resolve` 拿
 按顺序四条。**已经在 home 的 `package.json` 里的一个字不动**——不降级、不改写别人钉好的
 版本，那条依赖是谁装的、为什么钉在那儿，这儿一概不知道。`cordis` 跳过：插件
 `extends Service` 的那个基类必须是宿主手上那一份，home 里再装一份就是第二张服务注册表。
-`@godcreator02/gwb-*` 里还要再分一次——**共享包装、插件跳过**，判据是清单里有没有
+`@team/gwb-*` 里还要再分一次——**共享包装、插件跳过**，判据是清单里有没有
 `gwb.shared`（内核扫它拼 importmap、`plugin-manager.shared` 读同一批，是本生态既有的标记）：
 
 - **共享包**（`gwb-shared-react` / `gwb-tokens`）**本来就该是 home 的直接依赖**——内核只扫
@@ -206,7 +206,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 窗格那侧的两条行为语义——reload 在路上时 busy 不撤（页面随时会被整页重载，自己也升了
 的话先是这一个窗格关掉再开，撤了只会让人在最后一帧点到什么；没在路上才照常重取表、撤
 busy），与点「全部更新」先在窗格内列 `from → to` 让人看一眼（照卸载确认框的做法，确认才
-调命令；有过期包才亮，没查过与查了全新都是灰的）——正本在 `@godcreator02/gwb-baseui`
+调命令；有过期包才亮，没查过与查了全新都是灰的）——正本在 `@team/gwb-baseui`
 那边（`plugin-manager` 那个窗格）的仓里，跨仓钉不住，这儿只留这两句指路。
 
 ### agent 那头
