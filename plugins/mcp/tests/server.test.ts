@@ -68,10 +68,10 @@ describe('工具面封顶', () => {
   it('search 的三个过滤参数递得到,空串当没给', async () => {
     const h = spies()
     const client = await connect(h)
-    await client.callTool({ name: 'search', arguments: { plugin: '@godcreator02/gwb-skills', q: 'read' } })
+    await client.callTool({ name: 'search', arguments: { plugin: '@team/gwb-skills', q: 'read' } })
     await client.callTool({ name: 'search', arguments: { prefix: 'skill.', q: '' } })
     expect(h.seenSearch).toEqual([
-      { plugin: '@godcreator02/gwb-skills', q: 'read' },
+      { plugin: '@team/gwb-skills', q: 'read' },
       { prefix: 'skill.' },
     ])
   })
