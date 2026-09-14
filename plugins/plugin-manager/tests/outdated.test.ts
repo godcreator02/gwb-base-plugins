@@ -20,7 +20,7 @@ describe('parseOutdated', () => {
     expect(
       parseOutdated(
         raw({
-          '@team/gwb-hello': {
+          '@godcreator/gwb-hello': {
             current: '0.0.13',
             latest: '0.0.19',
             wanted: '0.0.19',
@@ -29,7 +29,7 @@ describe('parseOutdated', () => {
           },
         }),
       ),
-    ).toEqual({ '@team/gwb-hello': { current: '0.0.13', latest: '0.0.19' } })
+    ).toEqual({ '@godcreator/gwb-hello': { current: '0.0.13', latest: '0.0.19' } })
   })
 
   it('不是 JSON、是数组、是标量——整体回 undefined，让调用方给一句人话', () => {
