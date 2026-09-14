@@ -17,7 +17,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-command-http] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** 精确匹配的那一个 */
-const ALLOWED_BARE = new Set(['@godcreator02/gwb-plugin-api'])
+const ALLOWED_BARE = new Set(['@team/gwb-plugin-api'])
 
 function allowed(spec: string): boolean {
   return spec.startsWith('node:') || ALLOWED_BARE.has(spec)
