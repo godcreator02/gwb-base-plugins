@@ -80,7 +80,7 @@ export function runPnpm(opts: { pnpmCjs: string; cwd: string; args: readonly str
 
     const proc = spawn(process.execPath, [opts.pnpmCjs, ...opts.args], {
       cwd: opts.cwd,
-      // 全局 ~/.npmrc 的 scope 映射（@godcreator02 指着本机 Verdaccio）就是这么读到的
+      // 全局 ~/.npmrc 的 scope 映射（@team 指着本机 Verdaccio）就是这么读到的
       env: { ...process.env, ELECTRON_RUN_AS_NODE: ELECTRON_AS_NODE },
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
