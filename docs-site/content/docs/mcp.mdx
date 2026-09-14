@@ -145,7 +145,7 @@ instructions 里：agent 给命令标 `top: true` 之前先停下来问人。
 带字符串值的调用全军覆没而无参命令幸存（实测定位：同一调用 curl 直发对象就成，
 换客户端就是字符串）。桥在入口收一道：
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="23-46" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="23-55" */}
 
 业务失败（命令不存在、参数不对）回的是 `isError` 的文本，**不是协议错误**——
 agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON-RPC 错误，
