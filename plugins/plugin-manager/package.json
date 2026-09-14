@@ -1,10 +1,10 @@
 {
-  "name": "@team/gwb-plugin-manager",
+  "name": "@godcreator/gwb-plugin-manager",
   "version": "0.3.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @team/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @team/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,19 +27,19 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "peer 两条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）。三档判据见内核仓 CLAUDE.md。浏览器半的三个 peer（shared-react / tokens / shell）随三仓拆分退场——那半搬去 @team/gwb-baseui 了",
+  "//deps": "peer 两条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）。三档判据见内核仓 CLAUDE.md。浏览器半的三个 peer（shared-react / tokens / shell）随三仓拆分退场——那半搬去 @godcreator/gwb-baseui 了",
   "//devDeps": "commands / data / settings / skills 四条都是 **dev**:在这儿全是空 `import type {}`（commands 那条带一个类型,一键热升要攥总线的引用）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选的**——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、说明书挂不上。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾",
   "//peerRange": "写 >= 不写 ^:caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）,共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@team/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@team/gwb-commands": "workspace:*",
-    "@team/gwb-data": "workspace:*",
-    "@team/gwb-plugin-api": "0.1.0",
-    "@team/gwb-settings": "workspace:*",
-    "@team/gwb-skills": "workspace:*",
+    "@godcreator/gwb-commands": "workspace:*",
+    "@godcreator/gwb-data": "workspace:*",
+    "@godcreator/gwb-plugin-api": "0.1.0",
+    "@godcreator/gwb-settings": "workspace:*",
+    "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
