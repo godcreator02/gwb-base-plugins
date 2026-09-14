@@ -806,7 +806,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       }
     }
     // text 钉在 scope 上：列的就是这条线的全家，筛选（gwb- 前缀）在解析后做
-    const url = `${base}-/v1/search?text=${encodeURIComponent('@godcreator02')}&size=250`
+    const url = `${base}-/v1/search?text=${encodeURIComponent('@team')}&size=250`
     try {
       // 宿主是 Electron 当 node 使，Node 18 起 fetch 是全局的
       const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
