@@ -2,7 +2,7 @@
 
 gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物守卫钉着）。UI 平台
 （shell / theme / baseui / shared-react / tokens）住 `26091217uiz\gwb-ui-plugins`。
-此刻十个插件在册、九个在役：mcp 搁置、command-http 接班。
+此刻十个插件在册、九个在役：command-http 搁置（逃生门）、mcp 复位接班。
 验收位（hello 仓）已于 2026-09-13 整体退役——装配态验收改由 devkit 模板现场生成。
 
 | 插件             | 包名                                 | 服务                               |
@@ -10,8 +10,8 @@ gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物�
 | commands       | `@godcreator02/gwb-commands`       | `ctx.gwbCommands`                |
 | data           | `@godcreator02/gwb-data`           | `ctx.gwbData`                    |
 | settings       | `@godcreator02/gwb-settings`       | `ctx.gwbSettings`                |
-| command-http   | `@godcreator02/gwb-command-http`   | —（不 provide，只开一个入口）              |
-| mcp            | `@godcreator02/gwb-mcp`            | —（MCP 桥，搁置中，入口由 command-http 接班） |
+| command-http   | `@godcreator02/gwb-command-http`   | —（搁置，逃生门；入口由 mcp 复位接回）           |
+| mcp            | `@godcreator02/gwb-mcp`            | —（MCP 门，唯一的门——工具面封顶 surface/run） |
 | skills         | `@godcreator02/gwb-skills`         | `ctx.gwbSkills`                  |
 | node-cli       | `@godcreator02/gwb-node-cli`       | `ctx.gwbNodeCli`                 |
 | py-cli         | `@godcreator02/gwb-py-cli`         | `ctx.gwbPyCli`                   |

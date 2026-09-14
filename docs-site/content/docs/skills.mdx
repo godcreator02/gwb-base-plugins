@@ -17,11 +17,11 @@ skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状�
 
 {/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
 
-外加两条命令：`skill.list`（表）与 `skill.read`（正文）。两条登记时都标了 `top: true`
-——它们是 [gwb-mcp](/docs/mcp) 的顶层工具，agent 一连上就看得见：说明书是它第一样要看
-的东西。顶层在登记时就定了，桥照它渲染，没有名单：
+外加两条命令：`skill.list`（表）与 `skill.read`（正文）。两条是普通命令，agent 经
+[gwb-mcp](/docs/mcp) 那枚 `run` 按名调——0.4 复位起工具面封顶 `surface` / `run` 两枚，
+本件曾经给这两条标的 `top: true`（MCP 顶层工具申报位）随 commands 0.3 删字段一起退役：
 
-{/* has file="../plugins/skills/src/index.ts" text="top: true" */}
+{/* has file="../plugins/skills/src/index.ts" text="普通命令" */}
 
 ## 三条纪律
 
@@ -37,7 +37,7 @@ skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状�
 
 ### 正文每次现读盘
 
-{/* ref file="../plugins/skills/src/index.ts" lines="152-163" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="151-162" */}
 
 改了 `SKILL.md` 的正文立刻生效，不必重挂插件；内存里只留元信息。
 
@@ -76,7 +76,7 @@ ctx.inject(['gwbSkills'], (scoped) => {
 
 `register` 没有「你是谁」这个参数——服务从 `this.ctx.fiber.entry` 上认：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="106-117" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="105-116" */}
 
 跟 `gwb-data` 认数据目录、`gwb-shell` 认窗格归属是同一个套路。**插件不报名字，
 也就没法报别人的名字**去挂一份冒名的说明书。身份也不从路径推——推出来的目录名

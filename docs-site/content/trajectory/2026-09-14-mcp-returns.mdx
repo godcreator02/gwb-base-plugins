@@ -1,0 +1,70 @@
+---
+title: MCP 复位：mcp 回来当唯一的门，command-http 搁置留作逃生门
+born-at: 2026-09-14T13:30
+type: choice
+parent: [2026-09-13-http-door-takes-over]
+label: MCP 复位
+domain: 件
+---
+
+## 背景
+
+「HTTP 门接班」押的判据是「日常 agent 全有壳（Bash + curl 就够）」。独门用了一天，这句话
+被证伪：**每次调用都付 shell 往返税**——pwsh / git bash 两套引号转义、curl 输出截断再取段、
+每一发命令多一次 Bash 派发；而 MCP 工具原生就在 agent 上下文里。这个差距是结构性的，
+HTTP 侧怎么打磨（比如做个 `gwb run` 小 CLI）也只能缩短，追不上原生工具调用。
+
+对 mcp 当年三个实锤发作重审：**热挂新件要重连**（顶层清单是连接时快照）——被「工具面
+封顶两枚」结构性消灭，快照里没有会变的东西；**台在会话之后起**与**update-all 升到门
+自己断在途**——罕见且可见，认下，用「每次都付的 shell 税」换「罕见可见的重连税」。
+
+另有一样当班时就验清的：**调试链路不碰门**——devkit 够隔离 home 走的是 CDP
+（runtime.json 查口、验活、页面里 `window.gwb.command`），`commandHttp` 那格只是 home
+清单的展示列，隔离 home 的底座件集里从来没有门插件。门只属于 default——**default 是
+正式使用的生产位，应该一直开着**。
+
+## 结论与边界
+
+- **gwb-mcp 0.4 复位为唯一的门**：工具面封顶 `surface` / `run`（`registerTools` 写死两枚，
+  `server.test` 经内存信道按协议往返钉死 tools/list 恰好这两枚——加第三枚是 major 级的
+  协议决定，CI 先红）；token 摘除（同 command-http 0.2 判据：绑 127.0.0.1 本机同权）；
+  default 的 2870 契约收回；`skill://` resources 不复活；surface 组装自 command-http 的
+  纯函数抬过来（`top` 格删），两代门一个词汇。**顶层申报链拆掉**：commands 0.3 删
+  `GwbCommandDef.top`，skills 0.3 摘两枚 skill 命令的标——件想申报顶层也没有口子了
+- **command-http 搁置**：default 卸载、代码留仓、registry 留 0.2.2 当逃生门——手工装回
+  就有一条无会话的 curl 道，写进 mcp 的 SKILL.md；其 surface 的 `top` 格改可选（搁置件
+  改到能编译为止，不发新版）
+- **守门换人**：`gwb_command_list` / `gwb_command_run` 退役，`surface` / `run` 接上——
+  与 http 时代 `/surface` + `/run` 同词汇，文档改口只动「怎么调」
+- **「台没起 → 工具全灰」改判为纪律**：default 是常驻生产位，门随台生灭；起台（安装位
+  `run.cmd`）后 `/mcp` 重连一次，MCP 没有「下一发请求自动好」——instructions 与 SKILL.md
+  都写明
+- 人拍板（2026-09-14）。
+
+## 否掉的候选
+
+- **双门共存（http 2870 + mcp 另开口）**——名义安全，实际两份 instructions 文本、两个
+  对齐面；调试既然走 CDP 不走门，共存的日常价值只剩兜底，而兜底交给搁置的 command-http
+  更便宜
+- **客户端 stdio 代理**（MCP 不住工作台、住客户端，翻译现有 HTTP 门）——能把三个发作
+  全结构性消灭，但把门搬出了 home，违背「门是插件、属于 home」的世界观；人拍板否掉
+- **http 加小 CLI 继续当独门**——缓解 shell 税但追不上原生工具调用，且门永远单轨
+- **http 装着不教（暗线）**——没写进纪律的逃生门不是逃生门，占着 2870 与升级面纯是债
+
+## 依据
+
+独门一天内同一会话实际 curl 2870 摸到引号与截断的墙（照实记：http 当独门只活了一天，
+mcp 当年的三发作是几周攒的——但发作 2 已被封顶消灭，1 与 3 罕见可见，shell 税每次都付）。
+devkit 源码现读（`home.ts` / `dev.ts` / `index.ts`）：`resolveTarget` 三道验活全对 CDP 口，
+`commandHttp` 仅入 `HomeEntry` 展示；`BASE_PLUGINS`（隔离 home 底座）七件无一门插件。
+
+## 代价与遗留
+
+- **重连债回来**：台在会话后起要 `/mcp` 重连一次；update-all 升到 mcp 自己断在途、要重连
+  ——封顶让后者罕见（工具面永不改，这个件几乎没有理由动）
+- **curl 万能道没了**：门自身坏掉的自救 = `gwb.log` + 手改 cordis.yml + 重启；最后一道
+  逃生门是手工装回搁置的 command-http（SKILL.md 写了步骤）
+- **每台机器一次性客户端配置**：`mcp.info` 回的 `mcpServers` 片段贴进用户级 MCP 配置
+- devkit 的 home 清单「命令口（command-http 格）」列要跟进读 `mcp` 格——devkit 仓跟一小版
+- 各仓改口：内核仓 AGENTS「今日的门」句、总控台 AGENTS「怎么用工作台」段、devkit skill
+  的门话术——分仓各自改，不在本卡范围

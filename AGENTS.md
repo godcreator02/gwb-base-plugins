@@ -1,9 +1,9 @@
 # gwb-base-plugins
 
 **gwb 的无头基础插件仓**——无 UI 的插件全部对着词汇表（`@godcreator02/gwb-plugin-api`）。
-在役九个：commands、data、settings、command-http、skills、node-cli、py-cli、logger(core)、
-plugin-manager(core)；另有搁置中的 mcp（入口由 command-http 接班、default 已卸载，判据
-见轨迹卡「HTTP 门接班」）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
+在役九个：commands、data、settings、mcp、skills、node-cli、py-cli、logger(core)、
+plugin-manager(core)；另有搁置中的 command-http（入口由 mcp 复位接回、default 已卸载，
+判据见轨迹卡「MCP 复位」）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
 shared-react / tokens 三个包（产物守卫钉着）。
 
 UI 那半住 `D:\unitfolders\26091217uiz\gwb-ui-plugins`（shell、theme、baseui 与两个共享包）。

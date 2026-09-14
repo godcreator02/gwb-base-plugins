@@ -33,7 +33,7 @@ resolve 不到消费方那一层的包」这个问题根本不会出现——**�
 
 ## 它的面
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="19-37" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="19-43" */}
 
 回执：
 
@@ -91,7 +91,7 @@ await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj
 
 服务面的 `run` 与总线那条路同吃这一处收窄：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="172-181" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="173-182" */}
 
 于是 `run` 回的是 `CliRunOutcome`——跑过了是进程回执，没跑是那句拒绝。调用方照旧只看 `ok`。
 

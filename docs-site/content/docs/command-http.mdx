@@ -6,6 +6,11 @@ docfirst: none
 
 # gwb-command-http
 
+> **搁置（2026-09-14）**：这个入口的班由 [gwb-mcp](/docs/mcp) 复位接回——default home
+> 已卸载本插件，代码留仓、registry 留 0.2.2 当**逃生门**（MCP 门坏到没救时手工装回，就
+> 有一条无会话的 curl 道）。判据见轨迹卡「MCP 复位」。以下为在职期间的现状记录，钉码
+> 随源码保留。
+
 把 [`ctx.gwbCommands`](/docs/commands) 那份命令注册表开成一个**本机无状态 JSON 接口**。
 2026-09-13 接 mcp 插件的班（mcp 搁置、default 卸载，判据见轨迹卡「HTTP 门接班」）——端口
 策略与 runtime.json 那一项两样纪律原样继承，信道从会话态的 MCP 换成无会话的裸 HTTP；

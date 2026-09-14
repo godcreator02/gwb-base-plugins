@@ -1,91 +1,93 @@
 ---
-title: gwb-mcp：把命令面开给 agent
-description: 自己起 node:http，无状态 streamableHTTP，工具面只有几个——固定两个加登记时标了 top 的
+title: gwb-mcp：MCP 门，把命令面开给 agent
+description: 工具面封顶两枚——surface（现拼发现面，可过滤）与 run（按名调一切命令）；无状态 streamableHTTP，无鉴权，default 认死 2870
 docfirst: none
 ---
 
 # gwb-mcp
 
-> **搁置（2026-09-13）**：这个入口由 [gwb-command-http](/docs/command-http) 接班——default home 已卸载本插件，
-> 代码留仓，等无壳宿主的真需求出现再重做门面。判据与迁移见轨迹卡「HTTP 门接班」。
-> 以下为在职期间的现状记录，钉码随源码保留。
-
 把 [`ctx.gwbCommands`](/docs/commands) 那份命令注册表开给任意外部 agent。方向**永远**是
 agent → 工作台。
 
-包名 `@godcreator02/gwb-mcp`，无界面。`inject: ['gwbCommands', 'gwbData', 'gwbSettings']`
+包名 `@godcreator02/gwb-mcp`，无界面。`inject: ['gwbCommands', 'gwbSettings']`
 ——settings 是硬依赖，端口从它来。
+
+> 时间线：2026-09-13 搁置（「HTTP 门接班」），**2026-09-14 复位**——接 command-http 的班
+> 成为**唯一的门**，command-http 搁置留作逃生门。判据见轨迹卡「MCP 复位」。
 
 ## 怎么连
 
-起来之后日志里有两行：
+起来之后日志里有一行：
 
 ```
-[I] gwb-mcp MCP 端点就绪：http://127.0.0.1:2870/mcp
-[I] gwb-mcp token（仅本机使用，勿外传）：<43 个字符>
+[I] gwb-mcp MCP 门就绪（default home）：http://127.0.0.1:2870/mcp——无鉴权，绑 127.0.0.1 本机自用
 ```
 
-**这一版没有界面，日志就是 token 唯一的示人出口**（另一条是命令 `mcp.info`，
-但那得先有办法调命令）。
+另一条出口是命令 `mcp.info`——url 加一段可照抄进客户端配置的 `mcpServers` 片段：
 
-token 落在 `<home>/data/@godcreator02/gwb-mcp/token.json`，形状 `{ token, createdAt }`。
-重启沿用，不会每次换一个。
+{/* ref file="../plugins/mcp/src/index.ts" lines="297-321" */}
 
-## 端口落进 home 的 `runtime.json`
+无鉴权（0.4 起）：口只绑 127.0.0.1、服务本机，本机进程本就同权——command-http 0.2 摘
+token 时验过的判据，复位时原样继承，token 与 401/503 那两段守卫没有回来。
 
-绑成的那一刻，这个入口补进 `<home>/runtime.json` 的 `mcp` 那一项：
+## 工具面封顶两枚
 
-```json
-{
-  "pid": 72896,
-  "startedAt": 1789120432968,
-  "appDir": "D:\\unitfolders\\26090705ymz\\gwb-kernel\\apps\\desktop",
-  "cdp": 9352,
-  "mcp": { "port": 55572, "url": "http://127.0.0.1:55572/mcp" }
-}
-```
+{/* ref file="../plugins/mcp/src/index.ts" lines="75-122" */}
 
-**这一项归本插件，是因为这个数运行时才定**：`default` 认死 2870，别的 home 缺省要系统随机口
-（上面那份实测就是一台隔离 home，拿到 55572），绑成功之后插件手里才有真正的那个数。下游要
-「说出 home 名就连得上它」，就得有人把它落在 home 里，而别人都拿不到。
+**`surface`**（发现面：命令 + 说明书清单 + 口上的纪律，`plugin` / `prefix` / `q` /
+`slim` 四个过滤）与 **`run`**（按名调一切命令）。写死在 `registerTools` 里，没有运行时
+名单，登记方也没有申报顶层的字段——top 随 commands 0.3 退役，skills 0.3 摘了两枚 skill
+命令的标。其余命令（包括 `skill.list` / `skill.read`）一律经 `run` 按名调。
 
-那份记录是**跨仓的契约**：内核开机整份重写 `pid` / `startedAt` / `appDir` / `cdp` 四项，
-本插件在它之后补自己那一项。于是本插件这半只许**读改写**：
+为什么封顶：MCP 的工具清单是**连接时的快照**，而这台工作台的件以分钟级热重挂为节拍
+——任何「件登记、门渲染成顶层工具」的通道都会把快照变成重连债（退位前三次实锤发作
+之一）。封顶之后快照里没有会变的东西：命令面的多变全在 `run` 的参数里，每次调用现打
+总线，与件的热重挂同一个新鲜度。
 
-{/* ref file="../plugins/mcp/src/runtime.ts" */}
+加第三枚工具是 **major 级的协议决定**——封顶有守卫：测试经内存信道连一对真的
+server/client，按协议往返，`tools/list` 恰好这两枚，多一枚 CI 就红。
 
-整份覆盖会把内核那几项抹掉，而那几项是下游定位这个 home 的唯一凭据——尤其 `cdp`，那是
-Chromium 的命令行开关，除了起进程的那只手谁都不知道。
+参数形状不在 schema 里，在**命令描述**里——所以描述必须写形状，见
+[commands](/docs/commands)。
 
-三条边界：
+**args 的收口**：`run` 的 `args` schema 是 `z.unknown()`，协议层什么形状都放行——有的客户端
+就把对象参数**序列化成 JSON 字符串**才发，到命令端全被 `isRecord` 拒成「参数要是个对象」，
+带字符串值的调用全军覆灭而无参命令幸存（实测定位：同一调用 curl 直发对象就成，
+换客户端就是字符串）。门在入口收一道：
 
-- **没绑成不写。** 那时这个 home 上根本没有 MCP 入口，写一项假的比不写坏得多
-- **写失败不影响这个入口。** 记录是附属品，打一行 warn 继续，端点照常服务
-- **进程退了不删。** 崩溃与被 kill 是常态，「退出时清掉」那条路在那两种情况下本来就不跑；
-  **代价是记录随时可能是陈旧的，验活是读的人的事**（核 pid 还在、且那个 pid 真持着那个端口）
+{/* ref file="../plugins/mcp/src/tools.ts" lines="23-55" */}
 
-## `mcp.info` 回的是一段能照抄的配置
+业务失败（命令不存在、参数不对）回的是 `isError` 的文本，**不是协议错误**——
+agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON-RPC 错误，
+分不清是自己叫错了还是这台工作台坏了。
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="81-89" */}
+## surface：现拼的发现面
 
-除了 `url` / `port` / `token` 三样，`mcp.info` 还回一个 `mcpServers`——形状就是
-Claude Code 那份 `.mcp.json` 里的一条 http server，**原样贴进客户端配置就能连**——
-外加 `top.rendered`：此刻会渲染成顶层工具的命令名，跟下一台 server 起来时的判断同一份。
+{/* ref file="../plugins/mcp/src/surface.ts" */}
 
-散装值也给拼好的那一份，是因为**拼装那一步本来是每个客户端各拼一遍的**：scheme 写成
-`sse`、header 漏了 `Bearer ` 前缀、url 少了 `/mcp` 一段——三种都拼得出来，而症状全是
-「连不上」，从客户端那头看不出为什么。拼好的这份把那些机会一次收掉。
+回执形状与 command-http 时代的 `GET /surface` 一致（复位时抬过来的纯函数，`top` 格随
+门面封顶退役）——两代门一个词汇，文档改口只动「怎么调」，不动「回什么」。`home` 自报、
+生效的过滤在 `filter` 那格自证；instructions 随每份回执带一遍（客户端不透出 initialize
+的 instructions 通道时，第一发 surface 也读得到纪律）。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="373-405" */}
+全量回执实测约八千 token 且随件数线性涨：陌生 home 全量一次就够，此后 `plugin`（按登记
+件筛，commands 与 skills 一起筛）、`prefix`（命令名前缀）、`q`（名字与描述找子串，不分
+大小写）、`slim`（只回名字+插件的索引行，约五百 token）定向取——反复全量是坏味道。分页
+刻意不做——这个量级按组筛比翻页好用。
 
-命令自己的顺序是**端口先答**：这个入口没开成时回 `ok: false` 说清楚原因，而不是回一个
-连不上的 url。下一节就是它最常见的那一种。
+## 说明书：清单进 surface，正文走 run
+
+清单进 `surface` 的 `skills` 项；正文不另开通道——`run` 调 `skill.list` / `skill.read`
+（skills 件登记的命令）。`skill://` resources 不复活（http 时代已退场）。skills 件不在时
+门照开，清单那格是空表。门自己也带一份 SKILL.md（连接片段、封顶判据、台没起怎么办），
+经 skills 件挂载。
 
 ## default 的端口是契约，不是首选
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-67" */}
 
-**`default` 这个 home 认死 2870，被占就不开这个入口。**
+**`default` 这个 home 认死 2870，被占就不开这道门。**（mcp 时代的契约，随复位收回——
+command-http 搁置让位。）
 
 「首选 2870、被占退让到系统随机端口」看着体面——多 home 同开是常态——但危险的是这条
 时间线：**一台测试 home 先起来占住 2870，随后起的 default 退让到随机端口**。连工作台的
@@ -94,10 +96,12 @@ agent 会话手上那份 `.mcp.json` 早就写死了 2870，于是它连上的�
 
 所以 default 那一支的 `fallback` 是 `false`，接线照着它走：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="325-340" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="258-267" */}
 
 **不开比开在别处强**——开在别处是静默连错，不开是当场看得见（一行 `log.error`，
-外加 `mcp.info` 回 `ok: false`）。本插件其它部分照常挂着，只是这个入口这次没开。
+外加 `mcp.info` 回 `ok: false`）。本插件其它部分照常挂着，只是这道门这次没开：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="285-295" */}
 
 其它 home 不吃这条：缺省要系统随机口（没有哪个串是它的契约），显式给了端口才试那个端口、
 被占照旧退让并 warn。home 名从 `gwbKernel.dataDir` 的末段认——那个目录就是 home 目录，
@@ -107,129 +111,70 @@ agent 会话手上那份 `.mcp.json` 早就写死了 2870，于是它连上的�
 
 **插件的配置一律走 `gwbSettings.define`**，这个插件不收 `apply` 的 `config` 形参：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="86-100" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="131-145" */}
 
 `port` 的缺省按 home 名给（`defaultPort`），跟 `choosePort` 不给值时的答案一致——界面上
 看到的缺省就是真会用的端口，不会出现「显示 0、实际 2870」这种两份真相。设置插件不做运行时
 校验，所以 `choosePort` 收的是 `unknown`：不是整数、出了范围一律当没给，数字串也认
-（界面上一个文本框写进来的就是串）。改了要重启这个 home 才生效——入口是 `apply` 时开的。
+（界面上一个文本框写进来的就是串）。改了要重启这个 home 才生效——门是 `apply` 时开的。
 
-## 工具面只有几个
+## 绑成那一刻补 runtime.json 的 `mcp` 项
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="196-273" */}
+{/* ref file="../plugins/mcp/src/runtime.ts" */}
 
-**固定两个**（`gwb_command_list` / `gwb_command_run`），外加**登记时标了 `top: true`**
-的那几条命令；其余命令一律经 `gwb_command_run` 按名调。挑法是一个纯函数：
-
-{/* ref file="../plugins/mcp/src/top.ts" */}
-
-**顶层是开发时定的，不是装进软件之后批的。** 插件在登记命令时标 `top: true`，桥看到就
-渲染，没有运行时名单、没有批准这一步；缺省只有说明书那两条（`skill_list` /
-`skill_read`，[skills](/docs/skills) 插件自己标的）。「同意」只剩一条纪律，写在
-instructions 里：agent 给命令标 `top: true` 之前先停下来问人。
-
-为什么收这么窄，三样实测：
-
-- **顶层工具清单与 resources 列表都是连接时的快照**。Claude Code 连上之后不刷新——
-  停用一个插件，它那枚工具还挂在清单里；新装的插件也不会长出新工具
-- **server instructions 会被截断**。清单曾经列在 instructions 里，十三份说明书列到第八份
-  就断了——agent 根本不知道后面还有
-- **逐条渲染出来的工具 schema 全是 `args: unknown`**，比 `gwb_command_run` 只多一个
-  名字——直通工具不比按名调多任何能力，只是多了几条要维护的常驻描述
-
-参数形状不在 schema 里，在**命令描述**里——所以描述必须写形状，见
-[commands](/docs/commands)。
-
-**args 的收口**：`args` 的 schema 是 `z.unknown()`，协议层什么形状都放行——有的客户端
-就把对象参数**序列化成 JSON 字符串**才发，到命令端全被 `isRecord` 拒成「参数要是个对象」，
-带字符串值的调用全军覆没而无参命令幸存（实测定位：同一调用 curl 直发对象就成，
-换客户端就是字符串）。桥在入口收一道：
-
-{/* ref file="../plugins/mcp/src/tools.ts" lines="23-55" */}
-
-业务失败（命令不存在、参数不对）回的是 `isError` 的文本，**不是协议错误**——
-agent 读得到原因、连接不断。抛出去只会让对面看见一条 JSON-RPC 错误，
-分不清是自己叫错了还是这台工作台坏了。
-
-## 为什么自己起 `node:http`
-
-三条路都看过：
-
-- **`@cordisjs/plugin-http`** —— 它是 **HTTP 客户端**（`ctx.http`，axios 风格），
-  收不了请求。内核仓 roadmap 那条「装官方的 plugin-http/plugin-server」把两者混为一谈了
-- **`@cordisjs/plugin-server`** —— 能用，`ctx.server` 拿得到原始 `req._req` / `res._res`。
-  但它最后一次发布早于 cordis `4.0.0-rc.9` 两个半月，属于「semver 说行、作者没验过」
-- **拆一个 `gwb-http` 插件出来**—— 一个宿主一个 server、谁要挂路由谁来注册。
-  职责分得正，但**这个 server 上当时只有本插件一个客户**
-
-于是自己起，就在 `apply` 里。真出现第二个要开入口的插件，那时再拆——那一步只动本插件
-内部，不动任何跨插件契约。
+内核开机整份重写 `pid` / `startedAt` / `appDir` / `cdp` 四项，本插件绑成之后**读改写**
+补自己那一项。三条边界：**没绑成不写**（那时这个 home 上根本没有这道门，写一项假的比
+不写坏得多）、**写失败不影响这道门**（记录是附属品，打一行 warn 继续）、**进程退了不删**
+（崩溃与被 kill 是常态，留着的记录还是「上一次它在哪儿」的唯一线索——**验活是读的人的
+事**：核 pid 还在、且那个 pid 真持着那个端口）。
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="275-286" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="213-235" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
-
-好处是工具面永远是**此刻**的——热挂上来的插件当场就在清单里（对 `gwb_command_list` 而言；
-客户端自己那份顶层清单是它连接时的快照，见上一节）。
-代价是**发不出 list_changed 那类通知**：正连着的 agent 要等下一次重连才知道多了什么。
-认下这个代价，为一条通知改成有状态不划算。
+代价是发不出 list_changed 那类通知——而工具面封顶之后这无所谓：清单里没有会变的
+东西，正连着的 agent 没有任何理由等一次清单刷新。
 
 ## instructions：固定二十来行，每个 agent 连上来都要读
 
 {/* ref file="../plugins/mcp/instructions.md" */}
 
 包根一份真的 markdown，模块加载时读一次，**不随挂着的 skill 变**。它是每会话的固定成本，
-所以按「少一句就漏事、多一句就是废话」裁，二十来行，守卫钉着上限。
+所以按「少一句就漏事、多一句就是废话」裁，测试钉着行数上限。
 
-instructions 不列 skill 清单，理由就是上面那条截断：清单一长就被客户端切掉后半截，
-而且 skill 一多就是一页白占上下文的废话。说明书的发现面是 `skill_list` 那个顶层工具的
-**回执**——它是现取的，不是快照；instructions 只说「连上先调 `gwb_command_list` 与
-`skill_list` 各一次」。正文仍另挂成
-`skill://gwb/<名>/<文件>` resources，`skill_read` 与 resources 两条路都读得到。
-
-固定文本里有一条不写就会出事的：**这个入口是无状态的，agent 自己新装的插件不会长出新的
-顶层工具**（上一节那个代价）。不说明白，它装完插件就会在工具清单里干等，而清单永远
-不会变——写清楚了它才知道该走 `gwb_command_run`。
-
-另一条同性质的：**发完新版本调 `plugin-manager.update-all` 一键热升，不重启**；而升到
-mcp 自己时这条回执会丢——桥随插件重挂，连接断在半路——重连后用 `plugin-manager.list` 核对。
-不写这句，agent 发完版只会去重启工作台，或者对着一条丢了的回执反复重试。
-热重挂的原理在[插件管理](/docs/plugin-manager)。
+有两条不写就会出事：**工具面封顶两枚、新装的件不长新工具**——不说明白，agent 装完件就会
+在工具清单里干等，而清单永远不会变；**台没起时怎么办**——工具全灰不是协议错误，起台、
+重连，MCP 没有「下一发请求自动好」。另一条同性质：**发完新版本调
+`plugin-manager.update-all` 一键热升，不重启**；而升到 mcp 自己时这条回执会丢——门随件
+重挂，连接断在半路——重连后用 `plugin-manager.list` 核对。热重挂的原理在
+[插件管理](/docs/plugin-manager)。
 
 后半段是**这台工作台准许 agent 改自己到哪儿**：修 bug、补 `SKILL.md`、加命令加插件不用
-问；改内核、改那几个被别人 `inject` 的插件的契约面或依赖、**给命令标 `top: true`** 先问人。
-判据是**改动的爆炸半径**——前一类错了只波及它自己，后一类错了是整台工作台起不来、别的
-插件静默失灵，或者顶层工具清单被一个没人批过的门牌占掉，而 agent 在自己的会话里看不见
-那个半径。
+问；改内核、改那几个被别人 `inject` 的插件的契约面或依赖、**破 surface/run 这个封顶**
+先问人。判据是**改动的爆炸半径**——前一类错了只波及它自己，后一类错了是整台工作台起不来、
+别的插件静默失灵，或者工具面契约被人悄悄改了形状。
 
-## 一道入口，不是两道
+## 为什么自己起 `node:http`
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="148-170" */}
+三条路都看过：
 
-token 拿不到 503、鉴权不过 401、不是 POST 405，三段之后才轮到正事。
+- **`@cordisjs/plugin-http`** —— 它是 **HTTP 客户端**（`ctx.http`，axios 风格），
+  收不了请求
+- **`@cordisjs/plugin-server`** —— 能用，但它最后一次发布早于 cordis `4.0.0-rc.9`
+  两个半月，属于「semver 说行、作者没验过」
+- **拆一个 server 插件出来**—— 一个宿主一个 server、谁要挂路由谁来注册。
+  职责分得正，但**这个 server 上只有本件一个客户**
 
-**「没给 token」与「给错 token」的响应逐字相同**——拒绝面一旦有差别，就是在给外面
-一个试探面。实机两发对比过。503 的 body 也不带原因（未鉴权的请求不该从错误文本里
-读出这台机器的情况），真原因走 `mcp.info` 与日志——问那条命令的人本来就在本机。
-
-比较本身走 `timingSafeEqual`，而且**长度先判**：不让时序侧信道透出前缀。
-
-## 取令牌存的是 promise，不是值
-
-{/* ref file="../plugins/mcp/src/index.ts" lines="127-141" */}
-
-首启那次要异步落一份盘，而路由一挂上去随时可能进请求。存值的话，两个并发请求会各
-生成一个 token 互相盖掉；存 promise，先到的请求等的就是同一次首启。
-
-失败之后把它置空,下一次请求重来一遍——盘一时写不进去不该把这个入口永久钉死在 503 上。
+于是自己起，就在 `apply` 里。真出现第二个要开口的件，那时再拆——那一步只动本插件
+内部，不动任何跨插件契约。
 
 ## 依赖那 4.3MB
 
 官方 SDK 的 `dependencies` 拖着 express@5、hono、cors、jose、ajv、eventsource、
-express-rate-limit 一串，解包 4.3MB、693 个文件，跟着这个插件全装进 home。
+express-rate-limit 一串，解包 4.3MB、693 个文件，跟着这个插件装进装它的 home（default
+装回是复位装配的一部分；隔离 home 的底座件集里没有门）。
 
 摆上桌算过：换成自写一份最小 JSON-RPC（只做 initialize / tools/list / tools/call）
 是百来行、零依赖，但协议细节（版本协商、Accept 校验、错误码）得自己跟，
@@ -240,10 +185,8 @@ express-rate-limit 一串，解包 4.3MB、693 个文件，跟着这个插件全
 
 ## 安全边界
 
-**持 token 就拿到写面**：`gwb_command_run` 能调的是完整的命令注册表，包括往 home 里装插件。
-顶层收窄收的是**发现面**，不是权限面——不渲染成顶层的命令照样按名调得到。
-这个系统的信任模型是两层——**装插件 = 授权**（插件在宿主进程里有完整 Node 权限，无沙箱），
-**token 给谁 = 授权**（持 token 的 agent 等同一个远程的你）。
-
-绑 `127.0.0.1`，不对外。命令级的拒绝名单不做。「用户同意」在这个系统里只能是
-纪律——agent 有整台机器——所以它写进 instructions，不做成机制。
+**本机的进程就拿到写面**：`run` 能调的是完整的命令注册表，包括往 home 里装插件。
+工具面收窄收的是**发现面**，不是权限面。这个系统的信任模型是——**装插件 = 授权**
+（插件在宿主进程里有完整 Node 权限，无沙箱），**口不出本机**（绑 127.0.0.1）。
+命令级的拒绝名单不做。「用户同意」在这个系统里只能是纪律——agent 有整台机器
+——所以它写进 instructions，不做成机制。
