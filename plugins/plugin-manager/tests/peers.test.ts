@@ -30,7 +30,7 @@ describe('包是共享包还是件', () => {
   })
 
   it('没有这个字段的当件', () => {
-    expect(peerKindOf({ name: '@team/gwb-commands' })).toBe('plugin')
+    expect(peerKindOf({ name: '@godcreator/gwb-commands' })).toBe('plugin')
     expect(peerKindOf({ gwb: {} })).toBe('plugin')
   })
 
@@ -41,8 +41,8 @@ describe('包是共享包还是件', () => {
 
 describe('peer 计划', () => {
   it('生态外的包一律装——那正是这次要接的形状', () => {
-    expect(planPeers({ '@team/docfirst-workflow': '>=0.4.0' }, NONE, NO_KINDS)).toEqual([
-      { pkg: '@team/docfirst-workflow', range: '>=0.4.0', decision: 'install' },
+    expect(planPeers({ '@godcreator/docfirst-workflow': '>=0.4.0' }, NONE, NO_KINDS)).toEqual([
+      { pkg: '@godcreator/docfirst-workflow', range: '>=0.4.0', decision: 'install' },
     ])
   })
 
@@ -59,36 +59,36 @@ describe('peer 计划', () => {
 
   it('本生态的件跳过，共享包装', () => {
     const peers = {
-      '@team/gwb-commands': '>=0.2.0',
-      '@team/gwb-shared-react': '>=0.0.2',
-      '@team/gwb-tokens': '>=0.0.2',
+      '@godcreator/gwb-commands': '>=0.2.0',
+      '@godcreator/gwb-shared-react': '>=0.0.2',
+      '@godcreator/gwb-tokens': '>=0.0.2',
     }
     const kinds: Record<string, PeerKind | undefined> = {
-      '@team/gwb-commands': 'plugin',
-      '@team/gwb-shared-react': 'shared',
-      '@team/gwb-tokens': 'shared',
+      '@godcreator/gwb-commands': 'plugin',
+      '@godcreator/gwb-shared-react': 'shared',
+      '@godcreator/gwb-tokens': 'shared',
     }
     expect(planPeers(peers, NONE, kinds).map((item) => [item.pkg, item.decision])).toEqual([
-      ['@team/gwb-commands', 'skipped'],
-      ['@team/gwb-shared-react', 'install'],
-      ['@team/gwb-tokens', 'install'],
+      ['@godcreator/gwb-commands', 'skipped'],
+      ['@godcreator/gwb-shared-react', 'install'],
+      ['@godcreator/gwb-tokens', 'install'],
     ])
   })
 
   it('本生态里认不出种类的保守跳过，并把「认不出」写进 note', () => {
-    const plan = planPeers({ '@team/gwb-mystery': '>=0.1.0' }, NONE, NO_KINDS)
+    const plan = planPeers({ '@godcreator/gwb-mystery': '>=0.1.0' }, NONE, NO_KINDS)
     expect(plan[0]?.decision).toBe('skipped')
     expect(plan[0]?.note).toContain('认不出')
     expect(plan[0]?.note).toContain('optional')
   })
 
-  it('生态外的包认不出种类照样装——那条判据只对 @team/gwb-* 问', () => {
+  it('生态外的包认不出种类照样装——那条判据只对 @godcreator/gwb-* 问', () => {
     expect(planPeers({ chokidar: '>=4' }, NONE, NO_KINDS)[0]?.decision).toBe('install')
   })
 
   it('已经在 home 里的优先于「该跳过」：装了就是装了，不去改它', () => {
-    const plan = planPeers({ '@team/gwb-commands': '>=0.2.0' }, { '@team/gwb-commands': '0.2.0' }, {
-      '@team/gwb-commands': 'plugin',
+    const plan = planPeers({ '@godcreator/gwb-commands': '>=0.2.0' }, { '@godcreator/gwb-commands': '0.2.0' }, {
+      '@godcreator/gwb-commands': 'plugin',
     })
     expect(plan[0]?.decision).toBe('present')
   })
