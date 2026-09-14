@@ -1,5 +1,5 @@
 {
-  "name": "@team/gwb-skills",
+  "name": "@godcreator/gwb-skills",
   "version": "0.4.0",
   "author": {
     "name": "godcreator"
@@ -28,13 +28,13 @@
   "//deps": "三条都是 peer。cordis 与词汇表包同 gwb-data 那两档（Service 基类要 extends，必须是宿主那一份；GwbContext 出现在导出的 constructor 签名里）。gwb-commands 是第三档：这个件只 `import type {}` 引它，但那句副作用类型导入会原样留在 .d.ts 里（它有语义——激活 declare module），消费方解析得到才行",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）。commands 维持 >=0.2.0：0.2 与 0.3 对本件没有行为差（top 字段那条链 0.3 起随 MCP 工具面封顶退役）",
   "peerDependencies": {
-    "@team/gwb-commands": ">=0.2.0",
-    "@team/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-commands": ">=0.2.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@team/gwb-commands": "workspace:*",
-    "@team/gwb-plugin-api": "0.1.0",
+    "@godcreator/gwb-commands": "workspace:*",
+    "@godcreator/gwb-plugin-api": "0.1.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
