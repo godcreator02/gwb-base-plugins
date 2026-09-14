@@ -16,7 +16,9 @@ describe('buildSurface', () => {
     expect(surface.filter).toBeUndefined()
     expect(surface.commands).toHaveLength(2)
     expect(surface.commands[0]).toMatchObject({ name: 'skill.list', top: true })
-    expect(surface.commands[1]?.top).toBe(false)
+    // toMatchObject 而不是 .top 取用：commands 的元素类型是 CommandView | SlimEntry 的
+    // 联合（slim 过滤那半没有 top），联合上直接取属性编译就不过
+    expect(surface.commands[1]).toMatchObject({ top: false })
   })
 
   it('skills 件不在（undefined）时清单是空表——门照开', () => {

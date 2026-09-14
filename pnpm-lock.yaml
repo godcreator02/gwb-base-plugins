@@ -81,9 +81,6 @@ importers:
       '@godcreator02/gwb-commands':
         specifier: workspace:*
         version: link:../commands
-      '@godcreator02/gwb-data':
-        specifier: workspace:*
-        version: link:../data
       '@godcreator02/gwb-plugin-api':
         specifier: 0.1.0
         version: 0.1.0(cordis@4.0.0-rc.9)

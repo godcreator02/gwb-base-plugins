@@ -2,13 +2,11 @@ import http from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
-// 只为激活那三个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbData / gwbSettings
+// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbSettings
 import type {} from '@godcreator02/gwb-commands'
-import type {} from '@godcreator02/gwb-data'
 import type {} from '@godcreator02/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator02/gwb-skills'
-import { bearerMatches, loadOrCreateToken } from './auth.js'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf } from './endpoint.js'
 import { RUNTIME_FILE, writeRuntimeHttp } from './runtime.js'
 import { buildSurface, type SkillsSlot, type SurfaceQuery } from './surface.js'
@@ -24,15 +22,15 @@ import { buildSurface, type SkillsSlot, type SurfaceQuery } from './surface.js'
  *   参数形状不在协议层，在**命令描述**里——命令自己校验
  * - **没有会话**。每个请求自包含：本件热重挂或工作台重启后，下一个请求自动就好。
  *   这是对 mcp 那条「断连要人工重连」的直接回答
- * - **零依赖**：只用 node:http / node:crypto / node:module——mcp 件那串 SDK（解包 4.3MB）
- *   随门退役
+ * - **不设鉴权**（0.2 起，mcp 时代那层 Bearer token 摘除）：口只绑 127.0.0.1、服务本机，
+ *   本机进程本就同权；而 token 跟着内核重启换新，只会把 agent 侧的配置变成一桩要反复
+ *   伺候的差事——本会话里两次逼着人翻日志捞 token，就是它最后的害处
+ * - **零依赖**：只用 node:http / node:module——mcp 件那串 SDK（解包 4.3MB）随门退役
  * - **说明书从这条门出的是清单**：正文读走 `POST /run` 调 `skill.read`（skills 件登记的
  *   命令）；skills 件不在时门照开，清单那格是空表
  * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
  *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`）；
  *   其它 home 缺省系统随机口
- * - 鉴权见 `auth.ts`（继承 mcp 的纪律）。token 落 `ctx.gwbData` 的 `token` 文档，并
- *   **打进日志**——这一版没有界面，日志是它唯一的示人出口（另一条是 `http.info`）
  * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
  *   而下游要的是「说出 home 名就连得上它」。只补自己那格（`command-http`），内核那几格原样保留
  */
@@ -40,7 +38,7 @@ import { buildSurface, type SkillsSlot, type SurfaceQuery } from './surface.js'
 export const name = 'gwb-command-http'
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议。settings 是硬依赖：端口从它来 */
-export const inject = ['gwbCommands', 'gwbData', 'gwbSettings']
+export const inject = ['gwbCommands', 'gwbSettings']
 
 /** 端口那一项设置的 key。改了要重启这个 home 才生效——口是 apply 时开的 */
 const PORT_KEY = 'port'
@@ -128,57 +126,6 @@ export function apply(ctx: GwbContext): void {
   })
 
   /**
-   * 取令牌的那次尝试，**存的是 promise 而不是值**：首启那次要落一份盘（异步），
-   * 而路由一挂上去随时可能进请求。各处 await 同一个 promise，先到的请求等的就是那
-   * 一次首启，不会两个请求各生成一个互相盖掉。
-   *
-   * 失败之后把它置空，下一次请求重来一遍——盘一时写不进去（文件被占、权限）不该把
-   * 这条口永久钉死在 503 上。失败原因另存一份给 `http.info`：**503 的 body 保持不透明**
-   * （未鉴权的请求不该从错误文本里读出这台机器的情况），而问 http.info 的人本来就在本机
-   */
-  let tokenAttempt: Promise<string | null> | undefined
-  let tokenError: string | undefined
-
-  function ensureToken(): Promise<string | null> {
-    tokenAttempt ??= loadOrCreateToken(ctx.gwbData).then(
-      (token) => {
-        tokenError = undefined
-        return token
-      },
-      (err: unknown) => {
-        tokenError = String(err)
-        log.error(`令牌读写失败，这条口暂回 503（下次请求会再试一遍）：${tokenError}`)
-        tokenAttempt = undefined
-        return null
-      },
-    )
-    return tokenAttempt
-  }
-
-  /**
-   * 这道口的前两道门：令牌拿不到 503、鉴权不过 401，两段之后才轮到路由（方法与路径
-   * 各路由自己判 405）。**「没给」与「给错」逐字相同**——拒绝面一旦有差别，就是给外面
-   * 一个试探面。回 true 才许往下走；回 false 时应答已经写完
-   */
-  async function guard(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
-    const token = await ensureToken()
-    if (token === null) {
-      // body 不带原因：真原因经 http.info 与日志给人
-      log.info('拒绝了一条请求：token 拿不到（503，原因见上面的错）')
-      sendJson(res, 503, { error: 'token unavailable' })
-      return false
-    }
-    // 鉴权最先做，任何分支都不得在这之前泄露注册表信息
-    if (!bearerMatches(req.headers.authorization, token)) {
-      // 日志只说「没过」，不说带的是什么——bearer 值进了日志跟写在门上没区别
-      log.warn('拒绝了一条请求：鉴权没过（401）')
-      sendJson(res, 401, { error: 'unauthorized' })
-      return false
-    }
-    return true
-  }
-
-  /**
    * 执行口：agent 的调用一律留痕。命令自身失败（不存在、参数不对）不算门的错误——
    * 回 `{"ok":false,…}` 的 JSON、HTTP 200，agent 读得到原因；只有命令**抛出去**才落 500。
    * 写成箭头函数不是风格——`function` 声明会 hoist，TS 认为它可能在上面那句
@@ -249,7 +196,6 @@ export function apply(ctx: GwbContext): void {
   })
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (!(await guard(req, res))) return
     const url = new URL(req.url ?? '/', 'http://127.0.0.1')
     const method = req.method ?? ''
     if (url.pathname === '/surface') {
@@ -317,10 +263,7 @@ export function apply(ctx: GwbContext): void {
 
   ready.then(
     async (p) => {
-      const token = await ensureToken()
-      // 这一版没有界面：token 的唯一出口就是这两行日志与 http.info
-      log.info(`命令 HTTP 口就绪（${home} home）：${endpointUrl(p)}`)
-      log.info(`token（仅本机使用，勿外传）：${token ?? '取不到，见上面的错'}`)
+      log.info(`命令 HTTP 口就绪（${home} home）：${endpointUrl(p)}——无鉴权，绑 127.0.0.1 本机自用`)
       /**
        * 把这道口落进 home 的运行记录，**只在绑成了这一刻**：下游要的是「说出 home 名就
        * 连得上它」，而这个数运行时才定。没绑成不写——那时这个 home 上根本没有这道门，
@@ -350,8 +293,7 @@ export function apply(ctx: GwbContext): void {
     cli.register(
       {
         name: 'command-http.info',
-        description:
-          '命令 HTTP 口的连接信息（url + token + 两条 curl 例句，仅本机使用，勿外传）。无参数',
+        description: '命令 HTTP 口的连接信息（url + 两条 curl 例句，无鉴权本机自用）。无参数',
         plugin: name,
       },
       async () => {
@@ -366,22 +308,15 @@ export function apply(ctx: GwbContext): void {
         if (live === null) {
           return { ok: false, error: `命令口没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
         }
-        const token = await ensureToken()
-        if (token === null) {
-          // 带上真原因：问这条的人本来就在本机，而「令牌不可用」五个字自己查不出盘为什么写不进去
-          return { ok: false, error: `token 不可用：${tokenError ?? '原因未记下（上一次尝试还没结束？）'}` }
-        }
         const url = endpointUrl(live)
-        const auth = `Authorization: Bearer ${token}`
         return {
           ok: true,
           data: {
             url,
             port: live,
-            token,
             example: {
-              surface: `curl -s ${url}/surface -H "${auth}"`,
-              run: `curl -s -X POST ${url}/run -H "${auth}" -d '{"command":"skill.list"}'`,
+              surface: `curl -s ${url}/surface`,
+              run: `curl -s -X POST ${url}/run -d '{"command":"skill.list"}'`,
             },
           },
         }
