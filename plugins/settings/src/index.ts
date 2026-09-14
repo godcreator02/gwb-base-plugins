@@ -1,9 +1,9 @@
 import { Service } from 'cordis'
-import { isRecord, requireKernel, type GwbContext } from '@godcreator02/gwb-plugin-api'
+import { isRecord, requireKernel, type GwbContext } from '@team/gwb-plugin-api'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@godcreator02/gwb-commands'
+import type {} from '@team/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
-import type {} from '@godcreator02/gwb-skills'
+import type {} from '@team/gwb-skills'
 import { homeFile, looksRandom } from './paths.js'
 import {
   createRegistry,
@@ -35,7 +35,7 @@ export { SHARED_SECTION } from './paths.js'
 
 const NAME = 'gwb-settings'
 /** 登记命令时的归属：包名——agent 侧的操作键认它，不认短名 */
-const PKG = '@godcreator02/gwb-settings'
+const PKG = '@team/gwb-settings'
 
 /** 三条命令。注册与调用两处同吃这几个常量 */
 export const ALL_COMMAND = 'settings.all'
