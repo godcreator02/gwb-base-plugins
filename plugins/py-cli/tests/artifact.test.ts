@@ -60,7 +60,7 @@ describe('这个件只做运行器', () => {
   }
 
   it('自己不带 python 项目——py/ 与 venv 都住在消费方件的包根下', () => {
-    expect(manifest.files).toEqual(['dist', 'src', 'skills'])
+    expect(manifest.files).toEqual(['catalog.json', 'dist', 'skills', 'src'])
     expect(fs.existsSync(path.resolve(here, '../py'))).toBe(false)
   })
 

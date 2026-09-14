@@ -4,13 +4,15 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * gwb-data 的身份卡守卫：catalog.json 跟源码对不上当场红。
- * 钉四样：schema 字段不多不少；plugin 名 ═ export const name；
- * depends.hard ═ 源码 inject（export const / static inject 两种写法都认）；
+ * 身份卡守卫：catalog.json 跟包对不上当场红。
+ * 锚点是 package.json 的 name（去 scope）——apply 型与 Service 型两种件都靠它，
+ * 且必随包发。钉四样：schema 字段不多不少；plugin 名 ═ 包名；
+ * depends.hard ═ 源码 inject（export const / static inject 都认）；
  * depends.local ═ 所有 .inject([...]) 的并集。summary 与 shape 文案靠 review。
  */
 const here = path.dirname(fileURLToPath(import.meta.url))
 const catalog = JSON.parse(fs.readFileSync(path.resolve(here, '../catalog.json'), 'utf8')) as Record<string, unknown>
+const manifest = JSON.parse(fs.readFileSync(path.resolve(here, '../package.json'), 'utf8')) as { name: string }
 
 function srcText(): string {
   const dir = path.resolve(here, '../src')
@@ -43,9 +45,8 @@ describe('catalog.json：身份卡不撒谎', () => {
     expect(Object.keys(depends).sort()).toEqual(['hard', 'local'])
   })
 
-  it('plugin 名 ═ export const name', () => {
-    const m = /export const name = '([^']+)'/.exec(source)
-    expect(catalog['plugin']).toBe(m?.[1])
+  it('plugin 名 ═ 包名去 scope', () => {
+    expect(catalog['plugin']).toBe(manifest.name.replace(/^@godcreator02\//, ''))
   })
 
   it('depends.hard ═ 源码 inject（双向整组）', () => {
@@ -56,7 +57,7 @@ describe('catalog.json：身份卡不撒谎', () => {
     expect((catalog['depends'] as Record<string, string[]>)['local']).toEqual(localsOf(source))
   })
 
-  it('provides 的服务名一律 gwb 开头小驼峰', () => {
+  it('provides 的服务名一律 gwb 开头小驼峰（或 gwb.shared）', () => {
     for (const p of catalog['provides'] as Array<{ service: string }>) {
       expect(p.service).toMatch(/^gwb[A-Z][A-Za-z]*$|^gwb\.shared$/)
     }
