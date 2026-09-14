@@ -27,7 +27,7 @@ export type ParsedSearch = SearchRow[] | undefined
  * 那是「以 gwb- 开头的都列进来」的直接后果，拍板记在件仓文档站的 decisions。
  */
 export function isGwbLine(pkg: string): boolean {
-  return pkg.startsWith('@godcreator02/gwb-')
+  return pkg.startsWith('@team/gwb-')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
