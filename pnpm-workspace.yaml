@@ -2,9 +2,8 @@ packages:
   - plugins/*
   # 共享包：不是 cordis 件，是件的依赖（运行时环境、设计令牌），跟件一起装进 home
   - packages/*
-  # 文档站：自己的依赖树，不进根 check。
-  # 【临时】迁个人源窗口期先摘出（docs-site 的 docfirst 依赖跨仓循环），发完包还原此行
-  # - docs-site
+  # 文档站：自己的依赖树，不进根 check
+  - docs-site
 
 allowBuilds:
   # @tailwindcss/cli 拖来的，只在 `tailwindcss --watch` 那条路上用得着；件的构建是一次性的，
