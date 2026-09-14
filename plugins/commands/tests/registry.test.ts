@@ -60,7 +60,7 @@ describe('createRegistry', () => {
     expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('gwb-old'))
     expect(cli.list()).toHaveLength(1)
     log.warn.mockClear()
-    cli.register({ name: 'c.d', plugin: '@godcreator02/gwb-new' }, noop)
+    cli.register({ name: 'c.d', plugin: '@team/gwb-new' }, noop)
     expect(log.warn).not.toHaveBeenCalled()
   })
 
