@@ -12,9 +12,9 @@ allowBuilds:
   esbuild: true
 
 minimumReleaseAgeExclude:
-  - '@godcreator02/gwb-plugin-api@0.0.1 || 0.0.2 || 0.0.3 || 0.1.0'
-  - '@godcreator02/gwb-cli@0.0.4'
-  - '@godcreator02/gwb-commands@0.0.1'
+  - '@team/gwb-plugin-api@0.0.1 || 0.0.2 || 0.0.3 || 0.1.0'
+  - '@team/gwb-cli@0.0.4'
+  - '@team/gwb-commands@0.0.1'
   - lucide-react@1.43.0
-  - '@godcreator02/docfirst-trajectory@0.1.0'
-  - '@godcreator02/docfirst-workflow@0.2.0'
+  - '@team/docfirst-trajectory@0.1.0'
+  - '@team/docfirst-workflow@0.2.0'
