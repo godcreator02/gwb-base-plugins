@@ -1,8 +1,8 @@
 {
-  "name": "@team/gwb-commands",
+  "name": "@godcreator/gwb-commands",
   "version": "0.4.0",
   "author": {"name": "godcreator"},
-  "//name": "改名之前叫 @team/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
+  "//name": "改名之前叫 @godcreator/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
   "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.4：description 与 usage 分家——description 一句话进 index（与 skill 的 description 同义），usage 装参数形状与行为注意（search 命中行带）；plugin 改口包名（@scope/pkg），短名 warn 不拦（判据见轨迹卡「三枚面」）",
   "type": "module",
   "main": "dist/index.js",
@@ -28,11 +28,11 @@
   },
   "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCommands.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev",
   "peerDependencies": {
-    "@team/gwb-plugin-api": ">=0.1.0"
+    "@godcreator/gwb-plugin-api": ">=0.1.0"
   },
   "devDependencies": {
-    "@team/gwb-plugin-api": "0.1.0",
-    "@team/gwb-skills": "workspace:*",
+    "@godcreator/gwb-plugin-api": "0.1.0",
+    "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   }
