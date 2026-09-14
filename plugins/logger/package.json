@@ -1,10 +1,10 @@
 {
-  "name": "@godcreator02/gwb-logger",
+  "name": "@team/gwb-logger",
   "version": "0.4.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "日志件（core）：挂第二个 cordis exporter 收全量、自己缓冲两千条、历史段从 cordis 自带 buffer 补、实时经内核事件口推给页面；agent 经 logger.backlog / logger.where 查。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.3 起劈 core：inject 不再赖 gwbShell，无壳 home 里件挂得上、命令在；窗格（UI 面板）移住 @godcreator02/gwb-baseui，装它找回。0.2 那些窗格侧的故事（Tailwind 前缀围栏、Select 浮层户口）随浏览器半一并搬了过去。0.3.1 补挂薄服务 gwbLogger（面刻意留空）——gwb-baseui 的日志窗格按服务名嵌套注入，没有它那格永远开不出来。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
+  "description": "日志件（core）：挂第二个 cordis exporter 收全量、自己缓冲两千条、历史段从 cordis 自带 buffer 补、实时经内核事件口推给页面；agent 经 logger.backlog / logger.where 查。0.1 起对应单进程内核，日志管道整块从内核搬进来；0.3 起劈 core：inject 不再赖 gwbShell，无壳 home 里件挂得上、命令在；窗格（UI 面板）移住 @team/gwb-baseui，装它找回。0.2 那些窗格侧的故事（Tailwind 前缀围栏、Select 浮层户口）随浏览器半一并搬了过去。0.3.1 补挂薄服务 gwbLogger（面刻意留空）——gwb-baseui 的日志窗格按服务名嵌套注入，没有它那格永远开不出来。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,13 +31,13 @@
   "//deps": "词汇表包是**运行时真 import**（requireKernel）；commands 一行值都没 import，但 inject 它是运行期硬依赖——home 里没有它这个件永远挂不上，且它的 `declare module 'cordis'` 给 ctx 加上 gwbCommands 面。cordis 0.3.1 起也是运行时真 import（薄服务 extends Service，且必须是宿主那一份），写 peer",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator02/gwb-commands": ">=0.0.1",
-    "@godcreator02/gwb-plugin-api": ">=0.1.0",
+    "@team/gwb-commands": ">=0.0.1",
+    "@team/gwb-plugin-api": ">=0.1.0",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
-    "@godcreator02/gwb-commands": "workspace:*",
-    "@godcreator02/gwb-plugin-api": "0.1.0",
+    "@team/gwb-commands": "workspace:*",
+    "@team/gwb-plugin-api": "0.1.0",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
