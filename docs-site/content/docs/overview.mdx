@@ -12,16 +12,16 @@ docfirst: none
 
 | 插件 | 包名 | 服务 | 干什么 |
 | --- | --- | --- | --- |
-| commands | `@team/gwb-commands` | `ctx.gwbCommands` | 命令总线 |
-| data | `@team/gwb-data` | `ctx.gwbData` | 插件的数据落盘 |
-| logger | `@team/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
-| skills | `@team/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
-| command-http | `@team/gwb-command-http` | — | 命令的无状态 JSON 口，**搁置**（逃生门；入口由 mcp 复位接回） |
-| mcp | `@team/gwb-mcp` | — | MCP 门，**唯一的门**：工具面封顶 surface/run 两枚 |
-| node-cli | `@team/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
-| py-cli | `@team/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
-| settings | `@team/gwb-settings` | `ctx.gwbSettings` | 设置 |
-| plugin-manager | `@team/gwb-plugin-manager` | `ctx.gwbPluginManager` | 管包与条目 |
+| commands | `@godcreator/gwb-commands` | `ctx.gwbCommands` | 命令总线 |
+| data | `@godcreator/gwb-data` | `ctx.gwbData` | 插件的数据落盘 |
+| logger | `@godcreator/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
+| skills | `@godcreator/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
+| command-http | `@godcreator/gwb-command-http` | — | 命令的无状态 JSON 口，**搁置**（逃生门；入口由 mcp 复位接回） |
+| mcp | `@godcreator/gwb-mcp` | — | MCP 门，**唯一的门**：工具面封顶 surface/run 两枚 |
+| node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
+| py-cli | `@godcreator/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
+| settings | `@godcreator/gwb-settings` | `ctx.gwbSettings` | 设置 |
+| plugin-manager | `@godcreator/gwb-plugin-manager` | `ctx.gwbPluginManager` | 管包与条目 |
 
 三仓拆分后这个仓只剩**无头**插件：外壳与窗格的界面外观住 UI 平台仓
 （`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包）。验收位（hello 仓）
