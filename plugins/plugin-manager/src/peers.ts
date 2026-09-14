@@ -29,7 +29,7 @@ import { toShared } from './inventory.js'
 const HOST_PACKAGES: ReadonlySet<string> = new Set(['cordis'])
 
 /** 本生态自己的命名空间：件、契约包、共享包都在这里面，三者要分开对待 */
-const GWB_NAMESPACE = /^@godcreator02\/gwb-/
+const GWB_NAMESPACE = /^@team\/gwb-/
 
 /**
  * 一个 peer 是哪一种。**只对 `@team/gwb-*` 里的包问这个问题**，判据是清单里有没有
