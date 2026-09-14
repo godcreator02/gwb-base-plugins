@@ -7,16 +7,16 @@ gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物�
 
 | 插件             | 包名                                 | 服务                                       |
 | -------------- | ---------------------------------- | ---------------------------------------- |
-| commands       | `@godcreator02/gwb-commands`       | `ctx.gwbCommands`                        |
-| data           | `@godcreator02/gwb-data`           | `ctx.gwbData`                            |
-| settings       | `@godcreator02/gwb-settings`       | `ctx.gwbSettings`                        |
-| command-http   | `@godcreator02/gwb-command-http`   | —（搁置，逃生门；入口由 mcp 复位接回）                   |
-| mcp            | `@godcreator02/gwb-mcp`            | —（MCP 门，唯一的门——工具面封顶 index/search/run 三枚） |
-| skills         | `@godcreator02/gwb-skills`         | `ctx.gwbSkills`                          |
-| node-cli       | `@godcreator02/gwb-node-cli`       | `ctx.gwbNodeCli`                         |
-| py-cli         | `@godcreator02/gwb-py-cli`         | `ctx.gwbPyCli`                           |
-| logger         | `@godcreator02/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）                 |
-| plugin-manager | `@godcreator02/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升）             |
+| commands       | `@team/gwb-commands`       | `ctx.gwbCommands`                        |
+| data           | `@team/gwb-data`           | `ctx.gwbData`                            |
+| settings       | `@team/gwb-settings`       | `ctx.gwbSettings`                        |
+| command-http   | `@team/gwb-command-http`   | —（搁置，逃生门；入口由 mcp 复位接回）                   |
+| mcp            | `@team/gwb-mcp`            | —（MCP 门，唯一的门——工具面封顶 index/search/run 三枚） |
+| skills         | `@team/gwb-skills`         | `ctx.gwbSkills`                          |
+| node-cli       | `@team/gwb-node-cli`       | `ctx.gwbNodeCli`                         |
+| py-cli         | `@team/gwb-py-cli`         | `ctx.gwbPyCli`                           |
+| logger         | `@team/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）                 |
+| plugin-manager | `@team/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升）             |
 
 **各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
 
@@ -33,13 +33,13 @@ pnpm doc            # docfirst check：钉住的代码变了会报黄
 
 ```powershell
 cd plugins/commands
-pnpm publish --registry https://npm.tianshen02.online:28377/ --no-git-checks
-# 然后在 home 目录 pnpm add @godcreator02/gwb-commands@<版本>，改 cordis.yml 加条目
+pnpm publish --registry https://git.tianshen02.online:28377/api/packages/team/npm/ --no-git-checks
+# 然后在 home 目录 pnpm add @team/gwb-commands@<版本>，改 cordis.yml 加条目
 ```
 
 ## 两条命名规矩
 
-**包名 `@godcreator02/gwb-<插件名>`**，加前缀跟已废弃的那批错开。
+**包名 `@team/gwb-<插件名>`**，加前缀跟已废弃的那批错开。
 **服务名一律 `gwb` 开头小驼峰**，默认跟插件名对应；cordis 官方插件的服务照它自己的。
 
 ## 文档
