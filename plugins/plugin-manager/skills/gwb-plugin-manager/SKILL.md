@@ -19,7 +19,7 @@ description: 要装插件、更新插件、查 registry 上有什么可装、启
 
 ## 装：plugin-manager.install
 
-`{ "pkg": "@godcreator02/gwb-xxx" }`（可选 `spec` 指定版本）。它做三件事：pnpm add 进
+`{ "pkg": "@team/gwb-xxx" }`（可选 `spec` 指定版本）。它做三件事：pnpm add 进
 home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动加一条条目（默认启用）**，
 回执里带新条目的 `entryId`。
 
@@ -67,7 +67,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 
 ## 升：plugin-manager.update（跟 install 差一条：不加条目）
 
-`{ "pkg": "@godcreator02/gwb-xxx" }` 把**已装**的包升到最新。先 `plugin-manager.outdated` 查谁
+`{ "pkg": "@team/gwb-xxx" }` 把**已装**的包升到最新。先 `plugin-manager.outdated` 查谁
 有新版本（`{ "pkg": ... }` 不用传，直接调），回 `包 → { current, latest }` 的表。
 
 - 它跑 `pnpm add <pkg>@latest`，**不建条目**——条目引的是包名，包换版本条目原样有效。
@@ -78,7 +78,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 
 ## 一键热升：plugin-manager.update-all（发完新版本就调它，不重启）
 
-不带参数直接调（或 `{ "only": ["@godcreator02/gwb-xxx"] }` 只升点名的）。它一条命令做完
+不带参数直接调（或 `{ "only": ["@team/gwb-xxx"] }` 只升点名的）。它一条命令做完
 三件事：`plugin-manager.outdated` 拿清单 → **一趟** `pnpm add` 把全部过期包升到清单上的精确版本 →
 升了的每个包的**每条条目**停用再启用（loader 重新 import，跑的就是新版本；本来就停用的
 保持停用）→ `shell.reload` 整页重载界面。
