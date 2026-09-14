@@ -8,36 +8,41 @@ docfirst: none
 
 把 [`ctx.gwbCommands`](/docs/commands) 那份命令注册表开成一个**本机无状态 JSON 接口**。
 2026-09-13 接 mcp 插件的班（mcp 搁置、default 卸载，判据见轨迹卡「HTTP 门接班」）——端口
-策略、token 鉴权、runtime.json 那一项，三样纪律原样继承，信道从会话态的 MCP 换成无会话的
-裸 HTTP。同日正名：`http` 是拿协议当名字，按 node-cli / py-cli 那条「对象-载体」语法改成
-**命令的 HTTP 口**（更名卡见轨迹区）。
+策略与 runtime.json 那一项两样纪律原样继承，信道从会话态的 MCP 换成无会话的裸 HTTP；
+token 鉴权没跟过来（0.2 摘除，判据见下文「不设鉴权」）。同日正名：`http` 是拿协议当名字，
+按 node-cli / py-cli 那条「对象-载体」语法改成**命令的 HTTP 口**（更名卡见轨迹区）。
 
 包名 `@godcreator02/gwb-command-http`，无界面、**零运行时依赖**（mcp 那串 SDK 解包
-4.3MB，随 mcp 搁置退役）。`inject: ['gwbCommands', 'gwbData', 'gwbSettings']`——settings
-是硬依赖，端口从它来。
+4.3MB，随 mcp 搁置退役）。`inject: ['gwbCommands', 'gwbSettings']`——settings 是硬依赖，
+端口从它来；data 件 0.2 起退役（token 落盘是它唯一的用途）。
 
 ## 怎么连
 
-起来之后日志里有两行：
+起来之后日志里有一行：
 
 ```
-[I] gwb-command-http 命令 HTTP 口就绪（default home）：http://127.0.0.1:2870
-[I] gwb-command-http token（仅本机使用，勿外传）：<43 个字符>
+[I] gwb-command-http 命令 HTTP 口就绪（default home）：http://127.0.0.1:2870——无鉴权，绑 127.0.0.1 本机自用
 ```
 
-token 落 `<home>/data/command-http/token.json`（数据目录按条目 id 的末段分家），重启沿用。
-另一条出口是命令 `command-http.info`——url + token + 两条 curl 例句一起回。日常就两条路：
+另一条出口是命令 `command-http.info`——url + 两条 curl 例句一起回。日常就两条路：
 
 ```
-curl -s http://127.0.0.1:2870/surface -H "Authorization: Bearer <token>"
-curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d '{"command":"skill.list"}'
+curl -s http://127.0.0.1:2870/surface
+curl -s -X POST http://127.0.0.1:2870/run -d '{"command":"skill.list"}'
 ```
 
 台没起时 curl 直接 connection refused，一眼见骨——把台起起来再调，没有重连这个概念。
 
+## 不设鉴权
+
+mcp 时代那层 Bearer token（0.1）随门换代摘除。判据三条：**口只绑 127.0.0.1**、服务本机，
+本机进程本就同权，token 挡不住任何本机上的东西；**token 跟着内核重启换新**，agent 侧的
+配置变成一桩要反复伺候的差事——换了门当天就两次逼着人翻日志捞 token；`command-http.info`
+与日志里也不再示 token。旧 home 数据目录里遗留的 `token.json` 不再读、不再写，留着无害。
+
 ## 两条路由
 
-{/* ref file="../plugins/command-http/src/index.ts" lines="251-284" */}
+{/* ref file="../plugins/command-http/src/index.ts" lines="198-230" */}
 
 **GET /surface 现拼**：命令注册表 + 说明书清单 + 自报 home 名 + instructions（入口上的
 纪律）一条回执全带——它是 agent 的发现面，热挂上来的插件下一次 GET 就在。**POST /run
@@ -65,11 +70,8 @@ curl -s -X POST http://127.0.0.1:2870/run -H "Authorization: Bearer <token>" -d 
 **下一个请求自动就好**——重发即可。这正是接班的理由：mcp 那条会话态信道断一次要人敲
 `/mcp`，而这台工作台的插件以分钟级热重挂为节拍，会话的寿命跟不上插件的节拍。
 
-{/* ref file="../plugins/command-http/src/index.ts" lines="157-185" */}
-
-三段守卫与 mcp 同款：token 拿不到 503、鉴权不过 401（「没给」与「给错」逐字相同——拒绝面
-一旦有差别就是给外面一个试探面）、方法不对 405——方法与路径的判断在各路由手里，就是
-上面那段 `handle`。
+门上只剩方法不对 405 一道拦法，方法与路径的判断在各路由手里——就是上面那段 `handle`；
+401 / 503 两段守卫是 token 时代的，随鉴权一起摘了。
 
 ## default 的端口是契约，不是首选
 
