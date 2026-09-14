@@ -19,7 +19,7 @@ const built = fs.existsSync(distDir)
 if (!built) console.warn('[gwb-mcp] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
 
 /** 精确匹配的那两个 */
-const ALLOWED_BARE = new Set(['@godcreator02/gwb-plugin-api', 'zod'])
+const ALLOWED_BARE = new Set(['@team/gwb-plugin-api', 'zod'])
 /** SDK 走子路径导入（`server/mcp.js` 之类），按前缀放行 */
 const ALLOWED_PREFIX = '@modelcontextprotocol/sdk/'
 
