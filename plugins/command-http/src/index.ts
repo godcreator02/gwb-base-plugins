@@ -120,6 +120,9 @@ export function apply(ctx: GwbContext): void {
   let skills: SkillsSlot | undefined
   ctx.inject(['gwbSkills'], (scoped) => {
     skills = scoped.gwbSkills
+    // 门自己也带一份说明书（skills/ 目录得进 package.json 的 files）。register 回的
+    // 注销函数交给 effect：skills 件停了/卸了，说明书跟着摘
+    scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
     scoped.effect(() => () => {
       skills = undefined
     })

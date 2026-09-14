@@ -1,0 +1,21 @@
+# gwb-command-http
+
+**定位**：命令的无状态本机 JSON 门——GET /surface 现扫命令与说明书清单（?plugin/?prefix/?q/?slim 过滤），POST /run 按名调命令；2026-09-13 接 mcp 的班（mcp 搁置），口只绑 127.0.0.1 本机自用，default 认死 2870。
+
+## 提供
+
+无服务——窗格与命令经总线直接面客（或门/皮就是产品）。
+
+## 依赖
+
+<!-- 来源 ../plugins/command-http/src/index.ts:41-41 · 未确认 -->
+
+```ts
+export const inject = ['gwbCommands', 'gwbSettings']
+```
+
+`gwbCommands`（硬依赖，inject）、`gwbSettings`（硬依赖，inject）、`gwbSkills`（局部注入）
+
+## 命令
+
+命令清单不存卡——**现扫 `/surface`**（`?plugin=gwb-command-http` 取这一组的形状）。

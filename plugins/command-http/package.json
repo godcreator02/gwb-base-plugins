@@ -1,6 +1,6 @@
 {
   "name": "@godcreator02/gwb-command-http",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "命令 HTTP 口（正名自一天的 gwb-http）：无状态本机 JSON 接口——GET /surface 现拼命令与说明书清单（支持 ?plugin / ?prefix / ?q / ?slim 过滤），POST /run {\"command\",\"args\"} 按名调命令；无鉴权（只绑 127.0.0.1 本机自用，0.2 起 mcp 时代那层 Bearer token 摘了，gwbData 依赖随之退役）；没有会话，本件热重挂或工作台重启后下一个请求自动恢复。2026-09-13 接 mcp 件的班（mcp 搁置，default 已卸载）",
   "type": "module",
   "main": "dist/index.js",
@@ -13,9 +13,10 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.json",
+    "catalog.md",
     "dist",
     "instructions.md",
+    "skills",
     "src"
   ],
   "scripts": {
