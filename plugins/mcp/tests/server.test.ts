@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { describe, expect, it } from 'vitest'
-import { honestListChanged, registerTools, type ToolHandlers } from '../src/index.js'
+import { registerTools, type ToolHandlers } from '../src/index.js'
 import { loadInstructions } from '../src/inventory.js'
 import { textResult } from '../src/tools.js'
 
@@ -43,7 +43,6 @@ async function connect(handlers: ToolHandlers): Promise<{ client: Client; server
     { instructions: loadInstructions(), capabilities: { tools: { listChanged: false } } },
   )
   registerTools(server, handlers)
-  honestListChanged(server)
   const client = new Client({ name: 't', version: '0' })
   const [a, b] = InMemoryTransport.createLinkedPair()
   await Promise.all([server.connect(a), client.connect(b)])
@@ -58,11 +57,6 @@ describe('工具面封顶', () => {
     expect(listed.tools).toHaveLength(3)
   })
 
-  it('能力位是实话：initialize 回执里 listChanged 为 false——无状态口发不出那个通知', async () => {
-    // SDK 的 McpServer 注册工具时硬编码 true；不拨正的话这条就是红的
-    const { client } = await connect(spies())
-    expect(client.getServerCapabilities()?.tools?.listChanged).toBe(false)
-  })
 
   it('index 无参数直达执行口', async () => {
     const h = spies()

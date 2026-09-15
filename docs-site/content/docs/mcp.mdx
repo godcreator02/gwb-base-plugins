@@ -122,16 +122,15 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 补自己那一项。三条边界：**没绑成不写**、**写失败不影响这道门**、**进程退了不删**
 ——验活是读的人的事（核 pid 还在、且那个 pid 真持着那个端口）。
 
-## 无状态：每请求一对，且如实不广告通知
+## 无状态：每请求一对
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="248-269" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
-发不出 list_changed 那类通知——工具面封顶之后这无所谓，但 SDK 缺省会把能力位谎报成
-`true`，等于邀请客户端等一个永不来的通知，所以显式关掉：
-
-{/* ref file="../plugins/mcp/src/index.ts" lines="225-233" */}
+发不出 list_changed 那类通知——工具面封顶之后这无所谓：清单里没有会变的东西，客户端
+等不到通知也不会错过任何事。（SDK 会把 `listChanged` 能力位广告成 `true`；「可能发通知」
+语义上不排斥「永远不发」，不值得为它掏私有格去改。）
 
 ## instructions：固定三十行内，每个 agent 连上来都要读
 

@@ -139,20 +139,6 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   )
 }
 
-/**
- * 把工具能力位拨成实话：SDK 的 McpServer 注册工具时硬编码广告 `listChanged: true`
- * （`setToolRequestHandlers` 里写死的），构造项盖不掉；这道门无状态、永远发不出那个
- * 通知。拨的是私有格，SDK 给正路的那天换掉；server.test 钉着 initialize 回执里它是 false
- */
-export function honestListChanged(server: McpServer): void {
-  const caps = (
-    server as unknown as {
-      server?: { _capabilities?: { tools?: { listChanged?: boolean } } }
-    }
-  ).server?._capabilities?.tools
-  if (caps !== undefined) caps.listChanged = false
-}
-
 export function apply(ctx: GwbContext): void {
   const log = ctx.logger(name)
   const version = ownVersion()
@@ -276,7 +262,6 @@ export function apply(ctx: GwbContext): void {
     }
     const mcp = buildServer()
     registerTools(mcp, { index: indexNow, search: searchNow, run: (command, args) => runCommand(command, args) })
-    honestListChanged(mcp)
     // 空对象 = 无状态：不给 sessionIdGenerator，每请求现造一对、随响应关闭
     const transport = new StreamableHTTPServerTransport({})
     res.on('close', () => {
