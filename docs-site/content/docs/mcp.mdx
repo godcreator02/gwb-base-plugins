@@ -25,7 +25,7 @@ agent → 工作台。
 
 另一条出口是命令 `mcp.info`——url 加一段可照抄进客户端配置的 `mcpServers` 片段：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="332-357" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="335-360" */}
 
 无鉴权：口只绑 127.0.0.1、服务本机，本机进程本就同权——command-http 0.2 摘
 token 时验过的判据，复位时原样继承。
@@ -95,11 +95,11 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 写死了 2870——它连上的是**那台测试 home**，命令面、数据、说明书全是另一套，两头都不
 报错。所以 default 那一支 `fallback` 是 `false`：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="293-302" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="296-305" */}
 
 **不开比开在别处强**——开在别处是静默连错，不开是当场看得见：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="320-330" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="323-333" */}
 
 其它 home 不吃这条：缺省系统随机口（没有哪个串是它的契约），显式给了端口才试那个、
 被占照旧退让并 warn。home 名从 `gwbKernel.dataDir` 的末段认。
@@ -124,7 +124,7 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="248-269" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="251-272" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。
