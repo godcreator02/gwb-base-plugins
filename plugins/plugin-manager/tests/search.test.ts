@@ -3,7 +3,8 @@ import { isGwbLine, parseSearch } from '../src/search'
 
 /**
  * 检索的解析与过滤。形状是实测钉的（2026-09-08，`/-/v1/search?text=@godcreator`）：
- * 顶层 `{ objects, total, time }`，每条 `object.package` 带 name/version/description。
+ * 顶层 `{ objects, total, time }`，每条 `object.package` 带 name/version/description；
+ * 2026-09-15 起 name 有两种形状——npmjs/verdaccio 合着 scope、gitea 拆开单放，见下组用例。
  * 这组测试同时钉住两件定位上的事：**这里不认识任何具体的 registry**（只有协议），
  * 过滤只认「scope + gwb- 前缀」这一个字面规则。
  */
@@ -85,5 +86,31 @@ describe('parseSearch', () => {
       ]),
     )
     expect(got).toEqual([{ pkg: '@godcreator/gwb-y', version: '0.1.4', description: '旧索引的一条' }])
+  })
+
+  it('gitea 形状：scope 拆开单放（name 只有 gwb-x），拼回全名——不拼的话 isGwbLine 整表落空', () => {
+    const got = parseSearch(
+      response([
+        entry('gwb-plugin-manager', { scope: '@godcreator', version: '0.3.0' }),
+        entry('gwb-bn-comment', { scope: '@godcreator', version: '0.3.1-dev.1' }),
+      ]),
+    )
+    expect(got).toEqual([
+      { pkg: '@godcreator/gwb-plugin-manager', version: '0.3.0', description: 'gwb-plugin-manager 的一句话' },
+      { pkg: '@godcreator/gwb-bn-comment', version: '0.3.1-dev.1', description: 'gwb-bn-comment 的一句话' },
+    ])
+    expect(got?.every((row) => isGwbLine(row.pkg))).toBe(true)
+  })
+
+  it('name 已带 @ 前缀时即使另有 scope 字段也不重复拼（混形状的源两边都对）', () => {
+    const got = parseSearch(
+      response([entry('@godcreator/gwb-z', { scope: '@godcreator' })]),
+    )
+    expect(got).toEqual([{ pkg: '@godcreator/gwb-z', version: '0.0.1', description: '@godcreator/gwb-z 的一句话' }])
+  })
+
+  it('scope 不是字符串就当没有，name 原样用（不猜）', () => {
+    const got = parseSearch(response([entry('gwb-thing', { scope: 7 })]))
+    expect(got).toEqual([{ pkg: 'gwb-thing', version: '0.0.1', description: 'gwb-thing 的一句话' }])
   })
 })

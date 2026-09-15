@@ -1,12 +1,12 @@
 ---
 name: gwb-plugin-manager
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后必须重新 GET /surface。
+description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
 ---
 
 # 插件怎么装、怎么管、怎么升
 
 这个 home 里装了哪些插件、各自挂没挂上、谁有新版本、源上还有什么可装，归 `gwb-plugin-manager`
-管。十二条命令，都走 POST /run。
+管。十二条命令，agent 经 MCP 门的 `run` 按名调。
 
 ## 先分清两层：包 与 条目
 
@@ -24,7 +24,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 回执里带新条目的 `entryId`。
 
 - 装不下来（pnpm 没成、包名不存在）回 `ok: false`，error 带着原因和 pnpm 输出的尾巴
-- **装完之后 GET /surface 一遍**——新插件的命令现在才出现在总线上
+- **装完之后调一遍门的 `index`**——新插件的命令现在才出现在地图上
 
 ### peer 那一步：谁装、谁跳过、谁没装上
 
@@ -86,7 +86,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 - 回执 `{ updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }`：
   `action` 是 remounted / skipped / deferred / failed，`state` 是重挂后 fiber 到哪一步（ACTIVE 才算真起来了）
 - **升到 `gwb-plugin-manager` 自己**（`selfDeferred: true`）：它那条条目在回执发出之后才重挂，别等它出现在 `entries` 里 remounted
-- **升到 `gwb-command-http` 自己**：这条命令的在途请求会断（门随插件重挂）。没有重连这个动作，下一发请求自动就好；之后 `plugin-manager.list` 核对版本与 active，再 GET /surface 一遍
+- **升到 `gwb-mcp` 门自己**：在途的 MCP 请求会断（门随插件重挂）。MCP 是会话态的，**要重连一次**，没有「下一发自动好」；重连后 `plugin-manager.list` 核对版本与 active，再调一遍 `index`
 - pnpm 没成回 `ok: false` 带尾巴，**一个包都没升、一条条目都没动**；`note` 里有话就读（全都最新、only 里点了名却不在清单里的、界面要手动刷新）
 
 ## 拆：remove-entry 与 uninstall 的分工
@@ -112,6 +112,6 @@ ASCII，给人看的名字走这里；空串是抹掉。纯粹是装饰，不影
 
 ## 一条顺序建议
 
-装插件 → list 一遍看 active → GET /surface 看新命令。**「装上了」和「挂上了」是两回事**，
+装插件 → list 一遍看 active → 调门的 `index` 看新命令。**「装上了」和「挂上了」是两回事**，
 挂载失败的插件在 `plugin-manager.list` 里看得出（条目在、active 假）。
 

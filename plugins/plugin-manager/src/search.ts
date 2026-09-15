@@ -7,6 +7,10 @@
  * 返回形状是实测钉的（2026-09-08，`text=@godcreator&size=100`）：顶层 `{ objects, total,
  * time }`，每条 `object.package` 里有 `name` / `version` / `description`。字段缺失的单条
  * 跳过，整份认不出回 undefined 让调用方给一句人话。
+ *
+ * **name 的两种形状**（2026-09-15 实测）：npmjs/verdaccio 把 scope 合在 name 里
+ * （`@godcreator/gwb-x`）；gitea（个人源）拆开单放——`package.scope` 是 `"@godcreator"`、
+ * `name` 只有 `gwb-x`。不归一的话 `isGwbLine` 整表落空，search 回空数组还不报错。
  */
 
 /** 检索出来的一条：包名 + registry 上的最新版与一句话 */
@@ -51,8 +55,11 @@ export function parseSearch(text: string): ParsedSearch {
   const out: SearchRow[] = []
   for (const item of raw['objects']) {
     if (!isRecord(item) || !isRecord(item['package'])) continue
-    const pkg = item['package']['name']
-    if (typeof pkg !== 'string' || pkg === '') continue
+    const rawName = item['package']['name']
+    if (typeof rawName !== 'string' || rawName === '') continue
+    // gitea 拆开单放的 scope 拼回全名；name 已带 @ 前缀的（npmjs/verdaccio 形状）原样用
+    const scope = item['package']['scope']
+    const pkg = typeof scope === 'string' && scope !== '' && !rawName.startsWith('@') ? `${scope}/${rawName}` : rawName
     const row: SearchRow = { pkg }
     const version = item['package']['version']
     const latest = isRecord(item['package']['dist-tags']) ? item['package']['dist-tags']['latest'] : undefined
