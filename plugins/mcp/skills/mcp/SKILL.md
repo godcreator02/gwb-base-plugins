@@ -1,6 +1,6 @@
 ---
 name: mcp
-description: 要连一台 gwb 工作台的 MCP 门、或工具面为什么只有 index/search/run 三枚、分不清「工具全灰」与 isError 回执是谁的错时读。连接片段、封顶判据与粒度、台没起怎么办。
+description: 要连一台 gwb 工作台的 MCP 门、或工具面为什么只有 index/search/run 三枚、分不清「工具全灰」与 isError 回执是谁的错时读。连接片段、封顶判据与粒度、命令行直调、台没起怎么办。
 ---
 
 # MCP 门：怎么连一台工作台
@@ -44,8 +44,24 @@ MCP 的工具清单是**连接时的快照**，而工作台的件以分钟级热
 - 全灰、调不通 = 台没起或没装门——先起台，再重连；MCP 没有「下一发请求自动好」
 - update-all 升到本件自己时在途回执丢、连接断——重连后用 `plugin-manager.list` 核对
 
+## 命令行直调
+
+随包发了一支零依赖单文件客户端 `bin/client.mjs`（node ≥18，连包都不用装——单文件复制走
+也能跑），总线命令 `mcp.client`，给脚本和无 MCP 客户端的环境一个正式入口：
+
+```
+node <包>/bin/client.mjs index                          # 拿地图
+node <包>/bin/client.mjs search '{"prefix":"skill."}'   # 找用法
+node <包>/bin/client.mjs run skill.read '{"name":"mcp"}'
+```
+
+门的地址 `--url` > 环境变量 `GWB_MCP_URL` > `http://127.0.0.1:2870/mcp`（隔离 home 的口看
+`devkit.home.list` 的 `mcp` 格）。它走的就是这扇门：握手按协议补全，回执约定一致（业务失败
+正文照印、退出码 1），输出 JSON 可进管道。测试它不需要 MCP 客户端——一支 node 就够。
+
 ## 逃生门
 
-前一门 command-http 已搁置（default 卸载、registry 留 0.2.2）：MCP 门坏到没救时，手工往
-home 装 `@godcreator/gwb-command-http`（cordis.yml 加条目 + pnpm add + 重启）就有一条
-无会话的 curl 道可走。判据见轨迹卡「MCP 复位」的代价段。
+前一门 command-http 已搁置（default 卸载、registry 留 0.2.2）：MCP 门坏到没救时，先试上面
+那支 `bin/client.mjs`——它只依赖门活着，不依赖任何 MCP 客户端；连它都不通（门本身没起或
+挂了），再手工往 home 装 `@godcreator/gwb-command-http`（cordis.yml 加条目 + pnpm add +
+重启）就有一条无会话的 curl 道可走。判据见轨迹卡「MCP 复位」的代价段。

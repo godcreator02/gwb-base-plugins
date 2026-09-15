@@ -1,6 +1,7 @@
 import http from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
@@ -10,6 +11,8 @@ import type {} from '@godcreator/gwb-commands'
 import type {} from '@godcreator/gwb-settings'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator/gwb-skills'
+// 只为激活 node-cli 件的 `declare module 'cordis'`——下面局部注入要用 gwbNodeCli 这个名字
+import type {} from '@godcreator/gwb-node-cli'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
 import {
   buildIndex,
@@ -50,6 +53,12 @@ import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type 
  */
 
 export const name = 'gwb-mcp'
+
+/**
+ * 那支命令行脸的身体（`bin/client.mjs`）。`../bin/` 两态都对：源码态本模块在 `src/`、
+ * 产物态在 `dist/`，都是包根下一层
+ */
+const CLIENT_ENTRY = fileURLToPath(new URL('../bin/client.mjs', import.meta.url))
 
 /** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议。settings 是硬依赖：端口从它来 */
 export const inject = ['gwbCommands', 'gwbSettings']
@@ -358,6 +367,22 @@ export function apply(ctx: GwbContext): void {
       },
     ),
   )
+
+  // ── 一条 node CLI ──────────────────────────────────────────────────────────
+
+  // CLI 形态的东西一律经 gwbNodeCli 登记，不做总线命令、不进程内调：登记的命令自动镜像
+  // 成总线命令，于是自动是 MCP 工具，回执自带 stdout 与退出码。**局部注入**：node-cli
+  // 件不在时这道门照开——命令行脸是甜点不是前提
+  ctx.inject(['gwbNodeCli'], (scoped) => {
+    scoped.gwbNodeCli.register({
+      name: 'mcp.client',
+      plugin: '@godcreator/gwb-mcp',
+      description: '在命令行直接调这扇门（零依赖单文件，node ≥18，连包都不用装）',
+      usage:
+        '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。门的地址 --url 或环境变量 GWB_MCP_URL，缺省 http://127.0.0.1:2870/mcp（default home 认死 2870，隔离 home 的口看 devkit.home.list 的 mcp 格）。业务失败正文照印、退出码 1',
+      entry: CLIENT_ENTRY,
+    })
+  })
 
   // 本件卸载时把 server 关干净
   ctx.effect(() => () => {
