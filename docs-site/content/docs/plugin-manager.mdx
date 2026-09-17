@@ -175,7 +175,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 执行：升级与重挂同一条命令，不留窗口
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="712-735" */}
+@@docfirst ref ../plugins/plugin-manager/src/index.ts:718-741 @@
 
 pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插件若读盘（惰性 import 一个子模块、
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
@@ -183,7 +183,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 一条条目的重挂是四步，不是两步：
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="992-1006" */}
+@@docfirst ref ../plugins/plugin-manager/src/remount.ts:46-60 @@
 
 **等旧的拆完再启用**这一步不能省：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
 **不等它**，而 Service 插件的 `provide` 是在卸载那趟里撤的。不等就启用，新 fiber 起来时旧服务
@@ -196,7 +196,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 自己最后，而且在回执之后
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="737-763" */}
+@@docfirst ref ../plugins/plugin-manager/src/index.ts:743-759 @@
 
 处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
 「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
@@ -210,7 +210,9 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="147-187" */}
+@@docfirst ref ../plugins/plugin-manager/src/index.ts:147-175 @@
+
+@@docfirst ref ../plugins/plugin-manager/src/remount.ts:20-31 @@
 
 每条条目的去向有四种：`remounted`（重 import 了新版本）、`skipped`（本来就停用，保持停用）、
 `deferred`（本插件自己那条）、`failed`（动树时抛了，`state` 里是那句错）。`state` 照 cordis
@@ -237,6 +239,34 @@ busy），与点「全部更新」先在窗格内列 `from → to` 让人看一�
 
 升到 mcp 自己时这条回执会丢——桥随插件重挂，连接断在半路——重连后 `plugin-manager.list` 核对
 版本与 active。升到 gwb-plugin-manager 自己时回执还在，只是自己那条 `deferred`。
+
+## 单条重挂：remount
+
+`plugin-manager.remount`，参数 `{ entryId }`（完整 entryId 或裸 id）。停用 → 等旧 fiber 拆完 →
+启用 → 等新 fiber 起完，**在一条命令里做完**，时序与一键热升重挂每条条目的是同一份。本来停用的
+条目，终态是启用。给 `devkit.dev` 这类「装了新号、要这条条目重 import」的调用方用。
+
+@@docfirst ref ../plugins/plugin-manager/src/index.ts:470-479 @@
+
+不拿 `disable` 与 `enable` 两条命令拼：目标是本插件自己时，`disable` 一回来本插件的命令就随 fiber
+撤了，第二条 `enable` 回「没有这条命令」，条目卡在停用态；目标是命令总线时，整张命令表随总线
+的 fiber 一起撤掉，第二条同样打不进来。重挂得由活得过这次重挂的代码一次做完：
+
+@@docfirst ref ../plugins/plugin-manager/src/remount.ts:5-15 @@
+
+@@docfirst ref ../plugins/plugin-manager/src/remount.ts:98-115 @@
+
+回执形状（成功时在 `data` 里）：
+
+- `{ id, action: 'remounted', state }`：这条命令里做完了，`state` 是重挂后的 fiber 状态——
+  **ACTIVE 才算挂上**，PENDING 是 inject 没满足、FAILED 是 `apply` 抛了（原因在日志里）。
+  目标是命令总线也走这一支：总线的 fiber 被拆时处理器那条 await 链只持条目树与 logger，
+  照样走完，回执经调用方手上那份总线引用交回
+- `{ id, action: 'deferred', state }`：目标是**本插件自己**。回执先发出，下一个宏任务才重挂，
+  `state` 是动手前的状态。重挂完没有第二份回执——之后用 `plugin-manager.list` 核对 `active`，
+  或看日志里「本件自己（…）重挂了：…」那一行
+- 动条目树时抛了：`{ ok: false, error: '条目 <id> 重挂没成：…', data: { id, action: 'failed', state: <那句错> } }`；
+  条目不在：`{ ok: false, error }`，跟 `enable` / `disable` 同一个长相
 
 ## 卸载：先摘条目后卸包
 

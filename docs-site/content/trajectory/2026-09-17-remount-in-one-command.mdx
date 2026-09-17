@@ -1,0 +1,48 @@
+---
+title: 条目重挂收成一条命令 plugin-manager.remount：由活得过重挂的代码一次做完
+born-at: 2026-09-17T16:20
+type: choice
+parent: [2026-09-13-base-plugins]
+label: remount
+domain: 件
+---
+
+## 背景
+
+`devkit.dev` 的第五步是经 CDP 分两次 IPC 调 `plugin-manager.disable` 再调 `plugin-manager.enable`。
+`disable` 是 `tree.update(id, { disabled: true })`，不等 fiber 拆完就回 ok。目标若是 plugin-manager
+自己，它的命令随 fiber 撤掉，第二条 `enable` 回「没有这条命令」，条目卡在停用态；目标若是命令总线
+gwb-commands，整张命令表随总线的 fiber 撤掉，结局一样。
+
+这件事在 [pnpm 12 那张卡](2026-09-17-pnpm12-native-launch.md) 的「路上撞的」里记过一次：当时的绕法是
+停掉隔离 home、手删 `cordis.yml` 里那行 `disabled: true`、重开。
+
+主会话给的判据原话：「重挂必须由活过重挂的代码一次做完」。
+
+## 结论与边界
+
+**plugin-manager 加一条 `plugin-manager.remount { entryId }`，停用 → 等旧 fiber 拆完 → 启用 → 等新 fiber
+起完，一条命令里做完。** 时序就是一键热升给每条条目用的那份：`remountEntry` 从 `index.ts` 挪进
+`src/remount.ts`，热升与 remount 共用，不另写。
+
+分三种目标：
+
+- **普通条目**：在处理器的 await 链里做完，回 `{ id, action: 'remounted', state }`，`state` 是重挂后的
+  fiber 状态
+- **命令总线**：同上，不推迟。那条 await 链只持条目树与早就攥在手里的 logger，不经 ctx、不经总线；
+  总线的 fiber 被拆不影响它往下走，回执经调用方手上那份旧总线的 `run` 交回。一键热升升到 commands
+  时本来就是在处理器里重挂它的，这条路径不是新的
+- **plugin-manager 自己**：照一键热升的做法，先回 `{ id, action: 'deferred', state }`（动手前的状态），
+  下一个宏任务再重挂自己；重挂完没有第二份回执，调用方之后用 `plugin-manager.list` 核对 `active`
+
+回执形状沿用热升里 `RemountedEntry` 那一格（类型随之挪到 `remount.ts`、从包入口照旧导出）。动条目树
+时抛了回 `ok: false` 带 `data.action: 'failed'`，条目不在回 `ok: false` 一句话，与 `enable` / `disable`
+同长相。本来停用的条目 remount 之后是启用的——「重挂」的终态就是挂着。
+
+`enable` / `disable` 两条保留，语义不变；服务面加一个方法 `remount(entryId)`，是加法。不做的：remount
+不整页重载（调用方自己决定）、不跳过停用条目、不处理分组条目里嵌着本件自己的情形。
+
+## 依据
+
+无物证目录；三例单测在 `plugins/plugin-manager/tests/remount.test.ts`（普通条目、本件自己推迟、
+命令总线停用时清空整张命令表而处理器照样做完），实机读数见本卡同一提交之后的隔离 home 验证。

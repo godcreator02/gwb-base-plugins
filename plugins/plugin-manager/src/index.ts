@@ -16,10 +16,12 @@ import { parseOutdated, type UpdateInfo } from './outdated.js'
 import { isGwbLine, parseSearch, type SearchRow } from './search.js'
 import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
-import { fiberStateOf, planUpdateAll, settleFiber, type PlannedEntry } from './update-all.js'
+import { fiberStateOf, planUpdateAll, type PlannedEntry } from './update-all.js'
+import { remountNow, remountOne, remountSelfLater, type RemountedEntry } from './remount.js'
 
 export type { EntrySnapshot, PluginEntryView, PluginPackageView } from './inventory.js'
 export type { PeerKind, PeerPlanItem } from './peers.js'
+export type { RemountedEntry } from './remount.js'
 
 /**
  * 管 home 里的**包**和 `cordis.yml` 里的**条目**。
@@ -56,9 +58,6 @@ export type { PeerKind, PeerPlanItem } from './peers.js'
  * 新包从 0.1.0 起；**操作面板住 `@godcreator/gwb-baseui`**。
  */
 
-/** 停用/启用之后等 fiber 把手头的事做完，最多等这么久。到点就走，读到什么状态报什么 */
-const SETTLE_MS = 5_000
-
 /** 外壳的整页重载命令。**按名探**，不 import 外壳的常量——那会把 shell 变成运行时依赖 */
 const SHELL_RELOAD_COMMAND = 'shell.reload'
 
@@ -82,6 +81,7 @@ export const ADD_ENTRY_COMMAND = 'plugin-manager.add-entry'
 export const REMOVE_ENTRY_COMMAND = 'plugin-manager.remove-entry'
 export const ENABLE_COMMAND = 'plugin-manager.enable'
 export const DISABLE_COMMAND = 'plugin-manager.disable'
+export const REMOUNT_COMMAND = 'plugin-manager.remount'
 export const SET_LABEL_COMMAND = 'plugin-manager.set-label'
 export const OUTDATED_COMMAND = 'plugin-manager.outdated'
 export const UPDATE_COMMAND = 'plugin-manager.update'
@@ -143,18 +143,6 @@ export interface UpdateResult {
   tail?: string
 }
 
-/** 一键热升里一条条目的去向 */
-export interface RemountedEntry {
-  /** 裸 id */
-  id: string
-  /**
-   * `remounted`：停用再启用，重 import 了新版本；`skipped`：本来就停用，保持停用；
-   * `deferred`：本件自己那条，回执发出之后才重挂；`failed`：动条目树时抛了，`state` 里是那句错
-   */
-  action: 'remounted' | 'skipped' | 'deferred' | 'failed'
-  /** 重挂之后 fiber 到哪一步（ACTIVE / PENDING / FAILED…）。skipped 是 disabled，deferred 是动手前的状态 */
-  state: string
-}
 
 /** 一键热升里升了的一个包 */
 export interface UpdatedPackage {
@@ -308,6 +296,13 @@ export interface GwbPluginManagerApi {
   removeEntry(entryId: string): void
   enable(entryId: string): Promise<void>
   disable(entryId: string): Promise<void>
+  /**
+   * 重挂一条条目：停用 → 等旧 fiber 拆完 → 启用 → 等新 fiber 起完，**一次做完**（本来停用的，
+   * 终态是启用）。回 `remounted` 带重挂后的状态；目标是**本件自己**时回 `deferred`（带动手前的
+   * 状态），重挂排到下一个宏任务——处理器里停用自己，回执就没了。目标是命令总线也在这一趟里
+   * 做完。条目不在当场抛；动条目树时抛了收成 `failed`
+   */
+  remount(entryId: string): Promise<RemountedEntry>
   /** 改显示名。给空串就是抹掉。没装数据件时回一句 `ok: false`，不崩 */
   setLabel(entryId: string, label: string): Promise<GwbResult>
 }
@@ -471,6 +466,17 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         await this.disable(text(asRecord(args), 'entryId'))
         return { ok: true }
       })
+
+      on(
+        REMOUNT_COMMAND,
+        '重挂一条条目：停用→等拆完→启用→等挂上，一次做完',
+        '参数 { entryId }（完整 entryId 或裸 id）。回执 { id, action, state }：action 是 remounted（这条命令里做完，state 是重挂后的 fiber 状态，ACTIVE 才算挂上）或 deferred（目标是本件自己：回执先发出、下一个宏任务才重挂，state 是动手前的状态，之后用 plugin-manager.list 核对 active）；动条目树时抛了回 ok: false，data 里 action 是 failed。本来停用的条目重挂后是启用的；重挂命令总线也在这条命令里做完',
+        async (args) => {
+          const result = await this.remount(text(asRecord(args), 'entryId'))
+          if (result.action === 'failed') return { ok: false, error: `条目 ${result.id} 重挂没成：${result.state}`, data: result }
+          return { ok: true, data: result }
+        },
+      )
 
       on(SET_LABEL_COMMAND, '改一条条目的显示名', '参数 { entryId, label }（label 给空串就是抹掉）', async (args) => {
         const raw = asRecord(args)
@@ -720,7 +726,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
           entries.push({ id: entry.id, action: 'deferred', state: fiberStateOf(this.tree.store[entry.id]) })
           continue
         }
-        entries.push(await this.remount(entry))
+        entries.push(await this.remountPlanned(entry))
       }
       updated.push({ pkg: pkg.pkg, from: pkg.from, to: pkg.to, entries })
     }
@@ -740,22 +746,12 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
      * 闭包**只持 tree、id、总线的引用与那只 logger**：本件这条 fiber 拆掉之后 ctx 上的
      * 东西一样都不能碰（取服务会「inactive context」）；`this` 上别的方法也不进来
      */
-    const tree = this.tree
     const id = deferred.id
     const log = this.log
-    setTimeout(() => {
-      void remountEntry(tree, id)
-        .then((state) => {
-          log.info(`本件自己（${id}）重挂了：${state}`)
-          return reloadVia(cli)
-        })
-        .then((reload) => {
-          if (reload.note !== undefined) log.warn(reload.note)
-        })
-        .catch((err: unknown) => {
-          log.warn(`本件自己（${id}）重挂没成：${String(err)}`)
-        })
-    }, 0)
+    remountSelfLater(this.tree, id, log, async () => {
+      const reload = await reloadVia(cli)
+      if (reload.note !== undefined) log.warn(reload.note)
+    })
     const canReload = hasCommand(cli, SHELL_RELOAD_COMMAND)
     if (!canReload) notes.push(`命令表里没有 ${SHELL_RELOAD_COMMAND}，界面要手动刷新`)
     this.info(`一键热升：${summary}；本件自己（${id}）回执之后重挂${canReload ? '，随后整页重载' : ''}`)
@@ -763,16 +759,14 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
   }
 
   /** 按计划重挂一条：本来就停用的跳过（保持停用），动树时抛了收成 failed */
-  private async remount(entry: PlannedEntry): Promise<RemountedEntry> {
+  private async remountPlanned(entry: PlannedEntry): Promise<RemountedEntry> {
     if (entry.disabled) return { id: entry.id, action: 'skipped', state: 'disabled' }
-    try {
-      const state = await remountEntry(this.tree, entry.id)
-      this.info(`条目 ${entry.id} 重挂了：${state}`)
-      return { id: entry.id, action: 'remounted', state }
-    } catch (err: unknown) {
-      this.warn(`条目 ${entry.id} 重挂没成：${String(err)}`)
-      return { id: entry.id, action: 'failed', state: String(err) }
-    }
+    return remountNow(this.tree, entry.id, this.log)
+  }
+
+  async remount(entryId: string): Promise<RemountedEntry> {
+    const id = this.locate(entryId)
+    return remountOne(this.tree, id, bareId(ownEntryId(this.own)), this.log)
   }
 
   /**
@@ -989,25 +983,6 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
   }
 }
 
-/**
- * 停用 → 等旧 fiber 拆完 → 启用（`_init` 重新 `tree.import`，拿到新版本）→ 等新 fiber 起完，
- * 回它的状态。**等旧的拆完再启用**：loader 的 `update({ disabled: true })` 调 `fiber.dispose()`
- * 不等它，而 Service 件的 provide 是在卸载那趟里撤的——不等就启用，新 fiber 起来时旧服务
- * 可能还没撤，cordis 会报「service has been registered」
- */
-async function remountEntry(tree: EntryTreeLike, id: string): Promise<string> {
-  const old = fiberOf(tree.store[id])
-  await tree.update(id, { disabled: true })
-  await settleFiber(old, SETTLE_MS)
-  await tree.update(id, { disabled: null })
-  const entry = tree.store[id]
-  await settleFiber(fiberOf(entry), SETTLE_MS)
-  return fiberStateOf(entry)
-}
-
-function fiberOf(entry: unknown): unknown {
-  return isRecord(entry) ? entry['fiber'] : undefined
-}
 
 function hasCommand(cli: GwbCommands | undefined, name: string): boolean {
   return cli !== undefined && cli.list().some((command) => command.name === name)

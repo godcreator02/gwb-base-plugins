@@ -1,12 +1,12 @@
 ---
 name: gwb-plugin-manager
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
+description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
 ---
 
 # 插件怎么装、怎么管、怎么升
 
 这个 home 里装了哪些插件、各自挂没挂上、谁有新版本、源上还有什么可装，归 `gwb-plugin-manager`
-管。十二条命令，agent 经 MCP 门的 `run` 按名调。
+管。十四条命令，agent 经 MCP 门的 `run` 按名调。
 
 ## 先分清两层：包 与 条目
 
@@ -104,6 +104,18 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 
 `{ "entryId": "..." }` 调 `plugin-manager.enable` / `plugin-manager.disable`。停用的条目下次加载不挂，
 热生效。entryId 给完整（`home:commands` 那种）或裸 id（`commands`）都认。
+
+## 重挂一条：plugin-manager.remount
+
+`{ "entryId": "..." }`。停用 → 等拆完 → 启用 → 等挂上，**一条命令做完**（本来停用的，终态是启用）。
+要一条条目重 import（装了新号之后）就调它，**别拿 disable + enable 两条拼**：目标是 plugin-manager
+自己或命令总线时，disable 一回来那张命令表就没了，enable 打不进去，条目卡在停用态。
+
+- 回执 `{ id, action, state }`。`remounted`：这条命令里做完，`state` 是重挂后的 fiber 状态，ACTIVE 才算挂上。
+  重挂命令总线（`commands`）也是这一支
+- `deferred`：目标是 **plugin-manager 自己**。回执先发出、下一个宏任务才重挂，`state` 是动手前的状态；
+  没有第二份回执，过一会儿 `plugin-manager.list` 核对 `active`
+- 动条目树时抛了回 `ok: false`，`data.action` 是 `failed`；条目不在回 `ok: false` 一句话
 
 ## 改显示名
 
