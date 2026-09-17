@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "author": {
     "name": "godcreator"
   },
-  "description": "MCP 门：把命令面开给 agent——工具面封顶 index / search / run 三枚（index＝完整地图各带一句话；search 命中行带 usage、裸调＝全貌；run 按名调一切），永不再增（加枚＝major、加可选参＝minor、改回执形状＝major）；无状态 streamableHTTP，无鉴权，default 认死 2870。0.5：surface 拆成 index/search、slim 死亡、files 不投影（附件目录归正文）、mcp.info 拆 description/usage（判据见轨迹卡「三枚面」）。0.5.1：撤销 honestListChanged 拨正（listChanged 语义不排斥永发不发，不为一个人没人读的位掏私有格）——与迁移重发的 0.5.0 同号异容划清。0.6.0：随包发一支零依赖单文件 CLI（bin/client.mjs，经 gwbNodeCli 登记成 mcp.client）——门的命令行脸，node ≥18 直跑，index/search/run 三动作，给脚本与无 MCP 客户端的环境一个正式入口",
+  "description": "MCP 门：把命令面开给 agent——工具面封顶 index / search / run 三枚（index＝完整地图各带一句话；search 命中行带 usage、裸调＝全貌；run 按名调一切），永不再增（加枚＝major、加可选参＝minor、改回执形状＝major）；无状态 streamableHTTP，无鉴权，default 认死 2870。0.5：surface 拆成 index/search、slim 死亡、files 不投影（附件目录归正文）、mcp.info 拆 description/usage（判据见轨迹卡「三枚面」）。0.5.1：撤销 honestListChanged 拨正（listChanged 语义不排斥永发不发，不为一个人没人读的位掏私有格）——与迁移重发的 0.5.0 同号异容划清。0.6.0：随包发一支零依赖单文件 CLI（bin/client.mjs，经 gwbNodeCli 登记成 mcp.client）——门的命令行脸，node ≥18 直跑，index/search/run 三动作，给脚本与无 MCP 客户端的环境一个正式入口。0.6.1：说明书「逃生门」一节改成「门出问题时」——command-http 已退役、源上从未有过，按症状走 bin/client.mjs、gwb.log、往前修、隔离 home 经 devkit.cdp；工具面与回执不变",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

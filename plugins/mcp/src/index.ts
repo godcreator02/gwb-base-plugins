@@ -371,7 +371,7 @@ export function apply(ctx: GwbContext): void {
   // ── 一条 node CLI ──────────────────────────────────────────────────────────
 
   // CLI 形态的东西一律经 gwbNodeCli 登记，不做总线命令、不进程内调：登记的命令自动镜像
-  // 成总线命令，于是自动是 MCP 工具，回执自带 stdout 与退出码。**局部注入**：node-cli
+  // 成总线命令，于是经门的 run 就够得到，回执自带 stdout 与退出码。**局部注入**：node-cli
   // 件不在时这道门照开——命令行脸是甜点不是前提
   ctx.inject(['gwbNodeCli'], (scoped) => {
     scoped.gwbNodeCli.register({
