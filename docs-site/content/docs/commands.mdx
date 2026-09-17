@@ -103,10 +103,16 @@ handler **自己判过成败就原样透传**，没判的一律算成了：
 而**不写进 `export const inject`**：没装 skills 插件的 home 里，命令总线照样得能挂上——
 **说明书不是它能不能干活的前提**。写进 `inject` 的话，少那一个插件整个总线就 PENDING 了。
 
-{/* ref file="../plugins/commands/src/index.ts" lines="35-40" */}
+@@docfirst ref plugins/commands/src/index.ts:41-47 @@
 
 局部注入这个模式别的插件也用（[skills](/docs/skills) 那页讲了为什么），钉在这儿的是
 这个插件自己的那一处。
+
+跟别的插件不同的一点：**本插件不引 `@godcreator/gwb-skills` 的类型**。skills 插件反过来
+依赖本插件（静态 inject 总线、类型面引本包），本插件这边只按形状取它用得到的那一个
+`register(dir)`，所以包依赖图单向、无环——pnpm 12 的 `pnpm -r` 对 workspace 依赖环直接报错退出。
+
+@@docfirst ref plugins/commands/src/index.ts:7-13 @@
 
 ## 三条判据
 

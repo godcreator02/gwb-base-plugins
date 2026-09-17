@@ -1,10 +1,16 @@
 import type { GwbContext } from '@godcreator/gwb-plugin-api'
 // 相对 import 必须带 .js
 import { createRegistry, type GwbCommands } from './registry.js'
-// 只为激活 skills 件的 `declare module 'cordis'`——局部注入要用 gwbSkills 这个名字
-import type {} from '@godcreator/gwb-skills'
 
 export type { GwbCommands, GwbCommandDef } from './registry.js'
+
+/**
+ * 本件对说明书服务只用挂目录这一个方法，按形状取、不引 `@godcreator/gwb-skills`：
+ * skills 件依赖本件（静态 inject 总线、类型面引本件），本件对它零依赖，包依赖图无环
+ */
+interface SkillMount {
+  register(dir: URL): () => void
+}
 
 /**
  * 命令总线：件把能力登记成一条命令，谁来调都走这一份注册表。取舍见文档站。
@@ -36,6 +42,7 @@ export function apply(ctx: GwbContext): void {
   // 总线照样得能挂上——说明书不是它能不能干活的前提。产物在 dist/ 下,包根的 skills/
   // 是 '../skills/';那个目录得进 package.json 的 files
   ctx.inject(['gwbSkills'], (scoped) => {
-    scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+    const mount = scoped as typeof scoped & { gwbSkills: SkillMount }
+    mount.effect(() => mount.gwbSkills.register(new URL('../skills/', import.meta.url)))
   })
 }

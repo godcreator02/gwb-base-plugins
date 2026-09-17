@@ -1,0 +1,50 @@
+---
+title: 拆掉 commands ↔ skills 的包依赖环：commands 按形状取说明书服务，不再引 skills 的类型
+born-at: 2026-09-17T16:05
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 拆环
+domain: 件
+---
+
+## 背景
+
+`@godcreator/gwb-commands` 的 devDependencies 有 `@godcreator/gwb-skills: workspace:*`，
+`@godcreator/gwb-skills` 的 devDependencies 有 `@godcreator/gwb-commands: workspace:*`（外加 peer
+`>=0.2.0`），workspace 依赖图成环。两边引对方都只为一句 `import type {} from '<对方>'`——激活对方的
+`declare module 'cordis'`，好在自己代码里写 `ctx.gwbCommands` / `ctx.gwbSkills`。
+
+两个方向分量不对等。skills 对 commands 是真依赖：`static inject = ['gwbCommands']`（没总线不挂），
+`skill.list` / `skill.read` 两条命令登记在总线上；peer 那条是给插件管理装包时把总线一并带进 home 的。
+commands 对 skills 只是可选的一格：局部注入 `gwbSkills`，挂自己那份 `skills/gwb-commands/SKILL.md`，
+整个包只用到 `register(dir)` 一个方法，也从没 peer 过 skills。
+
+pnpm 11 的 `pnpm -r` 对 workspace 依赖环只打警告，12 报 `ERR_PNPM_TASK_CYCLE` 直接退出，于是本仓门禁
+（`typecheck` 里那段 `pnpm -r --no-bail typecheck`、`build` 的 `pnpm -r build`）在 12 下跑不起来。
+[pnpm 12 那张卡](2026-09-17-pnpm12-native-launch.md) 当时在 `pnpm-workspace.yaml` 加
+`ignoreWorkspaceCycles: true` 放过去（提交 7ca97f7），那是关掉报错、环还在。用户拍板要拆。
+
+## 结论与边界
+
+**依赖方向定为 skills → commands 单向，commands 对 skills 零依赖。** commands 删掉 skills 的
+devDependency 与那句空 import；局部注入回调里用一个不导出的本地接口 `SkillMount { register(dir: URL) }`
+给注入的上下文收窄类型，按形状调 `register`。`pnpm-workspace.yaml` 的 `ignoreWorkspaceCycles` 与注释删掉，
+lockfile 随之少掉 commands 那条边。
+
+对外面不变：commands 导出面（`GwbCommands` / `GwbCommandDef` / `ctx.gwbCommands` 的模块增补 / `apply`
+签名）、skills 的全部导出面、命令名、参数与回执形状、事件形状一条没动，挪的只是 commands 取说明书服务
+类型的出处。本地接口不导出、不做模块增补——做了就会跟 skills 的 `gwbSkills: GwbSkillsApi` 撞「后续属性
+声明类型必须相同」。
+
+没选的两条：把 `GwbSkillsApi` 挪进词汇表包 `@godcreator/gwb-plugin-api`——那个包只装内核的七个名字，
+放一个件的服务接口进去等于内核认识了 skills，而这里的环用本仓一个本地接口就解得开；让 skills 替 commands
+挂说明书——违反「说明书由它描述的代码所在包自己挂」，skills 也不该知道 commands 包在盘上的位置。
+
+发版上，commands 包内容变了（源码、产物、依赖声明）而运行时行为不变，抬 patch 到 0.4.1；skills 包一个
+字节没变，不发。外仓（gwb-ui-plugins 的 shell / theme、gwb-devkit）凡用 `ctx.gwbSkills` 的都直接
+`import type {} from '@godcreator/gwb-skills'`，不经 commands 传递拿名字，不受影响。
+
+## 依据
+
+无物证目录；读数在提交里：删边之后 `pnpm install` 只从 lockfile 去掉 commands → skills 一条，
+`pnpm check` 在 pnpm 12.4.2 下不带 `ignoreWorkspaceCycles` 全绿（48 个测试文件、429 例）。

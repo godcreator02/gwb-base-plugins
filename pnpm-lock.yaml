@@ -102,9 +102,6 @@ importers:
       '@godcreator/gwb-plugin-api':
         specifier: 0.1.1
         version: 0.1.1(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-skills':
-        specifier: workspace:*
-        version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
