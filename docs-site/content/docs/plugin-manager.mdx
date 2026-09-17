@@ -27,19 +27,19 @@ node 半的服务与命令。检索与安装同源：`search` 查 npm registry �
 不带、不代装。找它两路：设置项 `pnpm-path` 优先，填了就不再回退去扫 PATH；没填按 PATH 顺序找，
 跟 shell 里敲 `pnpm` 起的是同一份；都不成回一句点名设置项的错：
 
-@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:161-180 @@
+{/* ref file="../plugins/plugin-manager/src/pnpm-path.ts" lines="161-180" */}
 
 **只支持 pnpm 12 起的原生 pnpm**：npm 包的 `bin` 指 `pnpm.exe`，二进制来自可选依赖
 `@pnpm/exe.<平台>-<架构>`，找到的就是这个可执行文件本身。查到的 pnpm 包大版本低于 12 当场报错、
 说清要装 12+，不试着跑。原生二进制的查找位置照 pnpm 包自带的解析法，缺了就报「装它时可选依赖或
 构建脚本被跳过了」，不拿别的文件凑：
 
-@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:70-97 @@
+{/* ref file="../plugins/plugin-manager/src/pnpm-path.ts" lines="70-97" */}
 
 起进程就是直接 spawn 那个可执行文件，不过 shell。环境原样透传——用户级 `.npmrc` 与 pnpm 配置
 （scope 路由、包龄豁免）照常读到——只拿掉宿主身上的 `ELECTRON_RUN_AS_NODE`：
 
-@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:189-197 @@
+{/* ref file="../plugins/plugin-manager/src/pnpm-path.ts" lines="189-197" */}
 
 ## 两层怎么对起来
 
