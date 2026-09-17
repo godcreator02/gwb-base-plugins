@@ -6,17 +6,21 @@ description: 要跑这个 home 里登记的 python 命令行工具时读。讲�
 # python CLI 怎么跑
 
 python 那半跟 node 那半同一个玩法：插件在包里带一个 python 项目，登记给 `gwb-py-cli`，
-每条登记的 CLI **就是命令总线上的一条命令**，`POST /run` 按名字调。
+每条登记的 CLI **就是命令总线上的一条命令**：agent 经 MCP 门的 `run` 按名字调，界面走
+`window.gwb.command`。
 
 ## 先看有哪些
 
-`py-cli.list` 回此刻登记的 python CLI：名字、描述、登记它的插件。
+`py-cli.list` 回此刻登记的 python CLI：名字、描述、登记它的插件。参数形状在 `search` 里那条
+命令的 usage 上。
 
 ## 跟 node CLI 一样的地方
 
-- 参数给 `{ "args": [...] }` 或裸数组，**数组不过 shell**，不用转义
-- 回执同一套字段：`ok` / `exitCode` / `signal` / `timedOut` / `stdout` / `stderr` /
-  `durationMs`；输出只保尾部 64KB，砍过的看 `spillPath`
+- `args` 给一串追加参数，或给对象 `{ "args": [...], "cwd": "<存在的目录的绝对路径>" }` 按次指定
+  工作目录（缺省落在包根的 `py/` 下）；**数组不过 shell**，不用转义
+- 回执自带 `ok`、总线原样透传不包 `data`，同一套字段：`ok` / `exitCode` / `signal` /
+  `timedOut` / `timeoutMs` / `stdout` / `stderr` / `durationMs`；输出只保尾部 64KB，砍过的看
+  `spillPath`。经 MCP 门 `run` 调时摊平成六样（不带 `signal` 与 `timeoutMs`）
 - 超时杀整棵进程树
 
 ## 跟 node CLI 不一样的地方：venv 守卫

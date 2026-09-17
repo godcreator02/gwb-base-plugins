@@ -1,9 +1,9 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": {"name": "godcreator"},
   "//name": "改名之前叫 @godcreator/gwb-cli（发到 0.0.4）。改是因为它不跑命令行——它是一张 name → handler 的注册表,而旁边真跑 CLI 的 gwb-node-cli 让这两个名字读起来像「通用版/node 版」。判据见内核仓 decisions",
-  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.4：description 与 usage 分家——description 一句话进 index（与 skill 的 description 同义），usage 装参数形状与行为注意（search 命中行带）；plugin 改口包名（@scope/pkg），短名 warn 不拦（判据见轨迹卡「三枚面」）。0.4.1：对 gwb-skills 零依赖（挂说明书按形状取服务），包依赖图不再成环",
+  "description": "命令总线：件把能力登记成一条命令，界面、命令行、agent 都经这一份注册表派发。0.4：description 与 usage 分家——description 一句话进 index（与 skill 的 description 同义），usage 装参数形状与行为注意（search 命中行带）；plugin 改口包名（@scope/pkg），短名 warn 不拦（判据见轨迹卡「三枚面」）。0.4.1：对 gwb-skills 零依赖（挂说明书按形状取服务），包依赖图不再成环。0.4.2：说明书改口 MCP 门——agent 经 index / search / run、界面经 window.gwb.command，回执讲清原样透传与门上的文本形状，plugins.* 改 plugin-manager.*",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

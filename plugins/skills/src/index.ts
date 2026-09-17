@@ -67,7 +67,7 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
 
   /**
    * 服务就绪时把两条命令挂上；effect 包着，本件卸载时自动注销。
-   * 两条都是普通命令——MCP 门 0.4 起工具面封顶于 surface/run，说明书经 run 按名调
+   * 两条都是普通命令——MCP 门工具面封顶于 index / search / run 三枚，说明书经 run 按名调
    */
   [Service.init](): void {
     const cli = this.ctx.gwbCommands

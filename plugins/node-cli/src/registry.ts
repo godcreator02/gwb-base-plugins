@@ -37,9 +37,9 @@ export interface NodeCliSpec {
   /** 不给就是 DEFAULT_TIMEOUT_MS。超过 MAX_TIMEOUT_MS 当场拒绝注册 */
   timeoutMs?: number
   /**
-   * 镜像成总线命令时的 `plugin` 归属。缺省取调用方的身份（包名）——
-   * 那是 `@godcreator/gwb-<名>` 这种全名，`/surface` 按插件名过滤时对不上。
-   * 登记方知道自己的插件名（`export const name`），点名就能对齐口径
+   * 镜像成总线命令时的 `plugin` 归属。缺省取调用方的身份，即 cordis 条目的包名
+   * （`@godcreator/gwb-<名>`）——命令总线的 `plugin` 口径就是包名，MCP 门 `search` 的
+   * `plugin` 按它精确筛。点名只在登记方要把命令归到别的包名下时用
    */
   plugin?: string
 }

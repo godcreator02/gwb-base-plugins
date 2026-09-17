@@ -27,7 +27,7 @@ import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type 
 /**
  * MCP 门（`gwb-mcp`）：把命令面开给外部 agent（方向永远是 agent → 工作台）。
  * 2026-09-14 复位成唯一的门，同日工具面重设计为三枚——判据见轨迹卡「MCP 复位」
- * 与「三枚面」。command-http 搁置留作逃生门。
+ * 与「三枚面」。门本身出问题时的逃生道是随包的 `bin/client.mjs`（总线命令 `mcp.client`）。
  *
  * - **自己起 `node:http`**。渲染层走内核那条 IPC 桥，只有外部 agent 需要真 HTTP，
  *   而这个 server 上眼下就只有本件一个客户——真出现第二个要开口的件，那时再把它拆出去

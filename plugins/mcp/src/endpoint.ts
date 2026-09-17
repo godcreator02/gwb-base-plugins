@@ -82,7 +82,7 @@ export interface McpServerEntry {
  *
  * 报这个而不是只报 url，是因为**拼装那一步是每个客户端各拼一遍的**，
  * 拼错了症状是连不上而看不出为什么。片段的形状照 Claude Code 的 `.mcp.json`。
- * 0.4 起无鉴权（与 command-http 0.2 同一判据：绑 127.0.0.1 本机同权），没有 headers 那格
+ * 无鉴权（绑 127.0.0.1，本机进程同权），没有 headers 那格
  */
 export function mcpServers(url: string): Record<string, McpServerEntry> {
   return { [SERVER_KEY]: { type: 'http', url } }

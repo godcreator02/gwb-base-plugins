@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-node-cli",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": {
     "name": "godcreator"
   },
-  "description": "跑 node 写的 CLI：件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状。0.4：命令登记随 commands 0.4 拆 description/usage（INVOKE_SHAPE 归 usage），plugin 改口包名。0.4.1：NodeCliSpec 加 usage（缺省仍用运行器调用形状）——镜像命令不再丢消费方的用法段",
+  "description": "跑 node 写的 CLI：件把自己编译出来的那个 cli.js 登记进来，起进程、收输出、按时限收尾都归它。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状。0.4：命令登记随 commands 0.4 拆 description/usage（INVOKE_SHAPE 归 usage），plugin 改口包名。0.4.1：NodeCliSpec 加 usage（缺省仍用运行器调用形状）——镜像命令不再丢消费方的用法段。0.4.2：说明书改口 MCP 门 run，回执讲清总线原样透传、门上摊平六样，补按次 cwd 的对象形状",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
