@@ -30,8 +30,8 @@
   },
   "//deps": "跟 gwb-node-cli 同一套判据",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.0.1",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-commands": ">=0.4.1",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {

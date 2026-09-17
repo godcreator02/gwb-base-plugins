@@ -31,8 +31,8 @@
   "//deps": "词汇表包是**运行时真 import**（requireKernel）；commands 一行值都没 import，但 inject 它是运行期硬依赖——home 里没有它这个件永远挂不上，且它的 `declare module 'cordis'` 给 ctx 加上 gwbCommands 面。cordis 0.3.1 起也是运行时真 import（薄服务 extends Service，且必须是宿主那一份），写 peer",
   "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1），共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.0.1",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-commands": ">=0.4.1",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {

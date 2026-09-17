@@ -31,7 +31,7 @@
   "//devDeps": "commands / data / settings / skills 四条都是 **dev**:在这儿全是空 `import type {}`（commands 那条带一个类型,一键热升要攥总线的引用）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选的**——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、说明书挂不上。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾",
   "//peerRange": "写 >= 不写 ^:caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）,共享包一升版消费方就不匹配了",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {

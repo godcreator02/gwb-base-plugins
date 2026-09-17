@@ -32,12 +32,12 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.5.4"
   },
-  "//peerDependencies": "词汇表包是运行时 import（requireKernel 是真函数）。commands / settings 两件写 peer 的理由不是类型面，是 **inject 那两个服务**——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。commands 维持 >=0.2.0：0.2 与 0.3 对本件没有行为差（top 那条链 0.3 起退役，本件已不读它）。data 那条随 token 摘除退役（0.4 前它唯一的用途是 token 落盘）",
-  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）",
+  "//peerDependencies": "词汇表包是运行时 import（requireKernel 是真函数）。commands / settings 两件写 peer 的理由不是类型面，是 **inject 那两个服务**——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。data 那条随 token 摘除退役（0.4 前它唯一的用途是 token 落盘）",
+  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）。下限＝本仓验过的那一版：词汇表包同 dev 钉号，commands / settings 同仓里当前版本",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.2.0",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
-    "@godcreator/gwb-settings": ">=0.1.0"
+    "@godcreator/gwb-commands": ">=0.4.1",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
+    "@godcreator/gwb-settings": ">=0.2.0"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",

@@ -28,7 +28,7 @@
   },
   "//deps": "运行时依赖一条都没有——产物里零 import。但契约包走 peer：GwbCommands.run 回的是 GwbResult，它出现在**导出的类型**里，消费方装了这个件之后必须解析得到。cordis 只在 apply 的参数类型里用、不出现在导出面，所以是 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": ">=0.1.0"
+    "@godcreator/gwb-plugin-api": ">=0.1.1"
   },
   "devDependencies": {
     "@godcreator/gwb-plugin-api": "0.1.1",

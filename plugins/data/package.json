@@ -26,7 +26,7 @@
   },
   "//deps": "两条都是 peer,而且理由不同档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份，两份 cordis 的 instanceof 对不上）；词汇表包也是运行时 import（requireKernel 是个真函数，不是类型）。对照 gwb-commands——它的 cordis 只在 apply 的参数类型里用,所以那边是 dev。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {

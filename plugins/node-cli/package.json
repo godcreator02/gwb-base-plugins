@@ -29,8 +29,8 @@
   },
   "//deps": "cordis 是运行时真 import（Service 基类要 extends）→ peer。契约包只 import type,但 GwbContext 出现在构造函数签名里、也就出现在导出面上 → 也是 peer。gwb-commands 同理:静态 inject 它,没有它这个件根本挂不上",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.0.1",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
+    "@godcreator/gwb-commands": ">=0.4.1",
+    "@godcreator/gwb-plugin-api": ">=0.1.1",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
