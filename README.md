@@ -5,8 +5,8 @@ gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物�
 此刻十个插件在册、九个在役：command-http 搁置（逃生门）、mcp 复位接班。
 验收位（hello 仓）已于 2026-09-13 整体退役——装配态验收改由 devkit 模板现场生成。
 
-| 插件             | 包名                                 | 服务                                       |
-| -------------- | ---------------------------------- | ---------------------------------------- |
+| 插件             | 包名                               | 服务                                       |
+| -------------- | -------------------------------- | ---------------------------------------- |
 | commands       | `@godcreator/gwb-commands`       | `ctx.gwbCommands`                        |
 | data           | `@godcreator/gwb-data`           | `ctx.gwbData`                            |
 | settings       | `@godcreator/gwb-settings`       | `ctx.gwbSettings`                        |

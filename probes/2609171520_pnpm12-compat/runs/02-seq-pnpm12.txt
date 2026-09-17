@@ -1,0 +1,107 @@
+--- pnpm --version  exit=0
+12.4.2
+
+--- pnpm config get @godcreator:registry  exit=0
+https://git.tianshen02.online:28377/api/packages/godcreator/npm/
+
+--- pnpm config get registry  exit=0
+https://registry.npmjs.org/
+
+--- pnpm add @godcreator/gwb-plugin-manager@0.3.0  exit=0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: C:\Users\godamericatb14\AppData\Local\pnpm\store\v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +5
++++++
+
+dependencies:
++ @godcreator/gwb-plugin-manager 0.3.0
+
+Done in 4.4s using pnpm v12.4.2
+
+--- pnpm add @godcreator/gwb-mcp@0.5.0  exit=0
+✓ Lockfile passes supply-chain policies (verified 393ms ago)
+Packages: +95
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+dependencies:
++ @godcreator/gwb-mcp 0.5.0
++ @godcreator/gwb-plugin-manager 0.3.0
+
+Done in 8.2s using pnpm v12.4.2
+
+--- pnpm outdated --json  exit=1
+{
+  "@godcreator/gwb-plugin-manager": {
+    "current": "0.3.0",
+    "latest": "0.3.1",
+    "wanted": "0.3.0",
+    "isDeprecated": false,
+    "dependencyType": "dependencies"
+  },
+  "@godcreator/gwb-mcp": {
+    "current": "0.5.0",
+    "latest": "0.6.0",
+    "wanted": "0.5.0",
+    "isDeprecated": false,
+    "dependencyType": "dependencies"
+  }
+}
+
+--- pnpm add @godcreator/gwb-plugin-manager@latest  exit=0
+✓ Lockfile passes supply-chain policies (verified 404ms ago)
+Packages: +1 -1
++-
+
+dependencies:
+- @godcreator/gwb-plugin-manager 0.3.0
++ @godcreator/gwb-plugin-manager 0.3.1
+
+Done in 562ms using pnpm v12.4.2
+
+--- pnpm outdated --json  exit=1
+{
+  "@godcreator/gwb-mcp": {
+    "current": "0.5.0",
+    "latest": "0.6.0",
+    "wanted": "0.5.0",
+    "isDeprecated": false,
+    "dependencyType": "dependencies"
+  }
+}
+
+--- pnpm add @godcreator/gwb-mcp@0.6.0  exit=0
+✓ Lockfile passes supply-chain policies (verified 311ms ago)
+Packages: +1 -1
++-
+
+dependencies:
+- @godcreator/gwb-mcp 0.5.0
++ @godcreator/gwb-mcp 0.6.0
++ @godcreator/gwb-plugin-manager 0.3.1
+
+Done in 351ms using pnpm v12.4.2
+
+--- pnpm outdated --json  exit=0
+{}
+
+--- pnpm remove @godcreator/gwb-mcp  exit=0
+✓ Lockfile passes supply-chain policies (verified 456ms ago)
+Lockfile is up to date, resolution step is skipped
+Packages: -95
+--------------------------------------------------------------------------------
+
+dependencies:
+- @godcreator/gwb-mcp 0.6.0
++ @godcreator/gwb-plugin-manager 0.3.1
+
+Done in 661ms using pnpm v12.4.2
+
+--- home package.json
+{
+  "name": "gwb-home",
+  "private": true,
+  "dependencies": {
+    "@godcreator/gwb-plugin-manager": "0.3.1"
+  }
+}

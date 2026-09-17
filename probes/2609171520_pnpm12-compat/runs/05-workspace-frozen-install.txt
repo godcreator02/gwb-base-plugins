@@ -1,0 +1,33 @@
+两仓 HEAD 上的 workspace 清单（全部 package.json + pnpm-workspace.yaml + pnpm-lock.yaml，kernel 另有 .npmrc）经 copy-ws.ps1 导到临时目录，用 pnpm 12.4.2 跑 install --frozen-lockfile。
+
+gwb-base-plugins @ 70c4b17
+  pnpm install --frozen-lockfile --ignore-scripts
+    ✓ Lockfile passes supply-chain policies (551 entries in 33s)
+    Lockfile is up to date, resolution step is skipped
+    Packages: +395
+    Done in 34.4s using pnpm v12.4.2        exit 0
+  pnpm install --frozen-lockfile（再跑一次，放开脚本）
+    Scope: all 12 workspace projects
+    [WARN] There are cyclic workspace dependencies: plugins\commands, plugins\skills   （11 下同样有）
+    Lockfile is up to date, resolution step is skipped
+    Done in 90ms using pnpm v12.4.2         exit 0
+
+gwb-kernel @ 当时 HEAD（工作区有别的会话未提交改动，只导 HEAD 版本，没碰工作区）
+  pnpm install --frozen-lockfile
+    Scope: all 4 workspace projects
+    ✓ Lockfile passes supply-chain policies (473 entries in 35.5s)
+    Lockfile is up to date, resolution step is skipped
+    Packages: +317
+    Done in 37s using pnpm v12.4.2          exit 0
+  注：apps/desktop 的 devDependencies 钉着 "pnpm": "11.21.0"（lockfile 里 pnpm@11.21.0），12 照装不报错；
+      electron 二进制本来就不走 postinstall（setup:electron 手动脚本），装完没有 dist/ 是既有设计。
+
+两仓 lockfileVersion 都是 '9.0'，12 不改写锁文件、不报 ERR_PNPM_*；pnpm-workspace.yaml 的 allowBuilds /
+minimumReleaseAgeExclude 两个键 12 都认（无 unknown setting 警告）。
+用户级 %LOCALAPPDATA%\pnpm\config\config.yaml 的 minimumReleaseAgeExclude 12 也读到（config get 回出三条；
+当天发的 @godcreator/gwb-unit-folder@0.5.1-dev.202609171510 12 下直接装得进）。
+store 路径 11 与 12 同为 %LOCALAPPDATA%\pnpm\store\v11。
+
+交叉：pnpm 11 建的 home 用 12 跑 outdated/add 成功；12 建的 home 用 11 跑 add 成功（.modules.yaml layoutVersion 5 两边一致）。
+
+未批准的依赖构建脚本：11 与 12 行为相同——pnpm add esbuild 在没有 allowBuilds 时都报 ERR_PNPM_IGNORED_BUILDS 且退出码 1。

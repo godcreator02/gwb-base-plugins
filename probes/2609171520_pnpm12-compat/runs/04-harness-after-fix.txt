@@ -1,0 +1,18 @@
+==== PATH 只有 pnpm 12 的 npm 全局目录，不填设置
+{"ok":true,"launch":{"kind":"native","file":"C:\\Users\\godamericatb14\\AppData\\Local\\Temp\\claude\\D--unitfolders-26090520ntn-console\\b0449a94-b79d-4e2d-a4b2-24e0f41f4ae8\\scratchpad\\p12\\node_modules\\pnpm\\pnpm.exe"},"version":"12.4.2","from":"path"}
+pnpm 12.4.2（原生，C:\Users\godamericatb14\AppData\Local\Temp\claude\D--unitfolders-26090520ntn-console\b0449a94-b79d-4e2d-a4b2-24e0f41f4ae8\scratchpad\p12\node_modules\pnpm\pnpm.exe，PATH 里找到的）
+version {"exitCode":0,"stdout":"12.4.2\n","stderrTail":""}
+registry {"exitCode":0,"stdout":"https://git.tianshen02.online:28377/api/packages/godcreator/npm/\n","stderrTail":""}
+add {"ok":true,"exitCode":0}
+outdated 1 { "@godcreator/gwb-mcp": { "current": "0.5.0", "latest": "0.6.0", "wanted": "0.5.0", "isDeprecated": false, "dependencyType": "dependencies" } } 
+update {"ok":true,"exitCode":0}
+remove {"ok":true,"exitCode":0}
+==== 设置项填 pnpm 11 的 pnpm.cjs
+{"ok":true,"launch":{"kind":"script","file":"C:\\Users\\godamericatb14\\AppData\\Roaming\\npm\\node_modules\\pnpm\\bin\\pnpm.cjs"},"version":"11.21.0","from":"setting"}
+pnpm 11.21.0（node 跑脚本，C:\Users\godamericatb14\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.cjs，设置里填的）
+version {"exitCode":0,"stdout":"11.21.0\n","stderrTail":""}
+registry {"exitCode":0,"stdout":"https://git.tianshen02.online:28377/api/packages/godcreator/npm/\n","stderrTail":""}
+add {"ok":true,"exitCode":0}
+outdated 1 { "@godcreator/gwb-mcp": { "current": "0.5.0", "latest": "0.6.0", "wanted": "0.5.0", "isDeprecated": false, "dependencyType": "dependencies" } } 
+update {"ok":true,"exitCode":0}
+remove {"ok":true,"exitCode":0}

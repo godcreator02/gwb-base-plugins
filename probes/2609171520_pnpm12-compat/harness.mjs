@@ -1,0 +1,21 @@
+import { pathToFileURL } from 'node:url'
+import path from 'node:path'
+
+const [distDir, home, setting] = process.argv.slice(2)
+const m = await import(pathToFileURL(path.join(distDir, 'pnpm.js')).href)
+const found = m.locatePnpm(setting || undefined)
+console.log(JSON.stringify(found))
+if (!found.ok) process.exit(1)
+console.log(m.describePnpm(found))
+const v = await m.runPnpmCapture({ pnpm: found.launch, cwd: home, args: ['--version'] })
+console.log('version', JSON.stringify(v))
+const reg = await m.runPnpmCapture({ pnpm: found.launch, cwd: home, args: ['config', 'get', '@godcreator:registry'] })
+console.log('registry', JSON.stringify(reg))
+const add = await m.runPnpm({ pnpm: found.launch, cwd: home, args: ['add', '@godcreator/gwb-mcp@0.5.0'] })
+console.log('add', JSON.stringify(add))
+const out = await m.runPnpmCapture({ pnpm: found.launch, cwd: home, args: ['outdated', '--json'] })
+console.log('outdated', out.exitCode, out.stdout.replace(/\s+/g, ' '))
+const up = await m.runPnpm({ pnpm: found.launch, cwd: home, args: ['add', '@godcreator/gwb-mcp@latest'] })
+console.log('update', JSON.stringify(up))
+const rm = await m.runPnpm({ pnpm: found.launch, cwd: home, args: ['remove', '@godcreator/gwb-mcp'] })
+console.log('remove', JSON.stringify(rm))

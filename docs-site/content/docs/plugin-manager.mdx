@@ -21,6 +21,30 @@ node 半的服务与命令。检索与安装同源：`search` 查 npm registry �
 
 {/* ref file="../plugins/plugin-manager/src/index.ts" lines="24-57" */}
 
+## 用哪份 pnpm、怎么起
+
+装、卸、查、升、检索的每一步都是起一个 pnpm 子进程。**用的是用户电脑上装的 pnpm**，本插件
+不带、不代装。找它两路：设置项 `pnpm-path` 优先，填了就不再回退去扫 PATH；没填按 PATH 顺序找，
+跟 shell 里敲 `pnpm` 起的是同一份；都不成回一句点名设置项的错：
+
+@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:177-196 @@
+
+找到的不是一个路径，是一份**启动方式**。一个 pnpm 包是哪种按它 `package.json` 的版本号定：
+大版本 ≥ 12 是原生可执行（npm 包的 `bin` 指 `pnpm.exe`，二进制来自可选依赖 `@pnpm/exe.<平台>-<架构>`），
+直接起；11 是 `bin/pnpm.cjs`，用宿主自己的运行时当 node 跑。原生二进制的查找位置照 pnpm 包自带的
+解析法，缺了就报「装它时可选依赖或构建脚本被跳过了」，不拿别的文件凑：
+
+@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:77-107 @@
+
+两种启动方式的差别只在 spawn 那一层：脚本形态要 `ELECTRON_RUN_AS_NODE=1`（宿主的 `execPath` 是
+electron），原生形态把这个变量从环境里拿掉；其余环境原样透传，用户级 `.npmrc` 与 pnpm 配置（scope 路由、
+包龄豁免）照常读到：
+
+@@docfirst ref ../plugins/plugin-manager/src/pnpm-path.ts:205-224 @@
+
+pnpm 那半的调用（`add`、`outdated --json`、`remove`、`config get`）在 11 与 12 下参数、退出码与
+输出形状都一样，不按版本分支。
+
 ## 两层怎么对起来
 
 盘上那份清单（home 的 `package.json`）与内存里那棵条目树，`reconcile` 对成一张表，

@@ -1,0 +1,19 @@
+隔离 home pnpm12-2609171528（devkit.home.new 起，安装版内核），plugin-manager 装的是 0.3.2-dev.202609171529（devkit.dev 发的 dev 版，本目录同一份源码）。
+顺序：设置填 pnpm 12 的 pnpm.exe → install unit-folder@0.4.1 → outdated → update-all only unit-folder → uninstall → search；设置改填 pnpm 11 的 pnpm.cjs → install @0.5.0 → outdated → update → uninstall；删设置（走 PATH，宿主 PATH 上是 npm 全局 11）→ install glm-quota。
+gwb.log 摘录（gwb-plugin-manager 行）：
+
+2026-09-17T07:30:07.388Z info gwb-plugin-manager 用 pnpm 12.4.2（原生，C:\Users\godamericatb14\AppData\Local\Temp\claude\D--unitfolders-26090520ntn-console\b0449a94-b79d-4e2d-a4b2-24e0f41f4ae8\scratchpad\p12\node_modules\pnpm\pnpm.exe，设置里填的） 装 @godcreator/gwb-unit-folder@0.4.1
+2026-09-17T07:30:07.846Z info gwb-plugin-manager @godcreator/gwb-unit-folder@0.4.1 装上了，条目 home:unit-folder 已加进 cordis.yml
+2026-09-17T07:30:25.187Z info gwb-plugin-manager 用 pnpm 12.4.2（原生，C:\Users\godamericatb14\AppData\Local\Temp\claude\D--unitfolders-26090520ntn-console\b0449a94-b79d-4e2d-a4b2-24e0f41f4ae8\scratchpad\p12\node_modules\pnpm\pnpm.exe，设置里填的） 一趟装 @godcreator/gwb-unit-folder@0.6.0
+2026-09-17T07:30:25.594Z info gwb-plugin-manager 一键热升完成：@godcreator/gwb-unit-folder 0.4.1 → 0.6.0；界面已整页重载
+2026-09-17T07:30:32.449Z info gwb-plugin-manager @godcreator/gwb-unit-folder 卸载了：1 条条目摘掉，包从 home 移除。设置与数据留在盘上
+2026-09-17T07:30:35.534Z info gwb-plugin-manager 检索跟装走同一条源：https://git.tianshen02.online:28377/api/packages/godcreator/npm/（pnpm config 的 @godcreator:registry）
+2026-09-17T07:30:45.320Z info gwb-plugin-manager 用 pnpm 11.21.0（node 跑脚本，C:\Users\godamericatb14\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.cjs，设置里填的） 装 @godcreator/gwb-unit-folder@0.5.0
+2026-09-17T07:30:46.205Z info gwb-plugin-manager @godcreator/gwb-unit-folder@0.5.0 装上了，条目 home:unit-folder 已加进 cordis.yml
+2026-09-17T07:30:54.520Z info gwb-plugin-manager 用 pnpm 11.21.0（node 跑脚本，C:\Users\godamericatb14\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.cjs，设置里填的） 把 @godcreator/gwb-unit-folder 升到最新
+2026-09-17T07:30:55.594Z info gwb-plugin-manager @godcreator/gwb-unit-folder 升到最新了。跑着的件还持旧代码，重启内核后才换成新的（要热生效走 plugin-manager.update-all）
+2026-09-17T07:31:05.961Z info gwb-plugin-manager @godcreator/gwb-unit-folder 卸载了：1 条条目摘掉，包从 home 移除。设置与数据留在盘上
+2026-09-17T07:31:18.880Z info gwb-plugin-manager 用 pnpm 11.21.0（node 跑脚本，C:\Users\godamericatb14\AppData\Roaming\npm\node_modules\pnpm\bin\pnpm.cjs，PATH 里找到的） 装 @godcreator/gwb-glm-quota
+2026-09-17T07:31:19.769Z info gwb-plugin-manager @godcreator/gwb-glm-quota 装上了，条目 home:glm-quota 已加进 cordis.yml
+
+期间 error 级日志：0 条

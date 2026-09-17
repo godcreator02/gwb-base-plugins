@@ -1,0 +1,28 @@
+改动前（plugin-manager 0.3.1 源码，commit 70c4b17 的 dist/pnpm.js）locatePnpm 的三种输入，PATH 只含 npm i -g pnpm@12.4.2 --prefix <p12> 那个目录。
+<p12> = C:\Users\GODAME~1\AppData\Local\Temp\claude\...\scratchpad\p12
+
+--- PATH 只有 pnpm 12 的 npm 全局目录（模拟 npm i -g pnpm@12 之后）
+{
+  "ok": false,
+  "error": "找不到 pnpm。自动查找只认 npm 全局装出来的布局（PATH 里的垫片旁边有 node_modules/pnpm/bin/pnpm.cjs）；corepack、volta、standalone 装的都不是这个形状。去设置里把 pnpm-path 填成 pnpm.cjs 的绝对路径（典型值 %APPDATA%\\npm\\node_modules\\pnpm\\bin\\pnpm.cjs）。"
+}
+--- 设置项填 pnpm.exe
+{
+  "ok": false,
+  "error": "设置里的 pnpm-path 是 \"<p12>\\node_modules\\pnpm\\pnpm.exe\"，照它找不到 pnpm.cjs（找过 <p12>\\node_modules\\pnpm\\pnpm.exe\\node_modules\\pnpm\\bin\\pnpm.cjs、<p12>\\node_modules\\pnpm\\node_modules\\pnpm\\bin\\pnpm.cjs）。填 pnpm.cjs 的绝对路径，或者 pnpm.cmd 那个垫片的路径。"
+}
+--- 设置项填 pnpm.cmd
+{
+  "ok": false,
+  "error": "设置里的 pnpm-path 是 \"<p12>\\pnpm.cmd\"，照它找不到 pnpm.cjs（找过 <p12>\\pnpm.cmd\\node_modules\\pnpm\\bin\\pnpm.cjs、<p12>\\node_modules\\pnpm\\bin\\pnpm.cjs）。填 pnpm.cjs 的绝对路径，或者 pnpm.cmd 那个垫片的路径。"
+}
+
+pnpm 12.4.2 的 npm 包布局（npm 全局装，preinstall/postinstall 跑过）：
+<p12>\pnpm.cmd -> "%dp0%\node_modules\pnpm\pnpm.exe" %*
+<p12>\node_modules\pnpm\package.json  bin: { pnpm: pnpm.exe, pn: pn.exe, pnpx: pnpx.exe, pnx: pnx.exe }
+<p12>\node_modules\pnpm\pnpm.exe      原生（44 MB，硬链到 @pnpm/exe.win32-x64/pnpm.exe）
+<p12>\node_modules\pnpm\bin\pnpm.mjs  corepack 入口（缺二进制时会去下载）
+<p12>\node_modules\pnpm\node_modules\@pnpm\exe.win32-x64\pnpm.exe
+没有 bin\pnpm.cjs。
+
+pnpm 11.21.0（%APPDATA%\npm，npm 全局装）：bin: { pnpm: bin/pnpm.mjs, ... }，bin\ 下 pnpm.cjs / pnpm.mjs / pnpx.cjs / pnpx.mjs 都在。

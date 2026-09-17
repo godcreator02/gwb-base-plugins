@@ -89,7 +89,7 @@ venv 没就绪,hello.python 跑不了：拉不起 uv（PATH 上没有？）：�
 ```
 
 **为什么不走 `postinstall`**（DSH 那边的主路）：home 的 `pnpm-workspace.yaml` 里没有
-`allowBuilds`，内核的 `pnpm add` 也不带脚本放行，pnpm 11 默认跳过依赖的 `postinstall`
+`allowBuilds`，内核的 `pnpm add` 也不带脚本放行，pnpm（11 与 12 同）默认跳过依赖的 `postinstall`
 ——那条路在这边**默认静默失效**。走挂载时的守卫反而顺带躲开了 pnpm 的 side-effects cache
 串世界那个坑（它只在 postinstall 路径上存在）。
 
