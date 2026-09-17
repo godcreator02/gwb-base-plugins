@@ -1,7 +1,7 @@
 /**
  * `pnpm outdated --json` 的 stdout → 包 → 版本差距。纯函数，单独测。
  *
- * 形状（pnpm 11.21 与 12.4 实测一致）：有过期包时退出码 1，stdout 是按包名做键的一份 JSON，
+ * 形状（pnpm 12.4 实测）：有过期包时退出码 1，stdout 是按包名做键的一份 JSON，
  * 每条 `{ current, latest, wanted, isDeprecated, dependencyType }`；全都最新时退出码 0、
  * stdout 为 `{}` 或空。这儿只认用得着的两格，缺了就跳过那条，
  * 整份认不出就回 undefined 让调用方给一句人话。

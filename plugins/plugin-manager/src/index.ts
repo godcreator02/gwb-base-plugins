@@ -11,7 +11,7 @@ import { readHomeDependencies, readInstalledManifest, readPeerManifest, readShar
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
 import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peers.js'
-import { describePnpm, locatePnpm, runPnpm, runPnpmCapture, type PnpmLaunch } from './pnpm.js'
+import { describePnpm, locatePnpm, runPnpm, runPnpmCapture } from './pnpm.js'
 import { parseOutdated, type UpdateInfo } from './outdated.js'
 import { isGwbLine, parseSearch, type SearchRow } from './search.js'
 import { entriesForPackage } from './uninstall.js'
@@ -408,7 +408,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         title: 'pnpm 路径',
         type: 'string',
         description:
-          '装机用哪份 pnpm。不填就自动找（PATH 上的 pnpm.exe，或 npm 全局装出来的布局，pnpm 11 与 12 都认）。要手填时认这几种：pnpm 可执行文件（pnpm 12 起是 npm 包里的 pnpm.exe）、pnpm 11 的 bin/pnpm.cjs、pnpm.cmd 垫片或它所在的目录、pnpm 包目录。',
+          '装机用哪份 pnpm（只支持 pnpm 12 起的原生可执行）。不填就自动找（PATH 上的 pnpm.exe，或 npm 全局装出来的布局）。要手填时认这几种：pnpm 可执行文件（npm 全局装的在 node_modules\\pnpm\\pnpm.exe）、pnpm.cmd 垫片或它所在的目录、pnpm 包目录。',
       })
       ctx.effect(() => () => {
         this.settings = undefined
@@ -537,7 +537,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     }
 
     this.info(`用 ${describePnpm(found)} 装 ${target}`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.launch, cwd: this.home, args: ['add', target] }))
+    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: ['add', target] }))
     if (!run.ok) {
       const error = `pnpm add ${target} 没成（退出码 ${String(run.exitCode)}）`
       this.warn(`${error}\n${run.tail ?? ''}`)
@@ -548,7 +548,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
      * **peer 排在建条目之前**：条目一落 loader 就当场挂它，而件挂起来第一件事很可能就是
      * 现查 `<home>/node_modules/<peer>`。先把 peer 摆好，件起来时那条路径就已经在了。
      */
-    const peers = await this.settlePeers(pkg, found.launch)
+    const peers = await this.settlePeers(pkg, found.file)
 
     try {
       // 直接建条目、不再回头查一遍清单：pnpm 刚说过它成了，再问一次只是多一条失败路径
@@ -584,7 +584,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
    * 回执里的一行——这条命令是所有 home 装件的必经之路，它多一条抛出的路径就多一次
    * 「什么都装不了」。
    */
-  private async settlePeers(pkg: string, pnpm: PnpmLaunch): Promise<{ peers?: PeerResult[]; note?: string }> {
+  private async settlePeers(pkg: string, pnpm: string): Promise<{ peers?: PeerResult[]; note?: string }> {
     let plan: ReturnType<typeof planPeers>
     try {
       const declared = toPeerDependencies(await readInstalledManifest(this.home, pkg))
@@ -637,7 +637,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     if (!found.ok) return { ok: false, error: found.error }
 
     const run = await this.queue(() =>
-      runPnpmCapture({ pnpm: found.launch, cwd: this.home, args: ['outdated', '--json'] }),
+      runPnpmCapture({ pnpm: found.file, cwd: this.home, args: ['outdated', '--json'] }),
     )
     // pnpm 的「人话」都在 stderr 上，两条失败路都把它带上
     const say = (message: string): string =>
@@ -668,7 +668,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     }
 
     this.info(`用 ${describePnpm(found)} 把 ${pkg} 升到最新`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.launch, cwd: this.home, args: ['add', `${pkg}@latest`] }))
+    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: ['add', `${pkg}@latest`] }))
     if (!run.ok) {
       const error = `pnpm add ${pkg}@latest 没成（退出码 ${String(run.exitCode)}）`
       this.warn(`${error}\n${run.tail ?? ''}`)
@@ -702,7 +702,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     }
     // 一趟装完：pnpm 是读-改-写 home 的 package.json，逐包起进程跟并发 install 一样会互相盖
     this.info(`用 ${describePnpm(found)} 一趟装 ${plan.pnpmArgs.slice(1).join(' ')}`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.launch, cwd: this.home, args: plan.pnpmArgs }))
+    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: plan.pnpmArgs }))
     if (!run.ok) {
       const error = `pnpm ${plan.pnpmArgs.join(' ')} 没成（退出码 ${String(run.exitCode)}）。一个包都没升、一条条目都没动`
       this.warn(`${error}\n${run.tail ?? ''}`)
@@ -785,7 +785,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     const found = locatePnpm(this.pnpmPath())
     if (!found.ok) return undefined
     for (const key of ['@godcreator:registry', 'registry']) {
-      const run = await this.queue(() => runPnpmCapture({ pnpm: found.launch, cwd: this.home, args: ['config', 'get', key] }))
+      const run = await this.queue(() => runPnpmCapture({ pnpm: found.file, cwd: this.home, args: ['config', 'get', key] }))
       const value = run.stdout.trim()
       if (run.exitCode === 0 && /^https?:\/\//.test(value)) {
         this.registry = value.endsWith('/') ? value : `${value}/`
@@ -840,7 +840,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       this.warn(`卸不了 ${pkg}：条目已摘（${ids.length} 条），${found.error}`)
       return { ok: false, pkg, removedEntries: ids, error: found.error }
     }
-    const run = await this.queue(() => runPnpm({ pnpm: found.launch, cwd: this.home, args: ['remove', pkg] }))
+    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: ['remove', pkg] }))
     if (!run.ok) {
       // 不回滚：条目已摘是正当落点，包进「已装、没挂条目」那一区看得见、重试挂条目就行
       const error = `pnpm remove ${pkg} 没成（退出码 ${String(run.exitCode)}）。条目已摘 ${ids.length} 条，包还在 home 里`

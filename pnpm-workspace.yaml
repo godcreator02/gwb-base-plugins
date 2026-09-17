@@ -5,6 +5,10 @@ packages:
   # 文档站：自己的依赖树，不进根 check
   - docs-site
 
+# commands 与 skills 互相 import type（各自往对方的服务上登记），devDependencies 成环；
+# 两边的 typecheck / build 互不依赖对方先跑，`pnpm -r` 按任意顺序跑即可
+ignoreWorkspaceCycles: true
+
 allowBuilds:
   # @tailwindcss/cli 拖来的，只在 `tailwindcss --watch` 那条路上用得着；件的构建是一次性的，
   # 那个原生模块不编也一样跑

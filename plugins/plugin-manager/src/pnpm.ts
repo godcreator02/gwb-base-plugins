@@ -2,9 +2,9 @@ import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import type { Readable } from 'node:stream'
-import { findPnpm, spawnPlan, type LookupResult, type PnpmLaunch } from './pnpm-path.js'
+import { findPnpm, spawnPlan, type LookupResult } from './pnpm-path.js'
 
-export { describePnpm, type PnpmLaunch } from './pnpm-path.js'
+export { describePnpm } from './pnpm-path.js'
 
 /** 真去跑 pnpm。查盘与起进程都在这儿，纯逻辑那半在 `pnpm-path.ts` */
 
@@ -74,9 +74,9 @@ export function locatePnpm(configured?: string): LookupResult {
   })
 }
 
-/** 按启动方式起 pnpm 进程，stdout / stderr 走管道 */
-function spawnPnpm(launch: PnpmLaunch, cwd: string, args: readonly string[]): ChildProcessByStdio<null, Readable, Readable> {
-  const plan = spawnPlan(launch, args, { execPath: process.execPath, env: process.env })
+/** 直接起 pnpm 可执行文件，stdout / stderr 走管道 */
+function spawnPnpm(file: string, cwd: string, args: readonly string[]): ChildProcessByStdio<null, Readable, Readable> {
+  const plan = spawnPlan(file, args, process.env)
   return spawn(plan.command, plan.args, { cwd, env: plan.env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
 }
 
@@ -85,12 +85,12 @@ function spawnPnpm(launch: PnpmLaunch, cwd: string, args: readonly string[]): Ch
  *
  * **起的是查找给出的那个文件，不是 `spawn('pnpm')`**：Windows 上 PATH 里的 `pnpm.ps1` /
  * `pnpm.cmd` 不是可执行映像，spawn 认不出；`shell: true` 能绕过去但会把引号转义的坑一起引进来。
- * 原生的 pnpm 直接起；脚本形态的 pnpm 用**我们自己的 node 运行时**跑（见 `spawnPlan`）。
+ * 环境怎么带见 `spawnPlan`。
  *
  * **不设超时**：装一个大包本来就可能几分钟，猜一个时限只会在慢网络上误杀一次正当的装机；
  * 网络那头的超时 pnpm 自己有。真卡住了，杀进程是用户那一侧的事。
  */
-export function runPnpm(opts: { pnpm: PnpmLaunch; cwd: string; args: readonly string[] }): Promise<PnpmResult> {
+export function runPnpm(opts: { pnpm: string; cwd: string; args: readonly string[] }): Promise<PnpmResult> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = []
     let size = 0
@@ -115,7 +115,7 @@ export function runPnpm(opts: { pnpm: PnpmLaunch; cwd: string; args: readonly st
 
     proc.stdout?.on('data', (c: Buffer) => push(c))
     proc.stderr?.on('data', (c: Buffer) => push(c))
-    // 起不来（execPath 没了之类）：收成一份 exitCode null 的回执，原因进尾巴
+    // 起不来（pnpm 可执行文件没了之类）：收成一份 exitCode null 的回执，原因进尾巴
     proc.on('error', (err) => {
       push(Buffer.from(`${String(err)}\n`, 'utf8'))
       done(null)
@@ -130,10 +130,10 @@ export function runPnpm(opts: { pnpm: PnpmLaunch; cwd: string; args: readonly st
  * stdout 上，而且退出码 1 的意思是「存在过期包」，是结果不是失败，所以这儿不判 ok，
  * 两样都原样交出去，解释权在调用方。
  *
- * spawn 绕法与 `runPnpm` 相同（按查找给出的启动方式起，理由在那边）。**不并进 `runPnpm`**：那个 成功时不留输出（装包日志几 MB 谁也不看），
+ * spawn 绕法与 `runPnpm` 相同（直接起查找给出的可执行文件，理由在那边）。**不并进 `runPnpm`**：那个 成功时不留输出（装包日志几 MB 谁也不看），
  * 这条留着全文——两头的取舍相反，合成一个函数两边都得将就。
  */
-export function runPnpmCapture(opts: { pnpm: PnpmLaunch; cwd: string; args: readonly string[] }): Promise<PnpmCaptureResult> {
+export function runPnpmCapture(opts: { pnpm: string; cwd: string; args: readonly string[] }): Promise<PnpmCaptureResult> {
   return new Promise((resolve) => {
     const out: Buffer[] = []
     const err: Buffer[] = []

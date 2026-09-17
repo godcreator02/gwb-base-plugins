@@ -1,5 +1,5 @@
 ---
-title: pnpm 12 原生可执行：查找链的落点从 pnpm.cjs 换成「启动方式」，11 与 12 并行
+title: 只支持原生 pnpm 12+：查找链落点从 pnpm.cjs 换成原生可执行，删掉 pnpm 11 兼容
 born-at: 2026-09-17T15:40
 type: choice
 parent: [2026-09-13-base-plugins]
@@ -21,42 +21,49 @@ pnpm.cjs」。
 
 逐条实测了本件用到的 pnpm 调用（`add` 单包与多包、`add pkg@latest`、`outdated --json`、`remove`、
 `config get`）：12 与 11 退出码逐条相同，`outdated --json` 形状相同，用户级 `.npmrc` 的 scope 路由与
-pnpm 配置里的包龄豁免照读，11 建的 home 与 12 建的 home 互相能接着装。**断点只有查找链一处**，没找到任何
-「只有 11 才有」的调用。
+pnpm 配置里的包龄豁免照读。**断点只有查找链一处。**
+
+同一天先做了一版「11 与 12 并行」（按包版本号在 cjs 与原生两种启动方式之间选），没发版。用户拍板
+**不保留旧版兼容**：本机 npm 全局的 pnpm 11 卸掉换成 12，corepack 缓存里的 11 删掉，插件只支持原生 pnpm。
 
 ## 结论与边界
 
-**查找的落点从一个 cjs 路径换成一份启动方式**：`native`（直接 spawn 那个可执行）或 `script`（宿主运行时
-当 node 跑 cjs）。原生形态的环境拿掉 `ELECTRON_RUN_AS_NODE`，其余原样透传。
+**查找的落点就是 pnpm 的原生可执行文件，直接 spawn，只支持 pnpm 12 及以上。** 查到的 pnpm 包大版本
+低于 12 当场报错、说清要装 12+，不试着跑它的 cjs；script 启动方式（宿主当 node 跑 cjs、带
+`ELECTRON_RUN_AS_NODE`）与所有 cjs 查找路径整条删掉。起进程时环境原样透传，只拿掉
+`ELECTRON_RUN_AS_NODE`（对原生 pnpm 没意义，留着会漏进依赖构建脚本）。
 
 几处取舍，都按「不猜」判：
 
-- **一个 pnpm 包走哪种，按它 package.json 的版本号定**（大版本 ≥ 12 原生），不按盘上碰巧有哪个文件定。
-  12 的包缺原生二进制时报「可选依赖或构建脚本被跳过了，重装」，不拿 `bin/pnpm.mjs` 凑——那个入口会联网
-  下载二进制，是 corepack 的路，不是装机该走的
+- **pnpm 包的版本号只用来拒老版本**，不用来分支。12 的包缺原生二进制时报「可选依赖或构建脚本被跳过了，
+  重装」，不拿 `bin/pnpm.mjs` 凑——那个入口会联网下载二进制，是 corepack 的路，不是装机该走的
 - **原生二进制的查找位置照抄 pnpm 包自带的 `native-binary.mjs`**：包内 `node_modules/@pnpm/exe.*`、
   再包所在那层；Windows 包根的 `pnpm.exe` 排最前。linux 两种 libc 的顺序是 glibc 在前——npm 按
   `libc` 字段只会装上对得上的那一个，两个都在的情形本件不去探测 libc
-- **PATH 按顺序、第一份能用的作数**，跟 shell 敲 `pnpm` 起的是同一份；11 与 12 并存时不挑版本高的。
-  Windows 上目录里直接有 `pnpm.exe` 也认（standalone 装法），因为 shell 在同目录里也先认 `.exe`
-- **设置项填了就不回退 PATH**（沿用 0.3.1）；认的形状扩成五种：可执行文件、pnpm 11 的 `bin/pnpm.cjs`、
-  `pnpm.cmd` 垫片、垫片目录、pnpm 包目录。非 Windows 上垫片是软链，解开后落到的包作数
+- **PATH 按顺序、第一份能用的作数**，跟 shell 敲 `pnpm` 起的是同一份；前面挡着一份 11 的就跳过、接着往后找，
+  全都不成才把每一处的原因一起报出来。Windows 上目录里直接有 `pnpm.exe` 也认（standalone 装法）
+- **设置项填了就不回退 PATH**（沿用 0.3.1）；认的形状：可执行文件、`pnpm.cmd` 垫片、垫片目录、pnpm 包目录。
+  非 Windows 上垫片是软链，解开后落到的包作数
 - **pnpm 那半的参数不按版本分支**：实测没有要分的
 
-不做的：不降级、不代装 pnpm、不改用 `shell: true` 让系统去解析垫片（引号转义的坑还在）。
+不做的：不兼容 pnpm 11 及以前、不代装 pnpm、不改用 `shell: true` 让系统去解析垫片（引号转义的坑还在）。
+
+仓自己在 pnpm 12 下跑门禁撞到一处：`pnpm -r` 遇到 workspace 依赖成环（commands ↔ skills 互相
+`import type`）11 只警告、12 报 `ERR_PNPM_TASK_CYCLE` 直接退出。环是有意的（两个件各自往对方的服务上登记），
+两边的 typecheck / build 不依赖对方先跑，所以在 `pnpm-workspace.yaml` 里声明 `ignoreWorkspaceCycles: true`，
+不去拆环。
 
 ## 依据
 
 - `probes/2609171520_pnpm12-compat/runs/01-seq-pnpm11.txt`、`02-seq-pnpm12.txt`：两版逐条调用读数
 - `probes/2609171520_pnpm12-compat/runs/03-lookup-before-fix.txt`：改动前的报错原文与 12 的包布局
-- `probes/2609171520_pnpm12-compat/runs/04-harness-after-fix.txt`：改动后 12 走 PATH、11 走设置项各跑一遍
+- `probes/2609171520_pnpm12-compat/runs/04-harness-after-fix.txt`、`06-isolated-home.txt`：并行版的实测读数
+  （那一版随后按拍板删掉了 11 那一路；12 那一路的读数对现版同样成立）
 - `probes/2609171520_pnpm12-compat/runs/05-workspace-frozen-install.txt`：本仓与 gwb-kernel 的 lockfile /
   workspace 配置在 12 下 `install --frozen-lockfile` 直接过
-- `probes/2609171520_pnpm12-compat/runs/06-isolated-home.txt`：隔离 home 里装、查、一键热升、单包升、卸、
-  检索，12（设置项）/ 11（设置项）/ 11（PATH）三路全绿
 
 ## 路上撞的
 
 `devkit.dev` 打 plugin-manager 自己时，停用条目之后要调 `plugin-manager.enable` 重新启用——那条命令正是
-刚被停掉的本件登记的，于是回「没有这条命令」，条目留在停用态。这次的绕法是停掉隔离 home、删掉它
+刚被停掉的本件登记的，于是回「没有这条命令」，条目留在停用态。绕法是停掉隔离 home、删掉它
 `cordis.yml` 里那行 `disabled: true`、`devkit.home.open` 重开。归 devkit 那边的事。
