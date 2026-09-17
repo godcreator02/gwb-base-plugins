@@ -29,13 +29,16 @@ pnpm build          # 产物一律落各包的 dist/
 pnpm doc            # docfirst check：钉住的代码变了会报黄
 ```
 
-发一个插件到本机 registry、再装进 home 验：
+发正式版走 devkit 插件的命令（经 MCP 门 `run` 调，从哪个 home 调都行；`packages` 相对仓根、
+按依赖顺序），再装进 home 验：
 
-```powershell
-cd plugins/commands
-pnpm publish --registry https://git.tianshen02.online:28377/api/packages/godcreator/npm/ --no-git-checks
-# 然后在 home 目录 pnpm add @godcreator/gwb-commands@<版本>，改 cordis.yml 加条目
 ```
+devkit.release {"dir":"<仓根>","packages":["plugins/commands"]}
+```
+
+手工兜底是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
+scope 路由住用户级配置。发完在 home 目录 `pnpm add @godcreator/gwb-commands@<版本>`，改
+`cordis.yml` 加条目。
 
 ## 两条命名规矩
 

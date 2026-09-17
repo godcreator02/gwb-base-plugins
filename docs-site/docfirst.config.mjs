@@ -8,7 +8,7 @@
  * 轨迹、交接、未来、反馈四区的草稿记号与卡天然不进门禁，卡不许钉活代码。
  *
  * outputs：仓根 README.md 与 AGENTS.md 都是生成物，正本是 content/outputs/readme.mdx
- * 与 agents.mdx。改 mdx 源，`pnpm docfirst render --target ai` 重摆，一起提交。
+ * 与 agents.mdx。改 mdx 源，`pnpm docfirst render` 重摆，一起提交。
  */
 import * as fumadocs from '@godcreator/docfirst-workflow/fumadocs'
 

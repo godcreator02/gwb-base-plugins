@@ -46,6 +46,6 @@ README 第一行跑一次能得到同样结论）、**进 git**、**不进 pnpm 
 ## 生成物
 
 仓根 `README.md` 与这份 `AGENTS.md` 都是生成物，别手改——正本在 `docs-site/content/outputs/`
-（`readme.mdx` / `agents.mdx`），改完在 `docs-site` 跑 `pnpm exec docfirst render --target ai`
+（`readme.mdx` / `agents.mdx`），改完在 `docs-site` 跑 `pnpm exec docfirst render`
 重摆，一起提交。文档站在 `docs-site/`（六区：现状 / 轨迹 / 交接 / 未来 / 生成正本 / 反馈），
 起站 `pnpm --filter gwb-base-plugins-docs-site dev`，端口 4315。
