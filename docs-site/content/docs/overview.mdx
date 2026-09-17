@@ -16,8 +16,8 @@ docfirst: none
 | data | `@godcreator/gwb-data` | `ctx.gwbData` | 插件的数据落盘 |
 | logger | `@godcreator/gwb-logger` | `ctx.gwbLogger` | 日志管道（core） |
 | skills | `@godcreator/gwb-skills` | `ctx.gwbSkills` | 说明书的收集与查询 |
-| command-http | `@godcreator/gwb-command-http` | — | 命令的无状态 JSON 口，**搁置**（逃生门；入口由 mcp 复位接回） |
-| mcp | `@godcreator/gwb-mcp` | — | MCP 门，**唯一的门**：工具面封顶 surface/run 两枚 |
+| command-http | `@godcreator/gwb-command-http` | — | 命令的无状态 JSON 口，**已退役**（不发版；入口由 mcp 承担） |
+| mcp | `@godcreator/gwb-mcp` | — | MCP 门，**唯一的门**：工具面封顶 index/search/run 三枚 |
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli` | node 那条命令行 |
 | py-cli | `@godcreator/gwb-py-cli` | `ctx.gwbPyCli` | python 那条命令行 |
 | settings | `@godcreator/gwb-settings` | `ctx.gwbSettings` | 设置 |
@@ -27,8 +27,7 @@ docfirst: none
 （`26091217uiz\gwb-ui-plugins`：shell、theme、baseui 与两个共享包）。验收位（hello 仓）
 2026-09-13 已整体退役：装配态验收改由 devkit 模板现场生成（判据见 devkit 仓轨迹卡
 「模板即插件」）。
-此刻十个插件在册、九个在役：command-http 搁置（逃生门）、mcp 复位接班（判据见轨迹卡
-「MCP 复位」）。
+此刻十个插件在册、九个在役：command-http 已退役（判据见轨迹卡「command-http 退役」）。
 
 **状态与版本号只在[路线](/future/roadmap)一处**——两处各记一份必然漂移，这张表就漂过一轮。
 

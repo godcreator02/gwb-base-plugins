@@ -1,0 +1,36 @@
+---
+title: command-http 从「搁置·逃生门」改判退役：包标 private、不发版
+born-at: 2026-09-17T17:40
+type: choice
+parent: [2026-09-14-mcp-returns]
+label: command-http 退役
+domain: 件
+---
+
+## 背景
+
+2026-09-14 MCP 复位后，command-http 标的是「搁置」：default 卸载、代码留仓、registry 留 0.2.2 当
+逃生门——MCP 门坏到没救时手工装回，就有一条无会话的 curl 道。
+
+同日源整体迁到 gitea 个人源（Verdaccio 全线退役），其余件都按 `@godcreator` 重发了，command-http
+没有。2026-09-17 全生态发版前把 registry 上的包逐个拉回来比对，`@godcreator/gwb-command-http@0.2.2`
+拉不到——逃生门那条「手工装回」从迁源那天起就已经不成立，文档还写着它在。
+
+## 结论与边界
+
+**退役，不再是搁置。** 用户拍板。
+
+- `plugins/command-http/package.json` 加 `"private": true`，description 开头标退役——`devkit.release`
+  与手工 publish 都发不出去，不会被全仓发版顺手带上
+- 代码留仓仅作参考，不删：它的端口策略、runtime.json 那一项与无会话设计在 mcp 件的来龙去脉里还会被查
+- 文档站现状区（command-http 页、总览）与仓根 README / AGENTS 正本一律改口「已退役」；在职期间的
+  现状记录与钉码照留
+- 没有 registry 上的 deprecate 动作：源上本来就没有这个包
+
+没选的：重发一份到 gitea 维持逃生门。门的封顶与三枚工具面已经稳定，逃生门需要人记得它、会装它，而
+这半个月没有一次用到；留一个没人维护的第二入口，正是规矩里「只有一扇门」要防的形状。
+
+## 依据
+
+无物证目录；读数：2026-09-17 对 21 个待核包执行 `npm pack <包>@<仓里版本>`，唯独 command-http 回
+不到 tarball。
