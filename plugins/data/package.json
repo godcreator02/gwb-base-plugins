@@ -33,5 +33,12 @@
     "@godcreator/gwb-plugin-api": "0.1.2",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+  },
+  "gwb": {
+    "plugin": true
   }
 }
