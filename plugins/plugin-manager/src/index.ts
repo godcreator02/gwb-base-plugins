@@ -14,7 +14,7 @@ import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peer
 import type { PeerWarning } from './peer-warnings.js'
 import { addToHome, checkPeers, describeAddFailure, describePnpm, locatePnpm, runPnpm, runPnpmCapture, type PnpmResult } from './pnpm.js'
 import { parseOutdated, type UpdateInfo } from './outdated.js'
-import { mapLimited, parseSearch, readPluginMark, type SearchRow } from './search.js'
+import { isPluginRow, parseSearch, type SearchRow } from './search.js'
 import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
 import { fiberStateOf, planUpdateAll, type PlannedEntry } from './update-all.js'
@@ -847,7 +847,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         error: found.ok ? '解析不出 registry 地址（pnpm config 里没配）。装包走哪条源，检索就跟到哪。' : found.error,
       }
     }
-    // text 钉在 scope 上：列的就是这条线的全家；「是不是件」在解析后逐条认（见下）
+    // text 钉在 scope 上：列的就是这条线的全家；「是不是件」在解析后按包自报的 keywords 认（见下）
     const url = `${base}-/v1/search?text=${encodeURIComponent('@godcreator')}&size=250`
     try {
       // 宿主是 Electron 当 node 使，Node 18 起 fetch 是全局的
@@ -857,21 +857,9 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       if (rows === undefined) {
         return { ok: false, error: '检索响应认不出来（要的是 npm registry 的 search JSON）。' }
       }
-      // 认「件」：逐条读 packument 的 `gwb.plugin`（search 响应不带 manifest 字段）。
-      // **只看字段、没有名字回退**：true 列、false 与没声明过的一律不列（宁缺毋滥）——
-      // 名字（scope / gwb- 前缀）不再是判据；拉不到 packument 的那条也不列，别猜。
-      const marks = await mapLimited(rows, 6, async (row) => {
-        try {
-          const packument = await fetch(`${base}${row.pkg.replace('/', '%2F')}`, {
-            signal: AbortSignal.timeout(5_000),
-          })
-          if (!packument.ok) return false
-          return readPluginMark(await packument.text()) === true
-        } catch {
-          return false
-        }
-      })
-      return { ok: true, packages: rows.filter((_row, i) => marks[i] === true) }
+      // 认「件」：看包在 manifest 里自报的 keywords（搜索回执直接带这一格，不用逐包再问）。
+      // **没有回退**：没写 `gwb-plugin` 的（lib / 共享包 / 词汇表包 / 没声明的）都不进「可装」表。
+      return { ok: true, packages: rows.filter(isPluginRow) }
     } catch (err: unknown) {
       return { ok: false, error: `检索没成（10 秒没等到，或源够不着）：${String(err)}` }
     }
