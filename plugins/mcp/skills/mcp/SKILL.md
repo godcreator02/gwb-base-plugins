@@ -13,7 +13,8 @@ description: 要连一台 gwb 工作台的 MCP 门、或工具面为什么只有
 客户端配置串不用手拼：调命令 `mcp.info`，回执里的 `mcpServers` 片段照抄进 `.mcp.json`
 （或等价的用户级 MCP 配置）就能连。
 
-连不上就是三件事之一：**台没起**（起法在 gwb-kernel 仓 AGENTS「怎么跑」；起完要重连一次
+连不上就是三件事之一：**台没起**（开始菜单「gwb-kernel」，或跑
+`%LOCALAPPDATA%\Programs\gwb-kernel\gwb-kernel.exe`；从内核源码起的看 gwb-kernel 仓 AGENTS「怎么跑」；起完要重连一次
 ——MCP 是会话态的，台半路起来不会自动接上）、**这个 home 没装本件**、**配置串不对**
 （对答案走 `mcp.info`）。
 
