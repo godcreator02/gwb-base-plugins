@@ -14,3 +14,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@godcreator/*'
   - lucide-react@1.43.0
+
+# 开发仓一律开严格 peer 检查：peer 对不上 pnpm install 就报错，不只打 WARN
+strictPeerDependencies: true
