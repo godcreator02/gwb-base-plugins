@@ -1,0 +1,15 @@
+✓ Lockfile passes supply-chain policies (verified 332ms ago)
+Packages: +2
+++
+Progress: resolved 2, reused 10, downloaded 0, added 2, done
+[ERR_PNPM_PEER_DEP_ISSUES] Unmet peer dependencies
+
+✕ unmet peer @godcreator/gwb-shell
+  Installed: 0.7.2
+  Wanted:
+    >=0.8.0:
+      @godcreator/gwb-glm-quota@0.1.2
+hint: To disable failing on peer dependency issues, add the following to pnpm-workspace.yaml in your project root:
+
+  strictPeerDependencies: false
+

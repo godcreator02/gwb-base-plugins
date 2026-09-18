@@ -11,7 +11,8 @@ import { readHomeDependencies, readInstalledManifest, readPeerManifest, readShar
 import { assertId, assertPkgName, bareId, defaultIdFor, installSpec, uniqueId } from './ids.js'
 import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
 import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peers.js'
-import { describePnpm, locatePnpm, runPnpm, runPnpmCapture } from './pnpm.js'
+import { describeAddFailure } from './peer-conflict.js'
+import { addToHome, describePnpm, locatePnpm, runPnpm, runPnpmCapture, type AddResult } from './pnpm.js'
 import { parseOutdated, type UpdateInfo } from './outdated.js'
 import { isGwbLine, parseSearch, type SearchRow } from './search.js'
 import { entriesForPackage } from './uninstall.js'
@@ -120,8 +121,10 @@ export interface InstallResult {
   note?: string
   /** 没成时的一句话 */
   error?: string
-  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  /** pnpm 没成时它输出的最后几行——原因就在那儿；peer 冲突时就是冲突说明 */
   tail?: string
+  /** pnpm 报 peer 冲突时才有：它那段冲突说明。这时 home 原样 */
+  peerConflict?: string
 }
 
 /** 查新版本的回执 */
@@ -139,8 +142,10 @@ export interface UpdateResult {
   pkg: string
   /** 没成时的一句话 */
   error?: string
-  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  /** pnpm 没成时它输出的最后几行——原因就在那儿；peer 冲突时就是冲突说明 */
   tail?: string
+  /** pnpm 报 peer 冲突时才有：它那段冲突说明。这时 home 原样 */
+  peerConflict?: string
 }
 
 
@@ -170,8 +175,10 @@ export interface UpdateAllResult {
   note?: string
   /** 没成时的一句话 */
   error?: string
-  /** pnpm 没成时它输出的最后几行——原因就在那儿 */
+  /** pnpm 没成时它输出的最后几行——原因就在那儿；peer 冲突时就是冲突说明 */
   tail?: string
+  /** pnpm 报 peer 冲突时才有：它那段冲突说明。这时 home 原样 */
+  peerConflict?: string
 }
 
 /** 检索的回执 */
@@ -238,6 +245,10 @@ export interface GwbPluginManagerApi {
    *
    * **不抛**——pnpm 没成、找不到 pnpm，都收敛成一份 `ok: false` 的回执带上原因；
    * 包名不合规这种调用方写错了的事才抛。
+   *
+   * **peer 严不严格由 home 自己的 `pnpm-workspace.yaml` 定**，这儿不带参数。每趟先在 home 之外
+   * 预检，没过 home 原样；是 peer 冲突时回执带 `peerConflict`（`peer-conflict.ts`）。`update` /
+   * `updateAll` 同一套。
    *
    * **同一个包 install 两次会得到两条条目**（第二条 id 带数字后缀）。不做「已经装过就
    * 跳过」的判断：同一个包挂多条条目本来就是合法形态，替调用方猜意图只会猜错。
@@ -435,7 +446,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       on(
         INSTALL_COMMAND,
         '往 home 装一个包并自动加条目',
-        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目。回执 { ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }，action 是 installed / present / skipped / failed。参数 { pkg, spec? }（spec 是版本或 tag）',
+        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目。回执 { ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }，action 是 installed / present / skipped / failed。先在 home 之外预检，没过 home 原样；home 开着严格 peer 检查（它的 pnpm-workspace.yaml）而 peer 对不上时整趟拒，回 ok: false，error 说下一步，data.peerConflict 是 pnpm 的冲突说明。参数 { pkg, spec? }（spec 是版本或 tag）',
         async (args) => {
           const raw = asRecord(args)
           const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
@@ -489,7 +500,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UPDATE_COMMAND, '把一个已装的包升到最新', '不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all。参数 { pkg }', async (args) => {
+      on(UPDATE_COMMAND, '把一个已装的包升到最新', '不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all。home 开着严格 peer 检查而对不上时整趟拒、home 原样，data.peerConflict 是冲突说明。参数 { pkg }', async (args) => {
         const result = await this.update(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
@@ -499,7 +510,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       on(
         UPDATE_ALL_COMMAND,
         '一键热升全部过期包，不重启',
-        '一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
+        '一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note? }。home 开着严格 peer 检查时，有插件没跟上上游的破坏版就整趟拒、home 原样、一条条目不动，data.peerConflict 是冲突说明——先升那个下游，或 only 只升别的。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
         async (args) => {
           const result = await this.updateAll(onlyList(args))
           if (result.ok) return { ok: true, data: result }
@@ -543,11 +554,11 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     }
 
     this.info(`用 ${describePnpm(found)} 装 ${target}`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: ['add', target] }))
+    const run = await this.addQueued(found.file, [target])
     if (!run.ok) {
-      const error = `pnpm add ${target} 没成（退出码 ${String(run.exitCode)}）`
-      this.warn(`${error}\n${run.tail ?? ''}`)
-      return run.tail === undefined ? { ok: false, pkg, error } : { ok: false, pkg, error, tail: run.tail }
+      const failure = describeAddFailure(`pnpm add ${target}`, run)
+      this.warn(`${failure.error}\n${failure.tail ?? ''}`)
+      return { ok: false, pkg, ...failure }
     }
 
     /**
@@ -577,10 +588,10 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
    * **为什么装、为什么 pnpm 自动补的那份顶不上用**，判据与实测读数在 `peers.ts` 的头注释。
    * 这儿只讲执行上的三个取舍：
    *
-   * **一、装的是 latest，不是清单上那条 range。** 这个生态的 peer range 一律写 `>=`
-   * （理由见各件 `package.json` 的 `//peerRange`），latest 通常都满足；而按 range 装会把
-   * `^1.2.3` 这种范围原样写进 home 的 `package.json`，跟这儿每条依赖都是精确版本的形状
-   * 对不上。range 原样带进回执，对不上时人看得见。
+   * **一、装的是 latest，不是清单上那条 range。** 这里装的 peer 是共享包与生态外的包，
+   * latest 通常都满足清单上那条 range；而按 range 装会把 `^1.2.3` 这种范围原样写进 home 的
+   * `package.json`，跟这儿每条依赖都是精确版本的形状对不上。range 原样带进回执；latest
+   * 真不满足而 home 开着严格检查时，这一条就是 `failed`、note 里是冲突说明。
    *
    * **二、一条一趟 pnpm，不批量。** 一趟 `add a b c` 里有一个包源上没有，pnpm 整趟失败、
    * 好的那几个一个都装不上，而且它不告诉你是哪个挂的。peer 数量是个位数，多起几个进程
@@ -613,13 +624,14 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         peers.push(item.note === undefined ? stay : { ...stay, note: item.note })
         continue
       }
-      const run = await this.queue(() => runPnpm({ pnpm, cwd: this.home, args: ['add', item.pkg] }))
+      const run = await this.addQueued(pnpm, [item.pkg])
       if (run.ok) {
         this.info(`${pkg} 的 peer ${item.pkg}（清单写 ${item.range}）装成了 home 的直接依赖`)
         peers.push({ pkg: item.pkg, range: item.range, action: 'installed' })
         continue
       }
-      const why = `pnpm add ${item.pkg} 没成（退出码 ${String(run.exitCode)}）${run.tail === undefined ? '' : `\n${run.tail}`}`
+      const failure = describeAddFailure(`pnpm add ${item.pkg}`, run)
+      const why = `${failure.error}${failure.tail === undefined ? '' : `\n${failure.tail}`}`
       this.warn(`${pkg} 的 peer ${item.pkg} 没装上：${why}`)
       peers.push({ pkg: item.pkg, range: item.range, action: 'failed', note: why })
     }
@@ -674,11 +686,11 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     }
 
     this.info(`用 ${describePnpm(found)} 把 ${pkg} 升到最新`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: ['add', `${pkg}@latest`] }))
+    const run = await this.addQueued(found.file, [`${pkg}@latest`])
     if (!run.ok) {
-      const error = `pnpm add ${pkg}@latest 没成（退出码 ${String(run.exitCode)}）`
-      this.warn(`${error}\n${run.tail ?? ''}`)
-      return run.tail === undefined ? { ok: false, pkg, error } : { ok: false, pkg, error, tail: run.tail }
+      const failure = describeAddFailure(`pnpm add ${pkg}@latest`, run)
+      this.warn(`${failure.error}\n${failure.tail ?? ''}`)
+      return { ok: false, pkg, ...failure }
     }
 
     // 条目不动（引的是包名，包换版本条目原样有效）。跑着的 fiber 还持旧代码，重启才换
@@ -707,12 +719,15 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       return bare(found.error)
     }
     // 一趟装完：pnpm 是读-改-写 home 的 package.json，逐包起进程跟并发 install 一样会互相盖
-    this.info(`用 ${describePnpm(found)} 一趟装 ${plan.pnpmArgs.slice(1).join(' ')}`)
-    const run = await this.queue(() => runPnpm({ pnpm: found.file, cwd: this.home, args: plan.pnpmArgs }))
+    const specs = plan.pnpmArgs.slice(1)
+    this.info(`用 ${describePnpm(found)} 一趟装 ${specs.join(' ')}`)
+    const run = await this.addQueued(found.file, specs)
     if (!run.ok) {
-      const error = `pnpm ${plan.pnpmArgs.join(' ')} 没成（退出码 ${String(run.exitCode)}）。一个包都没升、一条条目都没动`
-      this.warn(`${error}\n${run.tail ?? ''}`)
-      return run.tail === undefined ? bare(error) : { ...bare(error), tail: run.tail }
+      const failure = describeAddFailure(`pnpm ${plan.pnpmArgs.join(' ')}`, run)
+      // 失败发生在重挂之前：条目一条都没动；包动没动看那半句 home 原样说没说
+      const error = `${failure.error}。一个包都没升、一条条目都没动`
+      this.warn(`${error}\n${failure.tail ?? ''}`)
+      return { ...bare(error), ...(failure.tail === undefined ? {} : { tail: failure.tail }), ...(failure.peerConflict === undefined ? {} : { peerConflict: failure.peerConflict }) }
     }
 
     // 从这儿起旧版本目录已经没了：升了的每条条目都得在**这条命令里**重挂，不留窗口
@@ -973,6 +988,11 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     const own = ownEntryId(this.own)
     const cut = own.lastIndexOf(':')
     return cut === -1 ? bare : `${own.slice(0, cut + 1)}${bare}`
+  }
+
+  /** 往 home 装一趟（连预检）占串行队列的**一个**位置：预检与真装之间不插别的 */
+  private addQueued(pnpm: string, specs: readonly string[]): Promise<AddResult> {
+    return this.queue(() => addToHome({ pnpm, home: this.home, specs }))
   }
 
   private queue<T>(task: () => Promise<T>): Promise<T> {

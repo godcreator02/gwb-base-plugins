@@ -1,6 +1,6 @@
 ---
 name: gwb-plugin-manager
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
+description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、peer 冲突时回执怎么读（严格与否由 home 的 pnpm-workspace.yaml 定、冲突即拒、home 原样、怎么办）、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
 ---
 
 # 插件怎么装、怎么管、怎么升
@@ -26,6 +26,30 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 - 装不下来（pnpm 没成、包名不存在）回 `ok: false`，error 带着原因和 pnpm 输出的尾巴
 - **装完之后调一遍门的 `index`**——新插件的命令现在才出现在地图上
 
+### peer 冲突：严格与否由 home 定，插件管理只把冲突报成人话
+
+严不严格**由 home 自己的 `pnpm-workspace.yaml` 定**（`strictPeerDependencies: true`），插件管理调 pnpm
+不带任何 peer 参数：
+
+- **default home** 由内核 `INSTALL.md` 铺这一行，peer 对不上 pnpm 就报错——有插件没跟上上游的破坏版时，
+  一键更新整趟拒。这份文件只写这一行，逐项覆盖用户级 pnpm 配置（包龄豁免等照读），不是整份盖掉
+- **隔离 home 不放**：开发版只进隔离 home，上游破坏线的开发版（`0.10.0-dev.x`）对还写 `^0.9.x` 的下游
+  永远不满足，而隔离 home 正是要带着这些下游验它。不严格时 peer 对不上只打一句 WARN、照装
+
+`install`、`update`、`update-all`（连同 install 顺手装 peer 的那几趟）每一趟都**先在 home 之外预检**
+（把 home 的 `package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml` 抄进临时目录只解析），过了才在 home
+里真装——pnpm 严格没过时会把锁文件与 `node_modules` 改掉一半、再 `pnpm install` 也收不回，所以不在 home
+里试。peer 对不上时：
+
+- 回 `ok: false`，**这一趟什么都没动**——home 的 `package.json`、`pnpm-lock.yaml`、`node_modules` 原样，
+  一条条目没加、没重挂
+- `data.peerConflict`（也是 `tail`）是 pnpm 那段冲突说明：`✕ unmet peer <上游>`、`Installed:` home 里
+  现在那一版、`Wanted:` 下是要别的范围的插件
+- 怎么办：多半是**有插件还没跟上上游的破坏版**——先把那个下游升上来（等它发追上的版本），或
+  `plugin-manager.update-all {"only":[…]}` 只升别的；是 home 里的上游太旧（新装的插件要更新的上游），
+  就先把上游升上来。**别去关严格检查**——pnpm 输出里教人关的那段 hint 回执里特意不带
+- home 里**本来就有**一处 peer 冲突时，此后任何安装都会报那一处（pnpm 查整棵树），先把它理顺
+
 ### peer 那一步：谁装、谁跳过、谁没装上
 
 插件如果依赖一个**会独立升级**的 npm 包，而且只是读它的文件、起它的进程（不 import 它的
@@ -39,10 +63,10 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 
 | 回执里的 `action` | 什么情况 |
 | --- | --- |
-| `installed` | 这次装成了 home 的直接依赖（装 latest；`range` 里是插件清单写的范围，一律 `>=`，latest 通常都满足） |
+| `installed` | 这次装成了 home 的直接依赖（装 latest；`range` 里是插件清单写的范围，latest 通常都满足） |
 | `present` | 本来就在 home 的 `package.json` 里，**版本一个字没动**——不降级、不改写别人钉好的版本 |
 | `skipped` | 不该由这条路装：`cordis`（宿主那一份）、本生态的插件（要装走 `plugin-manager.install`，那条还落条目）。共享包（清单里有 `gwb.shared`，`gwb-shared-react` / `gwb-tokens`）与生态外的包不在此列，照装 |
-| `failed` | 装不上（源上没有之类）。**插件本身照样是装上了的**，回执顶层 `note` 里点名，自己去 home 里 `pnpm add` 一趟 |
+| `failed` | 装不上（源上没有、严格检查下 peer 对不上之类，`note` 里是原因）。**插件本身照样是装上了的**，回执顶层 `note` 里点名，自己去 home 里 `pnpm add` 一趟 |
 
 回执形状：`{ ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note? }`。插件一条 peer
 都没声明就没有 `peers` 这一格。
@@ -74,7 +98,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
   别拿 install 当升级用：那会给同一个包再挂一条条目
 - **跑着的插件还持旧代码，重启内核后才换成新的**——升完该说的这句要说；要热生效走下面的
   `plugin-manager.update-all`
-- 包没装它当场抛；pnpm 没成回 `ok: false` 带尾巴
+- 包没装它当场抛；pnpm 没成回 `ok: false` 带尾巴；严格 peer 检查没过同上一节，home 原样
 
 ## 一键热升：plugin-manager.update-all（发完新版本就调它，不重启）
 
@@ -88,6 +112,8 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 - **升到 `gwb-plugin-manager` 自己**（`selfDeferred: true`）：它那条条目在回执发出之后才重挂，别等它出现在 `entries` 里 remounted
 - **升到 `gwb-mcp` 门自己**：在途的 MCP 请求会断（门随插件重挂）。MCP 是会话态的，**要重连一次**，没有「下一发自动好」；重连后 `plugin-manager.list` 核对版本与 active，再调一遍 `index`
 - pnpm 没成回 `ok: false` 带尾巴，**一个包都没升、一条条目都没动**；`note` 里有话就读（全都最新、only 里点了名却不在清单里的、界面要手动刷新）
+- **有插件没跟上上游的破坏版**：home 开着严格 peer 检查（default 开着）时整趟拒、home 原样（见 install 那节），`data.peerConflict`
+  点名谁要什么范围——先把那个下游升上来，或 `{ "only": [...] }` 只升别的
 
 ## 拆：remove-entry 与 uninstall 的分工
 

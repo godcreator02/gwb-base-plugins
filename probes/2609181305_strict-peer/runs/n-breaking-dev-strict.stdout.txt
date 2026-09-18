@@ -1,0 +1,16 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+✓ Lockfile passes supply-chain policies (verified 243ms ago)
+Packages: +2 -2
+++--
+Progress: resolved 2, reused 0, downloaded 0, added 2, done
+[ERR_PNPM_PEER_DEP_ISSUES] Unmet peer dependencies
+
+✕ unmet peer probe-up
+  Installed: file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/strict/_probe-up@0.10.0-dev.1
+  Wanted:
+    ^0.9.0:
+      probe-ds-up@file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/strict/_probe-ds-up@1.0.0
+hint: To disable failing on peer dependency issues, add the following to pnpm-workspace.yaml in your project root:
+
+  strictPeerDependencies: false
+

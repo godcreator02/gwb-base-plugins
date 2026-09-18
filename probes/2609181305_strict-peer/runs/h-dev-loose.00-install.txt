@@ -1,0 +1,13 @@
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: C:\Users\godamericatb14\AppData\Local\pnpm\store\v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +11
++++++++++++
+Progress: resolved 11, reused 11, downloaded 0, added 11, done
+
+dependencies:
++ @godcreator/gwb-glm-quota 0.1.2
++ @godcreator/gwb-shell 0.9.0
+
+Done in 463ms using pnpm v12.4.2

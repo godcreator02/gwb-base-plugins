@@ -1,0 +1,2 @@
+strictPeerDependencies=true
+minimumReleaseAgeExclude=[   "@godcreator/*",   "@godcreator02/*",   "@team/*" ]

@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-plugin-manager",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": {
     "name": "godcreator"
   },
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名。0.3.1：search 兼容 gitea 个人源的响应形状——它把 scope 拆开单放（name 不带 @godcreator/ 前缀），原先整表被 isGwbLine 过滤成空还不报错；手册旧门口径（GET /surface、gwb-command-http）改口 MCP 门。0.4：只支持原生 pnpm 12+——查找落点是 pnpm 原生可执行文件、直接 spawn，查到 11 及以前明确报错要装 12+",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名。0.3.1：search 兼容 gitea 个人源的响应形状——它把 scope 拆开单放（name 不带 @godcreator/ 前缀），原先整表被 isGwbLine 过滤成空还不报错；手册旧门口径（GET /surface、gwb-command-http）改口 MCP 门。0.4：只支持原生 pnpm 12+——查找落点是 pnpm 原生可执行文件、直接 spawn，查到 11 及以前明确报错要装 12+。0.4.1：每趟 pnpm add 先在 home 之外预检、过了才动 home；home 开着严格 peer 检查（它自己的 pnpm-workspace.yaml）而 peer 对不上时，回执带冲突说明与下一步、说清 home 原样",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,15 +29,15 @@
   },
   "//deps": "peer 两条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）。三档判据见内核仓 CLAUDE.md。浏览器半的三个 peer（shared-react / tokens / shell）随三仓拆分退场——那半搬去 @godcreator/gwb-baseui 了",
   "//devDeps": "commands / data / settings / skills 四条都是 **dev**:在这儿全是空 `import type {}`（commands 那条带一个类型,一键热升要攥总线的引用）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选的**——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、说明书挂不上。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾",
-  "//peerRange": "写 >= 不写 ^:caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）,共享包一升版消费方就不匹配了",
+  "//peerRange": "^<dev 钉>:下限是验过的那一版,上限是下一个破坏边界(规矩正本在 gwb-release 说明书)",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": ">=0.1.1",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-data": "workspace:*",
-    "@godcreator/gwb-plugin-api": "0.1.1",
+    "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",

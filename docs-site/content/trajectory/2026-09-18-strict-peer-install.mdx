@@ -1,0 +1,75 @@
+---
+title: peer 冲突即报错：严格与否归 home 的 pnpm-workspace.yaml，plugin-manager 只先预检、把冲突报成人话
+born-at: 2026-09-18T13:30
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 严格 peer
+domain: 件
+---
+
+## 背景
+
+`gwb-release` 说明书写着「发破坏版之后，default 的一键更新遇到没追上的下游会整趟拒」。现实里这层保护不存在：
+pnpm 12.4.2 默认不严格，peer 不满足只打 `[WARN] Issues with peer dependencies found`、退出码 0，
+plugin-manager 0.4.0 照装不误。生态正把 peer 从 `>=` 迁成 `^<dev 钉>`，迁完之后 peer 冲突的意思就是
+「有插件没跟上上游的破坏版」——该拒。
+
+同一天方案改了三版，都是用户拍板：
+
+1. plugin-manager 按次带参数：装正式版带 `--config.strict-peer-dependencies=true`，装开发版带 `=false`
+2. 简化：开发版那一路什么都不加（pnpm 默认本就不严格）
+3. **定稿**：严格与否改由 home 自己的 `pnpm-workspace.yaml`（只写 `strictPeerDependencies: true`）决定，
+   plugin-manager 调 pnpm 不带任何 peer 参数。default home 由内核 `INSTALL.md` 铺这一行；隔离 home 不放，
+   开发版路径天然不严格。前两版都没发
+
+第三版能成立，靠的是一条跟 `gwb-release`「home 里不放 `pnpm-workspace.yaml`，它整份盖掉全局配置」相反的读数：
+只写这一行的 `pnpm-workspace.yaml` 是**逐项覆盖**用户级配置，`minimumReleaseAgeExclude` 照读（总控台实测，
+本仓 probe 复现）。
+
+实测（`probes/2609181305_strict-peer`）还改写了两处原先的设想：
+
+- **pnpm 12 严格没过时 home 动了一半**：`package.json` 不动，但 `pnpm-lock.yaml` 已写进新包、`node_modules`
+  顶层已链上它；再跑一趟 `pnpm install` 回「Already up to date」、收不回来。`--lockfile-only` 也照写锁文件。
+  直接在 home 里跑，回执说不出「什么都没动」
+- **开发版号并非永远满足不了 `^`**：pnpm 12 的 peer 检查里 `0.9.1-dev.x` 对 `>=0.8.0` 与 `^0.9.0` 都算满足。
+  满足不了的是**破坏线**的开发版（`0.10.0-dev.1` 对 `^0.9.0`）——那正是隔离 home 要带着没迁的下游验的东西，
+  所以隔离 home 不放那份文件的理由照样成立
+
+## 结论与边界
+
+**严不严格归 home**：plugin-manager 的 `install`（连同它顺手装 peer 的几趟）、`update`、`update-all` 调
+`pnpm add` 一律不带 peer 参数。
+
+**每趟先预检**：把 home 的 `package.json`、`pnpm-lock.yaml`、`.npmrc`、`pnpm-workspace.yaml`（有才抄）抄进临时
+目录，`pnpm add <specs> --lockfile-only` 跑一趟；过了才在 home 里真装，没过 home 一个文件不碰。严格来自抄过去的
+那份 `pnpm-workspace.yaml`。预检与真装占串行队列同一个位置。
+
+**冲突报成人话**：认 `ERR_PNPM_PEER_DEP_ISSUES`，截错误码之后、`hint:` 之前那段（`✕ unmet peer` /
+`Installed` / `Wanted`）进回执的 `peerConflict` 与 `tail`，`error` 给下一步——先把没跟上的下游升上来，或
+`update-all {"only":[…]}` 只升别的；是 home 里上游太旧就先升上游；并说「这一趟什么都没动」。pnpm 那段教人
+关掉严格检查的 hint 不带进回执。
+
+版本抬补丁（0.4.0 → 0.4.1）：插件管理自己的语义只多了「失败时说人话、预检保 home 原样」，回执多一格
+`peerConflict` 是加字段；「冲突即拒」的语义变化住 home 的配置，不在这个包里。
+
+几处取舍：
+
+- **预检不做回滚**：备份锁文件、失败后还原再 `install` 也能把 home 收回，但那是在活着的 home 上多跑两趟
+  pnpm、`node_modules` 中途被改过；预检从头不碰 home，「什么都没动」是真的。代价是每趟多一次只解析
+  （实测几百毫秒）；不严格的 home 里预检照跑，别的失败（源上没有）也在碰 home 之前拦下
+- **home 里已有的冲突也会拦住不相干的安装**（pnpm 查整棵树）：不绕，照报那一处——它本来就该先理顺
+- plugin-manager 自己按新规矩迁 peer：`@godcreator/gwb-plugin-api` `>=0.1.1` → `^0.1.2`（dev 钉跟到
+  `dist-tags.latest` 0.1.2）；本件对本仓别的插件没有 peer
+- 本仓开发 workspace 同日也在根 `pnpm-workspace.yaml` 开了 `strictPeerDependencies: true`
+
+不做的：不按次带严格参数、不代人关严格检查、不替 home 写那份 `pnpm-workspace.yaml`（铺它是 INSTALL 的事）。
+
+## 依据
+
+- `probes/2609181305_strict-peer/runs/summary.jsonl`：每个场景的退出码与四个指纹（`package.json`、锁文件、
+  顶层 `node_modules`、`.pnpm` 目录名单）变没变
+- 同目录 `runs/a-flag.stdout.txt`：严格失败的原文长相（退出码 1，全在 stdout，stderr 空）
+- `j-install-after-fail`：半截状态再 `install` 收不回；`p-preflight-conflict-*`：预检没过时 home 四个指纹全不变
+- `r-override-noflag`：目录里只放 `strictPeerDependencies: true` 的 `pnpm-workspace.yaml`，不带参数的 `pnpm add`
+  就严格；`runs/s-config-merge.txt`：同一目录里用户级 `minimumReleaseAgeExclude` 照读
+- `g`、`k`、`n`、`o`：同一线开发版严格下照过，破坏线开发版严格下拒、不严格照装

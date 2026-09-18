@@ -1,0 +1,13 @@
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: C:\Users\godamericatb14\AppData\Local\pnpm\store\v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +10
+++++++++++
+Progress: resolved 10, reused 9, downloaded 0, added 10, done
+
+dependencies:
++ @godcreator/gwb-shell 0.8.0
++ probe-ds-caret08 file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/strict/_probe-ds-caret08(@godcreator/gwb-shell@0.8.0(@godcreator/gwb-commands@0.4.2(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.10)))(@godcreator/gwb-data@0.1.1(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.10))(cordis@4.0.0-rc.10))(@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.10))(@godcreator/gwb-shared-react@0.0.4)(@godcreator/gwb-tokens@0.1.3)(cordis@4.0.0-rc.10))
+
+Done in 402ms using pnpm v12.4.2

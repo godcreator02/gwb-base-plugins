@@ -1,0 +1,6 @@
+✓ Lockfile passes supply-chain policies (verified 1s ago)
+
+dependencies:
++ @godcreator/gwb-glm-quota ^0.1.2
+
+Done in 1s using pnpm v12.4.2

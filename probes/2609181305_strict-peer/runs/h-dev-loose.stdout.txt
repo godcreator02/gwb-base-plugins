@@ -1,0 +1,10 @@
+✓ Lockfile passes supply-chain policies (verified 209ms ago)
+Packages: +2 -2
+++--
+Progress: resolved 2, reused 11, downloaded 0, added 2, done
+
+dependencies:
+- @godcreator/gwb-shell 0.9.0
++ @godcreator/gwb-shell 0.9.1-dev.202609181108
+
+Done in 379ms using pnpm v12.4.2

@@ -1,0 +1,33 @@
+隔离 home pmstrict-2609181325（devkit.home.new），plugin-manager 经 devkit.dev 部署 0.4.2-dev.202609181326（仓里 0.4.1 的改动），
+取证全走 devkit.cdp {"args":["<home>","cmd","<命令>","<JSON>"]}。2026-09-18。
+
+一、正常路（home 里没有 pnpm-workspace.yaml）
+  plugin-manager.install {"pkg":"@godcreator/gwb-reimburse"}  -> ok:true，entryId home:reimburse，7 条 peer 全 present
+  plugin-manager.update-all {}                                  -> ok:true，updated []，note「全都最新」
+  plugin-manager.uninstall {"pkg":"@godcreator/gwb-reimburse"}  -> ok:true，removedEntries [reimburse]（给下一步腾出干净的冲突场）
+
+二、冲突路
+  手工：home package.json 里 @godcreator/gwb-shell 改成 0.7.2，pnpm install（退出码 0）；
+        home 根放 pnpm-workspace.yaml，只一行 strictPeerDependencies: true
+  前后快照：package.json / pnpm-lock.yaml / cordis.yml 的 SHA256，node_modules/@godcreator 每条 junction 的名字与指向，
+            node_modules/.pnpm 目录名单（共 32 行），存成文本后逐行 Compare-Object
+  plugin-manager.install {"pkg":"@godcreator/gwb-glm-quota"}（glm-quota 的 peer 要 shell >=0.8.0）
+    -> ok:false
+       error：pnpm add @godcreator/gwb-glm-quota 被拒：peer 对不上（home 开着严格 peer 检查，ERR_PNPM_PEER_DEP_ISSUES）。下面 Installed 是
+              home 里现在那一版，Wanted 下是要别的范围的插件——多半是有插件还没跟上上游的破坏版：先把那个下游升上来，或
+              plugin-manager.update-all {"only":[…]} 只升别的；是 home 里的上游太旧，就先把上游升上来。这一趟什么都没动（home 的
+              package.json、pnpm-lock.yaml、node_modules 原样）
+       data.peerConflict / data.tail：
+              ✕ unmet peer @godcreator/gwb-shell
+                Installed: 0.7.2
+                Wanted:
+                  >=0.8.0:
+                    @godcreator/gwb-glm-quota@0.1.2
+    快照 diff 0 行；%TEMP% 下 gwb-plugin-manager-preflight-* 临时目录 0 个（预检跑完删干净）；cordis.yml 里没有 glm 条目
+
+三、开发版路（拿掉 pnpm-workspace.yaml，外壳回到 ^0.9.0，先正常装下游 glm-quota：ok:true，entryId home:glm-quota）
+  plugin-manager.install {"pkg":"@godcreator/gwb-shell","spec":"0.7.6-dev.202609171842"}
+    -> ok:true（home 里已有下游 glm-quota 要 shell >=0.8.0，这个开发版不满足，照装——不严格）
+       package.json 里 @godcreator/gwb-shell 变成 ^0.7.6-dev.202609171842
+    install 顺手给外壳加的第二条条目 shell-2 挂不上（service "gwbShell" has been registered，同一服务两条条目，
+    是这一步验机的副作用），随后 plugin-manager.remove-entry {"entryId":"shell-2"} 摘掉
