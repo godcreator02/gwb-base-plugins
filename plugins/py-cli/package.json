@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-py-cli",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": {
     "name": "godcreator"
   },
-  "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建一个 venv，spawn venv 里的可执行文件。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状。0.2：命令登记随 commands 0.4 拆 description/usage（INVOKE_SHAPE 归 usage），plugin 改口包名。0.3.1：PyCliSpec 加 usage（缺省仍用运行器调用形状）。0.3.2：说明书改口 MCP 门 run，回执讲清总线原样透传、门上摊平六样",
+  "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建一个 venv，spawn venv 里的可执行文件。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状。0.2：命令登记随 commands 0.4 拆 description/usage（INVOKE_SHAPE 归 usage），plugin 改口包名。0.3.1：PyCliSpec 加 usage（缺省仍用运行器调用形状）。0.3.2：说明书改口 MCP 门 run，回执讲清总线原样透传、门上摊平六样。0.3.3：peer 迁 ^——@godcreator/gwb-commands 从 >=0.4.1 改 ^0.4.3、@godcreator/gwb-plugin-api 从 >=0.1.1 改 ^0.1.2，dev 钉跟到 0.1.2",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,13 +30,13 @@
   },
   "//deps": "跟 gwb-node-cli 同一套判据",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.4.1",
-    "@godcreator/gwb-plugin-api": ">=0.1.1",
+    "@godcreator/gwb-commands": "^0.4.3",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "0.1.1",
+    "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",

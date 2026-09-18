@@ -27,16 +27,16 @@
     "prepublishOnly": "pnpm build"
   },
   "//dependencies": "零运行时依赖——只用 node:http / node:crypto / node:module。这是相对 mcp 件那串 SDK（express/hono/jose/ajv… 解包 4.3MB）的实质差别",
-  "//peerDependencies": "commands / settings 写 peer 是 inject 那两个服务——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。commands >=0.2.0：/surface 要如实带出登记表里的 top 字段，老版注册表没有它。data 件 0.2 起退役——token 落盘是它唯一的用途，token 摘了它也跟着走",
-  "//peerRange": "写 >= 不写 ^：caret 在 0.0.x 上锁死 patch（^0.0.1 只匹配 0.0.1）",
+  "//peerDependencies": "commands / settings 写 peer 是 inject 那两个服务——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。data 件 0.2 起退役——token 落盘是它唯一的用途，token 摘了它也跟着走",
+  "//peerRange": "正本在 devkit 的 release skill「gwb-release」（随 @godcreator/gwb-devkit 包发，见该包 skills/gwb-release/SKILL.md）",
   "peerDependencies": {
-    "@godcreator/gwb-commands": ">=0.2.0",
-    "@godcreator/gwb-plugin-api": ">=0.1.0",
-    "@godcreator/gwb-settings": ">=0.1.0"
+    "@godcreator/gwb-commands": "^0.4.3",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-settings": "^0.2.1"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "0.1.1",
+    "@godcreator/gwb-plugin-api": "0.1.2",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",

@@ -10,7 +10,3 @@ allowBuilds:
   # 那个原生模块不编也一样跑
   '@parcel/watcher': false
   esbuild: true
-
-minimumReleaseAgeExclude:
-  - '@godcreator/*'
-  - lucide-react@1.43.0

@@ -152,7 +152,8 @@ peers 三条，各是[三档判据](/docs/overview)里的不同一档：
 - **`gwb-commands` 插件**：一行值都没 import（只 `import type {}` 激活它的 `declare module`），
   但 **`inject: ['gwbCommands']` 是运行期硬依赖**——home 里没有它，这个插件永远挂不上（没有
   总线，历史段出不去、命令注册不上）。peer 的语义正是「宿主环境得提供这个」。**凡是
-  `inject` 的服务提供方，一律 peer。** 版本写 `>=`，钉的是「这个面得在」而不是某一版
+  `inject` 的服务提供方，一律 peer。** 版本范围怎么写：正本在 devkit 的 release skill
+  「gwb-release」，本页不复述
 - **`cordis`**：薄服务 `extends Service`，且必须是宿主那一份——运行时真 import，
   peer
 
@@ -161,5 +162,5 @@ dev 依赖（radix / cva / cn / lucide、`components.json` 的 `logger` 前缀�
 `@godcreator/gwb-baseui`：窗格侧的依赖故事在那边讲，Tailwind 前缀围栏、Select 浮层户口
 那些也随之过去了。
 
-peer 范围一律写 `>=` 不写 `^`：caret 在 `0.0.x` 上锁死 patch（`^0.0.1` 只匹配 `0.0.1`），
-共享包一升版消费方就不匹配了。
+peer 范围怎么写（下限、上限、同胞包、`0.0.x` 怎么办）：正本在 devkit 的 release skill
+「gwb-release」——本页不复述。

@@ -82,8 +82,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -100,8 +100,8 @@ importers:
   plugins/commands:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -112,8 +112,8 @@ importers:
   plugins/data:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -127,8 +127,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -155,8 +155,8 @@ importers:
         specifier: workspace:*
         version: link:../node-cli
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -176,8 +176,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -221,8 +221,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -242,8 +242,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -260,8 +260,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.1
-        version: 0.1.1(cordis@4.0.0-rc.9)
+        specifier: 0.1.2
+        version: 0.1.2(cordis@4.0.0-rc.9)
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -546,11 +546,6 @@ packages:
         optional: true
       react:
         optional: true
-
-  '@godcreator/gwb-plugin-api@0.1.1':
-    resolution: {integrity: sha512-t/erIAU2/yHgHP4X/xS23/+X4jrnMsI4Koj/QvW9zg8HK52zltS3RqIrciD7vGmBiFFFX8BEK+5BVf704xsE9Q==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.1.1/gwb-plugin-api-0.1.1.tgz}
-    peerDependencies:
-      cordis: ^4.0.0-rc.9
 
   '@godcreator/gwb-plugin-api@0.1.2':
     resolution: {integrity: sha512-K018+THOUcy0cHZzX1LmM2JeonvTkPv01tJ0hNMpYJ85t7S5E870+fKXj4ara4A0egUaX6mF/cXOJ//4TZ8LUw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.1.2/gwb-plugin-api-0.1.2.tgz}
@@ -3181,10 +3176,6 @@ snapshots:
       react: 19.3.0
     transitivePeerDependencies:
       - supports-color
-
-  '@godcreator/gwb-plugin-api@0.1.1(cordis@4.0.0-rc.9)':
-    dependencies:
-      cordis: 4.0.0-rc.9
 
   '@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)':
     dependencies:
