@@ -10,7 +10,13 @@
  *
  * **name 的两种形状**（2026-09-15 实测）：npmjs/verdaccio 把 scope 合在 name 里
  * （`@godcreator/gwb-x`）；gitea（个人源）拆开单放——`package.scope` 是 `"@godcreator"`、
- * `name` 只有 `gwb-x`。不归一的话 `isGwbLine` 整表落空，search 回空数组还不报错。
+ * `name` 只有 `gwb-x`。不归一的话整表都是短名，逐条读 packument 的键（`@scope/name`）
+ * 全对不上，search 回空数组还不报错。
+ *
+ * **件的身份看 manifest 不看名字**（2026-09-18 起）：判据是 manifest 里的 `gwb.plugin`。
+ * search 的响应不带 manifest 字段，得逐条读 packument（`readPluginMark`）；**没有回退**——
+ * 名字（scope / `gwb-` 前缀）不再是任何判据，没声明过的包不进这张表。
+ * 声明随各包的版本铺开：插件的 latest 还没带上 `gwb.plugin: true` 时，它就不在表里。
  */
 
 /** 检索出来的一条：包名 + registry 上的最新版与一句话 */
@@ -24,14 +30,56 @@ export interface SearchRow {
 export type ParsedSearch = SearchRow[] | undefined
 
 /**
- * 这条线上的包才算：`@godcreator` scope 下、`gwb-` 前缀。
+ * 从 packument 里读「件的身份声明」：`versions[dist-tags.latest].gwb.plugin`。
  *
- * scope 与前缀不是口味是**名字本身**（scope 不换，前缀是当年跟废弃那批错开用的）。
- * 按这条字面规则列，registry 上一整条废弃的 `gwb-*` 与共享包、词汇表包也会一并进来——
- * 那是「以 gwb- 开头的都列进来」的直接后果，拍板记在件仓文档站的 decisions。
+ * 认得出 boolean 就回它（`true` 是件、`false` 明确不是，lib / 共享包 / 词汇表包用）；
+ * 读不到 / 不是 JSON / 没有该版本 / `gwb` 段里没这个键，一律回 undefined——
+ * **undefined 不是「不是件」，是「没声明过」**；调用方当前一律不列（宁缺毋滥），
+ * 将来若要放宽，判据落在这儿，别回到名字上。
  */
-export function isGwbLine(pkg: string): boolean {
-  return pkg.startsWith('@godcreator/gwb-')
+export function readPluginMark(text: string): boolean | undefined {
+  let raw: unknown
+  try {
+    raw = JSON.parse(text)
+  } catch {
+    return undefined
+  }
+  if (!isRecord(raw)) return undefined
+  const versions = raw['versions']
+  const distTags = raw['dist-tags']
+  if (!isRecord(versions) || !isRecord(distTags)) return undefined
+  const latest = distTags['latest']
+  if (typeof latest !== 'string') return undefined
+  const picked = versions[latest]
+  if (!isRecord(picked)) return undefined
+  const gwb = picked['gwb']
+  if (!isRecord(gwb)) return undefined
+  const plugin = gwb['plugin']
+  return typeof plugin === 'boolean' ? plugin : undefined
+}
+
+/**
+ * 限并发跑一批异步活，结果按原顺序回。逐条读 packument 用它——一次只发几个请求，
+ * 别把源砸了，也别排成一条几百毫秒乘 N 的长队。
+ */
+export async function mapLimited<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = []
+  let next = 0
+  const run = async (): Promise<void> => {
+    for (;;) {
+      const i = next
+      next += 1
+      if (i >= items.length) return
+      out[i] = await fn(items[i] as T)
+    }
+  }
+  const lanes = Math.max(1, Math.min(limit, items.length))
+  await Promise.all(Array.from({ length: lanes }, run))
+  return out
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

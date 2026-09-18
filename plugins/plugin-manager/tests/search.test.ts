@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { isGwbLine, parseSearch } from '../src/search'
+import { mapLimited, parseSearch, readPluginMark } from '../src/search'
 
 /**
  * 检索的解析与过滤。形状是实测钉的（2026-09-08，`/-/v1/search?text=@godcreator`）：
  * 顶层 `{ objects, total, time }`，每条 `object.package` 带 name/version/description；
  * 2026-09-15 起 name 有两种形状——npmjs/verdaccio 合着 scope、gitea 拆开单放，见下组用例。
- * 这组测试同时钉住两件定位上的事：**这里不认识任何具体的 registry**（只有协议），
- * 过滤只认「scope + gwb- 前缀」这一个字面规则。
+ * 这组测试同时钉住两件定位上的事：**这里不认识任何具体的 registry**（只有协议）；
+ * 「是不是件」自 2026-09-18 起只看 manifest 的 `gwb.plugin`（packument 读，`readPluginMark`）——
+ * 名字（scope / `gwb-` 前缀）不再是判据，没有回退。
  */
 
 const response = (objects: unknown[]): string => JSON.stringify({ objects, total: objects.length, time: 0 })
@@ -15,25 +16,6 @@ const entry = (name: string, patch: Record<string, unknown> = {}): unknown => ({
   downloads: { monthly: 0, weekly: 0 },
   searchScore: 0,
   package: { name, version: '0.0.1', description: `${name} 的一句话`, ...patch },
-})
-
-describe('isGwbLine：scope 下、gwb- 前缀', () => {
-  it('正线与废弃线的 gwb-* 都算——规则是字面的，不认正废', () => {
-    expect(isGwbLine('@godcreator/gwb-plugin-manager')).toBe(true)
-    expect(isGwbLine('@godcreator/gwb-api')).toBe(true)
-  })
-
-  it('共享包、词汇表包也算——它们本来就以 gwb- 开头', () => {
-    expect(isGwbLine('@godcreator/gwb-shared-react')).toBe(true)
-    expect(isGwbLine('@godcreator/gwb-plugin-api')).toBe(true)
-  })
-
-  it('没带前缀的废弃包、别人的 scope、裸名，都不算', () => {
-    expect(isGwbLine('@godcreator/shell')).toBe(false)
-    expect(isGwbLine('@godcreator/cli')).toBe(false)
-    expect(isGwbLine('@someone/gwb-thing')).toBe(false)
-    expect(isGwbLine('gwb-thing')).toBe(false)
-  })
 })
 
 describe('parseSearch', () => {
@@ -88,7 +70,7 @@ describe('parseSearch', () => {
     expect(got).toEqual([{ pkg: '@godcreator/gwb-y', version: '0.1.4', description: '旧索引的一条' }])
   })
 
-  it('gitea 形状：scope 拆开单放（name 只有 gwb-x），拼回全名——不拼的话 isGwbLine 整表落空', () => {
+  it('gitea 形状：scope 拆开单放（name 只有 gwb-x），拼回全名', () => {
     const got = parseSearch(
       response([
         entry('gwb-plugin-manager', { scope: '@godcreator', version: '0.3.0' }),
@@ -99,7 +81,6 @@ describe('parseSearch', () => {
       { pkg: '@godcreator/gwb-plugin-manager', version: '0.3.0', description: 'gwb-plugin-manager 的一句话' },
       { pkg: '@godcreator/gwb-bn-comment', version: '0.3.1-dev.1', description: 'gwb-bn-comment 的一句话' },
     ])
-    expect(got?.every((row) => isGwbLine(row.pkg))).toBe(true)
   })
 
   it('name 已带 @ 前缀时即使另有 scope 字段也不重复拼（混形状的源两边都对）', () => {
@@ -112,5 +93,69 @@ describe('parseSearch', () => {
   it('scope 不是字符串就当没有，name 原样用（不猜）', () => {
     const got = parseSearch(response([entry('gwb-thing', { scope: 7 })]))
     expect(got).toEqual([{ pkg: 'gwb-thing', version: '0.0.1', description: 'gwb-thing 的一句话' }])
+  })
+})
+
+describe('readPluginMark：从 packument 读件的身份声明（versions[latest].gwb.plugin）', () => {
+  const packument = (gwb: unknown): string =>
+    JSON.stringify({ 'dist-tags': { latest: '0.4.3' }, versions: { '0.4.3': { name: '@godcreator/gwb-x', gwb } } })
+
+  it('声明了 true 就是件、false 明确不是（lib / 共享包 / 词汇表包可以显式写 false）', () => {
+    expect(readPluginMark(packument({ plugin: true }))).toBe(true)
+    expect(readPluginMark(packument({ plugin: false, title: '词汇表' }))).toBe(false)
+  })
+
+  it('**没声明过一律 undefined**（不是「不是件」）：没 gwb 段 / 段里没这个键 / 值不是 boolean', () => {
+    expect(readPluginMark(JSON.stringify({ 'dist-tags': { latest: '1.0.0' }, versions: { '1.0.0': { name: 'x' } } }))).toBeUndefined()
+    expect(readPluginMark(packument({ title: '只有标题' }))).toBeUndefined()
+    expect(readPluginMark(packument({ plugin: 'yes' }))).toBeUndefined()
+  })
+
+  it('读不动的一律 undefined：不是 JSON、不是对象、缺 versions / dist-tags、latest 指不到版本', () => {
+    expect(readPluginMark('Internal Error')).toBeUndefined()
+    expect(readPluginMark('[]')).toBeUndefined()
+    expect(readPluginMark(JSON.stringify({ versions: {} }))).toBeUndefined()
+    expect(
+      readPluginMark(JSON.stringify({ 'dist-tags': { latest: '9.9.9' }, versions: { '1.0.0': { gwb: { plugin: true } } } })),
+    ).toBeUndefined()
+  })
+
+  it('只认 latest 那一版：旧版声明过、latest 没声明 → undefined，不拿旧版顶', () => {
+    expect(
+      readPluginMark(
+        JSON.stringify({
+          'dist-tags': { latest: '2.0.0' },
+          versions: { '1.0.0': { gwb: { plugin: true } }, '2.0.0': { name: 'x' } },
+        }),
+      ),
+    ).toBeUndefined()
+  })
+})
+
+describe('mapLimited：限并发、结果按原顺序回', () => {
+  it('结果顺序跟输入一致（哪怕先发的后回）', async () => {
+    const got = await mapLimited([30, 10, 20], 2, async (ms) => {
+      await new Promise((resolve) => setTimeout(resolve, ms))
+      return ms
+    })
+    expect(got).toEqual([30, 10, 20])
+  })
+
+  it('同时在跑的条数不超过 limit', async () => {
+    let live = 0
+    let peak = 0
+    await mapLimited([...Array(9).keys()], 3, async () => {
+      live += 1
+      peak = Math.max(peak, live)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      live -= 1
+    })
+    expect(peak).toBeLessThanOrEqual(3)
+    expect(peak).toBeGreaterThan(1)
+  })
+
+  it('空表回空表；limit 比条数大也照跑', async () => {
+    expect(await mapLimited([], 4, async () => 1)).toEqual([])
+    expect(await mapLimited([1, 2], 40, async (n) => n * 2)).toEqual([2, 4])
   })
 })
