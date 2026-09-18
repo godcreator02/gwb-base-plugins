@@ -27,8 +27,6 @@
     "prepublishOnly": "pnpm build"
   },
   "//dependencies": "零运行时依赖——只用 node:http / node:crypto / node:module。这是相对 mcp 件那串 SDK（express/hono/jose/ajv… 解包 4.3MB）的实质差别",
-  "//peerDependencies": "commands / settings 写 peer 是 inject 那两个服务——这个件运行时真的需要 home 里有它们，而 peer 正是「宿主环境得提供这个」的意思，pnpm 也会顺手把它们装进 home。data 件 0.2 起退役——token 落盘是它唯一的用途，token 摘了它也跟着走",
-  "//peerRange": "正本在 devkit 的 release skill「gwb-release」（随 @godcreator/gwb-devkit 包发，见该包 skills/gwb-release/SKILL.md）",
   "peerDependencies": {
     "@godcreator/gwb-commands": "^0.4.3",
     "@godcreator/gwb-plugin-api": "^0.1.2",

@@ -2,7 +2,7 @@
   "name": "@godcreator/gwb-data",
   "version": "0.1.2",
   "author": {"name": "godcreator"},
-  "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON。0.1.2：peer 迁 ^——@godcreator/gwb-plugin-api 从 >=0.1.1 改 ^0.1.2，dev 钉跟到 0.1.2",
+  "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON、原子落盘。服务 gwbData；skill 0；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +24,6 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "两条都是 peer,而且理由不同档:cordis 是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份，两份 cordis 的 instanceof 对不上）；词汇表包也是运行时 import（requireKernel 是个真函数，不是类型）。对照 gwb-commands——它的 cordis 只在 apply 的参数类型里用,所以那边是 dev。三档判据见内核仓 CLAUDE.md",
   "peerDependencies": {
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"

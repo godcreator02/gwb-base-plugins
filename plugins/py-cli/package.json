@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建一个 venv，spawn venv 里的可执行文件。0.2：run 加按次的 cwd（必须是存在目录的绝对路径，不合规回 { ok: false, error } 不抛），总线镜像认 { args?, cwd? }，描述带参数形状。0.2：命令登记随 commands 0.4 拆 description/usage（INVOKE_SHAPE 归 usage），plugin 改口包名。0.3.1：PyCliSpec 加 usage（缺省仍用运行器调用形状）。0.3.2：说明书改口 MCP 门 run，回执讲清总线原样透传、门上摊平六样。0.3.3：peer 迁 ^——@godcreator/gwb-commands 从 >=0.4.1 改 ^0.4.3、@godcreator/gwb-plugin-api 从 >=0.1.1 改 ^0.1.2，dev 钉跟到 0.1.2",
+  "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建 venv、spawn 里面的可执行文件（件本身不带 python 项目）。服务 gwbPyCli；skill 1 份；命令 1 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,6 @@
     },
     "./package.json": "./package.json"
   },
-  "//files": "这个件只做运行器,自己不带 python 项目——`py/` 与 venv 都住在**消费方件**的包根下（样板见 gwb-hello）",
   "files": [
     "catalog.md",
     "dist",
@@ -28,7 +27,6 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "跟 gwb-node-cli 同一套判据",
   "peerDependencies": {
     "@godcreator/gwb-commands": "^0.4.3",
     "@godcreator/gwb-plugin-api": "^0.1.2",

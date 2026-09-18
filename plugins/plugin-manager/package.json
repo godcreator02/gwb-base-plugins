@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名。0.3.1：search 兼容 gitea 个人源的响应形状——它把 scope 拆开单放（name 不带 @godcreator/ 前缀），原先整表被 isGwbLine 过滤成空还不报错；手册旧门口径（GET /surface、gwb-command-http）改口 MCP 门。0.4：只支持原生 pnpm 12+——查找落点是 pnpm 原生可执行文件、直接 spawn，查到 11 及以前明确报错要装 12+。0.5：peer 对不上不拦——去掉 0.4.1 的 home 外预检与回执 peerConflict，pnpm 照默认只 WARN、照装；install / update / update-all 装完跑 pnpm peers check --json，对不上的每一处进回执 peerWarnings [{ peer, installed?, wanted, by }]。0.5.1：//peerRange 改指路句——依赖与发版策略的正本在 devkit 的 release skill，本包不再复述。0.5.2：search 认件改看 manifest 的 gwb.plugin（逐条读 packument、限并发六个），删掉「gwb- 前缀」这条名字判据——没声明过的包不再列进「可装」",
+  "description": "插件管理：管 home 里的包与 cordis.yml 条目——装卸检升、一键热升、加删条目、启停；装完跑 peers check，对不上的每一处进回执 peerWarnings。服务 gwbPluginManager；skill 1 份；命令 14 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,9 +27,6 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "//deps": "peer 两条:cordis 与词汇表包是**运行时真 import**（Service 基类要 extends,而且必须是宿主那一份;requireKernel 与 isRecord 是真函数）。三档判据见内核仓 CLAUDE.md。浏览器半的三个 peer（shared-react / tokens / shell）随三仓拆分退场——那半搬去 @godcreator/gwb-baseui 了",
-  "//devDeps": "commands / data / settings / skills 四条都是 **dev**:在这儿全是空 `import type {}`（commands 那条带一个类型,一键热升要攥总线的引用）,产物里一个字都没有,不占导出面;而且这个件对四者**都是可选的**——嵌套注入,没有它们服务面照样在,只是命令调不到、显示名存不下、pnpm 路径只能自动找、说明书挂不上。写 peer 会把它们强制装进 home,那跟「可选」自相矛盾",
-  "//peerRange": "正本在 devkit 的 release skill「gwb-release」（随 @godcreator/gwb-devkit 包发，见该包 skills/gwb-release/SKILL.md）",
   "peerDependencies": {
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
