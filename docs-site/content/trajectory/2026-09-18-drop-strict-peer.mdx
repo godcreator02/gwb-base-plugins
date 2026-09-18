@@ -1,0 +1,55 @@
+---
+title: 不再严格 peer：pnpm 走默认只 WARN，plugin-manager 去掉预检、把对不上的每一处报进回执 peerWarnings
+born-at: 2026-09-18T14:40
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 弃严格 peer
+domain: 件
+---
+
+## 背景
+
+同日上午定的是「peer 冲突即报错」：严不严格归 home 的 `pnpm-workspace.yaml`（`strictPeerDependencies: true`），
+plugin-manager 0.4.1 每趟 `pnpm add` 先在 home 之外预检，冲突时回 `ok: false` 带 `peerConflict`；本仓开发
+workspace 同时在根 `pnpm-workspace.yaml` 开了严格。
+
+supersedes:: [2026-09-18-strict-peer-install](2026-09-18-strict-peer-install.md)
+
+下午用户拍板全生态不再开 `strictPeerDependencies`，pnpm 一律走默认形态（peer 对不上只 WARN、照装），真正的
+防线是版本约定——peer 写 `^<dev 钉>`、破坏抬次版本号、devkit 的发版关卡。理由出自上午那个 probe 自己的读数：
+pnpm 12.4.2 严格没过是**非原子**的（`package.json` 不动，锁文件与 `node_modules` 已改一半，之后 `pnpm install`
+回「Already up to date」、收不回来），而且 home 里留下一处冲突就拦住此后**每一次**不相干的严格安装。预检能
+保 home 原样，却保不住后一条——严格本身成了负担。
+
+同时用户定了一条：**peer 对不上仍要在 plugin-manager 的回执里看得见**——agent 只看得到 MCP 回执，看不到 pnpm 的
+stdout。
+
+## 结论与边界
+
+plugin-manager 0.5.0：去掉 home 外预检，`install`（连同顺手装 peer 的几趟）/ `update` / `update-all` 回到在 home
+里直接 `pnpm add`，不带任何 strict 参数。回执的 `peerConflict` 删掉，换成不影响成败的 `peerWarnings`：装完跑一趟
+`pnpm peers check --json`，每一处 `{ peer, installed?, wanted, by }`，一处没有就没有这一格（跟回执里别的可选格
+一个规矩）；`peers check` 本身没读出来时没有这一格、`note` 里说一句。本仓根 `pnpm-workspace.yaml` 的
+`strictPeerDependencies: true` 同提交拿掉。
+
+为什么另跑 `peers check` 而不是解析 `pnpm add` 的输出：默认模式下 `add` 只打一句
+`[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.`，不列是哪几处；
+`peers check --json` 有问题退出码 1、没问题 0，两种都在 stdout 上给结构化的 JSON，不用抠文字。代价是每趟多
+起一次 pnpm（实测几百毫秒）。它查的是 home 整棵树，本来就有的对不上也报——回执说的是「装完之后 home 的样子」，
+不只这一趟新加的。
+
+版本抬次版本号（0.4.1 → 0.5.0）：`gwb-release` 的契约面把「回执删字段」与「调用方依赖着的语义」都算破坏。
+`peerConflict` 从回执里删了；「peer 对不上时 `ok: false`、home 原样」这条语义也没了（换成照装）。拿不准按破坏抬。
+
+不做的：不在失败的那一趟里认 `ERR_PNPM_PEER_DEP_ISSUES` 说人话（没人开严格，谁手工放了那份文件，失败照普通失败
+回尾巴，冲突说明就在尾巴里）；不替 home 删那份 `pnpm-workspace.yaml`。内核 `INSTALL.md` 给 default 铺
+`strictPeerDependencies: true` 的那一行、devkit 模板与说明书里的同类写法，归各自的仓。
+
+## 依据
+
+- `probes/2609181422_peer-warnings/runs/summary.jsonl`：`a-conflict`、`c-unrelated`、`d-update-all` 的 `1-add` 退出码 0、
+  只有 WARN 一句；`3-peers-json` 退出码 1、JSON 点名；`b-clean` 两样都是 0
+- 同目录 `runs/a-conflict.3-peers-json.stdout.txt`：JSON 原文（`bad` → `parents` / `wantedRange` / `foundVersion`）
+- 同目录 `runs/t-isolated-home.txt`：隔离 home pmwarn-2609181429 部署 0.5.1-dev.202609181429，外壳钉 0.7.2 装
+  glm-quota 回 `ok: true` 带一条 `peerWarnings`；update / update-all 同样带；理顺后回执没有这一格
+- 非原子与「一处冲突拦住全部」：`probes/2609181305_strict-peer` 的 `a`、`j`、`f`

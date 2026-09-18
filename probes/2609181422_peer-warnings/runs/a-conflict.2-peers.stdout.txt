@@ -1,0 +1,7 @@
+Issues with peer dependencies found
+
+✕ unmet peer @godcreator/gwb-shell
+  Installed: 0.7.2
+  Wanted:
+    >=0.8.0:
+      @godcreator/gwb-glm-quota@0.1.2

@@ -45,3 +45,9 @@ plugin-manager 要「装正式版严格、装开发版不严格」。要钉三�
 
 2026-09-18，Windows 11 Pro 10.0.26200 x64；pnpm 12.4.2（npm 全局原生 `pnpm.exe`），用户级 pnpm 配置里
 `minimumReleaseAgeExclude` 放行 `@godcreator/*`；registry 为 gitea 个人源。
+
+## 后来
+
+同日稍晚生态整体不再开 `strictPeerDependencies`（上面「没过之后 home 动了一半」与「已有冲突拦住不相干的
+安装」两条正是理由），plugin-manager 0.5.0 去掉预检、改在回执里报 `peerWarnings`。默认模式下怎么读出是哪
+几处见 `probes/2609181422_peer-warnings`，判据见文档站轨迹卡 `2026-09-18-drop-strict-peer`。

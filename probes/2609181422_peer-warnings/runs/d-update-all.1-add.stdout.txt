@@ -1,0 +1,16 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+✓ Lockfile passes supply-chain policies (verified 162ms ago)
+Packages: +3 -3
++++---
+Progress: resolved 3, reused 0, downloaded 0, added 3, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
+- probe-ds file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-ds@1.0.0(probe-up@file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.9.0)
++ probe-ds file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-ds@1.0.0(probe-up@file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.10.0)
+- probe-other file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-other@1.0.0
++ probe-other file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-other@1.1.0
+- probe-up file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.9.0
++ probe-up file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.10.0
+
+Done in 98ms using pnpm v12.4.2

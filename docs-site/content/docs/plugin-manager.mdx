@@ -1,6 +1,6 @@
 ---
 title: gwb-plugin-manager：插件管理
-description: 包与条目两层怎么对起来，装卸检升怎么走，peer 冲突怎么报、为什么先预检，装插件时 peer 谁装谁跳过，一键更新为什么是热重挂而不是重启
+description: 包与条目两层怎么对起来，装卸检升怎么走，peer 对不上怎么进回执，装插件时 peer 谁装谁跳过，一键更新为什么是热重挂而不是重启
 docfirst: none
 ---
 
@@ -41,29 +41,32 @@ node 半的服务与命令。检索与安装同源：`search` 查 npm registry �
 
 {/* ref file="../plugins/plugin-manager/src/pnpm-path.ts" lines="189-197" */}
 
-## peer 冲突：严格与否归 home，这儿只报成人话
+## peer 对不上：照装不拦，回执里点名
 
-peer 对不上时 pnpm 报错还是只打 WARN，**由 home 自己的 `pnpm-workspace.yaml` 定**
-（`strictPeerDependencies: true`）；本插件调 pnpm 不带任何 peer 相关参数。default home 由内核
-`INSTALL.md` 铺这一行，隔离 home 不放——开发版只进隔离 home，上游破坏线的开发版对还没迁的下游永远不满足，
-隔离 home 要的正是带着这些下游验它：
+往 home 里 `pnpm add` 的每一趟——`install`、它顺手装 peer 的那几趟、`update`、`update-all`——都直接在 home
+里跑，不带任何 peer 相关参数。pnpm 默认不严格，peer 对不上照装、退出码 0，只打一句 WARN：
 
-{/* ref file="../plugins/plugin-manager/src/peer-conflict.ts" lines="1-7" */}
+{/* ref file="../plugins/plugin-manager/src/pnpm.ts" lines="128-137" */}
 
-**往 home 里 `pnpm add` 的每一趟**——`install`、它顺手装 peer 的那几趟、`update`、`update-all`——**先在
-home 之外预检，过了才动 home。** pnpm 12 严格检查没过时 home 的 `package.json` 不动，可锁文件已写进新包、
-`node_modules` 已链上它，再跑 `pnpm install` 也收不回来（读数在 `probes/2609181305_strict-peer`）。所以先把
-home 里决定解析结果的那几份文件（连同那份 `pnpm-workspace.yaml`）抄进临时目录只解析一趟：
+可那句 WARN 不列是哪几处，而 agent 只看得到回执、看不到 pnpm 的 stdout。所以装完另跑一趟
+`pnpm peers check --json`，把它说的逐条读成回执的 `peerWarnings`（默认模式下两条命令的输出长相，读数在
+`probes/2609181422_peer-warnings`）：
 
-{/* ref file="../plugins/plugin-manager/src/pnpm.ts" lines="133-177" */}
+{/* ref file="../plugins/plugin-manager/src/peer-warnings.ts" lines="1-21" */}
 
-预检与真装占串行队列的同一个位置，中间插不进别的 pnpm。没过就是 home 原样，回执照实说「这一趟什么都没动」；
-是 peer 冲突（`ERR_PNPM_PEER_DEP_ISSUES`）时截出 pnpm 那段冲突说明放进 `peerConflict`，`error` 说下一步。
-pnpm 输出里教人关掉严格检查的 `hint:` 那段不带：
+{/* ref file="../plugins/plugin-manager/src/pnpm.ts" lines="139-152" */}
 
-{/* ref file="../plugins/plugin-manager/src/peer-conflict.ts" lines="12-64" */}
+读 JSON 那一步是纯函数：`bad` 与 `missing` 两格逐条摊平，可选 peer 没装不算问题，形状认不出来回
+undefined——那时回执没有 `peerWarnings`、`note` 里说「peer 对没对上不知道」，不冒充「全对上了」：
 
-home 里**本来就有**一处冲突时，此后任何安装都报那一处——pnpm 查的是整棵树，不只这次加的包。
+{/* ref file="../plugins/plugin-manager/src/peer-warnings.ts" lines="23-49" */}
+
+三条命令共用一个入口，一处都没有就没有这一格，有就再记一条 warn 日志：
+
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="598-612" */}
+
+`peers check` 查的是 **home 整棵树**：本来就有的对不上也在里头，不只这一趟新加的——回执说的是装完之后 home
+的样子。install 在顺手装的 peer 也装完之后才查。
 
 ## 两层怎么对起来
 
@@ -136,8 +139,8 @@ junction。所以先解软链、按包名有几段往上退几层，退到的才
 {/* ref file="../plugins/plugin-manager/src/index.ts" lines="604-645" */}
 
 **装 latest 不装清单上那条 range**：这一步装的是共享包与生态外的包，latest 通常都满足；按 range
-装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进回执；latest 真不满足而 home 开着严格
-检查时，这一条就是 `failed`。**一条一趟 pnpm，不批量**：一趟 `add a b c` 里有一个包源上没有，
+装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进回执；latest 真不满足时照装，那一处
+出现在回执的 `peerWarnings` 里。**一条一趟 pnpm，不批量**：一趟 `add a b c` 里有一个包源上没有，
 pnpm 整趟失败、好的那几个一个都装不上，而且它不告诉你是哪个挂的。**永不抛**：插件本身已经
 装上了，peer 这一步的每一种没成都只是回执里的一行——这条命令是所有 home 装插件的必经之路。
 
@@ -151,8 +154,8 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而插件
 `action` 四种：`installed`（这次装成了直接依赖）、`present`（本来就在，版本没动）、
 `skipped`（不该由这条路装，`note` 里是理由）、`failed`（装不上，`note` 里带 pnpm 尾巴）。
 有 `failed` 时顶层 `note` 点名，窗格那侧（住 gwb-baseui 的那个窗格）把整条提示压成红的——
-插件是装上了，可那条依赖跑起来会扑空。件本身那一趟就被 peer 冲突拒了时，回执是 `ok: false` 带
-`peerConflict`（见上面「peer 冲突」那一节），这时连条目都没加。
+插件是装上了，可那条依赖跑起来会扑空。`peers` 说的是「装了没有」，版本对不对得上范围看
+`peerWarnings`（见上面「peer 对不上」那一节）。
 
 ### 卸载不动 peer
 
@@ -206,9 +209,8 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
 取决于人什么时候调下一条。
 
-那一趟 pnpm 也先预检（见上面「peer 冲突」那一节）。home 开着严格检查（default 开着）而有插件没跟上上游的
-破坏版，就整趟拒——一个包没升、一条条目没动、home 原样，`peerConflict` 点名谁要什么范围；先把那个下游
-升上来，或 `only` 只升别的。
+有插件没跟上上游的破坏版时照升、不拦：那一趟 pnpm 之后、重挂之前查一遍 peer，`peerWarnings` 点名谁要
+什么范围（见上面「peer 对不上」那一节）——该去追的是那个下游；不想让上游先走就 `only` 只升别的。
 
 一条条目的重挂是四步，不是两步：
 

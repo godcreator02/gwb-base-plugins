@@ -1,0 +1,23 @@
+{
+  ".": {
+    "bad": {
+      "probe-up": [
+        {
+          "parents": [
+            {
+              "name": "probe-ds",
+              "version": "file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-ds@1.0.0"
+            }
+          ],
+          "optional": false,
+          "wantedRange": "^0.9.0",
+          "foundVersion": "file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.10.0",
+          "resolvedFrom": []
+        }
+      ]
+    },
+    "missing": {},
+    "conflicts": [],
+    "intersections": {}
+  }
+}

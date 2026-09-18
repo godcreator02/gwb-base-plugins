@@ -1,0 +1,13 @@
+{"label":"a-conflict.1-add","args":"add @godcreator/gwb-glm-quota","exit":0,"warnLine":true}
+{"label":"a-conflict.2-peers","args":"peers check","exit":1,"warnLine":true}
+{"label":"a-conflict.3-peers-json","args":"peers check --json","exit":1,"warnLine":false}
+{"label":"b-clean.1-add","args":"add @godcreator/gwb-glm-quota","exit":0,"warnLine":false}
+{"label":"b-clean.2-peers","args":"peers check","exit":0,"warnLine":false}
+{"label":"b-clean.3-peers-json","args":"peers check --json","exit":0,"warnLine":false}
+{"label":"c-unrelated.1-add","args":"add @godcreator/gwb-data","exit":0,"warnLine":true}
+{"label":"c-unrelated.2-peers-json","args":"peers check --json","exit":1,"warnLine":false}
+{"label":"d-update-all.1-add","args":"add file:C:/Users/GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.10.0 file:C:/Users/GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-other@1.1.0","exit":0,"warnLine":true}
+{"label":"d-update-all.2-peers","args":"peers check","exit":1,"warnLine":true}
+{"label":"d-update-all.3-peers-json","args":"peers check --json","exit":1,"warnLine":false}
+{"label":"e-missing.1-add","args":"add @godcreator/gwb-glm-quota --config.auto-install-peers=false","exit":0,"warnLine":false}
+{"label":"e-missing.3-peers-json","args":"peers check --json","exit":0,"warnLine":false}

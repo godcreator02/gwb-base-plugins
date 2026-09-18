@@ -1,9 +1,8 @@
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import type { Readable } from 'node:stream'
-import { peerConflictOf } from './peer-conflict.js'
+import { parsePeerCheck, type PeerWarning } from './peer-warnings.js'
 import { findPnpm, spawnPlan, type LookupResult } from './pnpm-path.js'
 
 export { describePnpm } from './pnpm-path.js'
@@ -22,8 +21,6 @@ export interface PnpmResult {
   exitCode: number | null
   /** 没成时才有：stdout 与 stderr 合起来的最后几行 */
   tail?: string
-  /** 没成、而且是严格 peer 检查没过时才有：pnpm 那段冲突说明（见 `peerConflictOf`） */
-  peerConflict?: string
 }
 
 /** `runPnpmCapture` 的回执。不判 ok——退出码什么意思由调用方解释（`pnpm outdated` 用 1 当「有过期」） */
@@ -113,9 +110,7 @@ export function runPnpm(opts: { pnpm: string; cwd: string; args: readonly string
       settled = true
       // 成了就不留尾巴：那几十行「Progress: resolved 900」谁也不看
       if (exitCode === 0) return resolve({ ok: true, exitCode })
-      const output = Buffer.concat(chunks).toString('utf8')
-      const conflict = peerConflictOf(output)
-      resolve(conflict === undefined ? { ok: false, exitCode, tail: tailLines(output) } : { ok: false, exitCode, tail: tailLines(output), peerConflict: conflict })
+      resolve({ ok: false, exitCode, tail: tailLines(Buffer.concat(chunks).toString('utf8')) })
     }
 
     proc.stdout?.on('data', (c: Buffer) => push(c))
@@ -130,50 +125,30 @@ export function runPnpm(opts: { pnpm: string; cwd: string; args: readonly string
   })
 }
 
-/** 预检从 home 抄走的文件：决定解析结果的就这几份，没有的跳过 */
-const PREFLIGHT_FILES = ['package.json', 'pnpm-lock.yaml', '.npmrc', 'pnpm-workspace.yaml'] as const
-
-/** `addToHome` 的回执 */
-export interface AddResult extends PnpmResult {
-  /** 没成时才有意义：`true` 是预检就没过，home 一个文件都没碰 */
-  untouched?: boolean
-}
-
-/**
- * 预检：把 home 里决定解析结果的那几份文件（含 home 自己的 `pnpm-workspace.yaml`，严不严格
- * 由它定）抄进一个临时目录，在那儿 `pnpm add <specs> --lockfile-only` 跑一趟，跑完删掉临时目录。
- * **home 本身一个文件都不碰**。不抛——抄文件没成也收成一份没成的回执。
- */
-export async function preflightAdd(opts: { pnpm: string; home: string; specs: readonly string[] }): Promise<PnpmResult> {
-  let dir: string | undefined
-  try {
-    dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'gwb-plugin-manager-preflight-'))
-    for (const name of PREFLIGHT_FILES) {
-      try {
-        await fs.promises.copyFile(path.join(opts.home, name), path.join(dir, name))
-      } catch (err: unknown) {
-        if ((err as { code?: unknown }).code !== 'ENOENT') throw err
-      }
-    }
-    return await runPnpm({ pnpm: opts.pnpm, cwd: dir, args: ['add', ...opts.specs, '--lockfile-only'] })
-  } catch (err: unknown) {
-    return { ok: false, exitCode: null, tail: `预检的临时目录没备成：${String(err)}` }
-  } finally {
-    if (dir !== undefined) await fs.promises.rm(dir, { recursive: true, force: true }).catch(() => undefined)
-  }
-}
-
-/**
- * 往 home 里 `pnpm add` 一趟：**先预检、过了才动 home**。不带任何 peer 相关参数。
- *
- * pnpm 12 严格检查没过时 home 的 `package.json` 不动，可 `pnpm-lock.yaml` 已经写进新包、
- * `node_modules` 已经链上它，之后再 `pnpm install` 也不收回（`probes/2609181305_strict-peer`）。
- * 预检在 home 之外做，没过就是 home 原样。
- */
-export async function addToHome(opts: { pnpm: string; home: string; specs: readonly string[] }): Promise<AddResult> {
-  const pre = await preflightAdd(opts)
-  if (!pre.ok) return { ...pre, untouched: true }
+/** 往 home 里 `pnpm add` 一趟。不带任何 peer 相关参数：peer 对不上时 pnpm 照装、只打 WARN */
+export function addToHome(opts: { pnpm: string; home: string; specs: readonly string[] }): Promise<PnpmResult> {
   return runPnpm({ pnpm: opts.pnpm, cwd: opts.home, args: ['add', ...opts.specs] })
+}
+
+/** 一趟 add 没成 → 回执里的 `error` 一句话与 `tail`。`what` 是那趟的人话名字（`pnpm add a@1 b@2`） */
+export function describeAddFailure(what: string, run: PnpmResult): { error: string; tail?: string } {
+  const error = `${what} 没成（退出码 ${String(run.exitCode)}）`
+  return run.tail === undefined ? { error } : { error, tail: run.tail }
+}
+
+/** `checkPeers` 的回执：读出来了是 `warnings`（空数组 = 没问题），没读出来是 `error` 一句话 */
+export type PeerCheck = { warnings: PeerWarning[] } | { error: string }
+
+/**
+ * 跑 `pnpm peers check --json`，读出 home 里此刻 peer 对不上的全部（`peer-warnings.ts`）。
+ * 退出码 1 是「有问题」，是结果不是失败。不抛。
+ */
+export async function checkPeers(opts: { pnpm: string; home: string }): Promise<PeerCheck> {
+  const run = await runPnpmCapture({ pnpm: opts.pnpm, cwd: opts.home, args: ['peers', 'check', '--json'] })
+  const warnings = run.exitCode === 0 || run.exitCode === 1 ? parsePeerCheck(run.stdout) : undefined
+  if (warnings !== undefined) return { warnings }
+  const why = run.stderrTail === '' ? '' : `：${run.stderrTail}`
+  return { error: `pnpm peers check 没读出来（退出码 ${String(run.exitCode)}），peer 对没对上不知道${why}` }
 }
 
 /**

@@ -1,0 +1,26 @@
+隔离 home pmwarn-2609181429（devkit.home.new），plugin-manager 经 devkit.dev 部署 0.5.1-dev.202609181429（仓里 0.5.0 的改动），
+home 里没有 pnpm-workspace.yaml，取证全走 devkit.cdp {"args":["<home>","cmd","<命令>","<JSON>"]}。2026-09-18。
+
+一、造冲突：home package.json 里 @godcreator/gwb-shell 改成 0.7.2，pnpm install（退出码 0）
+
+二、plugin-manager.install {"pkg":"@godcreator/gwb-glm-quota"}（glm-quota 的 peer 要 shell >=0.8.0）
+  -> ok:true，entryId home:glm-quota，peers 7 条全 present（shell 那条 note「home 里已经有它（0.7.2），版本没动」）
+     "peerWarnings": [
+       { "peer": "@godcreator/gwb-shell", "installed": "0.7.2", "wanted": ">=0.8.0", "by": "@godcreator/gwb-glm-quota@0.1.2" }
+     ]
+  日志：warn gwb-plugin-manager home 里 peer 对不上 1 处（照装了）：@godcreator/gwb-shell 0.7.2，@godcreator/gwb-glm-quota@0.1.2 要 >=0.8.0
+
+三、plugin-manager.update {"pkg":"@godcreator/gwb-glm-quota"}
+  -> ok:true，pkg，peerWarnings 同上一条（查的是整棵树，本来就有的冲突照报）
+
+四、update-all 那条路：home 里 gwb-tokens 再改成 0.1.2、pnpm install（peers check 报两处：shell 与 tokens，都是 glm-quota 要的）
+  plugin-manager.update-all {"only":["@godcreator/gwb-tokens"]}
+  -> 回执随 shell.reload 整页重载丢在 cdp 那头（Runtime.evaluate：Inspected target navigated or closed），读日志：
+     info 一趟装 @godcreator/gwb-tokens@0.1.3
+     warn home 里 peer 对不上 1 处（照装了）：@godcreator/gwb-shell 0.7.2，@godcreator/gwb-glm-quota@0.1.2 要 >=0.8.0
+     info 一键热升完成：@godcreator/gwb-tokens 0.1.2 → 0.1.3；界面已整页重载
+  （tokens 那处随这一趟升好了，回执只剩 shell 那处——查的是升完之后的 home）
+
+五、理顺之后：plugin-manager.update-all {"only":["@godcreator/gwb-shell"]}
+  -> ok:true，updated [shell 0.7.2 → 0.9.0，entries shell remounted ACTIVE]，selfDeferred false，reload done，没有 peerWarnings 这一格
+  plugin-manager.update {"pkg":"@godcreator/gwb-glm-quota"} -> { ok:true, pkg }，没有 peerWarnings 这一格

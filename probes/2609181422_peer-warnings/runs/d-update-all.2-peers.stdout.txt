@@ -1,0 +1,7 @@
+Issues with peer dependencies found
+
+✕ unmet peer probe-up
+  Installed: file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-up@0.10.0
+  Wanted:
+    ^0.9.0:
+      probe-ds@file:../../../../../../../../../../GODAME~1/AppData/Local/Temp/claude/D--unitfolders-26090520ntn-console/e92b7730-101e-4ce3-912c-14dc0e881921/scratchpad/peerwarn/_probe-ds@1.0.0

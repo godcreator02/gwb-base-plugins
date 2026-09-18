@@ -1,0 +1,23 @@
+{
+  ".": {
+    "bad": {
+      "@godcreator/gwb-shell": [
+        {
+          "parents": [
+            {
+              "name": "@godcreator/gwb-glm-quota",
+              "version": "0.1.2"
+            }
+          ],
+          "optional": false,
+          "wantedRange": ">=0.8.0",
+          "foundVersion": "0.7.2",
+          "resolvedFrom": []
+        }
+      ]
+    },
+    "missing": {},
+    "conflicts": [],
+    "intersections": {}
+  }
+}

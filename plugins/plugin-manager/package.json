@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-plugin-manager",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名。0.3.1：search 兼容 gitea 个人源的响应形状——它把 scope 拆开单放（name 不带 @godcreator/ 前缀），原先整表被 isGwbLine 过滤成空还不报错；手册旧门口径（GET /surface、gwb-command-http）改口 MCP 门。0.4：只支持原生 pnpm 12+——查找落点是 pnpm 原生可执行文件、直接 spawn，查到 11 及以前明确报错要装 12+。0.4.1：每趟 pnpm add 先在 home 之外预检、过了才动 home；home 开着严格 peer 检查（它自己的 pnpm-workspace.yaml）而 peer 对不上时，回执带冲突说明与下一步、说清 home 原样",
+  "description": "管 home 里的包与 cordis.yml 里的条目：装包（连同该进 home 的 peer）、卸载、升级、一键热升、查新版本、检索、加删条目、启停、改显示名。断代改名：原 @godcreator/gwb-plugins（0.4.2 止，弃用不再发新版），2026-09-12 三仓拆分时浏览器半（「插件」窗格）搬去 @godcreator/gwb-baseui，本件只剩 node 半的服务与命令，新包从 0.1.0 起。命令前缀 plugin-manager.*（原 plugins.*）。0.3：命令登记随 commands 0.4 拆 description/usage，plugin 改口包名。0.3.1：search 兼容 gitea 个人源的响应形状——它把 scope 拆开单放（name 不带 @godcreator/ 前缀），原先整表被 isGwbLine 过滤成空还不报错；手册旧门口径（GET /surface、gwb-command-http）改口 MCP 门。0.4：只支持原生 pnpm 12+——查找落点是 pnpm 原生可执行文件、直接 spawn，查到 11 及以前明确报错要装 12+。0.5：peer 对不上不拦——去掉 0.4.1 的 home 外预检与回执 peerConflict，pnpm 照默认只 WARN、照装；install / update / update-all 装完跑 pnpm peers check --json，对不上的每一处进回执 peerWarnings [{ peer, installed?, wanted, by }]",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

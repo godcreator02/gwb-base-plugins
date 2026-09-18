@@ -1,0 +1,11 @@
+✓ Lockfile passes supply-chain policies (verified 2s ago)
+Already up to date
+Progress: resolved 0, reused 11, downloaded 0, added 0, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @godcreator/gwb-data 0.1.1
++ @godcreator/gwb-glm-quota 0.1.2
++ @godcreator/gwb-shell 0.7.2
+
+Done in 235ms using pnpm v12.4.2
