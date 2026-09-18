@@ -13,8 +13,8 @@
  * `name` 只有 `gwb-x`。不归一的话整表都是短名，读出来的包名全是错的。
  *
  * **「是不是件」看包自报家门**（2026-09-18 起）：manifest 的 `keywords` 里带不带
- * `gwb-plugin`（`isPluginRow`）。这一格 **registry 的搜索回执直接带**（packument 会裁自定义
- * 字段，keywords 留着——2026-09-18 实测），所以一趟请求认完，不用逐包再问。
+ * `gwb-plugin`（`isPluginRow`）。这一格**只有 registry 的搜索回执（`/-/v1/search`）带**——
+ * packument 连 keywords 一起裁掉（2026-09-18 实测），所以一趟请求认完，不用逐包再问。
  * 名字（scope / `gwb-` 前缀）不参与判断，**没有回退**：没写这枚词的包不进「可装」表。
  */
 
