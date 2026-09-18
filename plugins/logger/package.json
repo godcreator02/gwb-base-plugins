@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "日志件（core）：挂第二个 cordis exporter 收三路全量、自己缓冲两千条、实时经内核事件口推页面；窗格不住这儿（住 gwb-baseui）。服务 gwbLogger（面刻意留空）；skill 0；命令 2 条。",
+  "description": "日志件（core）：挂第二个 cordis exporter 收三路全量、自己缓冲两千条、实时经内核事件口推页面；窗格不住这儿（住 gwb-baseui）。服务 gwbLogger（面刻意留空）；skill 0 份；命令 2 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "src"
   ],
@@ -35,6 +34,7 @@
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-repo-kit": "0.2.2",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"

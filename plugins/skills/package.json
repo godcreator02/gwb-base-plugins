@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "说明书：谁有说明书谁自己挂上来，按名收集与查询；说明书是全局单一命名空间，撞名的那份不挂。服务 gwbSkills；skill 0；命令 2 条。",
+  "description": "说明书：谁有说明书谁自己挂上来，按名收集与查询；说明书是全局单一命名空间，撞名的那份不挂。服务 gwbSkills；skill 0 份；命令 2 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "src"
   ],
@@ -33,6 +32,7 @@
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-repo-kit": "0.2.2",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   },

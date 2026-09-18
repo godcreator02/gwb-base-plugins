@@ -16,7 +16,6 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "catalog.md",
     "dist",
     "skills",
     "src"
@@ -35,6 +34,7 @@
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-data": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-repo-kit": "0.2.2",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",

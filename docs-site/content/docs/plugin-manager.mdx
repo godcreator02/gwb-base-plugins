@@ -15,9 +15,16 @@ docfirst: none
 升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名。「插件」窗格
 （已装 / 可装两段）的界面不住这儿——浏览器半在 `@godcreator/gwb-baseui`，本插件只剩
 node 半的服务与命令。检索与安装同源：`search` 查 npm registry 标准检索协议
-（`/-/v1/search`）列 `@godcreator` scope 下 `gwb-` 前缀的全部，基址从 pnpm 配置解析
+（`/-/v1/search`）列源上自报 `gwb-plugin` 关键词的件（2026-09-18 起：身份看 manifest 的 `keywords`，不看名字前缀），基址从 pnpm 配置解析
 （`@godcreator:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
 地址**——装从哪来、搜就到哪去。
+
+**依赖谁**：`gwbCommands` / `gwbData` / `gwbSettings` / `gwbSkills` 四条都是**局部注入**
+（`ctx.inject([...])`）——缺哪条本件照挂，只少那一面：命令登不上总线、显示名存不下、
+pnpm 路径只能自动找、说明书挂不上。
+
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="388-388" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="432-433" */}
 
 {/* ref file="../plugins/plugin-manager/src/index.ts" lines="28-61" */}
 
