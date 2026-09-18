@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import type { PluginRow } from './plugins.js'
 
 /**
  * `index` 与 `search` 两枚工具的回执。纯函数，从接线里抽出来以便测试。
@@ -58,6 +59,11 @@ export interface IndexDoc {
   instructions: string
   commands: Array<{ name: string; plugin: string; description: string }>
   skills: Array<{ name: string; plugin: string; description: string }>
+  /**
+   * 这个 home 装着的件：包名 + 条目名 + 版本 + 那句话。**件级概述就在这儿**——
+   * 命令与说明书两表按 plugin 归组是件的能力明细，这一节是「有哪些件」
+   */
+  plugins: Array<{ pkg: string; entryId?: string; version?: string; description?: string }>
 }
 
 /** 现拼一份地图。commands 与 skills 都是调用方现取的，这里只组装 */
@@ -66,6 +72,7 @@ export function buildIndex(input: {
   version: string
   commands: readonly CommandView[]
   skills?: readonly SkillView[]
+  plugins?: readonly PluginRow[]
 }): IndexDoc {
   return {
     home: input.home,
@@ -73,6 +80,12 @@ export function buildIndex(input: {
     instructions: loadInstructions(),
     commands: input.commands.map((c) => ({ name: c.name, plugin: c.plugin, description: c.description })),
     skills: (input.skills ?? []).map((s) => ({ name: s.name, plugin: s.plugin, description: s.description })),
+    plugins: (input.plugins ?? []).map((p) => ({
+      pkg: p.pkg,
+      ...(p.entryId === undefined ? {} : { entryId: p.entryId }),
+      ...(p.version === undefined ? {} : { version: p.version }),
+      ...(p.description === undefined ? {} : { description: p.description }),
+    })),
   }
 }
 

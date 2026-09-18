@@ -21,6 +21,7 @@ import {
   type SkillsSlot,
   type SearchQuery,
 } from './inventory.js'
+import { readPlugins } from './plugins.js'
 import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
 import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type ToolResult } from './tools.js'
 
@@ -211,8 +212,14 @@ export function apply(ctx: GwbContext): void {
 
   /** `index` 那枚的执行口：现拼——每次都现取命令注册表与说明书清单，热挂上来的件当场就在 */
   const indexNow = (): ToolResult => {
-    const doc = buildIndex({ home, version, commands: cli.list(), skills: skills?.list() })
-    log.info(`agent 看了一遍地图（${doc.commands.length} 条命令、${doc.skills.length} 份说明书）`)
+    const doc = buildIndex({
+      home,
+      version,
+      commands: cli.list(),
+      skills: skills?.list(),
+      plugins: readPlugins(requireKernel(ctx).dataDir),
+    })
+    log.info(`agent 看了一遍地图（${doc.commands.length} 条命令、${doc.skills.length} 份说明书、${doc.plugins.length} 个件）`)
     return textResult(doc)
   }
 
