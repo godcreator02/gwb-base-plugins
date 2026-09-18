@@ -19,7 +19,7 @@ node 半的服务与命令。检索与安装同源：`search` 查 npm registry �
 （`@godcreator:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
 地址**——装从哪来、搜就到哪去。
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="27-60" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="28-61" */}
 
 ## 用哪份 pnpm、怎么起
 
@@ -136,7 +136,7 @@ junction。所以先解软链、按包名有几段往上退几层，退到的才
 
 ### 执行：装 latest、一条一趟、永不让装机失败
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="604-645" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="633-674" */}
 
 **装 latest 不装清单上那条 range**：这一步装的是共享包与生态外的包，latest 通常都满足；按 range
 装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进回执；latest 真不满足时照装，那一处
@@ -149,7 +149,7 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而插件
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="94-128" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="95-132" */}
 
 `action` 四种：`installed`（这次装成了直接依赖）、`present`（本来就在，版本没动）、
 `skipped`（不该由这条路装，`note` 里是理由）、`failed`（装不上，`note` 里带 pnpm 尾巴）。
@@ -203,7 +203,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 执行：升级与重挂同一条命令，不留窗口
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="733-756" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="766-789" */}
 
 pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插件若读盘（惰性 import 一个子模块、
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
@@ -227,7 +227,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 自己最后，而且在回执之后
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="758-774" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="791-807" */}
 
 处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
 「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
@@ -241,7 +241,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="152-182" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="158-188" */}
 
 {/* ref file="../plugins/plugin-manager/src/remount.ts" lines="20-31" */}
 
@@ -277,7 +277,7 @@ busy），与点「全部更新」先在窗格内列 `from → to` 让人看一�
 启用 → 等新 fiber 起完，**在一条命令里做完**，时序与一键热升重挂每条条目的是同一份。本来停用的
 条目，终态是启用。给 `devkit.dev` 这类「装了新号、要这条条目重 import」的调用方用。
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="481-490" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="486-495" */}
 
 不拿 `disable` 与 `enable` 两条命令拼：目标是本插件自己时，`disable` 一回来本插件的命令就随 fiber
 撤了，第二条 `enable` 回「没有这条命令」，条目卡在停用态；目标是命令总线时，整张命令表随总线
