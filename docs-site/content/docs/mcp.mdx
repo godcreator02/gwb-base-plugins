@@ -1,6 +1,6 @@
 ---
 title: gwb-mcp：MCP 门，把命令面开给 agent
-description: 工具面封顶三枚——index（完整地图各带一句话）、search（按址取详情与兜底搜索，裸调＝全貌）、run（按名调一切命令）；无状态 streamableHTTP，无鉴权，default 认死 2870
+description: 工具面封顶三枚——index（完整地图各带一句话）、search（按址取详情与兜底搜索，裸调＝全貌）、run（按名调一切命令）；无状态 streamableHTTP，要 Authorization token，default 认死 2870
 docfirst: none
 ---
 
@@ -21,15 +21,36 @@ agent → 工作台。
 起来之后日志里有一行：
 
 ```
-[I] gwb-mcp MCP 门就绪（default home）：http://127.0.0.1:2870/mcp——无鉴权，绑 127.0.0.1 本机自用
+[I] gwb-mcp MCP 门就绪（default home）：http://127.0.0.1:2870/mcp——要 Authorization 头，绑 127.0.0.1 本机自用
 ```
 
-另一条出口是命令 `mcp.info`——url 加一段可照抄进客户端配置的 `mcpServers` 片段：
+另一条出口是命令 `mcp.info`——url 加一段可照抄进客户端配置的 `mcpServers` 片段（**片段里只写
+token 的取法，不写 token 本体**：那段回执会进会话记录），要真值走 `mcp.token`：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="404-489" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="404-500" */}
 
-无鉴权：口只绑 127.0.0.1、服务本机，本机进程本就同权——command-http 0.2 摘
-token 时验过的判据，复位时原样继承。
+## 鉴权：为什么 0.10 又把 token 加回来了
+
+0.4 摘鉴权的判据是「口只绑 127.0.0.1、服务本机，本机进程本就同权」，外加一句实打实的代价
+「token 跟着内核重启换新，只会把 agent 侧的配置变成一桩要反复伺候的差事」。
+
+前一半是**把「连得上」当成了「有权调」**：回环绑定分得开本机与外部网络，分不开本机上的
+不同主体——浏览器里的一个页面、另一个 home 的客户端配置、随手写的一个脚本，都够得着
+127.0.0.1，而这道门后面是完整命令注册表（含往 home 里装件）。后一半是能消掉的技术债，不是
+鉴权本身的错：**token 落盘、重启不换**，那条「反复伺候」的代价就没了。
+
+做法（判据全在 `plugins/mcp/src/auth.ts` 的头注里）：
+
+* **token**：每 home 一份，住 `<home 数据目录>/mcp/secret.json`（32 字节随机 base64url）。
+  坏文件先另存 `.broken-*` 再换，不静默覆盖。取法 `mcp.token`，换发 `mcp.token {"rotate":true}`
+  （换完旧客户端一律 401）
+* **Host / Origin 自己判，不用 SDK 那三个开关**：锁的那版 SDK（`^1.30.0`）里
+  `enableDnsRebindingProtection` / `allowedHosts` / `allowedOrigins` 都标着 `@deprecated`，
+  而且 `allowedHosts` 不配时 Host 那一格**整段跳过**——只配 Origin 等于没防住 DNS 重绑定
+* **三道判据在派发任何东西之前**：拒绝 = 401 + 一句可读原因，`<home>/gwb.log` 里
+  `gwb-mcp` 那行 `拒绝了一条请求：…` 说清是哪一条
+* **验机取证**：另起一台 http 打过四种请求——无 token / 错 token / 伪 Host / 跨源 Origin
+  全 401，且拒绝时 handler 零派发；重启后同一 token 仍有效
 
 ## 工具面封顶三枚
 
