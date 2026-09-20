@@ -81,7 +81,9 @@ describe('凭据文件', () => {
 
     const broken = fs.readdirSync(path.dirname(file)).filter((name) => name.includes('.broken-'))
     expect(broken).toHaveLength(1)
-    expect(fs.readFileSync(path.join(path.dirname(file), broken[0]), 'utf8')).toBe('{"token": ')
+    const kept = broken[0]
+    if (kept === undefined) throw new Error('没留下 .broken-* 那份')
+    expect(fs.readFileSync(path.join(path.dirname(file), kept), 'utf8')).toBe('{"token": ')
   })
 
   it('空文件不算坏:不留下没意义的 .broken-*', () => {
