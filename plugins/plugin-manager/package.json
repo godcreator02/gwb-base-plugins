@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-plugin-manager",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "插件管理：管 home 里的包与 cordis.yml 条目——装卸检升、一键热升、加删条目、启停；装完跑 peers check，对不上的每一处进回执 peerWarnings。服务 gwbPluginManager；skill 1 份；命令 14 条。",
+  "description": "插件管理：管 home 里的包与 cordis.yml 条目——装卸检升、一键热升、加删条目、启停；装完跑 peers check，对不上的每一处进回执 peerWarnings；第三方包源写进机器级 npmrc（source.*）。服务 gwbPluginManager；skill 1 份；命令 17 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,11 +34,19 @@
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-data": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "gwb": {
+    "provides": {
+      "gwbPluginManager": {
+        "summary": "home 里件与条目的装卸升——程序化管理「装了什么」",
+        "usage": "install({ pkg, spec? }) · addEntry(pkg, id?) · enable/disable/remount(entryId) · transferOwner(id, pkg) · removeEntry(entryId) · list()；完整方法面读包内类型注释；多数件不消费它，人/agent 走 plugin-manager.* 命令面更常见"
+      }
+    }
   },
   "repository": {
     "type": "git",

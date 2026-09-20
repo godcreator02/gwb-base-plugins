@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "author": {"name": "godcreator"},
   "description": "命令总线：件把能力登记成一张 name → handler 的注册表，界面、命令行与 agent 经同一份派发（agent 侧走 MCP 门的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
   "type": "module",
@@ -29,9 +29,17 @@
   },
   "devDependencies": {
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "gwb": {
+    "provides": {
+      "gwbCommands": {
+        "summary": "命令总线：件与外界（界面、agent）的交互口——能力要被调就走它",
+        "usage": "ctx.gwbCommands.register({ name: '<短名>.<动作>', description: '一句话', usage: '{ 参数形状 }', plugin: '<包名>' }, handler) → 注销函数，要包 ctx.effect；plugin 写包名；agent 只看得见 description 与 usage，无参数也要写「无参数」"
+      }
+    }
   },
   "repository": {
     "type": "git",

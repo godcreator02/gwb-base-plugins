@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-py-cli",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "author": {
     "name": "godcreator"
   },
@@ -27,18 +27,26 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.3",
+    "@godcreator/gwb-commands": "^0.4.4",
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "gwb": {
+    "provides": {
+      "gwbPyCli": {
+        "summary": "登记随包发的 python 命令行工具，uv venv 守卫自愈（没了当场重建）",
+        "usage": "register({ name, description?, usage?, packageRoot, distName, version, command?|module?, args?, cwd?, env?, timeoutMs? })；ensureReady({ packageRoot, distName, version }) 幂等自检；run 与 node 那半同构；inject ['gwbPyCli']"
+      }
+    }
   },
   "repository": {
     "type": "git",

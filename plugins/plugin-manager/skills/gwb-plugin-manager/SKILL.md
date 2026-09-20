@@ -1,12 +1,12 @@
 ---
 name: gwb-plugin-manager
-description: 要装插件、更新插件、查 registry 上有什么可装、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、update 与 install 的区别、装插件时 peer 谁装谁跳过、peer 对不上时回执怎么读（照装不拦、peerWarnings 点名谁要什么范围、怎么办）、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
+description: 要装插件、更新插件、查 registry 上有什么可装、配第三方包源（source.*，写机器级 npmrc）、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、件因「数据目录 / 设置分区归别的包」挂不上时怎么办（transfer-owner 还是换 id）、update 与 install 的区别、装插件时 peer 谁装谁跳过、peer 对不上时回执怎么读（照装不拦、peerWarnings 点名谁要什么范围、怎么办）、第三方 scope 怎么配怎么查（@j 这种个人源，owner 一条走 gitea 快捷路）、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
 ---
 
 # 插件怎么装、怎么管、怎么升
 
-这个 home 里装了哪些插件、各自挂没挂上、谁有新版本、源上还有什么可装，归 `gwb-plugin-manager`
-管。十四条命令，agent 经 MCP 门的 `run` 按名调。
+这个 home 里装了哪些插件、各自挂没挂上、谁有新版本、源上还有什么可装、第三方包源怎么配，归
+`gwb-plugin-manager` 管。十七条命令，agent 经 MCP 门的 `run` 按名调。
 
 ## 先分清两层：包 与 条目
 
@@ -76,13 +76,50 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 
 ## 查有什么可装：plugin-manager.search
 
-不带参数直接调。它查 **npm registry 的标准检索接口**（基址从 pnpm 配置解析——装从哪条
-源来，搜就到哪去），回 `@godcreator` scope 下全部 `gwb-` 开头的包，每条带 registry 上
-的 `version` 与 `description`。
+不带参数直接调＝查**全部配好的源**（`source.list` 认的那两层 npmrc 里的所有 scope：引导线
+在前、其余按名排；市场页的「可装」表用的就是这一发）。逐源**并发**查，**一条坏不塌整表**：
+好源的件并进 `packages`，坏源点名进 `note`；全部没查成才 `ok: false`。或 `{ "scope": "@j" }`
+只查点名的线。
 
+- 每条源走 **npm registry 的标准检索接口**（基址从 pnpm 配置按 scope 解析——装从哪条源来，
+  搜就到哪去；源上配了凭据会自动带上），回这条线全部自报 `gwb-plugin` 的包，各带 registry
+  上的 `version` 与 `description`
 - 回的是**字面规则**的结果：废弃线的 `gwb-api`/`gwb-cli` 等也在里头，认正线看装进 home
-  的那些（`plugin-manager.list`）或文档站
+  的那些（`plugin-manager.list`）或文档站；第三方源回什么看它自己
 - 查不到源、网络没成回 `ok: false` 带原因；装之前先 search 一遍看有没有，别瞎猜包名
+
+## 第三方包源：source.add / source.list / source.remove
+
+装第三方 scope 的件（比如 `@j/gwb-daily-planner` 这种个人源），先得让 pnpm 认识那条源——
+**scope 路由与凭据写进机器级 `~/.npmrc`**。为什么是机器级：`@godcreator` 的引导路由本来就
+住那儿（每个 home 的出生、源码仓的装与发全指着它），包源是机器级事实；home 级 `.npmrc`
+pnpm 也认（同名键还压过机器级），但那是手加的领域，这三条命令只读展示、不写它。
+
+**`plugin-manager.source.add { "scope": "@j", "owner": "J" }`**——最短的一条路，gitea 快捷路：
+源地址拼成 `<gitea base>/api/packages/J/npm/`（base 借设置里的 `gitea.base-url`，缺省
+`git.tianshen02.online:28377`），token 没显式给就去设置的 `gitea` 分区借。也可以不用快捷路：
+`{ "scope": "@x", "registry": "https://…/npm/", "token": "…" }` 直给。
+
+- 幂等：同 scope 已有就是原位替换（回执 `replaced: true`），不叠行
+- token 行按**源的路径**配对：同一个 token 配几条源各是各的一行，互不牵连；换源后旧源的
+  凭据行成了孤儿（没有别的 scope 指着那条源）就一并收走，还有指着它的就留
+- 回执 `lines` 已掩码（`_authToken=***`），凭据不进回执不进日志；`verified: true` 是
+  `pnpm config get` 解析出的正是写入的地址
+- **`@godcreator` 这条引导线不许经 source.add 写也不许删**——写它等于全机劫持，删它等于
+  拔引导线，两条都当场拒
+- 私有源借不到 token（没配 `gitea.token`、又没显式传）回 `ok: false`：与其晚点在 install
+  上炸，不如现在说清。公开源可以不 token，只写路由行
+
+**`plugin-manager.source.list`**（无参数）——两层合着看：`sources: [{ scope, registry, file, token }]`，
+`file` 标出处（`user` 机器级 / `home` 本 home），token 只报有无。同一个 scope 两层都出现时，
+生效的是 home 级那条（pnpm 项目级优先）。
+
+**`plugin-manager.source.remove { "scope": "@j" }`**——从机器级拿掉一条路由；机器级没有这条时
+回执说清（含「它在 home 级、自己动」的情形）。
+
+配完源之后：不带参数的 `plugin-manager.search` 就是全景（好源并着回、坏源进 note），
+`plugin-manager.install {"pkg":"@j/…"}` 装——install/update/update-all 走的都是 pnpm，源一配好它们全都认。
+
 
 ## 升：plugin-manager.update（跟 install 差一条：不加条目）
 
@@ -121,6 +158,19 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 再 `pnpm remove` 掉包。设置与数据留在盘上，重装回来还是那份。依赖它的其他插件会随 fiber
 被 cordis 摘下、在 `plugin-manager.list` 里落「没挂上」档。**不要拿 install 当反操作**——那是
 再挂一条条目。
+
+## 条目 id 与户主：数据与设置归哪个包
+
+数据目录与设置分区按条目 id 切，而默认 id 去掉了 scope——`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`。
+所以两个件各自给盘上的东西盖了户主章（包名）：
+
+- 装与 `add-entry` 不给 id 时，**先接回本包留在盘上的旧 id**，归别的包的 id 跳过——装回来的件
+  拿到的还是自己那份数据与设置
+- `add-entry` 手给的 id 归别的包，当场拒，错话里点名户主
+- 件挂不上、日志说「数据目录 … 归 X」「设置分区 … 归 X」：就是这条在拦。**同一个件改了包名**
+  要接着用旧东西，走 `plugin-manager.transfer-owner`（`{ "id": "foo", "pkg": "<新包名>" }`），
+  数据与设置一起过户，再 `remount` 那条条目；**不是同一个件**就给它换个 id（`remove-entry` 再
+  `add-entry` 带 `id`），别过户——过户等于把前一个包的东西交给它
 
 ## 启用与停用
 

@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-data",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "author": {"name": "godcreator"},
   "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON、原子落盘。服务 gwbData；skill 0 份；命令 0 条。",
   "type": "module",
@@ -29,9 +29,17 @@
   },
   "devDependencies": {
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "gwb": {
+    "provides": {
+      "gwbData": {
+        "summary": "件的落盘状态：<home>/data/<条目末段>/，一份文档一个 JSON",
+        "usage": "readDoc(doc)（没有/坏了回 undefined，首次要自己分支）· writeDoc(doc, value)（整份替换、原子）· dir（存非 JSON 用它，别自己拼路径）· owners()/transferOwner(id, pkg)（包改名接旧数据）；inject ['gwbData']"
+      }
+    }
   },
   "repository": {
     "type": "git",

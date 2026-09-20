@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs'
-import type { PluginRow } from './plugins.js'
 
 /**
  * `index` 与 `search` 两枚工具的回执。纯函数，从接线里抽出来以便测试。
  *
  * 渐进式的正身是**索引 → 按址取件**，搜索只是不知道地址时的兜底：
  *
- * - `index`（裸调，无参数）是**地图**：全部命令（名字+插件+一句话）与全部说明书（名字+
- *   插件+一句话），完整而极小，约两千 token——description 与 skill 的 description 同义，
- *   是导航触发文本，不是参数文档
+ * - `index`（裸调，无参数）是**地图**，三层递进里的第一层：说明书名录**带完整 description**
+ *   （它是触发文本，砍了就废），命令**按件分组只报名字**——名字自述，参数形状是 `search`
+ *   的职责。「这个 home 装了哪些件」不进地图：那是诊断/开发场景，`plugin-manager.list`
+ *   现查更准（还带 active 态）。地图求「完整而极小」，预算 18KB（`instructions` 固定占
+ *   ~2.9KB，zcode 那条腿靠回执里这份拿门厅纪律——它不透出 initialize 的 instructions，
+ *   删了这格 zcode 会话就没有门厅了）
  * - `search` 的命中行**恒带 usage**（参数形状与行为注意，commands 0.4 起与 description
  *   分家）；裸调＝不过滤＝全貌全用法（约八千 token，陌生 home 深度进场一次）
  * - 任何一级查询都不把另一张全表捎上：prefix 是命令域意图，此时说明书表只回瘦身行
@@ -16,6 +18,23 @@ import type { PluginRow } from './plugins.js'
  * instructions 是一份真的 markdown——包根 `instructions.md`，模块加载时读一次。
  * 只搬了形状、没搬 skills 件的类型——本地收窄声明，不欠 skills 件一个依赖。
  */
+
+/** 保险丝：description 正常该是一句话（注册处家法），守纪律的永远碰不到这道线 */
+const DESCRIPTION_CLAMP = 200
+
+/**
+ * description 保险丝：超长（>200 字）才截、拼省略号。不做人话级「取第一句」——那会把
+ * 触发文本砍残（unit-folder 那份的触发词列表在前 40 字装不下）。真正的治理在注册侧：
+ * 件把 changelog 写进 description 是它违约，门上只防失控长文爆地图。
+ */
+export function clampDescription(text: string): string {
+  const t = text.trim()
+  return t.length <= DESCRIPTION_CLAMP ? t : `${t.slice(0, DESCRIPTION_CLAMP)}…`
+}
+
+/** 地图尾部的路标：往下一层怎么走 */
+const HINT =
+  '命令参数形状：search {"plugin":"<包名>"} 或 {"prefix":"<前缀>"}；说明书正文：run skill.read {"name":"<名>"}；装了什么件问 plugin-manager.list；动过插件后重调 index 刷新。'
 
 /** 命令那几样。与 `gwb-commands` 的注册表条目对得上，直接传就行 */
 export interface CommandView {
@@ -49,21 +68,20 @@ export function loadInstructions(): string {
   return INSTRUCTIONS
 }
 
-/** `index` 的应答：完整地图，两表同形 */
+/** `index` 的应答：完整地图。三层递进的第一层——认知全给，细节让位给 search / skill.read */
 export interface IndexDoc {
   /** 自报的 home 名——读的人拿它核对「你连上的实际是哪个」，别只信 runtime.json 那份记录 */
   home: string
   /** 本件自己的版本号 */
   version: string
-  /** 口上的纪律（怎么干活、哪些改动不问、哪些先问） */
+  /** 口上的纪律（怎么干活、哪些改动不问、哪些先问）。zcode 那条腿的唯一门厅来源 */
   instructions: string
-  commands: Array<{ name: string; plugin: string; description: string }>
+  /** 说明书名录：名字 + 插件 + 完整 description（触发文本，不截）——正文经 run skill.read 取 */
   skills: Array<{ name: string; plugin: string; description: string }>
-  /**
-   * 这个 home 装着的件：包名 + 条目名 + 版本 + 那句话。**件级概述就在这儿**——
-   * 命令与说明书两表按 plugin 归组是件的能力明细，这一节是「有哪些件」
-   */
-  plugins: Array<{ pkg: string; entryId?: string; version?: string; description?: string }>
+  /** 命令按件分组、只报名字——名字自述，参数形状在 search。顺序＝注册表首见序 */
+  commands: Array<{ plugin: string; names: string[] }>
+  /** 往下一层的路标 */
+  hint: string
 }
 
 /** 现拼一份地图。commands 与 skills 都是调用方现取的，这里只组装 */
@@ -72,20 +90,20 @@ export function buildIndex(input: {
   version: string
   commands: readonly CommandView[]
   skills?: readonly SkillView[]
-  plugins?: readonly PluginRow[]
 }): IndexDoc {
+  const byPlugin = new Map<string, string[]>()
+  for (const c of input.commands) {
+    const names = byPlugin.get(c.plugin)
+    if (names === undefined) byPlugin.set(c.plugin, [c.name])
+    else names.push(c.name)
+  }
   return {
     home: input.home,
     version: input.version,
     instructions: loadInstructions(),
-    commands: input.commands.map((c) => ({ name: c.name, plugin: c.plugin, description: c.description })),
-    skills: (input.skills ?? []).map((s) => ({ name: s.name, plugin: s.plugin, description: s.description })),
-    plugins: (input.plugins ?? []).map((p) => ({
-      pkg: p.pkg,
-      ...(p.entryId === undefined ? {} : { entryId: p.entryId }),
-      ...(p.version === undefined ? {} : { version: p.version }),
-      ...(p.description === undefined ? {} : { description: p.description }),
-    })),
+    skills: (input.skills ?? []).map((s) => ({ name: s.name, plugin: s.plugin, description: clampDescription(s.description) })),
+    commands: [...byPlugin].map(([plugin, names]) => ({ plugin, names })),
+    hint: HINT,
   }
 }
 

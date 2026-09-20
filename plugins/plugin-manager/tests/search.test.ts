@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isPluginRow, parseSearch } from '../src/search'
+import { isPluginRow, mergeScoped, parseSearch, type ScopedSearch } from '../src/search'
 
 /**
  * 检索的解析与过滤。形状是实测钉的（2026-09-08，`/-/v1/search?text=@godcreator`）：
@@ -120,5 +120,41 @@ describe('isPluginRow：是不是件只看包自报的 keywords，没有回退',
   it('只写 gwb（生态归属，如 lib / 共享包）不算件；没写 keywords 也不算', () => {
     expect(isPluginRow(row('@godcreator/block-note', ['gwb']))).toBe(false)
     expect(isPluginRow(row('@godcreator/gwb-tokens', []))).toBe(false)
+  })
+})
+
+describe('mergeScoped：多源聚合，一条坏不塌整表', () => {
+  const row = (pkg: string) => ({ pkg, keywords: ['gwb-plugin'] })
+
+  it('好源按传入序并起来（稳定序是调用方的事），包名带 scope 不用去重', () => {
+    const merged = mergeScoped([
+      { scope: '@godcreator', ok: true, packages: [row('@godcreator/gwb-shell'), row('@godcreator/gwb-theme')] },
+      { scope: '@j', ok: true, packages: [row('@j/gwb-daily-planner')] },
+    ])
+    expect(merged.packages.map((one) => one.pkg)).toEqual([
+      '@godcreator/gwb-shell',
+      '@godcreator/gwb-theme',
+      '@j/gwb-daily-planner',
+    ])
+    expect(merged.failed).toEqual([])
+  })
+
+  it('坏源点名成 failed、不进包表；没说原因也有一句占底', () => {
+    const merged = mergeScoped([
+      { scope: '@godcreator', ok: true, packages: [row('@godcreator/gwb-shell')] },
+      { scope: '@dead', ok: false, error: '源够不着' },
+      { scope: '@mute', ok: false },
+    ])
+    expect(merged.packages.map((one) => one.pkg)).toEqual(['@godcreator/gwb-shell'])
+    expect(merged.failed).toEqual([
+      { scope: '@dead', error: '源够不着' },
+      { scope: '@mute', error: '没说原因' },
+    ])
+  })
+
+  it('ok: true 但 packages 缺了当坏源算——不冒充「查成了、零个件」', () => {
+    const merged = mergeScoped([{ scope: '@odd', ok: true } satisfies ScopedSearch])
+    expect(merged.packages).toEqual([])
+    expect(merged.failed).toEqual([{ scope: '@odd', error: '没说原因' }])
   })
 })

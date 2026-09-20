@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-logger",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": {
     "name": "godcreator"
   },
@@ -19,7 +19,15 @@
     "dist",
     "src"
   ],
-  "//gwb": "**整段没有**：core 件不提供任何裸名（没有 gwb.shared），也不注册窗格——给人看的名字归 gwb-baseui 的窗格",
+  "//gwb": "gwb 段只有 provides（自述，devkit.services 读它）：core 件不提供任何裸名（没有 gwb.shared），也不注册窗格——给人看的名字归 gwb-baseui 的窗格",
+  "gwb": {
+    "provides": {
+      "gwbLogger": {
+        "summary": "日志聚合的占位服务——面刻意留空，别往它上调方法",
+        "usage": "件说话走 ctx.logger('<件名>')，自动进 gwb.log、日志窗格与 logger.backlog；窗格类消费者 inject ['gwbLogger'] 只为等它出现"
+      }
+    }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -27,14 +35,14 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.3",
+    "@godcreator/gwb-commands": "^0.4.4",
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"

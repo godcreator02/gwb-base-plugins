@@ -59,7 +59,7 @@ export function bareId(entryId: string): string {
 
 /**
  * 包名 → 默认 id：去掉 scope 与 `gwb-` 前缀，剩下的收进 kebab-case。
- * `@godcreator/gwb-py-cli` → `py-cli`。撞名归 `uniqueId` 管。
+ * `@godcreator/gwb-py-cli` → `py-cli`。撞名归 `pickId` 管。
  */
 export function defaultIdFor(pkg: string): string {
   const bare = pkg.replace(SCOPE_PREFIX, '').replace(GWB_PREFIX, '')
@@ -84,6 +84,58 @@ export function uniqueId(base: string, taken: ReadonlySet<string>): string {
     if (!taken.has(candidate)) return candidate
   }
   throw new Error(`给 ${JSON.stringify(base)} 编不出一个没被占的 id。`)
+}
+
+/**
+ * 盘上的户主：id → 认领过它的包。数据目录与设置分区各盖一个章，所以可能不止一个。
+ *
+ * 默认 id 去掉了 scope，`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`；而条目删了数据与设置都留盘。
+ * 只看树判重的话，空出来的 `foo` 会被下一个同名的包拿走、读到前一个包的东西。
+ */
+export type IdOwners = Readonly<Record<string, readonly string[]>>
+
+/** 盘上有别的包的章 */
+function ownedByOther(owners: IdOwners, id: string, pkg: string): string | undefined {
+  return owners[id]?.find((owner) => owner !== pkg)
+}
+
+/** 盘上有章、而且全是这个包的 */
+function ownedBy(owners: IdOwners, id: string, pkg: string): boolean {
+  const list = owners[id]
+  return list !== undefined && list.length > 0 && list.every((owner) => owner === pkg)
+}
+
+/**
+ * 给 `pkg` 挑一个 id。
+ *
+ * 1. **先接回自己的**：盘上有本包的章、树上又空着的 id，说明这个包装过又卸了——用回它，
+ *    数据与设置原样接上。有好几个时优先默认那个，其余按字典序
+ * 2. 否则默认 id 往下数后缀，**树上有的和盘上归别的包的都跳过**
+ */
+export function pickId(pkg: string, taken: ReadonlySet<string>, owners: IdOwners): string {
+  const base = defaultIdFor(pkg)
+  const reclaim = Object.keys(owners)
+    .filter((id) => !taken.has(id) && ownedBy(owners, id, pkg))
+    .sort()
+  if (reclaim.includes(base)) return base
+  if (reclaim.length > 0) return reclaim[0]!
+  const blocked = new Set(taken)
+  for (const id of Object.keys(owners)) {
+    if (ownedByOther(owners, id, pkg) !== undefined) blocked.add(id)
+  }
+  return uniqueId(base, blocked)
+}
+
+/** 手给的 id 能不能给 `pkg` 用：树上被占、盘上归别的包，都当场抛 */
+export function assertIdUsable(id: string, pkg: string, taken: ReadonlySet<string>, owners: IdOwners): void {
+  assertId(id)
+  if (taken.has(id)) throw new Error(`条目 id ${JSON.stringify(id)} 已经被占了。换一个，或者不给由这边编一个。`)
+  const other = ownedByOther(owners, id, pkg)
+  if (other !== undefined) {
+    throw new Error(
+      `条目 id ${JSON.stringify(id)} 的数据或设置归 ${other}，给 ${pkg} 用会读到别人的东西。换一个 id；确认是同一个件改了包名，先走 plugin-manager.transfer-owner 过户。`,
+    )
+  }
 }
 
 /**

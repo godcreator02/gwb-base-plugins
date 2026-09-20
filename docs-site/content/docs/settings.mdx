@@ -9,14 +9,18 @@ docfirst: none
 **插件声明，服务落盘。** 插件说「我有一项叫 `level` 的设置，标题是这个、类型是那个」，
 值往哪写、跟不跟着 home 走，由声明里的两个字段算出来。
 
-`ctx.gwbSettings` 四样：
+`ctx.gwbSettings` 六样：
 
 ```ts
 define(def: SettingDef): () => void   // 声明一项。插件卸载时自动摘，不用自己包 ctx.effect
 get(key: string): unknown             // 同步——表在内存里
 set(key: string, value: unknown): Promise<void>
 delete(key: string): Promise<void>    // 抹掉值，定义还在，get 回落到 default
+owners(): Record<string, string>      // 户主表：分区名 → 包名
+transferOwner(id: string, pkg: string): Promise<void>  // 把一个分区过户给 pkg
 ```
+
+后两样是户主簿的口，给 `gwb-plugin-manager` 分条目 id 与过户用，见下文「户主」。
 
 外加四条命令：`settings.all`（无参数）、`settings.get` / `settings.delete`
 （`{ section, key }`）、`settings.set`（`{ section, key, value }`）。
@@ -116,6 +120,15 @@ set(key, value)
 不是 settings 那条。
 
 **这条错了不会报错**，只会把数据写进别人名下——所以它是这个插件最该盯的一条。
+
+## 户主：分区记着自己归哪个包
+
+分区名只是条目 id 的末段，而 `gwb-plugin-manager` 编默认 id 时去掉了 scope——`@a/gwb-foo`
+与 `@b/foo` 都叫 `foo`。条目删了设置留盘，下一个同名的包拿到这个 id 就会读到前一个包的值。
+所以 `settings.json` 顶层有一张 `$owners`（分区名 → 包名），`define` 时核：没主归它，是别的
+包的当场抛、表不动。旧文件里没户主的分区谁先 `define` 归谁；包改了名要接着用旧设置，走
+`plugin-manager.transfer-owner`。户主表与各分区同文件、同一次原子落盘，读的时候分开：
+`toSettingsFile` 跳过 `$owners`，`toOwners` 单独取它。
 
 ## 两份元信息：代码是权威，盘上是快照
 

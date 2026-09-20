@@ -1,0 +1,59 @@
+---
+title: 户主章：数据目录与设置分区记下归哪个包，同短名不同 scope 的件不再认领别人留盘的东西
+born-at: 2026-09-19T11:20
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 户主章
+domain: 件
+---
+
+## 背景
+
+`gwb-data` 的目录与 `gwb-settings` 的分区都按条目 id 的末段切（按条目不按包名：同一个包挂两条是两份实例）。
+`gwb-plugin-manager` 编默认 id 时去掉 scope 与 `gwb-` 前缀，所以 `@a/gwb-foo` 与 `@b/foo` 都算成 `foo`。
+同一时刻两个都在树上时不撞——判重让后来的变成 `foo-2`。可判重只看树，而删条目、卸包都故意把数据与设置留盘
+（「同一个包装回来还是这个 id，旧数据接上」）。于是：
+
+1. `@a/foo` 卸了、`data/foo` 留盘，装 `@b/foo` 拿到空出来的 `foo`，**悄悄读到 `@a` 的数据与设置**，不报错也不 warn
+2. 反过来 `@b` 占了 `foo`，`@a` 装回来被挤成 `foo-2`，自己的数据接不上
+3. 谁拿 `foo` 取决于安装历史，换一个 home 对应关系可能反过来
+
+「同一个包装回来还是这个 id」这个前提，只在「一个短 id 只对应一个包」时成立。根子是**盘上的东西不记得自己归谁**。
+
+## 结论与边界
+
+采纳「户主章」，短 id 不动：
+
+- `gwb-data`：每个目录首次访问（`dir` / `readDoc` / `writeDoc` 任一）盖 `.owner.json`（记包名），之后包名对不上
+  当场抛；章坏了也抛，不当没章
+- `gwb-settings`：`settings.json` 顶层 `$owners`（分区 → 包名），`define` 时核，对不上抛、表不动
+- 两个件的服务各加 `owners()` 与 `transferOwner(id, pkg)`；`gwb-plugin-manager` 分 id 时把两本簿合起来看——先接回
+  本包留盘的旧 id（默认那个优先），归别的包的跳过；手给的 id 归别的包当场拒；新命令
+  `plugin-manager.transfer-owner` 给改了包名的件把两本簿一起换章
+
+没选的：
+
+- **id 带上 scope**（如 `godcreator--py-cli`）：kebab-case 只许单连字符，编码做不成单射（`@a-b/c` 与 `@a/b-c`
+  照样撞），id 也要人手写进 `cordis.yml`，变丑不值
+- **plugin-manager 自记一本 id → 包的总账**：盖不住手写 `cordis.yml`、不经 plugin-manager 挂上的条目，而且总账
+  与盘一旦不一致不知道信谁；章住在数据自己身上，谁读谁核
+- **对不上只 warn、换目录隔离**：认错数据比拿不到数据更糟，拒是当场看得见的
+
+边界：
+
+- 已有 home 里没章的目录与分区不做迁移，谁先访问归谁
+- 同一个包挂多条条目，章记的是包名，它们之间能互相接回对方留下的旧 id——同一份代码的实例，算接上，不算撞
+- 包改名是这套规矩的真实代价（这个生态做过：`gwb-plugins` → `gwb-plugin-manager`）：不过户就被拒在自己的数据门外，
+  所以过户命令跟着一起做
+- 这不是安全边界：件本来就能 `fs.writeFile` 到任何地方。挡的是事故，不是恶意
+
+版本抬补丁（data 0.1.3、settings 0.2.2、plugin-manager 0.5.4）：服务只加方法，已有签名不变；盘上各件的文档与设置项
+格式不变，新增的章是旁路；新行为只在「认了别人的东西」时抛，那本来就是 bug。下游 peer 写的都是 `^0.1.x` / `^0.2.x`，
+不出范围、不用跟。
+
+## 依据
+
+- 代码与测试：commit d423946（`plugins/data/tests/owner.test.ts`、`plugins/settings/tests/{registry,store}.test.ts`、
+  `plugins/plugin-manager/tests/ids.test.ts` 的「挑 id」「手给的 id」两组）
+- 下游影响现扫：全容器只有 `plugins/data/src/paths.ts` 在拼 `data/<id>` 路径；提到 `settings.json` 的别仓代码
+  （unit-folder、mineru、paper-fetch、baseui 插件管理窗格）都只是注释与界面文字，不直接读它

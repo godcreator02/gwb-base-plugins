@@ -1,8 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { toSettingsFile, type SettingsFile } from './registry.js'
+import { OWNERS_KEY } from './paths.js'
+import { toOwners, toSettingsFile, type SettingsFile, type SettingsOwners } from './registry.js'
 
 /** 落盘实现。文件落在哪是调用方算好的事实，这里只管读写 */
+
+/** 一份文件拆开的两半：各分区的设置，与顶层 `$owners` 那张户主表 */
+export interface StoredHome {
+  sections: SettingsFile
+  owners: SettingsOwners
+}
 
 /**
  * 读一份。**没有 / 坏了都回空表**——第一次跑没文件，件直接用 default；
@@ -12,22 +19,22 @@ import { toSettingsFile, type SettingsFile } from './registry.js'
  * 返回，消费方就可能挂上并 `get`。异步读的话那一刻表还是空的，而 `get` 是同步的。
  * 见文档站。
  */
-export function readSettings(file: string, warn: (message: string) => void): SettingsFile {
+export function readSettings(file: string, warn: (message: string) => void): StoredHome {
   let text: string
   try {
     text = fs.readFileSync(file, 'utf8')
   } catch {
     // 没有这份文件是正当结果，不吭声
-    return {}
+    return { sections: {}, owners: {} }
   }
   let raw: unknown
   try {
     raw = JSON.parse(text) as unknown
   } catch (err: unknown) {
     warn(`${file} 解析不了，当没有处理：${String(err)}`)
-    return {}
+    return { sections: {}, owners: {} }
   }
-  return toSettingsFile(raw, warn, file)
+  return { sections: toSettingsFile(raw, warn, file), owners: toOwners(raw, warn, file) }
 }
 
 /**
@@ -35,7 +42,9 @@ export function readSettings(file: string, warn: (message: string) => void): Set
  * 直接往目标写的话，写到一半崩了会留下半个文件——那份数据就毁了。
  * rename 只在同一分区上原子，所以临时文件必须跟目标同目录，不能扔 os.tmpdir()。
  */
-export async function writeSettings(file: string, data: SettingsFile): Promise<void> {
+export async function writeSettings(file: string, home: StoredHome): Promise<void> {
+  // 户主表放最前，人打开文件先看到各分区归谁
+  const data = { [OWNERS_KEY]: home.owners, ...home.sections }
   // 先序列化：循环引用之类要在建目录之前炸，别留下空目录
   const text = `${JSON.stringify(data, null, 2)}\n`
   await fs.promises.mkdir(path.dirname(file), { recursive: true })

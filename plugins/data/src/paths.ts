@@ -68,14 +68,20 @@ export function entryDirName(entryId: string): string {
  *
  * **按条目 id 切、不按包名切**——`id` 才是 cordis 条目模型里的身份，`name` 只说「装哪个
  * 包」。同一个包挂两条条目（比如两条 `gwb-py-cli` 各配一个解释器）是两份独立配置的实例，
- * 按包名切的话它们共用一个目录、互相覆盖。
+ * 按包名切的话它们共用一个目录、互相覆盖。反过来，包名不同的件可能算出同一个 id，
+ * 那一层由目录里的户主章挡（见 `owner.ts`）。
  *
  * **姊妹件 `gwb-settings` 的分区键必须是同一个答案**，那边有一份一模一样的
  * `entrySection`。两处都是十几行纯逻辑，为它新建一个共享包过不了准入判据；
  * 改了这儿就得同时改那儿。
  */
 export function entryDir(dataDir: string, entryId: string): string {
-  return path.join(dataDir, 'data', entryDirName(entryId))
+  return path.join(dataRoot(dataDir), entryDirName(entryId))
+}
+
+/** 全部条目数据目录的父目录：`<home>/data` */
+export function dataRoot(dataDir: string): string {
+  return path.join(dataDir, 'data')
 }
 
 /** 一份文档在某个件的目录里的落点 */

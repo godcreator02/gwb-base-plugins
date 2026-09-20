@@ -106,8 +106,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -121,8 +121,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -139,8 +139,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       '@types/node':
         specifier: ^24.0.0
         version: 24.13.3
@@ -191,8 +191,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -218,8 +218,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       '@godcreator/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -242,8 +242,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -266,8 +266,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       '@godcreator/gwb-skills':
         specifier: workspace:*
         version: link:../skills
@@ -287,8 +287,8 @@ importers:
         specifier: 0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
+        specifier: 0.3.0
+        version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
         version: 4.0.0-rc.9
@@ -581,6 +581,9 @@ packages:
 
   '@godcreator/gwb-repo-kit@0.2.3':
     resolution: {integrity: sha512-UziHpLP35E2xAHZHSgcFW+Wy/YamMgCZkCgsjf/5NZ6RVVz7RfWm3SUSQ6XJJcFc4EP+4Q+avaPYSmQwZYDXVQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-repo-kit/-/0.2.3/gwb-repo-kit-0.2.3.tgz}
+
+  '@godcreator/gwb-repo-kit@0.3.0':
+    resolution: {integrity: sha512-nyjr5TNr2OP66zk/2xkbwGgxR9HFwKJyV/ahbfhSt2VRY2MVH7GP/h+eJ6DMoGMxM1HJ4NxpYafGC6DwPWpPlQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-repo-kit/-/0.3.0/gwb-repo-kit-0.3.0.tgz}
 
   '@hono/node-server@2.1.1':
     resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
@@ -3212,6 +3215,8 @@ snapshots:
       cordis: 4.0.0-rc.9
 
   '@godcreator/gwb-repo-kit@0.2.3': {}
+
+  '@godcreator/gwb-repo-kit@0.3.0': {}
 
   '@hono/node-server@2.1.1(hono@4.13.7)':
     dependencies:

@@ -1,6 +1,6 @@
 ---
 title: gwb-plugin-manager：插件管理
-description: 包与条目两层怎么对起来，装卸检升怎么走，peer 对不上怎么进回执，装插件时 peer 谁装谁跳过，一键更新为什么是热重挂而不是重启
+description: 包与条目两层怎么对起来，装卸检升怎么走，peer 对不上怎么进回执，装插件时 peer 谁装谁跳过，一键更新为什么是热重挂而不是重启，第三方包源（source.*）为什么写机器级 npmrc
 docfirst: none
 ---
 
@@ -12,19 +12,21 @@ docfirst: none
 - **条目**——`cordis.yml` 里的一行，指向一个包。挂上条目，插件的代码才真的跑起来
 
 这个插件的全部工作就是把两层对起来：装（`install`）、卸（`uninstall`）、查新版（`outdated`）、
-升（`update` / `update-all`）、检索（`search`）、加删条目、启停、改显示名。「插件」窗格
+升（`update` / `update-all`）、检索（`search`）、配包源（`source.*`）、加删条目、启停、改显示名。「插件」窗格
 （已装 / 可装两段）的界面不住这儿——浏览器半在 `@godcreator/gwb-baseui`，本插件只剩
 node 半的服务与命令。检索与安装同源：`search` 查 npm registry 标准检索协议
-（`/-/v1/search`）列源上自报 `gwb-plugin` 关键词的件（2026-09-18 起：身份看 manifest 的 `keywords`，不看名字前缀），基址从 pnpm 配置解析
-（`@godcreator:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
-地址**——装从哪来、搜就到哪去。
+（`/-/v1/search`）列源上自报 `gwb-plugin` 关键词的件（2026-09-18 起：身份看 manifest 的 `keywords`，不看名字前缀），基址从 pnpm 配置按 scope 解析
+（`<scope>:registry` → `registry` → npm 官方），**代码里不出现任何具体源的名字与
+地址**——装从哪来、搜就到哪去。无参 `search`＝查**全部配好的源**（0.6.0 起；原先默认
+只有 `@godcreator` 线）：逐源并发，好源的件并进回执、坏源点名进 `note`，一条坏不塌
+整表——市场页的「可装」表用的就是这一发。
 
 **依赖谁**：`gwbCommands` / `gwbData` / `gwbSettings` / `gwbSkills` 四条都是**局部注入**
 （`ctx.inject([...])`）——缺哪条本件照挂，只少那一面：命令登不上总线、显示名存不下、
 pnpm 路径只能自动找、说明书挂不上。
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="388-388" */}
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="432-433" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="414-414" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="462-463" */}
 
 {/* ref file="../plugins/plugin-manager/src/index.ts" lines="28-61" */}
 
@@ -48,6 +50,37 @@ pnpm 路径只能自动找、说明书挂不上。
 
 {/* ref file="../plugins/plugin-manager/src/pnpm-path.ts" lines="189-197" */}
 
+## 第三方包源：source.*，写机器级 npmrc
+
+装第三方 scope 的件（`@j/gwb-…` 这种个人源），先得让 pnpm 认识那条源——**scope 路由与凭据
+写进机器级 `~/.npmrc`**。`source.add` / `source.list` / `source.remove` 三条命令管的就是这份
+文件；解析增删的纯逻辑在 `sources.ts`，token 行按**源的路径**配对（同一个 token 配几条源各是
+各的一行，换源后旧凭据行成了孤儿才跟着走）：
+
+{/* ref file="../plugins/plugin-manager/src/sources.ts" lines="1-16" */}
+
+为什么是机器级：`@godcreator` 的引导路由本来就住那儿（每个 home 的出生、源码仓的装与发全
+指着它），包源是机器级事实；home 级 `.npmrc` pnpm 也认、同名键还压过机器级，但那是手加的
+领域——三条命令只读展示（`source.list` 两层合着看、逐条标出处），不写它。**`@godcreator`
+本身不许经 source.add 写也不许删**：写它等于全机劫持，删它等于拔引导线，两条都当场拒：
+
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="403-416" */}
+
+源地址两条来路给一个：`registry` 直给；`owner` 走 **gitea 快捷路**——拼成
+`<gitea base>/api/packages/<owner>/npm/`，token 没显式给就去设置的 `gitea` 分区借。借的路是
+`settings.get` **命令**而不是 `ctx.gwbSettings` 服务面：服务面绑调用方身份，只读得到自己
+分区，命令面才是「按位置读别人分区」的正规口：
+
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="1186-1193" */}
+
+写完自验两道：重读文件确认行真在；`pnpm config get <scope>:registry` 问 pnpm 本人——它解析到
+别的值时 `note` 里说（多半是 home 级有手加的同名行压着，项目级优先）。回执里的行**token 一律
+掩码**（`_authToken=***`），凭据不进回执不进日志。
+
+配好源之后不带参数的 `search` 就是全景（好源并着回、坏源进 `note`；0.6.0 起市场页的
+「可装」表吃的也是这一发），`install` / `update` / `update-all` 走的都是 pnpm，源一配好它们
+全都认。
+
 ## peer 对不上：照装不拦，回执里点名
 
 往 home 里 `pnpm add` 的每一趟——`install`、它顺手装 peer 的那几趟、`update`、`update-all`——都直接在 home
@@ -70,7 +103,7 @@ undefined——那时回执没有 `peerWarnings`、`note` 里说「peer 对没�
 
 三条命令共用一个入口，一处都没有就没有这一格，有就再记一条 warn 日志：
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="598-612" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="638-652" */}
 
 `peers check` 查的是 **home 整棵树**：本来就有的对不上也在里头，不只这一趟新加的——回执说的是装完之后 home
 的样子。install 在顺手装的 peer 也装完之后才查。
@@ -92,6 +125,19 @@ loader 把盘上那份 yml 跟内存里挂着的条目绑在一起，绕过它�
 `write()` 就拿旧的内存态把盘上的盖回去：
 
 {/* ref file="../plugins/plugin-manager/src/tree.ts" */}
+
+## 条目 id：连盘上的户主章一起编
+
+条目 id 是身份：`gwb-data` 的目录与 `gwb-settings` 的分区都按它的末段切，定死不给改名。默认
+id 由包名去掉 scope 与 `gwb-` 前缀得来，所以 `@a/gwb-foo` 与 `@b/foo` 算出同一个 `foo`；而删条目、
+卸包都把数据与设置留在盘上。只看树判重的话，空出来的 `foo` 会被下一个同名的包拿走、读到前一个
+包的东西。所以编 id 时把两本户主簿（两个件的 `owners()`）一起看：
+
+{/* ref file="../plugins/plugin-manager/src/ids.ts" lines="108-127" */}
+
+手给的 id（`add-entry` 的 `id`）归别的包就当场拒。数据件、设置件没装的那一本跳过——那时没有
+留盘的东西可撞。同一个件改了包名要接着用旧数据与设置，`plugin-manager.transfer-owner { id, pkg }`
+把两本簿上的章一起换掉；真正拦「用了别人的数据」的是那两个件自己的核章，这里只是分 id 时先避开。
 
 ## 装：插件的 peer 也进 home
 
@@ -143,7 +189,7 @@ junction。所以先解软链、按包名有几段往上退几层，退到的才
 
 ### 执行：装 latest、一条一趟、永不让装机失败
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="633-674" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="673-714" */}
 
 **装 latest 不装清单上那条 range**：这一步装的是共享包与生态外的包，latest 通常都满足；按 range
 装会把 `^1.2.3` 这种范围原样写进 home 的清单。range 原样带进回执；latest 真不满足时照装，那一处
@@ -156,7 +202,7 @@ peer 排在**建条目之前**：条目一落 loader 就当场挂它，而插件
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="95-132" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="104-141" */}
 
 `action` 四种：`installed`（这次装成了直接依赖）、`present`（本来就在，版本没动）、
 `skipped`（不该由这条路装，`note` 里是理由）、`failed`（装不上，`note` 里带 pnpm 尾巴）。
@@ -210,7 +256,7 @@ id 与位置一字不动，设置与数据的归属（都按 id 分区）也就�
 
 ### 执行：升级与重挂同一条命令，不留窗口
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="766-789" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="806-829" */}
 
 pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插件若读盘（惰性 import 一个子模块、
 读自己包里的模板）就读空，所以重挂必须紧跟在同一条命令里——分成两条命令，中间那段有多长
@@ -234,7 +280,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 自己最后，而且在回执之后
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="791-807" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="831-847" */}
 
 处理器里停用自己，这条 await 链随 fiber 一起拆掉，回执永远到不了调用方——界面上就是
 「点了没反应」。所以别人的都做完、回执交出去，`setTimeout(…, 0)` 的下一个宏任务再动自己：
@@ -248,7 +294,7 @@ pnpm 升级会**删掉旧版本目录**。从 pnpm 退出那一刻起，旧插�
 
 ### 回执
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="158-188" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="167-197" */}
 
 {/* ref file="../plugins/plugin-manager/src/remount.ts" lines="20-31" */}
 
@@ -284,7 +330,7 @@ busy），与点「全部更新」先在窗格内列 `from → to` 让人看一�
 启用 → 等新 fiber 起完，**在一条命令里做完**，时序与一键热升重挂每条条目的是同一份。本来停用的
 条目，终态是启用。给 `devkit.dev` 这类「装了新号、要这条条目重 import」的调用方用。
 
-{/* ref file="../plugins/plugin-manager/src/index.ts" lines="486-495" */}
+{/* ref file="../plugins/plugin-manager/src/index.ts" lines="526-535" */}
 
 不拿 `disable` 与 `enable` 两条命令拼：目标是本插件自己时，`disable` 一回来本插件的命令就随 fiber
 撤了，第二条 `enable` 回「没有这条命令」，条目卡在停用态；目标是命令总线时，整张命令表随总线

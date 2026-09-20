@@ -4,11 +4,12 @@ import { isRecord, requireKernel, type GwbContext } from '@godcreator/gwb-plugin
 import type {} from '@godcreator/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator/gwb-skills'
-import { homeFile, looksRandom } from './paths.js'
+import { entrySection, homeFile, looksRandom } from './paths.js'
 import {
   createRegistry,
   type Owner,
   type SettingDef,
+  type SettingsOwners,
   type SettingsRegistry,
   type Slot,
 } from './registry.js'
@@ -19,6 +20,7 @@ export type {
   SettingType,
   SettingView,
   SettingsFile,
+  SettingsOwners,
   Slot,
   StoredSetting,
 } from './registry.js'
@@ -31,6 +33,7 @@ export { SHARED_SECTION } from './paths.js'
  * `ctx.gwbSettings` 交出来的那一格**自动绑定到取它的那个件**——件不报名字，也就没法
  * 报别人的名字去改别人的设置。靠的是 cordis `Service` 的机制：方法里的 `this.ctx` 是
  * **消费者**的 ctx（`gwb-data` 的 `owner()` 是同一个套路）。
+ * 每个分区第一次被 define 时记下户主（包名），之后包名对不上的一律拒，见 `paths.ts` 的 `OWNERS_KEY`。
  */
 
 const NAME = 'gwb-settings'
@@ -53,6 +56,10 @@ export interface GwbSettingsApi {
   set(key: string, value: unknown): Promise<void>
   /** 抹掉值，定义还在。get 因此回落到 default */
   delete(key: string): Promise<void>
+  /** 各分区的户主：分区名（条目 id 末段）→ 包名。还没被 define 过的分区不列 */
+  owners(): SettingsOwners
+  /** 把一个分区过户给 `pkg`，落盘。`id` 认完整 entryId 也认裸 id。包改了名、要接着用旧设置时走它 */
+  transferOwner(id: string, pkg: string): Promise<void>
 }
 
 export default class GwbSettings extends Service implements GwbSettingsApi {
@@ -75,7 +82,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     this.file = homeFile(dataDir)
     this.registry = createRegistry(this.warn)
     // 读盘必须在构造函数里同步做完，理由见 store.ts 的 readSettings
-    this.registry.load(readSettings(this.file, this.warn))
+    const stored = readSettings(this.file, this.warn)
+    this.registry.load(stored.sections, stored.owners)
   }
 
   [Service.init](): void {
@@ -170,6 +178,17 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     this.info(`设置 ${slot.section}.${slot.key} 已删`)
   }
 
+  owners(): SettingsOwners {
+    return { ...this.registry.owners() }
+  }
+
+  async transferOwner(id: string, pkg: string): Promise<void> {
+    const section = entrySection(id)
+    this.registry.transfer(section, pkg)
+    await this.flush()
+    this.info(`设置分区 ${section} 过户给 ${pkg}`)
+  }
+
   /** 本件声明过这个 key 才动得了它。没声明就抛——写一项谁也不认识的东西进盘是静默事故 */
   private locateOwn(key: string, verb: string): Slot {
     const owner = this.owner()
@@ -191,9 +210,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
    * 写没写成得出声：直写路径过去把异常裸抛给调用方，调用方一吞，「没存上」就无声了
    */
   private async flush(): Promise<void> {
-    const mine = this.registry.file()
     try {
-      await writeSettings(this.file, mine)
+      await writeSettings(this.file, { sections: this.registry.file(), owners: this.registry.owners() })
     } catch (err: unknown) {
       this.warn(`设置落盘失败：${String(err)}`)
       throw err

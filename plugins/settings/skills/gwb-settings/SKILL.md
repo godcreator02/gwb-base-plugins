@@ -16,9 +16,14 @@ description: 要读或改这台工作台的设置时读。讲清 settings 命令
 
 - `section`：**声明它的插件那条条目的 id**——设置是按插件分区的，这就是地址
 - `key`：项名
-- `value` / `type` / `title` / `description`：现值和它自己的说明。没有 `default`——
-  默认值是声明方内部的事，不经命令暴露
+- `value` / `type` / `title` / `description`：现值和它自己的说明。`type` 五种：string /
+  number / boolean / secret（只影响显示打码，盘上明文）/ string-list（字符串数组，逐行一项）
+- `default`：声明方递的默认值，**只有 live 的项才带**——没设过值时生效的就是它；
+  界面拿它画灰占位。它住在内存定义表里不落盘，件停了就不跟了
 - `live`：此刻还有没有插件声明着它。false 的多半是插件停了或卸了，盘上的值还在
+
+文件顶层还有一张 `$owners`（section → 包名），记每个分区归哪个包，不经这四条命令读写——
+过户走 `plugin-manager.transfer-owner`。
 
 `settings.get` 要 `{ "section": "...", "key": "..." }`，按位置读一项。
 `settings.set` 同样的位置再加 `value`，写了就落盘（原子写，先临时文件再 rename）。

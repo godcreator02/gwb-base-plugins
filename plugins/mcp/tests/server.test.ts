@@ -85,7 +85,9 @@ describe('工具面封顶', () => {
 
   it('instructions 是每会话的固定成本——守卫钉着上限,也钉着封顶与全貌那两句话在', () => {
     const text = loadInstructions()
-    expect(text.split('\n').length).toBeLessThanOrEqual(36)
+    // 真预算是 Claude Code 的 2048 字符静默截断线（issue #81268,官方不修）;行数只是防散架的粗代理
+    expect(text.length).toBeLessThanOrEqual(2_000)
+    expect(text.split('\n').length).toBeLessThanOrEqual(41)
     expect(text).toContain('封顶于 index / search / run')
     expect(text).toContain('裸调＝不过滤＝全貌全用法')
   })

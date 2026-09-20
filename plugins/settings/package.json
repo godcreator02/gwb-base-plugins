@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-settings",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "author": {
     "name": "godcreator"
   },
@@ -34,10 +34,18 @@
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "0.1.2",
-    "@godcreator/gwb-repo-kit": "0.2.3",
+    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
+  },
+  "gwb": {
+    "provides": {
+      "gwbSettings": {
+        "summary": "件的可配项——define 后界面免费长设置 UI；值跟条目走，shared 才落公共区",
+        "usage": "define({ key, title, type: 'string'|'number'|'boolean'|'secret'|'string-list', shared?, description?, default? }) → get（同步）/ set / delete；先 define 再动，没声明的 key 写会抛；配置一律走 define，别写 cordis.yml 的 config；inject ['gwbSettings']"
+      }
+    }
   },
   "repository": {
     "type": "git",

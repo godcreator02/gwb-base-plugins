@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "author": {
     "name": "godcreator"
   },
@@ -50,5 +50,8 @@
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
   },
-  "keywords": ["gwb", "gwb-plugin"]
+  "keywords": [
+    "gwb",
+    "gwb-plugin"
+  ]
 }

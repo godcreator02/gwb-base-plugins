@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   assertId,
+  assertIdUsable,
   assertPkgName,
   assertSpec,
   bareId,
   defaultIdFor,
   installSpec,
   isValidId,
+  pickId,
   uniqueId,
 } from '../src/ids.js'
 
@@ -97,6 +99,62 @@ describe('撞名加数字后缀', () => {
 
   it('编出来的照样过校验', () => {
     expect(isValidId(uniqueId('py-cli', new Set(['py-cli'])))).toBe(true)
+  })
+})
+
+describe('挑 id：连盘上的户主章一起看', () => {
+  const none = new Set<string>()
+
+  it('盘上什么都没有：跟默认 id 一样', () => {
+    expect(pickId('@a/gwb-foo', none, {})).toBe('foo')
+  })
+
+  it('scope 不同、短名相同：前一个包卸了、数据留盘，后来的包不拿那个 id——这就是要挡的事故', () => {
+    expect(pickId('@b/foo', none, { foo: ['@a/gwb-foo', '@a/gwb-foo'] })).toBe('foo-2')
+  })
+
+  it('数据与设置只要有一本归别人就算占着', () => {
+    expect(pickId('@b/foo', none, { foo: ['@b/foo', '@a/gwb-foo'] })).toBe('foo-2')
+  })
+
+  it('本包装过又卸了：接回自己的旧 id，数据与设置原样接上', () => {
+    // @a 卸了之后 @b 占了 foo-2；@a 装回来还是 foo，不会被挤成 foo-3
+    expect(pickId('@a/gwb-foo', new Set(['foo-2']), { foo: ['@a/gwb-foo'], 'foo-2': ['@b/foo'] })).toBe('foo')
+  })
+
+  it('本包留下的旧 id 不是默认那个也接回——比如当初手给的', () => {
+    expect(pickId('@a/gwb-py-cli', none, { 'py-311': ['@a/gwb-py-cli'] })).toBe('py-311')
+  })
+
+  it('本包留下好几个：默认那个优先，其余按字典序', () => {
+    expect(pickId('@a/gwb-foo', none, { 'foo-3': ['@a/gwb-foo'], foo: ['@a/gwb-foo'] })).toBe('foo')
+    expect(pickId('@a/gwb-foo', new Set(['foo']), { 'foo-3': ['@a/gwb-foo'], 'foo-2': ['@a/gwb-foo'] })).toBe('foo-2')
+  })
+
+  it('树上挂着的不接——那是同一个包正在用的另一条条目', () => {
+    expect(pickId('@a/gwb-foo', new Set(['foo']), { foo: ['@a/gwb-foo'] })).toBe('foo-2')
+  })
+
+  it('编出来的照样过校验', () => {
+    expect(isValidId(pickId('@b/foo', none, { foo: ['@a/foo'] }))).toBe(true)
+  })
+})
+
+describe('手给的 id', () => {
+  it('树上被占：拒', () => {
+    expect(() => assertIdUsable('foo', '@a/foo', new Set(['foo']), {})).toThrow(/被占/)
+  })
+
+  it('盘上归别的包：拒，错话里点名户主与过户命令', () => {
+    expect(() => assertIdUsable('foo', '@b/foo', new Set(), { foo: ['@a/foo'] })).toThrow(/@a\/foo[\s\S]*transfer-owner/)
+  })
+
+  it('盘上归自己：放行', () => {
+    expect(() => assertIdUsable('foo', '@a/foo', new Set(), { foo: ['@a/foo'] })).not.toThrow()
+  })
+
+  it('不合规：拒', () => {
+    expect(() => assertIdUsable('Foo', '@a/foo', new Set(), {})).toThrow(/kebab-case/)
   })
 })
 

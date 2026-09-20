@@ -21,7 +21,6 @@ import {
   type SkillsSlot,
   type SearchQuery,
 } from './inventory.js'
-import { readPlugins } from './plugins.js'
 import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
 import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type ToolResult } from './tools.js'
 
@@ -107,8 +106,8 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'index',
     {
       description:
-        '这台工作台的完整地图：全部命令与全部说明书，各带一句话介绍。无参数，连上先调一次——' +
-        '它现拼，装了新件下一次调用就在；约两千 token。',
+        '这台工作台的完整地图：说明书名录带完整描述、命令按件分组只报名字（参数形状在 search；' +
+        '装了哪些件问 plugin-manager.list）。无参数，连上先调一次——它现拼，装了新件下一次调用就在。',
     },
     async () => handlers.index(),
   )
@@ -217,9 +216,8 @@ export function apply(ctx: GwbContext): void {
       version,
       commands: cli.list(),
       skills: skills?.list(),
-      plugins: readPlugins(requireKernel(ctx).dataDir),
     })
-    log.info(`agent 看了一遍地图（${doc.commands.length} 条命令、${doc.skills.length} 份说明书、${doc.plugins.length} 个件）`)
+    log.info(`agent 看了一遍地图（${doc.commands.reduce((n, g) => n + g.names.length, 0)} 条命令、${doc.skills.length} 份说明书）`)
     return textResult(doc)
   }
 

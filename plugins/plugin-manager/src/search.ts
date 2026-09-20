@@ -30,8 +30,35 @@ export interface SearchRow {
 /** 整份响应认不出的记号。跟「空结果」（空数组）分得开 */
 export type ParsedSearch = SearchRow[] | undefined
 
-/** 自报家门的那枚词：件在 manifest 里写 `"keywords": ["gwb", "gwb-plugin"]` */
+/**
+ * 自报家门的那枚词：件在 manifest 里写 `"keywords": ["gwb", "gwb-plugin"]`
+ */
 export const PLUGIN_KEYWORD = 'gwb-plugin'
+
+/** 一条源查完的样子——聚合的输入。坏源照样进表（`ok: false` 带 error），由 `mergeScoped` 摊平 */
+export interface ScopedSearch {
+  scope: string
+  ok: boolean
+  packages?: SearchRow[]
+  error?: string
+}
+
+/**
+ * 聚合多源的检索结果：好源的包**按传入序**并起来（稳定序由调用方管——引导线在前、其余
+ * 按名排），坏源点名成 `failed`，**一条坏不塌整表**。包名自带 scope 天然不撞键，不用去重。
+ */
+export function mergeScoped(results: readonly ScopedSearch[]): {
+  packages: SearchRow[]
+  failed: { scope: string; error: string }[]
+} {
+  const packages: SearchRow[] = []
+  const failed: { scope: string; error: string }[] = []
+  for (const result of results) {
+    if (result.ok && result.packages !== undefined) packages.push(...result.packages)
+    else failed.push({ scope: result.scope, error: result.error ?? '没说原因' })
+  }
+  return { packages, failed }
+}
 
 /**
  * 这条是不是件：只看包自己写的 keywords 里有没有 `PLUGIN_KEYWORD`。

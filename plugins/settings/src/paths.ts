@@ -10,6 +10,14 @@ import path from 'node:path'
 /** 公共区的分区名。件声明 `shared` 就落这儿，别的件不用 define 也读得到 */
 export const SHARED_SECTION = '*'
 
+/**
+ * 户主表在文件里的键：分区名 → 包名。分区名是 kebab-case 或 `*`，带 `$` 的键撞不上。
+ *
+ * 分区名是条目 id 的末段，而默认 id 去掉了 scope——`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`。
+ * 条目删了设置留盘，id 空出来就会被下一个同名的包拿走；有这张表，包名对不上就拒。
+ */
+export const OWNERS_KEY = '$owners'
+
 /** 本 home 那份的文件名，跟 cordis.yml 并排。home 自持全部配置，没有第二份 */
 const HOME_FILE = 'settings.json'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRegistry, toSettingsFile, type Owner } from '../src/registry.js'
+import { createRegistry, toOwners, toSettingsFile, type Owner } from '../src/registry.js'
 
 const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator/gwb-alice' }
 const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator/gwb-bob' }
@@ -9,7 +9,7 @@ const alice2: Owner = { entryId: 'home:alice-2', pkg: '@godcreator/gwb-alice' }
 function fresh(): { reg: ReturnType<typeof createRegistry>; warn: ReturnType<typeof vi.fn> } {
   const warn = vi.fn()
   const reg = createRegistry(warn)
-  reg.load({})
+  reg.load({}, {})
   return { reg, warn }
 }
 
@@ -160,7 +160,7 @@ describe('元信息：代码是权威，盘上是快照', () => {
   it('件挂上时用代码里的 title 覆盖盘上那份，值不动', () => {
     const warn = vi.fn()
     const reg = createRegistry(warn)
-    reg.load({ alice: { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } })
+    reg.load({ alice: { level: { title: '盘上的旧标题', type: 'string', value: 'debug' } } }, {})
     reg.define(alice, { key: 'level', title: '代码里的新标题', type: 'string' })
     const row = reg.all().find((v) => v.key === 'level')
     expect(row?.title).toBe('代码里的新标题')
@@ -184,6 +184,33 @@ describe('元信息：代码是权威，盘上是快照', () => {
     reg.define(alice, { key: 'api-key', title: 'Key', type: 'secret', shared: true })
     expect(reg.all().map((v) => `${v.section}/${v.key}`).sort()).toEqual(['*/api-key', 'alice/level'])
   })
+
+  it('live 的项带着 default——界面拿它画灰占位；不落盘', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'frequency', title: '频率', type: 'number', default: 30 })
+    reg.put(reg.locate(alice, 'frequency')!, 15)
+    const row = reg.all().find((v) => v.key === 'frequency')
+    expect(row?.default).toBe(30)
+    expect(row?.value).toBe(15)
+    // 定义表之外只有内存那份——落盘的文件里没有 default 键
+    expect(JSON.stringify(reg.file())).not.toContain('"default"')
+  })
+
+  it('件停了 default 就不跟了——陈旧的默认没有显示的意义', () => {
+    const { reg } = fresh()
+    const off = reg.define(alice, { key: 'level', title: '级别', type: 'string', default: 'info' })
+    off()
+    expect(reg.all().find((v) => v.key === 'level')?.default).toBeUndefined()
+  })
+
+  it('string-list 型：值是字符串数组，逐行一项', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'sources', title: '白名单', type: 'string-list', default: ['D:/Notes'] })
+    expect(reg.get(alice, 'sources')).toEqual(['D:/Notes'])
+    reg.put(reg.locate(alice, 'sources')!, ['D:/Notes', 'D:/Projects'])
+    expect(reg.get(alice, 'sources')).toEqual(['D:/Notes', 'D:/Projects'])
+    expect(reg.all().find((v) => v.key === 'sources')?.type).toBe('string-list')
+  })
 })
 
 describe('盘上读来的东西要收窄', () => {
@@ -204,5 +231,59 @@ describe('盘上读来的东西要收窄', () => {
     const warn = vi.fn()
     expect(toSettingsFile({}, warn, 'x.json')).toEqual({})
     expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('户主表不当分区读', () => {
+    const warn = vi.fn()
+    expect(toSettingsFile({ $owners: { alice: '@a/alice' }, alice: {} }, warn, 'x.json')).toEqual({ alice: {} })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('户主表另读，坏的那格丢掉并 warn', () => {
+    const warn = vi.fn()
+    expect(toOwners({ $owners: { alice: '@a/alice', bob: 1, eve: '' } }, warn, 'x.json')).toEqual({ alice: '@a/alice' })
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(toOwners({}, warn, 'x.json')).toEqual({})
+    expect(toOwners({ $owners: 'nope' }, warn, 'x.json')).toEqual({})
+  })
+})
+
+describe('户主：分区归哪个包', () => {
+  /** 跟 alice 算出同一个分区名，包名不同——scope 不同、短名相同的两个件就是这样 */
+  const impostor: Owner = { entryId: 'home:alice', pkg: '@other/alice' }
+
+  it('第一次 define 就记下户主——旧文件里没户主的分区谁先来归谁', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'level', title: '级别', type: 'string' })
+    expect(reg.owners()).toEqual({ alice: '@godcreator/gwb-alice' })
+  })
+
+  it('分区名相同、包名不同：拒，而且不动表', () => {
+    const warn = vi.fn()
+    const reg = createRegistry(warn)
+    reg.load({ alice: { level: { value: 'debug' } } }, { alice: '@godcreator/gwb-alice' })
+    expect(() => reg.define(impostor, { key: 'level', title: '级别', type: 'string' })).toThrow(/@godcreator\/gwb-alice/)
+    expect(reg.locate(impostor, 'level')).toBeUndefined()
+    expect(reg.owners()).toEqual({ alice: '@godcreator/gwb-alice' })
+  })
+
+  it('同一个包再挂上来放行', () => {
+    const warn = vi.fn()
+    const reg = createRegistry(warn)
+    reg.load({}, { alice: '@godcreator/gwb-alice' })
+    expect(() => reg.define(alice, { key: 'level', title: '级别', type: 'string' })).not.toThrow()
+  })
+
+  it('过户之后新包名放行、旧包名拒', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'level', title: '级别', type: 'string' })
+    reg.transfer('alice', '@other/alice')
+    expect(() => reg.define(impostor, { key: 'level', title: '级别', type: 'string' })).not.toThrow()
+    expect(() => reg.define(alice, { key: 'level', title: '级别', type: 'string' })).toThrow()
+  })
+
+  it('公共区不能过户', () => {
+    const { reg } = fresh()
+    expect(() => reg.transfer('*', '@a/x')).toThrow()
   })
 })

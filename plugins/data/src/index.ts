@@ -1,6 +1,7 @@
 import { Service } from 'cordis'
 import { requireKernel, type GwbContext } from '@godcreator/gwb-plugin-api'
-import { entryDir, looksRandom } from './paths.js'
+import { claimDir, listOwners, stampOwner } from './owner.js'
+import { dataRoot, entryDir, looksRandom } from './paths.js'
 import { readDoc, writeDoc } from './store.js'
 
 /**
@@ -10,6 +11,7 @@ import { readDoc, writeDoc } from './store.js'
  * 靠的是 cordis `Service` 的机制：方法里的 `this.ctx` 是**消费者**的 ctx，
  * 它的 `fiber.entry.id` 就是那个件在 `cordis.yml` 里那条条目的 id。
  * **数据按条目 id 归属，不按包名**——同一个包可以挂好几条条目，各是各的实例。
+ * 每个目录第一次被访问时盖上户主章（包名），之后包名对不上的一律拒，见 `owner.ts`。
  */
 
 const NAME = 'gwb-data'
@@ -28,6 +30,10 @@ export interface GwbDataApi {
   readDoc(doc: string): Promise<unknown>
   /** 整份替换，原子落盘 */
   writeDoc(doc: string, value: unknown): Promise<void>
+  /** 各数据目录的户主：目录名（条目 id 末段）→ 包名。还没盖章的目录不列 */
+  owners(): Promise<Record<string, string>>
+  /** 把一个数据目录过户给 `pkg`。`id` 认完整 entryId 也认裸 id。包改了名、要接着用旧数据时走它 */
+  transferOwner(id: string, pkg: string): Promise<void>
 }
 
 export default class GwbData extends Service implements GwbDataApi {
@@ -41,6 +47,8 @@ export default class GwbData extends Service implements GwbDataApi {
    */
   private readonly warn: (message: string) => void
   private readonly warned = new Set<string>()
+  /** 核过章的目录 → 包名。每次读写都去盘上读章太费，核过一次就记下 */
+  private readonly claimed = new Map<string, string>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbData')
@@ -65,9 +73,7 @@ export default class GwbData extends Service implements GwbDataApi {
   }
 
   get dir(): string {
-    const owner = this.owner()
-    this.warnOnRandomId(owner)
-    return entryDir(this.home, owner.entryId)
+    return this.claim(this.owner())
   }
 
   async readDoc(doc: string): Promise<unknown> {
@@ -76,14 +82,36 @@ export default class GwbData extends Service implements GwbDataApi {
 
   async writeDoc(doc: string, value: unknown): Promise<void> {
     const owner = this.owner()
-    this.warnOnRandomId(owner)
+    const dir = this.claim(owner)
     try {
-      await writeDoc(entryDir(this.home, owner.entryId), doc, value)
+      await writeDoc(dir, doc, value)
     } catch (err: unknown) {
       // 落盘失败过去只是把异常原样抛给调用方——很多调用方一吞，数据丢了都没声没响
       this.ctx.logger(NAME).error(`写 ${owner.entryId}/${doc} 失败：${String(err)}`)
       throw err
     }
+  }
+
+  async owners(): Promise<Record<string, string>> {
+    return listOwners(dataRoot(this.home), this.warn)
+  }
+
+  async transferOwner(id: string, pkg: string): Promise<void> {
+    if (typeof pkg !== 'string' || pkg === '') throw new Error('过户要给一个非空的包名')
+    const dir = entryDir(this.home, id)
+    stampOwner(dir, pkg)
+    this.claimed.set(dir, pkg)
+    this.ctx.logger(NAME).info(`数据目录 ${dir} 过户给 ${pkg}`)
+  }
+
+  /** 算出这条条目的目录并核章：没章盖上，别人的章抛。回目录 */
+  private claim(owner: Owner): string {
+    this.warnOnRandomId(owner)
+    const dir = entryDir(this.home, owner.entryId)
+    if (this.claimed.get(dir) === owner.pkg) return dir
+    claimDir(dir, owner.pkg)
+    this.claimed.set(dir, owner.pkg)
+    return dir
   }
 
   /**
