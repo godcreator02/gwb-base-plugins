@@ -1,7 +1,7 @@
 # gwb-base-plugins
 
-**单进程内核 `gwb-kernel-min`（`D:\unitfolders\26090705ymz\gwb-kernel-min`，单元
-`26090705ymz`）的件仓。** 十二件全在 0.1.0。
+**单进程内核 `gwb-kernel`（`D:\unitfolders\igldu-gwbkernel\gwb-kernel`，单元
+`igldu-gwbkernel`）的件仓。** 十二件全在 0.1.0。
 
 ## 2026-09-09：换了内核，换了契约
 
