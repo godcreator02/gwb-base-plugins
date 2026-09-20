@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readEntries, reconcile, toDependencies, toLabels, toShared, type EntrySnapshot } from '../src/inventory.js'
+import { readEntries, reconcile, toDependencies, toKeywords, isLibraryManifest, toLabels, toShared, type EntrySnapshot } from '../src/inventory.js'
 
 interface FakeEntry {
   key: string
@@ -64,8 +64,38 @@ describe('共享包声明收窄', () => {
   })
 })
 
-describe('显示名文档收窄', () => {
-  it('坏的那格丢掉，不废掉整份', () => {
+/**
+ * 「装完要不要落条目」那条判据。**认错的两个方向代价不对称**：把件认成库 = 装上了却不挂
+ * （难查的坏），把库认成件 = 树上多一条挂不上的噪声（吵但看得见）。所以只对**明确自报是库**
+ * 的松手，第三方件那种一枚 keywords 都不写的照旧当件
+ */
+describe('件与库的分辨', () => {
+  it('keywords 收窄：只留字符串，其余滤掉', () => {
+    expect(toKeywords({ keywords: ['gwb', 'gwb-plugin', 3, null] })).toEqual(['gwb', 'gwb-plugin'])
+    for (const bad of [{}, { keywords: 'gwb-plugin' }, null, undefined]) {
+      expect(toKeywords(bad)).toEqual([])
+    }
+  })
+
+  it('自报 gwb 却不自报 gwb-plugin 的才是库', () => {
+    expect(isLibraryManifest({ keywords: ['gwb'] })).toBe(true)
+    expect(isLibraryManifest({ keywords: ['gwb', 'some-other'] })).toBe(true)
+  })
+
+  it('件不是库：自报 gwb-plugin 的一律照旧建条目', () => {
+    expect(isLibraryManifest({ keywords: ['gwb', 'gwb-plugin'] })).toBe(false)
+    expect(isLibraryManifest({ keywords: ['gwb-plugin'] })).toBe(false)
+  })
+
+  it('没写 keywords 的当件（第三方件那种）——错杀比多挂一条更坏', () => {
+    expect(isLibraryManifest({})).toBe(false)
+    expect(isLibraryManifest({ keywords: ['daily', 'planner'] })).toBe(false)
+    expect(isLibraryManifest(null)).toBe(false)
+    expect(isLibraryManifest(undefined)).toBe(false)
+  })
+})
+
+describe('显示名文档收窄', () => {  it('坏的那格丢掉，不废掉整份', () => {
     expect(toLabels({ a: '命令总线', b: 3, c: '' })).toEqual({ a: '命令总线' })
   })
 

@@ -1,6 +1,6 @@
 ---
 name: gwb-plugin-manager
-description: 要装插件、更新插件、查 registry 上有什么可装、配第三方包源（source.*，写机器级 npmrc）、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、remove-entry 不删包、件因「数据目录 / 设置分区归别的包」挂不上时怎么办（transfer-owner 还是换 id）、update 与 install 的区别、装插件时 peer 谁装谁跳过、peer 对不上时回执怎么读（照装不拦、peerWarnings 点名谁要什么范围、怎么办）、第三方 scope 怎么配怎么查（@j 这种个人源，owner 一条走 gitea 快捷路）、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
+description: 要装插件、更新插件、查 registry 上有什么可装、配第三方包源（source.*，写机器级 npmrc）、启用停用、重挂一条条目、或查这个 home 装了什么时读。讲清包与条目两层、装了包不等于挂上了、**装的是库就不落条目**（keywords 自报 gwb 不报 gwb-plugin 的那种）、remove-entry 不删包、件因「数据目录 / 设置分区归别的包」挂不上时怎么办（transfer-owner 还是换 id）、update 与 install 的区别、装插件时 peer 谁装谁跳过、peer 对不上时回执怎么读（照装不拦、peerWarnings 点名谁要什么范围、怎么办）、第三方 scope 怎么配怎么查（@j 这种个人源，owner 一条走 gitea 快捷路）、发完新版本怎么一键热升（update-all，不重启）、以及装完之后要重新调门的 index 拿地图。
 ---
 
 # 插件怎么装、怎么管、怎么升
@@ -22,6 +22,16 @@ description: 要装插件、更新插件、查 registry 上有什么可装、配
 `{ "pkg": "@godcreator/gwb-xxx" }`（可选 `spec` 指定版本）。它做三件事：pnpm add 进
 home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动加一条条目（默认启用）**，
 回执里带新条目的 `entryId`。
+
+**装的是「库」就不加条目**：清单 `keywords` 里自报 `gwb`、却不自报 `gwb-plugin` 的那种
+（`block-note`、`gwb-tokens`、`gwb-shared-react`、`gwb-plugin-api`、`gwb-repo-kit`）。
+库没有 `apply`，条目落进 `cordis.yml` 也挂不上（日志 `invalid plugin, expect function or
+object with apply`），所以那条路只会在树上留一条噪声。这种回执**没有 `entryId`**，
+`note` 里写着为什么；包照样是装上了的，要用它的件自己 `inject` 它提供的面。
+
+判据只对**明确自报是库**的松手——第三方件（`@j/…` 那类）往往一枚 keywords 都不写，
+把「没写」也当库会变成「装上了却不挂」，那是更难查的坏。要走另一条路显式给一个包加条目，
+用 `plugin-manager.add-entry`（那边不看这枚词）。
 
 - 装不下来（pnpm 没成、包名不存在）回 `ok: false`，error 带着原因和 pnpm 输出的尾巴
 - **装完之后调一遍门的 `index`**——新插件的命令现在才出现在地图上

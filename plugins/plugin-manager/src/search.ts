@@ -18,6 +18,8 @@
  * 名字（scope / `gwb-` 前缀）不参与判断，**没有回退**：没写这枚词的包不进「可装」表。
  */
 
+import { PLUGIN_KEYWORD } from './inventory.js'
+
 /** 检索出来的一条：包名 + registry 上的最新版、一句话、与包自报的 keywords */
 export interface SearchRow {
   pkg: string
@@ -31,9 +33,10 @@ export interface SearchRow {
 export type ParsedSearch = SearchRow[] | undefined
 
 /**
- * 自报家门的那枚词：件在 manifest 里写 `"keywords": ["gwb", "gwb-plugin"]`
+ * 自报家门的那枚词。**判据的正本住 `inventory.ts`**（盘上装完要不要落条目也吃它），
+ * 这儿 import 再转出去——两个名字说的是同一件事，别各写一份常量
  */
-export const PLUGIN_KEYWORD = 'gwb-plugin'
+export { PLUGIN_KEYWORD } from './inventory.js'
 
 /** 一条源查完的样子——聚合的输入。坏源照样进表（`ok: false` 带 error），由 `mergeScoped` 摊平 */
 export interface ScopedSearch {

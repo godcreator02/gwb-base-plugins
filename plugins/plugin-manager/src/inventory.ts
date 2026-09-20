@@ -59,6 +59,44 @@ export interface PluginPackageView {
   entries: PluginEntryView[]
 }
 
+/**
+ * 自报家门的那枚词：**件**在 manifest 里写 `"keywords": ["gwb", "gwb-plugin"]`。
+ *
+ * 这一枚词是全生态「是不是件」的**唯一判据**，两侧都要用：registry 侧按它筛「可装」表
+ * （`search.ts`），盘上侧按它决定装完要不要落 cordis.yml 条目（`isLibraryManifest`）。
+ * 判据只有一份，住这儿；`search.ts` 从这儿 import 再 re-export，两个名字说的是同一件事
+ */
+export const PLUGIN_KEYWORD = 'gwb-plugin'
+
+/** 本生态的归属词。**库**（lib / 共享包 / 词汇表包）只写它，不写 `PLUGIN_KEYWORD` */
+const ECOSYSTEM_KEYWORD = 'gwb'
+
+/** 一份清单里 `keywords` 收窄成字符串数组。没有、不是数组、元素不是字符串的一律滤掉 */
+export function toKeywords(raw: unknown): string[] {
+  if (!isRecord(raw)) return []
+  const keywords = raw['keywords']
+  if (!Array.isArray(keywords)) return []
+  return keywords.filter((one): one is string => typeof one === 'string')
+}
+
+/**
+ * 这份清单**明确是库**（不是件）。
+ *
+ * 判据是「自报本生态 + 没自报是件」：写了 `gwb` 却不写 `gwb-plugin`。本生态的 lib、
+ * 共享包、词汇表包都由同一个模板生成、两枚词齐全与否很确定，所以这条认得准。
+ *
+ * **不认「没写 keywords」**：第三方件（`@j/…` 那类）往往一枚词都不写，把它们判成库的
+ * 代价是「装上了却不挂条目」——那是比多挂一条更难查的坏。所以只对**明确自报是库**的
+ * 松手，其余一律照旧建条目。
+ *
+ * 装库时为什么要管这一格：库没有 `apply`，落进 cordis.yml 以后 loader 挂它必然失败
+ * （`invalid plugin, expect function or object with apply`），条目白留一条、日志多一句噪声
+ */
+export function isLibraryManifest(raw: unknown): boolean {
+  const keywords = toKeywords(raw)
+  return keywords.includes(ECOSYSTEM_KEYWORD) && !keywords.includes(PLUGIN_KEYWORD)
+}
+
 /** home 的 `package.json` 收窄成一张 包名 → 版本范围 的表。坏了当没有，不整份不认 */
 export function toDependencies(raw: unknown): Record<string, string> {
   if (!isRecord(raw)) return {}

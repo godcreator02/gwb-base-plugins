@@ -12,7 +12,7 @@ import type {} from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-skills'
 import { readHomeDependencies, readInstalledManifest, readPeerManifest, readSharedPackages } from './home.js'
 import { assertId, assertIdUsable, assertPkgName, bareId, installSpec, pickId, type IdOwners } from './ids.js'
-import { readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
+import { isLibraryManifest, readEntries, reconcile, toLabels, type PluginPackageView } from './inventory.js'
 import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peers.js'
 import type { PeerWarning } from './peer-warnings.js'
 import { addToHome, checkPeers, describeAddFailure, describePnpm, locatePnpm, runPnpm, runPnpmCapture, type PnpmResult } from './pnpm.js'
@@ -141,7 +141,10 @@ export interface PeerResult {
 export interface InstallResult {
   ok: boolean
   pkg: string
-  /** 装成了才有：新加的那条条目的完整 entryId */
+  /**
+   * 装成了才有：新加的那条条目的完整 entryId。**装的是库（自报 `gwb` 不报 `gwb-plugin`）
+   * 时没有这一格**——库没有 apply，不会落条目，`note` 里说清了为什么
+   */
   entryId?: string
   /**
    * 这个件声明了 peer 才有：每条各自的去向。**空着 = 它一条 peer 都没声明**，
@@ -591,7 +594,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       on(
         INSTALL_COMMAND,
         '往 home 装一个包并自动加条目',
-        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目。回执 { ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note?, peerWarnings?: [{ peer, installed?, wanted, by }] }，action 是 installed / present / skipped / failed。peer 对不上不拦、照装：装完 home 里 peer 对不上的每一处（整棵树）进 peerWarnings——installed 是 home 里那一版，wanted 是 by 那个包要的范围；没有就没有这一格。参数 { pkg, spec? }（spec 是版本或 tag）',
+        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目——**装的是库就不加**（清单 keywords 自报 gwb、不自报 gwb-plugin 的那种：lib / 共享包 / 词汇表包没有 apply，条目落下去也挂不上），回执里 `note` 说清、没有 `entryId`。回执 { ok, pkg, entryId?, peers?: [{ pkg, range, action, note? }], note?, peerWarnings?: [{ peer, installed?, wanted, by }] }，action 是 installed / present / skipped / failed。peer 对不上不拦、照装：装完 home 里 peer 对不上的每一处（整棵树）进 peerWarnings——installed 是 home 里那一版，wanted 是 by 那个包要的范围；没有就没有这一格。参数 { pkg, spec? }（spec 是版本或 tag）',
         async (args) => {
           const raw = asRecord(args)
           const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
@@ -767,6 +770,16 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       ...(settled.peers === undefined ? {} : { peers: settled.peers }),
       ...noteOf(notes),
       ...(checked.peerWarnings === undefined ? {} : { peerWarnings: checked.peerWarnings }),
+    }
+
+    // 装的是库不是件：**不建条目**。库没有 apply，条目落下去 loader 挂它必然失败
+    // （invalid plugin, expect function or object with apply）——白留一条噪声，日志里还多一句。
+    // 判据是「自报 gwb 却不自报 gwb-plugin」，只对明确是库的松手；第三方件不写 keywords 的照旧建
+    const manifest = await readInstalledManifest(this.home, pkg).catch(() => undefined)
+    if (isLibraryManifest(manifest)) {
+      const note = `${pkg} 是库不是件（清单 keywords 里只有 gwb、没有 gwb-plugin），没建条目——它没有 apply，落进 cordis.yml 也挂不上。要用它的件自己 inject 它提供的面`
+      this.info(`${target} 装上了（库，没建条目）`)
+      return { ok: true, pkg, note, ...peers }
     }
 
     try {
