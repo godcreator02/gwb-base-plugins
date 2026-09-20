@@ -9,6 +9,9 @@
  *   node client.mjs run skill.read '{"name":"mcp"}'
  *
  * 门的地址：--url 优先，其次环境变量 GWB_MCP_URL，缺省 default home 那道（2870）。
+ * 门的 token：--token 优先，其次环境变量 GWB_MCP_TOKEN，**缺省直接去 default home 的
+ * 凭据文件里读**——默认那两个位置是固定的，所以「什么参数都不给就能用」这条在加了鉴权
+ * 之后照旧成立。隔离 home 的口与 token 都不是契约，用那两个开关显式给。
  *
  * 这道门是无状态 streamableHTTP：每条 POST 都是一对新的 server+transport，没有会话要
  * 维持；但协议的握手照补全（initialize → initialized → tools/call），于是这支脚本对
@@ -18,30 +21,73 @@
  * 读），退出码 1；传输层与协议层的错走 stderr，退出码也 1。正文是 JSON，直接进管道。
  */
 
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
 const DEFAULT_URL = 'http://127.0.0.1:2870/mcp'
 const PROTOCOL_VERSION = '2025-06-18'
 /** 总线的红线在 120s，客户端比它宽一档——命长该走作业模式，不是加大这儿 */
 const DEFAULT_TIMEOUT_MS = 130_000
 
-const HELP = `用法：node client.mjs [--url <门的地址>] [--timeout <毫秒>] <动作> [参数]
+/**
+ * default home 的凭据文件。**两段路径分开写**：home 目录由内核按平台定（这里是
+ * `%APPDATA%\gwb-kernel\homes\<home>`），目录名 `mcp/secret.json` 由门那个件定。
+ * 两段都不是这支脚本能猜的东西，所以它们各自是「猜错了就退成要求显式给 token」的软默认
+ */
+function defaultSecretFile(home) {
+  const roaming =
+    process.platform === 'win32'
+      ? process.env.APPDATA
+      : process.platform === 'darwin'
+        ? path.join(os.homedir(), 'Library', 'Application Support')
+        : (process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'))
+  return roaming === undefined ? undefined : path.join(roaming, 'gwb-kernel', 'homes', home, 'mcp', 'secret.json')
+}
+
+/**
+ * 去凭据文件里取 token。**取不到不是错**：读不动就当没给，让请求原样发出去，
+ * 由门那头的 401 说话——那句话说清了 token 该从哪来，比这支脚本自己编一句强
+ */
+function readSecret(file) {
+  try {
+    const doc = JSON.parse(fs.readFileSync(file, 'utf8'))
+    return typeof doc?.token === 'string' && doc.token !== '' ? doc.token : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** token 的三条来路，按优先级：命令行 > 环境变量 > default home 的凭据文件 */
+
+const HELP = `用法：node client.mjs [--url <门的地址>] [--token <token>] [--timeout <毫秒>] <动作> [参数]
 
 动作：
   index                      拿完整地图（无参数，约两千 token）
   search [<JSON 筛选>]        找命令与说明书；筛选形如 {"plugin"|"prefix"|"q": …}，不给＝全貌（约八千 token）
   run <命令名> [<JSON 参数>]   按名调命令；命令失败回 isError 文本，照常往下读
 
-门的地址：--url > 环境变量 GWB_MCP_URL > ${DEFAULT_URL}（default home 认死 2870）`
+门的地址：--url > 环境变量 GWB_MCP_URL > ${DEFAULT_URL}（default home 认死 2870）
+门的 token：--token > 环境变量 GWB_MCP_TOKEN > default home 的凭据文件（mcp/secret.json，自动读）
+其他 home：地址与 token 都显式给（口看 devkit.home.list 的 mcp 格，token 在那个 home 的凭据文件里）`
 
-/** 解命令行。--url / --timeout 收开关，剩下的第一个非开关词是动作 */
+/** 解命令行。--url / --token / --timeout 收开关，剩下的第一个非开关词是动作 */
 function parseArgv(argv) {
   let url = process.env.GWB_MCP_URL ?? DEFAULT_URL
   let timeoutMs = DEFAULT_TIMEOUT_MS
+  // 空串当没给：`--token ""` 与「设了个空环境变量」都不该把自动读文件那条路顶掉
+  let token = process.env.GWB_MCP_TOKEN !== undefined && process.env.GWB_MCP_TOKEN !== '' ? process.env.GWB_MCP_TOKEN : undefined
+  let tokenGiven = token !== undefined
   const rest = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--url') {
       url = argv[++i]
       if (url === undefined) failArg('--url 后面得跟地址')
+    } else if (a === '--token') {
+      token = argv[++i]
+      if (token === undefined || token === '') failArg('--token 后面得跟 token')
+      tokenGiven = true
     } else if (a === '--timeout') {
       const n = Number(argv[++i])
       if (!Number.isInteger(n) || n <= 0) failArg('--timeout 要正整数毫秒')
@@ -53,7 +99,12 @@ function parseArgv(argv) {
       rest.push(a)
     }
   }
-  return { url, timeoutMs, action: rest[0], args: rest.slice(1) }
+  // 自动读文件只对 default home 那道口成立——别的 home 的口是随机数,那支脚本无从知道
+  if (!tokenGiven && url === DEFAULT_URL) {
+    const file = defaultSecretFile('default')
+    if (file !== undefined) token = readSecret(file)
+  }
+  return { url, timeoutMs, token, action: rest[0], args: rest.slice(1) }
 }
 
 function failArg(message) {
@@ -93,12 +144,14 @@ function parseJsonArg(text, what) {
  * 回执两种 Content-Type 都收：application/json 直取，text/event-stream 按 SSE 拆
  * （拆出带匹配 id 的那条消息为止；通知没有 id，跳过）。
  */
-function makeTransport(url, timeoutMs) {
+function makeTransport(url, timeoutMs, token) {
   let nextId = 1
   let sessionId
 
   async function post(message) {
     const headers = { 'content-type': 'application/json', accept: 'application/json, text/event-stream' }
+    // token 没取到就不带这一格：让门那头的 401 说原因，比在这儿自己编一句强
+    if (token !== undefined) headers.authorization = `Bearer ${token}`
     if (sessionId !== undefined) headers['mcp-session-id'] = sessionId
     let res
     try {
@@ -158,9 +211,9 @@ function makeTransport(url, timeoutMs) {
 }
 
 async function main() {
-  const { url, timeoutMs, action, args } = parseArgv(process.argv.slice(2))
+  const { url, timeoutMs, token, action, args } = parseArgv(process.argv.slice(2))
   const { tool, toolArgs } = parseAction(action, args)
-  const transport = makeTransport(url, timeoutMs)
+  const transport = makeTransport(url, timeoutMs, token)
 
   await transport.request('initialize', {
     protocolVersion: PROTOCOL_VERSION,

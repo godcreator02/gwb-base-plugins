@@ -1,22 +1,30 @@
 ---
 name: mcp
-description: 要连一台 gwb 工作台的 MCP 门、或工具面为什么只有 index/search/run 三枚、分不清「工具全灰」与 isError 回执是谁的错时读。连接片段、封顶判据与粒度、命令行直调、台没起或门出问题时怎么办。
+description: 要连一台 gwb 工作台的 MCP 门、或工具面为什么只有 index/search/run 三枚、分不清「工具全灰」与 isError 回执是谁的错、连上了却回 401/403 时读。连接片段、token 从哪来、封顶判据与粒度、命令行直调、台没起或门出问题时怎么办。
 ---
 
 # MCP 门：怎么连一台工作台
 
-无状态 streamableHTTP（每请求一对 server+transport），只绑 127.0.0.1，无鉴权——口不出
-本机。default home 认死 `http://127.0.0.1:2870/mcp`；别的 home 端口是系统随机口，从它
+无状态 streamableHTTP（每请求一对 server+transport），只绑 127.0.0.1，**要
+`Authorization: Bearer <token>`**。回环绑定分得开本机与外部网络，分不开本机上的不同
+主体——浏览器里的页面、别的 home 的客户端配置、随手写的脚本都够得着 127.0.0.1，而这道
+门后面是完整命令注册表。**token 每 home 一份、落盘、重启不换**（0.4 摘鉴权的理由是
+「跟着重启换新，逼人反复翻日志捞」，那条债由「持久」解开，不是由「不要鉴权」解开）。
+
+default home 认死 `http://127.0.0.1:2870/mcp`；别的 home 端口是系统随机口，从它
 `<home>/runtime.json` 的 `mcp` 格查（记录会陈旧：进程退了不删、端口会被下一个进程占走
 ——**对 home 干活只报名字**，devkit 那几条命令自己查口、自己核对）。
 
-客户端配置串不用手拼：调命令 `mcp.info`，回执里的 `mcpServers` 片段照抄进 `.mcp.json`
-（或等价的用户级 MCP 配置）就能连。
+**token 从哪来**：命令 `mcp.token` 回 `{ token, file, mcpServers }`（`mcpServers` 里已经
+带好 `headers`，照抄即连）；凭据落在 `<home 数据目录>/mcp/secret.json`；环境变量叫
+`GWB_MCP_TOKEN`。注意 `mcp.token` 的回执**含明文凭据、会进你的会话记录**——机器上还有别人
+看得到记录时别当众调它；`mcp.info` 只回 token 的取法、不回本体，可以随便调。
 
-连不上就是三件事之一：**台没起**（开始菜单「gwb-kernel」，或跑
+连不上就是四件事之一：**台没起**（开始菜单「gwb-kernel」，或跑
 `%LOCALAPPDATA%\Programs\gwb-kernel\gwb-kernel.exe`；从内核源码起的看 gwb-kernel 仓 AGENTS「怎么跑」；起完要重连一次
 ——MCP 是会话态的，台半路起来不会自动接上）、**这个 home 没装本件**、**配置串不对**
-（对答案走 `mcp.info`）。
+（对答案走 `mcp.info`）、**token 不对或没带**（回 401，日志里那行 `拒绝了一条请求` 会说清
+是没带还是对不上；刚换过 token 就是这个）。
 
 ## 工具面封顶于三枚
 
@@ -51,6 +59,9 @@ zcode 客户端不透出 initialize 的 instructions，这格是它唯一的门�
 
 - 工具调用回 isError 的文本 = 命令自身失败（不存在、参数不对）——业务回执，照常往下读
 - 全灰、调不通 = 台没起或没装门——先起台，再重连；MCP 没有「下一发请求自动好」
+- **401 = token 那一关**（没带、对不上、或刚换过）。401 的正文里带着取 token 的路子；
+  `<home>\gwb.log` 里 `gwb-mcp` 那行 `拒绝了一条请求：…` 说清是哪一条判据
+- **403 不会出现**：这道门自己判，一律用 401 回；真撞到 403 说明中间多了个不知道的代理
 - update-all 升到本件自己时在途回执丢、连接断——重连后用 `plugin-manager.list` 核对
 
 ## 命令行直调
@@ -65,7 +76,10 @@ node <包>/bin/client.mjs run skill.read '{"name":"mcp"}'
 ```
 
 门的地址 `--url` > 环境变量 `GWB_MCP_URL` > `http://127.0.0.1:2870/mcp`（隔离 home 的口看
-`devkit.home.list` 的 `mcp` 格）。它走的就是这扇门：握手按协议补全，回执约定一致（业务失败
+`devkit.home.list` 的 `mcp` 格）。**token 自动读**：`--token` > 环境变量 `GWB_MCP_TOKEN` >
+default home 的凭据文件——默认那两个位置都是固定的，所以「什么参数都不给就能用」这条在
+加了鉴权之后照旧成立；隔离 home 的口与 token 都不是契约，用那两个开关显式给。它走的就是
+这扇门：握手按协议补全，回执约定一致（业务失败
 正文照印、退出码 1），输出 JSON 可进管道。测试它不需要 MCP 客户端——一支 node 就够。
 
 ## 门出问题时

@@ -14,6 +14,7 @@ import type {} from '@godcreator/gwb-skills'
 // 只为激活 node-cli 件的 `declare module 'cordis'`——下面局部注入要用 gwbNodeCli 这个名字
 import type {} from '@godcreator/gwb-node-cli'
 import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
+import { gateRequest, loadOrCreateToken, rotateToken, TOKEN_SCHEME, type GateVerdict } from './auth.js'
 import {
   buildIndex,
   buildSearch,
@@ -47,7 +48,13 @@ import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type 
  * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
  *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`，
  *   理由也在那儿）；其它 home 缺省系统随机口
- * - **无鉴权**（0.4 起摘除，0.5 沿用）：口只绑 127.0.0.1、服务本机，本机进程本就同权
+ * - **要 token**（0.10 起；0.4 摘过、0.5～0.9 一路无鉴权）。回环绑定分得开本机与外部网络，
+ *   分不开本机上的不同主体：浏览器里的页面、别的 home 的客户端配置、随手写的脚本都够得着
+ *   127.0.0.1，而这道门后面是完整命令注册表。判据与「为什么不用 SDK 那三个开关」都在
+ *   `auth.ts` 的头注里。**token 每 home 一份、落盘、重启不换**——0.4 摘它的理由是
+ *   「跟着重启换新，逼人反复翻日志捞」，那条债由「持久」解开，不是由「取消鉴权」解开
+ * - **取 token 的两条路**：`mcp.token` 命令回 { token, 片段 }；命令行脸直接读凭据文件，
+ *   不用手抄（`node bin/client.mjs index` 开箱即用）
  * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
  *   而下游要的是「说出 home 名就连得上它」。只补自己那格，内核那几格原样保留
  */
@@ -172,6 +179,36 @@ export function apply(ctx: GwbContext): void {
   const choice = choosePort(home, ctx.gwbSettings.get(PORT_KEY))
 
   /**
+   * 这道门的凭据。**在 apply 里取而不是绑成之后再取**：绑之前就可能有用例来敲门，而
+   * 「门开着但不知道自己的 token」是比「门没开」更坏的中间态。
+   *
+   * 去重口径按 home 的 `dataDir` 走——token 是 home 级的身份，不是进程级的。取不出来
+   * （磁盘满、目录不可写）不让整个件挂掉：那道门照常开、`token` 是 undefined，
+   * 所有请求一律 401，日志里说清楚原因。**宁可全拒也不放行**。
+   */
+  const secret = ((): { token: string; file: string } | undefined => {
+    try {
+      const made = loadOrCreateToken(requireKernel(ctx).dataDir)
+      if (made.created) {
+        log.info(`第一次开这道口：token 已经生成好了（${made.file}）。取法：mcp.token 命令，或命令行脸直接读它`)
+      } else if (made.regenerated) {
+        log.warn(`凭据文件读不出 token，已另存一份坏的（${made.file}.broken-*）并换了一份新的：所有客户端都要改配置`)
+      }
+      return { token: made.token, file: made.file }
+    } catch (err) {
+      log.error(`凭据文件取不出来，这道口一律 401（不降级成无鉴权）：${String(err)}`)
+      return undefined
+    }
+  })()
+
+  /**
+   * 绑成之后才知道的真实口。Host / Origin 的允许名单要的是**这个**数——`default` 认死
+   * 2870、别的 home 可能是系统随机口，拿候选值拼名单会在随机口上把自己拒掉。
+   * 绑成之前用候选值（那一刻还没有请求进得来）
+   */
+  let listeningPort: number | undefined
+
+  /**
    * 说明书清单那格。**局部注入,不写进 export const inject**:skills 件不在时这道门照开——
    * 清单不是它能不能干活的前提。effect 里上下线对称:skills 件停了/卸了置空,
    * 下一次 index 就不带清单。门自己也带一份说明书（skills/ 目录得进 package.json 的 files）
@@ -251,6 +288,23 @@ export function apply(ctx: GwbContext): void {
 
   const server = http.createServer((req, res) => {
     /**
+     * **三道判据在这儿，派发任何东西之前**：token、Host、Origin。顺序是有意的——先问
+     * 「你是谁」，再问「你是从哪儿来的」。判据全在 `auth.ts`，这儿只接线与留痕。
+     *
+     * 拒绝一条请求**不记 info 那一档**：这个口天天被探（浏览器预检、扫描器、别的 home
+     * 连错口），记成信息会把真正的响动埋掉。warn 带原因，出事了 grep 得到。
+     */
+    const verdict: GateVerdict = gateRequest({
+      headers: req.headers,
+      token: secret?.token ?? '',
+      port: listeningPort ?? choice.port,
+    })
+    if (verdict !== undefined) {
+      log.warn(`拒绝了一条请求：${verdict.refused}`)
+      sendJson(res, 401, { error: 'unauthorized', message: `${verdict.refused}——token 取法见 mcp.token 命令` })
+      return
+    }
+    /**
      * **这里的 promise 必须有人接住**。漏成没人管的 rejection，整个工作台就靠内核那条
      * `process.on('unhandledRejection')` 兜着——它只记不退，可这一条本来就该在这儿接住，
      * 请求方等着一份回执。旧线上真炸过：一发错 token 的请求让宿主 code=1 退出
@@ -320,7 +374,8 @@ export function apply(ctx: GwbContext): void {
 
   ready.then(
     async (p) => {
-      log.info(`MCP 门就绪（${home} home）：${endpointUrl(p)}——无鉴权，绑 127.0.0.1 本机自用`)
+      listeningPort = p
+      log.info(`MCP 门就绪（${home} home）：${endpointUrl(p)}——要 Authorization 头，绑 127.0.0.1 本机自用`)
       /**
        * 把这道口落进 home 的运行记录，**只在绑成了这一刻**：下游要的是「说出 home 名就
        * 连得上它」，而这个数运行时才定。没绑成不写——那时这个 home 上根本没有这道门，
@@ -350,8 +405,9 @@ export function apply(ctx: GwbContext): void {
     cli.register(
       {
         name: 'mcp.info',
-        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段）',
-        usage: '无参数。回执 { ok, data: { url, port, mcpServers } }——mcpServers 片段贴进客户端配置即可连；门没开时回 ok:false 说原因',
+        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段，片段里带 Authorization 头）',
+        usage:
+          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段贴进客户端配置即可连（auth 说 token 从哪来）；门没开时回 ok:false 说原因',
         plugin: '@godcreator/gwb-mcp',
       },
       async () => {
@@ -367,8 +423,67 @@ export function apply(ctx: GwbContext): void {
           return { ok: false, error: `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
         }
         const url = endpointUrl(live)
-        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍
-        return { ok: true, data: { url, port: live, mcpServers: mcpServers(url) } }
+        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍。
+        // **片段里只放环境变量引用，不放 token 本体**：这段回执会进会话记录，而凭据
+        // 进记录等于这次加鉴权白加。要真值走 mcp.token。
+        return {
+          ok: true,
+          data: {
+            url,
+            port: live,
+            mcpServers: mcpServers(url),
+            auth: `Authorization: ${TOKEN_SCHEME} <token>。token 取法：mcp.token 命令，或读 ${secret?.file ?? '凭据文件'}`,
+          },
+        }
+      },
+    ),
+  )
+
+  /**
+   * token 的取用与换发。
+   *
+   * **`mcp.token` 是唯一会把 token 本体写进回执的地方**（`mcp.info` 只放环境变量引用）。
+   * 那次回执会进调用方的会话记录——这是取 token 必须付的代价，写进 usage 让调用方自己选
+   * 时机：机器上还有别人看得到你的会话记录时，别当众调它。
+   */
+  ctx.effect(() =>
+    cli.register(
+      {
+        name: 'mcp.token',
+        description: 'MCP 门的 token：取当前的，或换一份新的（换完旧客户端一律 401）',
+        usage:
+          '{"rotate":true} 换发一份新的；不给就回当前这份。回执 { ok, data: { token, file, rotated, mcpServers } }——mcpServers 片段里带的就是这份 token，贴进客户端即可连。**回执里有明文凭据，会进你的会话记录**',
+        plugin: '@godcreator/gwb-mcp',
+      },
+      async (raw: unknown) => {
+        if (secret === undefined) {
+          return { ok: false, error: `凭据文件取不出来（${home} home），这道口现在一律 401。先解决磁盘/权限问题再重启这个 home` }
+        }
+        const want = raw !== null && typeof raw === 'object' && (raw as { rotate?: unknown }).rotate === true
+        const live = await ready.then(
+          (p) => p,
+          () => null,
+        )
+        if (live === null) {
+          return { ok: false, error: `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
+        }
+        let token = secret.token
+        let rotated = false
+        if (want) {
+          const made = rotateToken(requireKernel(ctx).dataDir)
+          token = made.token
+          rotated = true
+          log.warn('token 换了一份新的：所有旧客户端的配置都要跟着改，否则一律 401')
+        }
+        return {
+          ok: true,
+          data: {
+            token,
+            file: secret.file,
+            rotated,
+            mcpServers: mcpServers(endpointUrl(live), token),
+          },
+        }
       },
     ),
   )

@@ -75,6 +75,8 @@ export function endpointUrl(port: number): string {
 export interface McpServerEntry {
   type: 'http'
   url: string
+  /** 只在片段里带真 token 时出现。不给 token 拼片段就不带这格 */
+  headers?: Record<string, string>
 }
 
 /**
@@ -82,8 +84,13 @@ export interface McpServerEntry {
  *
  * 报这个而不是只报 url，是因为**拼装那一步是每个客户端各拼一遍的**，
  * 拼错了症状是连不上而看不出为什么。片段的形状照 Claude Code 的 `.mcp.json`。
- * 无鉴权（绑 127.0.0.1，本机进程同权），没有 headers 那格
+ *
+ * **`token` 给了才写 `headers`**：0.10 起这道门要 `Authorization`，而拼错的症状是
+ * 「403/401 而看不出为什么」——跟 url 拼错是同一类坏法，所以一并拼好。不给 token 的
+ * 那条路（`mcp.info`）只报 `url`：那段回执会进会话记录，凭据不该跟着进去。
  */
-export function mcpServers(url: string): Record<string, McpServerEntry> {
-  return { [SERVER_KEY]: { type: 'http', url } }
+export function mcpServers(url: string, token?: string): Record<string, McpServerEntry> {
+  const entry: McpServerEntry = { type: 'http', url }
+  if (token !== undefined) entry.headers = { Authorization: `Bearer ${token}` }
+  return { [SERVER_KEY]: entry }
 }
