@@ -15,6 +15,7 @@ import {
   TOKEN_HEADER,
   TOKEN_SCHEME,
 } from '../src/auth.js'
+import { credentialNote } from '../src/index.js'
 
 /**
  * 这道门的判据守卫。
@@ -212,5 +213,42 @@ describe('允许名单', () => {
   it('只有两个回环写法,而且都带口', () => {
     expect(allowedHosts(2870)).toEqual(['127.0.0.1:2870', 'localhost:2870'])
     expect(allowedOrigins(2870)).toEqual(['http://127.0.0.1:2870', 'http://localhost:2870'])
+  })
+})
+
+describe('换发之后的判据当场换新', () => {
+  it('rotate 之后旧 token 立刻不认、新的立刻认——「回执报了新号、门还认旧的」那条回归', () => {
+    const home = tempHome()
+    const first = loadOrCreateToken(home).token
+    const rotated = rotateToken(home).token
+
+    // 旧 token 打不过（这一条就是隔离 home 验机抓到的那个缺陷：只写文件不回写的话，旧 token 照样过）
+    expect(
+      gateRequest({
+        headers: { [TOKEN_HEADER]: `${TOKEN_SCHEME} ${first}`, host: '127.0.0.1:2870' },
+        token: rotated,
+        port: 2870,
+      })?.refused,
+    ).toContain('对不上')
+
+    // 新 token 直接过
+    expect(
+      gateRequest({
+        headers: { [TOKEN_HEADER]: `${TOKEN_SCHEME} ${rotated}`, host: '127.0.0.1:2870' },
+        token: rotated,
+        port: 2870,
+      }),
+    ).toBeUndefined()
+  })
+})
+
+describe('credentialNote', () => {
+  it('带文件时把文件路径一起指出来——拒绝路径上唯一的指路', () => {
+    expect(credentialNote('/h/mcp/secret.json')).toContain('/h/mcp/secret.json')
+    expect(credentialNote('/h/mcp/secret.json')).toContain('mcp.token')
+  })
+
+  it('凭据取不出来时也要给一条路,不能只留个空指引', () => {
+    expect(credentialNote(undefined)).toBe('token 取法见 mcp.token 命令')
   })
 })

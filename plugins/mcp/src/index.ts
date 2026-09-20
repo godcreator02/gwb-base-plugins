@@ -97,6 +97,15 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
   res.end(text)
 }
 
+/**
+ * 凭据取不出来时那道门一律 401，回执里得说清「去哪拿 token」。这句提示是拒绝路径上唯一
+ * 的指路，抽成纯函数是为了两件事：**验机时能直接断言它带没带指路**，以及别在接线里
+ * 拼一段没人测过的文案。
+ */
+export function credentialNote(file: string | undefined): string {
+  return `token 取法见 mcp.token 命令${file === undefined ? '' : `（或读 ${file}）`}`
+}
+
 /** 三枚工具的执行口。抽成可注入的形状——测试用内存信道连一对，不用起 http */
 export interface ToolHandlers {
   index(): ToolResult | Promise<ToolResult>
@@ -182,24 +191,25 @@ export function apply(ctx: GwbContext): void {
    * 这道门的凭据。**在 apply 里取而不是绑成之后再取**：绑之前就可能有用例来敲门，而
    * 「门开着但不知道自己的 token」是比「门没开」更坏的中间态。
    *
-   * 去重口径按 home 的 `dataDir` 走——token 是 home 级的身份，不是进程级的。取不出来
-   * （磁盘满、目录不可写）不让整个件挂掉：那道门照常开、`token` 是 undefined，
+   * **`let` 不是随手写的**：`mcp.token {"rotate":true}` 换发之后必须回写到这儿，判据才
+   * 当场换新。只写文件不回写的话，回执已经报了新 token、门却还认旧的——症状是「换完
+   * 新的用不了、旧的还能用」，要重挂这个件才生效。这一条被隔离 home 验机抓过一次。
+   *
+   * 取不出来（磁盘满、目录不可写）不让整个件挂掉：那道门照常开、`secret` 是 undefined，
    * 所有请求一律 401，日志里说清楚原因。**宁可全拒也不放行**。
    */
-  const secret = ((): { token: string; file: string } | undefined => {
-    try {
-      const made = loadOrCreateToken(requireKernel(ctx).dataDir)
-      if (made.created) {
-        log.info(`第一次开这道口：token 已经生成好了（${made.file}）。取法：mcp.token 命令，或命令行脸直接读它`)
-      } else if (made.regenerated) {
-        log.warn(`凭据文件读不出 token，已另存一份坏的（${made.file}.broken-*）并换了一份新的：所有客户端都要改配置`)
-      }
-      return { token: made.token, file: made.file }
-    } catch (err) {
-      log.error(`凭据文件取不出来，这道口一律 401（不降级成无鉴权）：${String(err)}`)
-      return undefined
+  let secret: { token: string; file: string } | undefined
+  try {
+    const made = loadOrCreateToken(requireKernel(ctx).dataDir)
+    secret = { token: made.token, file: made.file }
+    if (made.created) {
+      log.info(`第一次开这道口：token 已经生成好了（${made.file}）。取法：mcp.token 命令，或命令行脸直接读它`)
+    } else if (made.regenerated) {
+      log.warn(`凭据文件读不出 token，已另存一份坏的（${made.file}.broken-*）并换了一份新的：所有客户端都要改配置`)
     }
-  })()
+  } catch (err) {
+    log.error(`凭据文件取不出来，这道口一律 401（不降级成无鉴权）：${String(err)}`)
+  }
 
   /**
    * 绑成之后才知道的真实口。Host / Origin 的允许名单要的是**这个**数——`default` 认死
@@ -301,7 +311,7 @@ export function apply(ctx: GwbContext): void {
     })
     if (verdict !== undefined) {
       log.warn(`拒绝了一条请求：${verdict.refused}`)
-      sendJson(res, 401, { error: 'unauthorized', message: `${verdict.refused}——token 取法见 mcp.token 命令` })
+      sendJson(res, 401, { error: 'unauthorized', message: `${verdict.refused}——${credentialNote(secret?.file)}` })
       return
     }
     /**
@@ -471,6 +481,9 @@ export function apply(ctx: GwbContext): void {
         let rotated = false
         if (want) {
           const made = rotateToken(requireKernel(ctx).dataDir)
+          // **回写这份在场的凭据**：不然回执报了新 token、门还认旧的，要重挂这个件才生效。
+          // 判据当场换新＝下一发请求就按新 token 判——隔离 home 验机抓过这一条
+          secret = { token: made.token, file: made.file }
           token = made.token
           rotated = true
           log.warn('token 换了一份新的：所有旧客户端的配置都要跟着改，否则一律 401')
