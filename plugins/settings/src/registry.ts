@@ -11,7 +11,12 @@ export interface SettingDef {
   key: string
   /** 界面上的标签 */
   title: string
-  /** 界面照它挑控件；`secret` 只影响显示打码，**存储照样明文**；`string-list` 是字符串数组，界面逐行编辑 */
+  /**
+   * 界面照它挑控件。`secret` 两件事：界面打码显示，**`settings.all` 那一份不回值**
+   * （只回 `secret` / `isSet` / `mask` 三格，见 `all()`）；**存储照样明文**——要真值
+   * 按位置走 `settings.get`，服务面自己那一格也照旧读得到。
+   * `string-list` 是字符串数组，界面逐行编辑
+   */
   type: SettingType
   /** 写 true 进公共区，别的件不用 define 就读得到 */
   shared?: boolean
@@ -46,19 +51,40 @@ export interface Slot {
   key: string
 }
 
-/** 全局视图的一行，`settings.all` 命令交出去的就是它 */
+/**
+ * `settings.all` 给 secret 行的掩码。**长度恒定**——照真实长度打码等于把长度也交出去。
+ *
+ * 掩码只是「这儿本该有个值」的记号：设没设过认 `isSet`，别从掩码本身推任何东西。
+ */
+export const SECRET_MASK = '••••'
+
+/**
+ * 枚举面的那一行，`settings.all` 命令交出去的就是它。
+ *
+ * **secret 行没有 `value` 也没有 `default`**——枚举口一调就把整个 home 的凭据摆到调用方
+ * （界面、经 MCP 够到命令面的外部 agent）眼前，而它本来要的只是「这一项配没配」。
+ * 真值的正当取用是按位置取：`settings.get` 与 `ctx.gwbSettings.get`，两条都照旧回明文。
+ */
 export interface SettingView extends Slot {
   title?: string
   type?: string
   description?: string
+  /** 明文的值。**secret 行没有这一格**，看 `secret` / `isSet` / `mask` 三格 */
   value?: unknown
   /**
    * 声明方递的默认值——只有此刻 live 的项才带：它住在内存定义表里**不落盘**，
-   * 界面拿它画灰占位（「没设过时生效的是这个」）。件停了以后的陈旧默认没有显示的意义
+   * 界面拿它画灰占位（「没设过时生效的是这个」）。件停了以后的陈旧默认没有显示的意义。
+   * **secret 行不带**：默认值也是值，写死的凭据一样是凭据
    */
   default?: unknown
   /** 此刻有件声明着它吗。件停了盘上那份还在，但这里是 false */
   live: boolean
+  /** 这一项是 `secret` 型吗。非 secret 行不带这一格 */
+  secret?: true
+  /** secret 行设过值没有。非 secret 行不带这一格 */
+  isSet?: boolean
+  /** secret 行已设置时的定长掩码。没设过就不带——空掩码会被念成「设了个空值」 */
+  mask?: string
 }
 
 export interface SettingsRegistry {
@@ -68,7 +94,13 @@ export interface SettingsRegistry {
   get(owner: Owner, key: string): unknown
   /** 算出这一项该往哪写。没声明过回 undefined */
   locate(owner: Owner, key: string): Slot | undefined
-  /** 按位置直读，不经身份。界面走这条——它不是一个件，没有身份可绑 */
+  /**
+   * 按位置直读，不经身份。`settings.get` 命令走这条——它不是一个件，没有身份可绑。
+   *
+   * **这条照旧回明文，secret 项也回**：它是按位取用（调用方知道自己要哪一格，
+   * 借的是「把凭据放在设置里、谁配的谁用」这条既有模式），不是枚举口。
+   * 要收的是枚举——见 `all()`。两条口都收会把正当取用一起掐死，而拦不住真想拿的人
+   */
   read(slot: Slot): unknown
   put(slot: Slot, value: unknown): void
   drop(slot: Slot): void
@@ -78,6 +110,7 @@ export interface SettingsRegistry {
   owners(): SettingsOwners
   /** 把一个分区过户给 `pkg` */
   transfer(section: string, pkg: string): void
+  /** 全部设置的全局视图，给 `settings.all` 命令。**secret 行不回明文**，见 `SettingView` */
   all(): SettingView[]
 }
 
@@ -99,6 +132,22 @@ function slotOf(owner: Owner, def: SettingDef): Slot {
 
 function viewKey(slot: Slot): string {
   return `${slot.section}\u0000${slot.key}`
+}
+
+/**
+ * 一行收成枚举面能给的样子：**secret 行不回明文**。
+ *
+ * 摘掉两样：`value`（真值）与 `default`（声明方的默认值——默认值也是值，写死的凭据
+ * 一样是凭据）。补上三样：`secret`、`isSet`、设过才有的 `mask`。认不认得出「设没设过」
+ * 全看 `isSet`，别拿 `value` 在不在推——那一格这儿永远不在。
+ *
+ * 非 secret 行**原样返回**，一个字节都不动：界面与别的调用方照旧按 `value` 拿值。
+ */
+function maskSecret(view: SettingView): SettingView {
+  if (view.type !== 'secret') return view
+  const { value: _value, default: _default, ...rest } = view
+  const isSet = _value !== undefined
+  return { ...rest, secret: true, isSet, ...(isSet ? { mask: SECRET_MASK } : {}) }
 }
 
 /**
@@ -269,7 +318,8 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
           out.push({ ...slot, ...stored, ...(declared !== undefined ? { default: declared } : {}), live: live.has(view) })
         }
       }
-      return out
+      // 出门统一过一道：secret 行的明文到这儿为止，见 `maskSecret`
+      return out.map(maskSecret)
     },
   }
 }

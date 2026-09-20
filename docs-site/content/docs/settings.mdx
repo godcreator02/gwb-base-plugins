@@ -25,6 +25,15 @@ transferOwner(id: string, pkg: string): Promise<void>  // 把一个分区过户�
 外加四条命令：`settings.all`（无参数）、`settings.get` / `settings.delete`
 （`{ section, key }`）、`settings.set`（`{ section, key, value }`）。
 
+**两条出口判得不一样。** `settings.all` 是**枚举口**——一调就把整个 home 的设置摆到调用方
+（界面、经 MCP 够到命令面的外部 agent）眼前，所以 `secret` 项那一行**不回 `value`，也不回
+`default`**（默认值也是值），改带三格：`secret: true`、`isSet`（设过值没有），以及设过值时
+才有的定长 `mask`（`••••`，长度不随真值变）。`settings.get` 是**按位取用**——调用方先知道
+自己要哪一格，**照旧回明文**：插件把自己分区里的凭据按位置借出来是这个生态的既有模式
+（`plugin-manager` 借 `gitea.token` 走的就是它）。收的是枚举，不是取用。
+
+**盘上照样明文存储**，那是拍过板的既有设计，这次没动。
+
 ## 值落在哪
 
 **两份文件，同一个结构**（按插件嵌套 ＋ 一个 `"*"` 公共区），只有键的来源不同：
@@ -89,7 +98,8 @@ ctx.gwbSettings.define({
 ```
 
 `type` 只是**给界面挑控件**用的，不做运行时校验——那是 cordis 本体的事（`plugin.Config` 走
-Standard Schema）。`secret` 只影响界面打不打码，**存储照样明文**。
+Standard Schema）。`secret` 管两件事：界面打码显示，以及 `settings.all` 那一份不回值
+（见上文「两条出口判得不一样」）。**存储照样明文**——既有设计，不在收口范围里。
 
 ## 解析顺序
 
@@ -167,10 +177,12 @@ home 级设置按条目 id 做键，而条目不写 `id` 时 loader 发的是 8 
 
 ## 凭据明文的账
 
-明文是拍过板的（个人应用）。三笔账记在这儿，将来疼的时候认得出是哪一条：
+明文是拍过板的（个人应用）。原先记了三笔账，第一笔已经还了：
 
-1. **`settings.all` 把凭据交给渲染层**。眼下同机、插件都是自己写的，但对外开命令面的那条线
-   一旦真把口子开给外部 agent，**第一个要重看的就是这条命令**
+1. ~~**`settings.all` 把凭据交给渲染层**~~——**已收**（0.3.0）：枚举回的 `secret` 行不带
+   `value`／`default`，只带 `isSet` 与定长掩码。MCP 那条对外命令面因此不再一次把整个 home
+   的凭据端走。按位取用（`settings.get`）与存储明文照旧，这是**已经拍过的取舍**：改它要动
+   「谁配的谁用」这条既有模式，不在这笔账里
 2. **`machine.json` 跨所有 home**——一处泄露就是全部 home 的凭据
 3. **它跟 `homes/` 并列**，备份整个 userData 时跟着走
 

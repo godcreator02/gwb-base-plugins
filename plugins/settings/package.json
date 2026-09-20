@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-settings",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "设置：件声明自己有哪些设置项，值落 <home>/settings.json；shared 项落公共区。服务 gwbSettings；skill 1 份；命令 4 条。",
+  "description": "设置：件声明自己有哪些设置项，值落 <home>/settings.json；shared 项落公共区；secret 项在 settings.all 的回执里只回是否已设置、不回值（盘上仍明文，真值按位走 settings.get）。服务 gwbSettings；skill 1 份；命令 4 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

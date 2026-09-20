@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRegistry, toOwners, toSettingsFile, type Owner } from '../src/registry.js'
+import { createRegistry, SECRET_MASK, toOwners, toSettingsFile, type Owner } from '../src/registry.js'
 
 const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator/gwb-alice' }
 const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator/gwb-bob' }
@@ -285,5 +285,109 @@ describe('户主：分区归哪个包', () => {
   it('公共区不能过户', () => {
     const { reg } = fresh()
     expect(() => reg.transfer('*', '@a/x')).toThrow()
+  })
+})
+
+/**
+ * 枚举口那道门：`settings.all` 交出去的那一份**不带 secret 的明文**。
+ * 真值（服务面 `get` 与按位置直读的 `read`＝`settings.get` 命令）照旧拿得到——
+ * 收的是枚举，不是取用。
+ */
+describe('secret 行不回明文', () => {
+  /** 测试里的假凭据。**假值**——这一组断的就是「它不出现」 */
+  const FAKE = 'sk-fake-0123456789abcdef'
+
+  it('all：不出现明文，回「是 secret ＋ 设没设过 ＋ 定长掩码」三格', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret' })
+    reg.put(reg.locate(alice, 'api-key')!, FAKE)
+
+    const rows = reg.all()
+    // 整份回执里一个字都不许有——不只是那一格
+    expect(JSON.stringify(rows)).not.toContain(FAKE)
+    const row = rows.find((v) => v.key === 'api-key')
+    expect(row).toMatchObject({ section: 'alice', key: 'api-key', type: 'secret', secret: true, isSet: true, live: true })
+    expect(row?.value).toBeUndefined()
+    expect(row?.mask).toBe(SECRET_MASK)
+  })
+
+  it('掩码长度恒定——值多长都不从掩码里漏出去', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'short-key', title: '短', type: 'secret' })
+    reg.define(alice, { key: 'long-key', title: '长', type: 'secret' })
+    reg.put(reg.locate(alice, 'short-key')!, 'x')
+    reg.put(reg.locate(alice, 'long-key')!, 'y'.repeat(200))
+    const masks = reg.all().filter((v) => v.type === 'secret').map((v) => v.mask)
+    expect(masks).toEqual([SECRET_MASK, SECRET_MASK])
+    expect(masks[0]?.length).toBe(SECRET_MASK.length)
+  })
+
+  it('没设过：isSet 为 false，value 与 mask 都不带', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret' })
+    const row = reg.all().find((v) => v.key === 'api-key')
+    expect(row?.secret).toBe(true)
+    expect(row?.isSet).toBe(false)
+    expect(row?.value).toBeUndefined()
+    expect(row?.mask).toBeUndefined()
+  })
+
+  it('件停了、盘上那份还在：照样按盘上的 type 打码，不 live', () => {
+    const warn = vi.fn()
+    const reg = createRegistry(warn)
+    reg.load({ alice: { 'api-key': { title: 'API Key', type: 'secret', value: FAKE } } }, {})
+    const rows = reg.all()
+    expect(JSON.stringify(rows)).not.toContain(FAKE)
+    expect(rows.find((v) => v.key === 'api-key')).toMatchObject({ secret: true, isSet: true, live: false, mask: SECRET_MASK })
+  })
+
+  it('公共区的 secret 一样收——跨件共享的凭据住那儿', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret', shared: true })
+    reg.put(reg.locate(alice, 'api-key')!, FAKE)
+    const rows = reg.all()
+    expect(JSON.stringify(rows)).not.toContain(FAKE)
+    expect(rows.find((v) => v.section === '*')).toMatchObject({ secret: true, isSet: true })
+  })
+
+  it('secret 的 default 也不回——默认值也是值，写死的凭据一样是凭据', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret', default: FAKE })
+    const rows = reg.all()
+    expect(JSON.stringify(rows)).not.toContain(FAKE)
+    expect(rows.find((v) => v.key === 'api-key')?.default).toBeUndefined()
+  })
+
+  it('非 secret 行一个字节都不动，也不长新格', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'level', title: '级别', type: 'string', default: 'info' })
+    reg.define(alice, { key: 'sources', title: '白名单', type: 'string-list' })
+    reg.put(reg.locate(alice, 'level')!, 'debug')
+    reg.put(reg.locate(alice, 'sources')!, ['D:/Notes'])
+    const rows = reg.all()
+    expect(rows.find((v) => v.key === 'level')).toEqual({
+      section: 'alice',
+      key: 'level',
+      title: '级别',
+      type: 'string',
+      value: 'debug',
+      default: 'info',
+      live: true,
+    })
+    const list = rows.find((v) => v.key === 'sources')
+    expect(list).toEqual({ section: 'alice', key: 'sources', title: '白名单', type: 'string-list', value: ['D:/Notes'], live: true })
+    expect('secret' in list!).toBe(false)
+    expect('isSet' in list!).toBe(false)
+  })
+
+  it('按位取用照旧拿得到真值：服务面 get 与 read（settings.get 那条路）', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret' })
+    const slot = reg.locate(alice, 'api-key')!
+    reg.put(slot, FAKE)
+    expect(reg.get(alice, 'api-key')).toBe(FAKE)
+    expect(reg.read(slot)).toBe(FAKE)
+    // 底层的落盘那份也不动：收的只是命令面那一份
+    expect(reg.file()).toEqual({ alice: { 'api-key': { title: 'API Key', type: 'secret', value: FAKE } } })
   })
 })

@@ -97,12 +97,17 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       // inject 保证了它在，这句只是把类型收窄
       if (cli === undefined) return
       ctx.effect(() =>
-        cli.register({ name: ALL_COMMAND, description: '此刻所有设置项与它们的值', usage: '无参数', plugin: PKG }, () =>
-          this.registry.all(),
+        cli.register(
+          { name: ALL_COMMAND, description: '此刻所有设置项与它们的值（secret 项不回值，只回是否已设置）', usage: '无参数', plugin: PKG },
+          () => this.registry.all(),
         ),
       )
+      // 出口分两口，判得不一样：`settings.all` 是**枚举口**（一调就把整个 home 的设置摆出来），
+      // secret 项的明文在那儿收掉；这一条是**按位取用**（调用方先知道 section/key），照旧回明文——
+      // 插件把自己分区里的凭据按位置借出来是这个生态的既有模式（plugin-manager 借 gitea.token
+      // 就是这条），把两口都收掉只会掐死正当取用，而拦不住真想拿的人
       ctx.effect(() =>
-        cli.register({ name: GET_COMMAND, description: '按位置读一项设置', usage: '参数 { section, key }', plugin: PKG }, (args) =>
+        cli.register({ name: GET_COMMAND, description: '按位置读一项设置（secret 项也回明文）', usage: '参数 { section, key }', plugin: PKG }, (args) =>
           this.registry.read(toSlot(args)),
         ),
       )
