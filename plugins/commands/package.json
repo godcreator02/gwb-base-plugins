@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "author": {"name": "godcreator"},
   "description": "命令总线：件把能力登记成一张 name → handler 的注册表，界面、命令行与 agent 经同一份派发（agent 侧走 MCP 门的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
   "type": "module",

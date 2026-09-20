@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-logger",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "author": {
     "name": "godcreator"
   },
@@ -35,7 +35,7 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.4",
+    "@godcreator/gwb-commands": "^0.4.5",
     "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-data",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": {"name": "godcreator"},
   "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON、原子落盘。服务 gwbData；skill 0 份；命令 0 条。",
   "type": "module",
