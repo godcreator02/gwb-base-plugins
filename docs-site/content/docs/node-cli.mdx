@@ -99,14 +99,13 @@ await window.gwb.command('mine.build', { args: ['--watch'], cwd: 'D:\\work\\proj
 验收归消费方插件；样板是 gwb-hello 仓（`26091217hkq`）的 hello 插件，它自带的
 `src/cli.ts` 编译成 `dist/cli.js` 之后登记进来，界面上点一下就跑。
 
-## 超时的天花板是 110 秒，不是随便定的
+## 默认超时与显式延长
 
-`timeoutMs` 默认 60 秒，**上限钉死 110 秒，超过当场拒绝注册**。
+`timeoutMs` 默认 60 秒；注册命令时显式给值即可延长，例如 `timeoutMs: 1_200_000` 等待最多 20 分钟。进程提前结束就立即返回。
 
-**一条 CLI 跑过两分钟还不回，人要的是一句 `timedOut` 加一份 `spillPath`，不是一个永远
-不回的 promise**——上限就是为这个钉的（插件与桥同进程，这条线上没有比它更长的硬超时兜底）。
+值必须为有限正数，且不超过 Node 定时器能表示的 2,147,483,647 毫秒；不接受用 Infinity 表示无限等待。超时仍终止进程树并返回 timedOut。该设置只控制运行器，调用端的 MCP 工具时限或 HTTP 超时需另外设置得更长。
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-16" */}
+{/* has file="../plugins/node-cli/src/registry.ts" text="MAX_TIMEOUT_MS" */}
 
 ## 三条形状上的纪律
 

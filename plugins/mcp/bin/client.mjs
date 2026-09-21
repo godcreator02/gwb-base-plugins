@@ -27,7 +27,7 @@ import path from 'node:path'
 
 const DEFAULT_URL = 'http://127.0.0.1:2870/mcp'
 const PROTOCOL_VERSION = '2025-06-18'
-/** 总线的红线在 120s，客户端比它宽一档——命长该走作业模式，不是加大这儿 */
+/** 客户端默认时限；长等待可用 --timeout 显式覆盖，并留出服务端回执余量。 */
 const DEFAULT_TIMEOUT_MS = 130_000
 
 /**

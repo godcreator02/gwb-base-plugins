@@ -58,9 +58,18 @@ describe('收窄一条 spec', () => {
     expect(r).toMatchObject({ module: 'x.cli', command: undefined })
   })
 
-  it('超时越过上限当场拒——内核那条通道 120 秒就硬超时了', () => {
+  it('仅拒绝越过 Node 定时器范围的超时', () => {
     expect(() => normalize('gwb-foo', { name: 'foo.run', ...BASE, timeoutMs: MAX_TIMEOUT_MS + 1 })).toThrow(/超了上限/)
     expect(normalize('gwb-foo', { name: 'foo.run', ...BASE, timeoutMs: MAX_TIMEOUT_MS }).timeoutMs).toBe(MAX_TIMEOUT_MS)
+  })
+
+  it('显式超时可以超过 110 秒，未设置仍为一分钟', () => {
+    expect(normalize('gwb-foo', { name: 'foo.run', ...BASE, timeoutMs: 1_200_000 }).timeoutMs).toBe(1_200_000)
+    expect(normalize('gwb-foo', { name: 'foo.run', ...BASE }).timeoutMs).toBe(60_000)
+  })
+
+  it.each([NaN, Infinity, -Infinity, 0, -1])('拒绝无效超时 %s', (timeoutMs) => {
+    expect(() => normalize('gwb-foo', { name: 'foo.run', ...BASE, timeoutMs })).toThrow()
   })
 
   it('超时给了个负数不收', () => {

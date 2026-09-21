@@ -8,12 +8,8 @@ import path from 'node:path'
 
 /** 默认给一分钟 */
 export const DEFAULT_TIMEOUT_MS = 60_000
-/**
- * 上限钉死 110 秒。**这条线原来卡的是内核那条 120 秒硬超时的 fd3 通道**；单进程内核里
- * 件与桥同进程、没有那道闸了,但这个上限留着：一条 CLI 跑过两分钟还不回,人要的是一句
- * timedOut 加一份 spillPath,不是一个永远不回的 promise。
- */
-export const MAX_TIMEOUT_MS = 110_000
+/** Node 定时器可表示的最大延迟；超过会被运行时截为 1ms，必须拒绝。 */
+export const MAX_TIMEOUT_MS = 2_147_483_647
 
 /** 消费方登记一条命令时给的东西 */
 export interface NodeCliSpec {
@@ -34,7 +30,7 @@ export interface NodeCliSpec {
   /** 不给就落在 `entry` 自己旁边。**不继承宿主的 cwd**——那是内核的目录,跟这条命令无关 */
   cwd?: string
   env?: Record<string, string>
-  /** 不给就是 DEFAULT_TIMEOUT_MS。超过 MAX_TIMEOUT_MS 当场拒绝注册 */
+  /** 不给就是 DEFAULT_TIMEOUT_MS；显式值可延长，最大为 Node 定时器上限 MAX_TIMEOUT_MS。 */
   timeoutMs?: number
   /**
    * 镜像成总线命令时的 `plugin` 归属。缺省取调用方的身份，即 cordis 条目的包名
@@ -86,7 +82,7 @@ export function normalize(plugin: string, spec: NodeCliSpec): RegisteredNodeCli 
   if (timeoutMs > MAX_TIMEOUT_MS) {
     throw new Error(
       `命令 ${name} 的 timeoutMs ${timeoutMs} 超了上限 ${MAX_TIMEOUT_MS}——` +
-        '跑过两分钟还不回的话,人要的是一句 timedOut 加一份 spillPath,不是一个永远不回的 promise',
+        '超过 Node 定时器范围会变成 1ms，不能用来表示无限等待',
     )
   }
   return {
