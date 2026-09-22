@@ -48,5 +48,8 @@
   "keywords": [
     "gwb",
     "gwb-plugin"
-  ]
+  ],
+  "peerDependencies": {
+    "@godcreator/gwb-plugin-api": "^0.1.2"
+  }
 }

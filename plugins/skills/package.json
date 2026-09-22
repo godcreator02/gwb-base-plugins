@@ -25,6 +25,7 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "cordis": "^4.0.0-rc.9"
   },
   "devDependencies": {
