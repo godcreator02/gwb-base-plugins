@@ -27,7 +27,7 @@ agent → 工作台。
 另一条出口是命令 `mcp.info`——url 加一段可照抄进客户端配置的 `mcpServers` 片段（**片段里只写
 token 的取法，不写 token 本体**：那段回执会进会话记录），要真值走 `mcp.token`：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="404-500" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="415-514" */}
 
 ## 鉴权：为什么 0.10 又把 token 加回来了
 
@@ -54,7 +54,7 @@ token 的取法，不写 token 本体**：那段回执会进会话记录），�
 
 ## 工具面封顶三枚
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="100-156" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="110-166" */}
 
 **`index`**（地图：全部命令、全部说明书各带一句话，外加「有哪些件」一节——包名 + 版本 + 那句话，纯界面件与库也在表里）、**`search`**（按址取详情与兜底
 搜索，命中行带 usage；裸调＝全貌全用法）、**`run`**（按名调一切命令）。写死在
@@ -117,11 +117,11 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 写死了 2870——它连上的是**那台测试 home**，命令面、数据、说明书全是另一套，两头都不
 报错。所以 default 那一支 `fallback` 是 `false`：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="364-373" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="375-384" */}
 
 **不开比开在别处强**——开在别处是静默连错，不开是当场看得见：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="392-402" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="403-413" */}
 
 其它 home 不吃这条：缺省系统随机口（没有哪个串是它的契约），显式给了端口才试那个、
 被占照旧退让并 warn。home 名从 `gwbKernel.dataDir` 的末段认。
@@ -130,7 +130,7 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 
 **插件的配置一律走 `gwbSettings.define`**，这个插件不收 `apply` 的 `config` 形参：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="165-213" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="175-224" */}
 
 `port` 的缺省按 home 名给，跟 `choosePort` 不给值时的答案一致——界面上看到的缺省就是
 真会用的端口。设置插件不做运行时校验，`choosePort` 收 `unknown`：不是整数、出了范围
@@ -146,7 +146,7 @@ home 先起来占住 2870，随后起的 default 退让到随机端口，而 age
 
 ## 无状态：每请求一对
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="319-340" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="330-351" */}
 
 `new StreamableHTTPServerTransport({})` 里那个空对象就是无状态：不给
 `sessionIdGenerator`，每个请求现造一台 `McpServer` 加一条 transport，随响应关闭。

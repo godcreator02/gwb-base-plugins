@@ -89,7 +89,7 @@ devDependencies**。
 `ctx.gwbData` 交出来的那个目录得**自动绑定到取它的那个插件**——插件不报名字，也就没法报别人的
 名字去读别人的数据。cordis 有两条路能做到「服务感知调用方」，实测过才知道只有一条能走：
 
-{/* ref file="../plugins/data/src/index.ts" lines="60-77" */}
+{/* ref file="../plugins/data/src/index.ts" lines="61-78" */}
 
 - **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` **确实**是访问者的 ctx（实测
   `child.probe === child`）。但**`inject` 不认它**——插件写 `inject: ['那个名字']` 会永远等下去，
@@ -298,7 +298,7 @@ error TS1127: Invalid character.
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里 `cli`
 是收窄过的，**`function` 声明里不是**——它会 hoist，TS 认为它可能在那句检查之前就被调用。
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="226-238" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="237-249" */}
 
 症状是 `'cli' is possibly 'undefined'`，而上面明明刚判过。改成 `const … = () => {}` 即可。
 
@@ -355,7 +355,7 @@ hello，再 `gwb_command_list`。命令表从 52 条变 50 条——**只掉了 
 没人调，条目停了、fiber 灭了、表上的名字还在。hello 已迁验收仓（钉码跟过去钉得住），
 本仓现在的正面写法在 logger：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="132-142" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="133-143" */}
 
 症状对 agent 格外坏：它看到的是一张半脏的表，名字在、服务不在，照着调只会拿到一句跟
 「停用」毫无关系的报错。规矩本来就写在 devkit 的手册里（「挂到命令总线上」那步是

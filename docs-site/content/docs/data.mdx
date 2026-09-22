@@ -12,7 +12,7 @@ description: 一个插件一份数据目录，归属是条目不是包；readDoc
 
 ## 它的面
 
-{/* ref file="../plugins/data/src/index.ts" lines="25-37" */}
+{/* ref file="../plugins/data/src/index.ts" lines="26-38" */}
 
 `dir` 是那个插件的专属目录，存非 JSON 时用它；`readDoc` / `writeDoc` 管的是
 `<dir>/<文档名>.json` 一份一份的整份读写。`owners` / `transferOwner` 是户主簿的两个口，
@@ -39,7 +39,7 @@ entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么
 
 `dir` / `readDoc` / `writeDoc` 每次都先过这一关，核过的目录记在内存里、不重复读盘：
 
-{/* ref file="../plugins/data/src/index.ts" lines="107-115" */}
+{/* ref file="../plugins/data/src/index.ts" lines="108-116" */}
 
 没章的目录（这条规矩之前就在的）谁先访问归谁；章坏了当场抛，不当没章——当没章等于谁都能
 认领。包改了名要接着用旧数据，走 `plugin-manager.transfer-owner` 换章。
@@ -53,7 +53,7 @@ entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么
 `accessor` 为什么不行、`Service` 为什么行，实测经过在[撞过的墙](/docs/walls)；
 这个插件里的写法：
 
-{/* ref file="../plugins/data/src/index.ts" lines="7-15" */}
+{/* ref file="../plugins/data/src/index.ts" lines="8-16" */}
 
 ## 读与写的语义
 
@@ -77,14 +77,14 @@ home 级数据按条目 id 落目录，而条目不写 `id` 时 loader 发的是
 id 就 warn——**不抛错**（那条条目本来能跑），**也不静默**（对不上是最难查的那种），
 一条条目只说一次：
 
-{/* ref file="../plugins/data/src/index.ts" lines="117-128" */}
+{/* ref file="../plugins/data/src/index.ts" lines="118-129" */}
 
 ## 一个坑：私有字段用 TS 的 `private`，不用 `#`
 
 cordis 给每个消费者派生一份 `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，
 派生对象上一读就炸。这个插件的字段声明钉着这条：
 
-{/* ref file="../plugins/data/src/index.ts" lines="40-49" */}
+{/* ref file="../plugins/data/src/index.ts" lines="41-50" */}
 
 ## 怎么单独测
 

@@ -33,7 +33,7 @@ cordis 官方的 `plugin-logger-console` 顶不上这个位子：它只收 cordi
 薄服务 `gwbLogger`（面刻意**留空**：gwb-baseui 的窗格按服务名嵌套注入，等的就是它，谁都别
 往上面加方法）、exporter 收全量、环形缓冲两千条、两条命令、末尾一句自检——插件的全部：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="20-146" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="21-147" */}
 
 两条命令注册都**不用自己包 `ctx.effect`**：插件卸载时表上那两条自动摘掉。
 
