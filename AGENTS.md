@@ -5,9 +5,11 @@
 plugin-manager(core)；已退役的 command-http 目录已于 2026-09-22 删除（包从未发版，
 入口由 mcp 承担，判据见轨迹卡「command-http 退役」；同批清掉 hello/http/baseui/shell/
 theme 五个拆分残留目录，均无 package.json）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
-shared-react / tokens 三个包（产物守卫钉着）。
+shared-react / tokens 三个包（产物守卫钉着；后两个已于 D7 并进 shell、停发，守卫照旧拦旧名）。
 
-UI 那半住 `D:\unitfolders\s28bv-gwbbase\gwb-ui-plugins`（shell、theme、baseui 与两个共享包）。
+UI 那半住 `D:\unitfolders\s28bv-gwbbase\gwb-ui-plugins`（shell、theme、baseui；react 系与令牌表随 shell 包发）。
+仓根 `packages/shared-react`、`packages/tokens` 两个目录若还在，是 D7 前构建留下的未跟踪残骸
+（只剩 `dist/` 与 `node_modules/`、没有 `package.json`），不是在役的包。
 验收位（hello 仓）已于 2026-09-13 整体退役：装配态验收改由 devkit 模板现场生成，判据见
 devkit 仓轨迹卡「模板即插件」。旧内核 `gwb-kernel` 已退役
 ——宿主子进程、fd3、`gwb://`、`kernel.info` 都不在了。

@@ -1,8 +1,8 @@
 # gwb-base-plugins
 
 gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物守卫钉着）。UI 平台
-（shell / theme / baseui / shared-react / tokens）住 `s28bv-gwbbase\gwb-ui-plugins`。
-此刻十个插件在册、九个在役：command-http 已退役（不发版）。
+（shell / theme / baseui；react 系与令牌表随 shell 包发）住 `s28bv-gwbbase\gwb-ui-plugins`。
+此刻九个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）。
 验收位（hello 仓）已于 2026-09-13 整体退役——装配态验收改由 devkit 模板现场生成。
 
 | 插件             | 包名                               | 服务                                       |
@@ -10,7 +10,6 @@ gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物�
 | commands       | `@godcreator/gwb-commands`       | `ctx.gwbCommands`                        |
 | data           | `@godcreator/gwb-data`           | `ctx.gwbData`                            |
 | settings       | `@godcreator/gwb-settings`       | `ctx.gwbSettings`                        |
-| command-http   | `@godcreator/gwb-command-http`   | —（已退役，不发版；入口由 mcp 承担）                    |
 | mcp            | `@godcreator/gwb-mcp`            | —（MCP 门，唯一的门——工具面封顶 index/search/run 三枚） |
 | skills         | `@godcreator/gwb-skills`         | `ctx.gwbSkills`                          |
 | node-cli       | `@godcreator/gwb-node-cli`       | `ctx.gwbNodeCli`                         |
@@ -37,8 +36,8 @@ devkit.release {"dir":"<仓根>","packages":["plugins/commands"]}
 ```
 
 手工兜底是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
-scope 路由住用户级配置。发完在 home 目录 `pnpm add @godcreator/gwb-commands@<版本>`，改
-`cordis.yml` 加条目。
+scope 路由住用户级配置。发完装进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-commands"}`
+（连包带条目）；已装的升级走 `plugin-manager.update-all`。
 
 ## 两条命名规矩
 

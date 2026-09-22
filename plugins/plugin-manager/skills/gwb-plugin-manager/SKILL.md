@@ -6,7 +6,7 @@ description: 要装插件、更新插件、查 registry 上有什么可装、配
 # 插件怎么装、怎么管、怎么升
 
 这个 home 里装了哪些插件、各自挂没挂上、谁有新版本、源上还有什么可装、第三方包源怎么配，归
-`gwb-plugin-manager` 管。十七条命令，agent 经 MCP 门的 `run` 按名调。
+`gwb-plugin-manager` 管。十八条命令，agent 经 MCP 门的 `run` 按名调。
 
 ## 先分清两层：包 与 条目
 
@@ -24,7 +24,7 @@ home → **把该进 home 的 peer 也装成 home 的直接依赖** → **自动
 回执里带新条目的 `entryId`。
 
 **装的是「库」就不加条目**：清单 `keywords` 里自报 `gwb`、却不自报 `gwb-plugin` 的那种
-（`block-note`、`gwb-tokens`、`gwb-shared-react`、`gwb-plugin-api`、`gwb-repo-kit`）。
+（`block-note`、`gwb-plugin-api`、`gwb-repo-kit`）。
 库没有 `apply`，条目落进 `cordis.yml` 也挂不上（日志 `invalid plugin, expect function or
 object with apply`），所以那条路只会在树上留一条噪声。这种回执**没有 `entryId`**，
 `note` 里写着为什么；包照样是装上了的，要用它的件自己 `inject` 它提供的面。
@@ -70,7 +70,7 @@ object with apply`），所以那条路只会在树上留一条噪声。这种�
 | --- | --- |
 | `installed` | 这次装成了 home 的直接依赖（装 latest；`range` 里是插件清单写的范围，latest 通常都满足） |
 | `present` | 本来就在 home 的 `package.json` 里，**版本一个字没动**——不降级、不改写别人钉好的版本 |
-| `skipped` | 不该由这条路装：`cordis`（宿主那一份）、本生态的插件（要装走 `plugin-manager.install`，那条还落条目）。共享包（清单里有 `gwb.shared`，`gwb-shared-react` / `gwb-tokens`）与生态外的包不在此列，照装 |
+| `skipped` | 不该由这条路装：`cordis`（宿主那一份）、本生态的插件（要装走 `plugin-manager.install`，那条还落条目）。共享包（清单里有 `gwb.shared` 的库，如 `block-note`；react 系由 shell 这个件自己声明）与生态外的包不在此列，照装 |
 | `failed` | 装不上（源上没有之类，`note` 里是原因）。**插件本身照样是装上了的**，回执顶层 `note` 里点名，自己去 home 里 `pnpm add` 一趟 |
 
 回执形状：`{ ok, pkg, entryId, peers?: [{ pkg, range, action, note? }], note?, peerWarnings? }`。插件一条 peer
