@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "author": {
     "name": "godcreator"
   },
@@ -27,7 +27,7 @@
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
@@ -49,6 +49,6 @@
     "gwb-plugin"
   ],
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2"
+    "@godcreator/gwb-plugin-api": "^0.2.7"
   }
 }

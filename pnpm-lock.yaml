@@ -79,8 +79,8 @@ importers:
   plugins/commands:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -94,8 +94,8 @@ importers:
   plugins/data:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -112,8 +112,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -143,8 +143,8 @@ importers:
         specifier: workspace:*
         version: link:../node-cli
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-settings':
         specifier: workspace:*
         version: link:../settings
@@ -164,8 +164,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -191,8 +191,8 @@ importers:
         specifier: workspace:*
         version: link:../data
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -215,8 +215,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -239,8 +239,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -260,8 +260,8 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: ^0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
         version: 0.3.0
@@ -550,8 +550,8 @@ packages:
       react:
         optional: true
 
-  '@godcreator/gwb-plugin-api@0.1.2':
-    resolution: {integrity: sha512-K018+THOUcy0cHZzX1LmM2JeonvTkPv01tJ0hNMpYJ85t7S5E870+fKXj4ara4A0egUaX6mF/cXOJ//4TZ8LUw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.1.2/gwb-plugin-api-0.1.2.tgz}
+  '@godcreator/gwb-plugin-api@0.2.7':
+    resolution: {integrity: sha512-PHqqy71X5jL6mziHVAWt7SRJJgioWlkZPXnv4CZFk2fV8BvuAgTcBGu2ekEqcYLoD7Ft+UcBcRZAizEuAVxxOQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.2.7/gwb-plugin-api-0.2.7.tgz}
     peerDependencies:
       cordis: ^4.0.0-rc.9
 
@@ -3183,7 +3183,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)':
+  '@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9)':
     dependencies:
       cordis: 4.0.0-rc.9
 
