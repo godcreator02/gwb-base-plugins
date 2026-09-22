@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { isRecord } from '@godcreator/gwb-plugin-api'
+import { isRecord } from './vocab.js'
 
 /**
  * home 根下那份运行记录里,本件占的那一格。

@@ -2,8 +2,9 @@
 
 **gwb 的无头基础插件仓**——无 UI 的插件全部对着词汇表（`@godcreator/gwb-plugin-api`）。
 在役九个：commands、data、settings、mcp、skills、node-cli、py-cli、logger(core)、
-plugin-manager(core)；另有已退役的 command-http（包标 private、不发版，入口由 mcp 承担，
-判据见轨迹卡「command-http 退役」）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
+plugin-manager(core)；已退役的 command-http 目录已于 2026-09-22 删除（包从未发版，
+入口由 mcp 承担，判据见轨迹卡「command-http 退役」；同批清掉 hello/http/baseui/shell/
+theme 五个拆分残留目录，均无 package.json）。**这个仓的插件零 UI 依赖**：peer 与产物里不许出现 shell /
 shared-react / tokens 三个包（产物守卫钉着）。
 
 UI 那半住 `D:\unitfolders\s28bv-gwbbase\gwb-ui-plugins`（shell、theme、baseui 与两个共享包）。

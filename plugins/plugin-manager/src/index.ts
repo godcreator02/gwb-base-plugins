@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { Service } from 'cordis'
-import { isRecord, requireKernel, type GwbContext, type GwbResult } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
+import { isRecord, requireKernel } from './vocab.js'
 // 这几条 type import 只为激活对方的 `declare module 'cordis'`——它们给 ctx 加上那几个名字
 // （commands 那条另带一个类型：一键热升要攥着总线的引用）。这些件在这儿**都是可选的**，
 // 所以都走嵌套注入、都写 dev

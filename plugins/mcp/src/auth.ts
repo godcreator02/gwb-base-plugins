@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { isRecord } from '@godcreator/gwb-plugin-api'
+import { isRecord } from './vocab.js'
 
 /**
  * 这道门的凭据与两道请求防线。纯函数加一个文件读写，从接线里抽出来于是可测。

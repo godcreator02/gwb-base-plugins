@@ -32,15 +32,10 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.5.4"
   },
-  "peerDependencies": {
-    "@godcreator/gwb-commands": "^0.4.5",
-    "@godcreator/gwb-plugin-api": "^0.1.2",
-    "@godcreator/gwb-settings": "^0.3.1"
-  },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-node-cli": "workspace:*",
-    "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
     "cordis": "4.0.0-rc.9",

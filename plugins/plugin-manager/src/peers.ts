@@ -1,4 +1,4 @@
-import { isRecord } from '@godcreator/gwb-plugin-api'
+import { isRecord } from './vocab.js'
 import { toShared } from './inventory.js'
 
 /**

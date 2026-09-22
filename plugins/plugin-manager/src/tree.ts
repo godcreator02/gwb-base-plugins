@@ -1,4 +1,5 @@
-import { isRecord, type GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import { isRecord } from './vocab.js'
 
 /**
  * 承载 `cordis.yml` 的那棵条目树。

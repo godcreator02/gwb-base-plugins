@@ -1,5 +1,6 @@
 import { Service } from 'cordis'
-import { isRecord, requireKernel, type GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import { isRecord, requireKernel } from './vocab.js'
 // 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
 import type {} from '@godcreator/gwb-commands'
 // 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字

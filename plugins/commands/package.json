@@ -1,7 +1,9 @@
 {
   "name": "@godcreator/gwb-commands",
   "version": "0.4.5",
-  "author": {"name": "godcreator"},
+  "author": {
+    "name": "godcreator"
+  },
   "description": "命令总线：件把能力登记成一张 name → handler 的注册表，界面、命令行与 agent 经同一份派发（agent 侧走 MCP 门的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
@@ -24,11 +26,8 @@
     "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
     "prepublishOnly": "pnpm build"
   },
-  "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.1.2"
-  },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "0.1.2",
+    "@godcreator/gwb-plugin-api": "^0.1.2",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
@@ -45,5 +44,8 @@
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
   },
-  "keywords": ["gwb", "gwb-plugin"]
+  "keywords": [
+    "gwb",
+    "gwb-plugin"
+  ]
 }

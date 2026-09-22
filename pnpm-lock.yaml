@@ -76,34 +76,10 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
-  plugins/command-http:
-    devDependencies:
-      '@godcreator/gwb-commands':
-        specifier: workspace:*
-        version: link:../commands
-      '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
-        version: 0.1.2(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-repo-kit':
-        specifier: 0.2.3
-        version: 0.2.3
-      '@godcreator/gwb-settings':
-        specifier: workspace:*
-        version: link:../settings
-      '@godcreator/gwb-skills':
-        specifier: workspace:*
-        version: link:../skills
-      cordis:
-        specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
   plugins/commands:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -118,7 +94,7 @@ importers:
   plugins/data:
     devDependencies:
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -136,7 +112,7 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -167,7 +143,7 @@ importers:
         specifier: workspace:*
         version: link:../node-cli
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-settings':
         specifier: workspace:*
@@ -188,7 +164,7 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -215,7 +191,7 @@ importers:
         specifier: workspace:*
         version: link:../data
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -239,7 +215,7 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -263,7 +239,7 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -284,7 +260,7 @@ importers:
         specifier: workspace:*
         version: link:../commands
       '@godcreator/gwb-plugin-api':
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2(cordis@4.0.0-rc.9)
       '@godcreator/gwb-repo-kit':
         specifier: 0.3.0
@@ -578,9 +554,6 @@ packages:
     resolution: {integrity: sha512-K018+THOUcy0cHZzX1LmM2JeonvTkPv01tJ0hNMpYJ85t7S5E870+fKXj4ara4A0egUaX6mF/cXOJ//4TZ8LUw==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.1.2/gwb-plugin-api-0.1.2.tgz}
     peerDependencies:
       cordis: ^4.0.0-rc.9
-
-  '@godcreator/gwb-repo-kit@0.2.3':
-    resolution: {integrity: sha512-UziHpLP35E2xAHZHSgcFW+Wy/YamMgCZkCgsjf/5NZ6RVVz7RfWm3SUSQ6XJJcFc4EP+4Q+avaPYSmQwZYDXVQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-repo-kit/-/0.2.3/gwb-repo-kit-0.2.3.tgz}
 
   '@godcreator/gwb-repo-kit@0.3.0':
     resolution: {integrity: sha512-nyjr5TNr2OP66zk/2xkbwGgxR9HFwKJyV/ahbfhSt2VRY2MVH7GP/h+eJ6DMoGMxM1HJ4NxpYafGC6DwPWpPlQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-repo-kit/-/0.3.0/gwb-repo-kit-0.3.0.tgz}
@@ -3213,8 +3186,6 @@ snapshots:
   '@godcreator/gwb-plugin-api@0.1.2(cordis@4.0.0-rc.9)':
     dependencies:
       cordis: 4.0.0-rc.9
-
-  '@godcreator/gwb-repo-kit@0.2.3': {}
 
   '@godcreator/gwb-repo-kit@0.3.0': {}
 

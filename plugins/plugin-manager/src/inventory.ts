@@ -1,4 +1,4 @@
-import { isRecord } from '@godcreator/gwb-plugin-api'
+import { isRecord } from './vocab.js'
 
 /**
  * 盘上那份清单与条目树对起来——零 I/O 纯逻辑（出现 `node:fs` import 即越界）。
