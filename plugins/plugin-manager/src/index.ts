@@ -31,6 +31,7 @@ import {
 } from './sources.js'
 import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
+import { BusyGate } from './busy.js'
 import { fiberStateOf, planUpdateAll, type PlannedEntry } from './update-all.js'
 import { remountNow, remountOne, remountSelfLater, type RemountedEntry } from './remount.js'
 
@@ -482,6 +483,9 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
   private settingsBook: OwnerBook | undefined
   /** 命令总线在才有。一键热升拿它探 `shell.reload`、跑 `shell.reload`——包括本件自己重挂之后那一下 */
   private cli: GwbCommands | undefined
+
+  /** 变更互斥（实施 Spec §3）：同一 home 同时至多一个装卸/升级操作，重入回 BUSY */
+  private readonly gate = new BusyGate()
   /** 裸 id → 显示名。内存里这份是权威，盘上那份是它的副本 */
   private labels: Record<string, string> = {}
   /** 头一份 labels 读完没有。setLabel 要等它——不等的话第一次改名会被读盘那一下盖回去 */
@@ -584,6 +588,10 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
       const on = (name: string, description: string, usage: string, handler: (args?: unknown) => unknown): void => {
         ctx.effect(() => cli.register({ name, description, usage, plugin: PKG }, handler))
       }
+      /** 变更互斥（实施 Spec §3）：装卸/升级/重挂五条命令走这道门，重入回 BUSY */
+      const onGuarded = (name: string, description: string, usage: string, handler: (args?: unknown) => unknown): void => {
+        ctx.effect(() => cli.register({ name, description, usage, plugin: PKG }, (args) => this.gate.run(() => handler(args) as Promise<{ ok: boolean }> | { ok: boolean })))
+      }
 
       on(LIST_COMMAND, 'home 里装了哪些包、各挂了哪些条目', '回执按包列：包名、spec、条目（id、entryId、启停、是否 ACTIVE）。无参数', () => this.list())
 
@@ -592,10 +600,10 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         data: { packages: await this.shared() },
       }))
 
-      on(
+      onGuarded(
         INSTALL_COMMAND,
         '往 home 装一个包并自动加条目',
-        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目——**装的是库就不加**（清单 keywords 自报 gwb、不自报 gwb-plugin 的那种：lib / 共享包 / 词汇表包没有 apply，条目落下去也挂不上），回执里 `note` 说清、没有 `entryId`。回执 { ok, pkg, entryId?, peers?: [{ pkg, range, action, note? }], note?, peerWarnings?: [{ peer, installed?, wanted, by }] }，action 是 installed / present / skipped / failed。peer 对不上不拦、照装：装完 home 里 peer 对不上的每一处（整棵树）进 peerWarnings——installed 是 home 里那一版，wanted 是 by 那个包要的范围；没有就没有这一格。参数 { pkg, spec? }（spec 是版本或 tag）',
+        'pnpm add 一个包进 home，把它还没在 home 的 peer 也装成直接依赖（cordis 与本生态的件跳过；已在的版本不动；装不上不影响件本身），再自动加一条条目——**装的是库就不加**（清单 keywords 自报 gwb、不自报 gwb-plugin 的那种：lib / 共享包 / 词汇表包没有 apply，条目落下去也挂不上），回执里 `note` 说清、没有 `entryId`。回执 { ok, pkg, entryId?, peers?: [{ pkg, range, action, note? }], note?, peerWarnings?: [{ peer, installed?, wanted, by }] }，action 是 installed / present / skipped / failed。peer 对不上不拦、照装：装完 home 里 peer 对不上的每一处（整棵树）进 peerWarnings——installed 是 home 里那一版，wanted 是 by 那个包要的范围；没有就没有这一格。参数 { pkg, spec? }（spec 是版本或 tag）；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }',
         async (args) => {
           const raw = asRecord(args)
           const result = await this.install(text(raw, 'pkg'), optional(raw, 'spec'))
@@ -637,10 +645,10 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         return { ok: true }
       })
 
-      on(
+      onGuarded(
         REMOUNT_COMMAND,
         '重挂一条条目：停用→等拆完→启用→等挂上，一次做完',
-        '参数 { entryId }（完整 entryId 或裸 id）。回执 { id, action, state }：action 是 remounted（这条命令里做完，state 是重挂后的 fiber 状态，ACTIVE 才算挂上）或 deferred（目标是本件自己：回执先发出、下一个宏任务才重挂，state 是动手前的状态，之后用 plugin-manager.list 核对 active）；动条目树时抛了回 ok: false，data 里 action 是 failed。本来停用的条目重挂后是启用的；重挂命令总线也在这条命令里做完',
+        '参数 { entryId }（完整 entryId 或裸 id）。回执 { id, action, state }：action 是 remounted（这条命令里做完，state 是重挂后的 fiber 状态，ACTIVE 才算挂上）或 deferred（目标是本件自己：回执先发出、下一个宏任务才重挂，state 是动手前的状态，之后用 plugin-manager.list 核对 active）；动条目树时抛了回 ok: false，data 里 action 是 failed。本来停用的条目重挂后是启用的；重挂命令总线也在这条命令里做完；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }',
         async (args) => {
           const result = await this.remount(text(asRecord(args), 'entryId'))
           if (result.action === 'failed') return { ok: false, error: `条目 ${result.id} 重挂没成：${result.state}`, data: result }
@@ -659,17 +667,17 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         return { ok: false, error: result.error ?? '没说原因' }
       })
 
-      on(UPDATE_COMMAND, '把一个已装的包升到最新', '不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all。回执 { ok, pkg, peerWarnings?, note? }：peer 对不上不拦，升完 home 里对不上的每一处进 peerWarnings（形状同 install）。参数 { pkg }', async (args) => {
+      onGuarded(UPDATE_COMMAND, '把一个已装的包升到最新', '不建条目、不重挂；跑着的件重启内核后才换新——要热生效走 plugin-manager.update-all。回执 { ok, pkg, peerWarnings?, note? }：peer 对不上不拦，升完 home 里对不上的每一处进 peerWarnings（形状同 install）。参数 { pkg }；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }', async (args) => {
         const result = await this.update(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
         return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
       })
 
-      on(
+      onGuarded(
         UPDATE_ALL_COMMAND,
         '一键热升全部过期包，不重启',
-        '一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note?, peerWarnings? }。peer 对不上不拦、照升：升完 home 里对不上的每一处进 peerWarnings（形状同 install）——多半是有插件没跟上上游的破坏版，该去追那个下游。参数 { only?: string[] }（限定包名；不给或不传参数就全升）',
+        '一趟 pnpm add 把全部过期包升到 outdated 回的精确版本，再逐条停用→启用重挂新版本（本来就停用的跳过；本件自己排最后、回执发出后才重挂），最后 shell.reload 整页重载。回执 { updated: [{ pkg, from, to, entries: [{ id, action, state }] }], selfDeferred, reload, note?, peerWarnings? }。peer 对不上不拦、照升：升完 home 里对不上的每一处进 peerWarnings（形状同 install）——多半是有插件没跟上上游的破坏版，该去追那个下游。参数 { only?: string[] }（限定包名；不给或不传参数就全升）；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }',
         async (args) => {
           const result = await this.updateAll(onlyList(args))
           if (result.ok) return { ok: true, data: result }
@@ -689,7 +697,7 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         },
       )
 
-      on(UNINSTALL_COMMAND, '卸载一个包：条目与包一起拿掉', '设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }', async (args) => {
+      onGuarded(UNINSTALL_COMMAND, '卸载一个包：条目与包一起拿掉', '设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }', async (args) => {
         const result = await this.uninstall(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
