@@ -7,11 +7,11 @@ import { loadInstructions } from '../src/inventory.js'
 import { textResult } from '../src/tools.js'
 
 /**
- * 工具面封顶的守卫：经内存信道连一对真的 server/client，按协议往返——
- * 谁想加第四枚工具，这条先红，逼出 major 版本那场对话。
+ * 「MCP 工具只有三个」的守卫：经内存传输连一对真的 server/client，按协议往返——
+ * 谁想加第四个工具，这条先失败，逼出升 major 版本的讨论。
  */
 
-/** 记下调用的替身手 */
+/** 记录调用情况的替身处理函数 */
 function spies(): ToolHandlers & {
   seenIndex: number
   seenSearch: unknown[]
@@ -36,7 +36,7 @@ function spies(): ToolHandlers & {
   }
 }
 
-/** 连一对内存信道——协议层的真往返，不用起 http */
+/** 连一对内存传输——走真实的协议往返，不用启动 http */
 async function connect(handlers: ToolHandlers): Promise<{ client: Client; server: McpServer }> {
   const server = new McpServer(
     { name: 'gwb', version: 'test' },
@@ -49,8 +49,8 @@ async function connect(handlers: ToolHandlers): Promise<{ client: Client; server
   return { client, server }
 }
 
-describe('工具面封顶', () => {
-  it('tools/list 恰好 index / search / run 三枚,没有第四者', async () => {
+describe('MCP 工具只有三个', () => {
+  it('tools/list 恰好是 index / search / run 三个,没有第四个', async () => {
     const { client } = await connect(spies())
     const listed = await client.listTools()
     expect(listed.tools.map((t) => t.name).sort()).toEqual(['index', 'run', 'search'])
@@ -58,14 +58,14 @@ describe('工具面封顶', () => {
   })
 
 
-  it('index 无参数直达执行口', async () => {
+  it('index 不带参数直接调到处理函数', async () => {
     const h = spies()
     const { client } = await connect(h)
     await client.callTool({ name: 'index', arguments: {} })
     expect(h.seenIndex).toBe(1)
   })
 
-  it('search 的三个过滤参数递得到,空串当没给', async () => {
+  it('search 的三个过滤参数都传得到,空串当作没给', async () => {
     const h = spies()
     const { client } = await connect(h)
     await client.callTool({ name: 'search', arguments: { plugin: '@godcreator/gwb-skills', q: 'read' } })
@@ -76,19 +76,19 @@ describe('工具面封顶', () => {
     ])
   })
 
-  it('run 把 command 与 args 原样递到执行口', async () => {
+  it('run 把 command 与 args 原样传给处理函数', async () => {
     const h = spies()
     const { client } = await connect(h)
     await client.callTool({ name: 'run', arguments: { command: 'skill.read', args: { name: 'mcp' } } })
     expect(h.seenRun).toEqual([['skill.read', { name: 'mcp' }]])
   })
 
-  it('instructions 是每会话的固定成本——守卫钉着上限,也钉着封顶与全貌那两句话在', () => {
+  it('instructions 是每个会话的固定开销——检查长度上限,也检查「只有三个工具」与「不带参数返回全部」这两句还在', () => {
     const text = loadInstructions()
-    // 真预算是 Claude Code 的 2048 字符静默截断线（issue #81268,官方不修）;行数只是防散架的粗代理
+    // 真正的上限是 Claude Code 超过 2048 字符就静默截断（issue #81268,官方不修）;行数只是粗略的辅助限制
     expect(text.length).toBeLessThanOrEqual(2_000)
     expect(text.split('\n').length).toBeLessThanOrEqual(41)
-    expect(text).toContain('封顶于 index / search / run')
-    expect(text).toContain('裸调＝不过滤＝全貌全用法')
+    expect(text).toContain('MCP 工具只有 index / search / run 三个')
+    expect(text).toContain('不带参数就返回全部内容与完整用法')
   })
 })

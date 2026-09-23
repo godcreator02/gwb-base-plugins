@@ -13,13 +13,13 @@ const SKILLS: SkillView[] = [
   { name: 'gwb-py-cli', description: '要跑 python CLI 时读。讲清 venv 守卫的自愈行为', plugin: '@godcreator/gwb-py-cli' },
 ]
 
-describe('clampDescription：保险丝', () => {
-  it('正常一句话原样——不做人话级截断，触发文本不砍', () => {
+describe('clampDescription：描述长度上限', () => {
+  it('正常长度的描述原样返回——不按句子截断，触发条件一个字不删', () => {
     const long = '用户提到「单元」「容器根」「unitfolders」「当前单元」，或者要你新开一个单元、找某个项目住在哪个目录时用。这个件把单元容器根现扫一遍读出生证。'
     expect(clampDescription(long)).toBe(long)
   })
 
-  it('超 200 字才截、拼省略号——只防失控长文爆地图', () => {
+  it('超过 200 字才截断、加省略号——只防超长描述把 index 的返回撑得过大', () => {
     const t = 'x'.repeat(250)
     expect(clampDescription(t)).toBe(`${'x'.repeat(200)}…`)
     expect(clampDescription('x'.repeat(200))).toBe('x'.repeat(200))
@@ -31,12 +31,12 @@ describe('clampDescription：保险丝', () => {
   })
 })
 
-describe('buildIndex：地图（三层递进的第一层）', () => {
-  it('说明书带完整 description；命令按件分组只报名字；没有 plugins 段；hint 在尾部', () => {
+describe('buildIndex：index 的返回（三层查询的第一层）', () => {
+  it('说明书带完整 description；命令按插件分组只列名字；没有 plugins 字段；hint 在末尾', () => {
     const doc = buildIndex({ home: 'default', version: '0.9.0', commands: CMDS, skills: SKILLS })
     expect(doc.home).toBe('default')
     expect(doc.version).toBe('0.9.0')
-    expect(doc.instructions).toContain('封顶于 index / search / run')
+    expect(doc.instructions).toContain('MCP 工具只有 index / search / run 三个')
     expect('plugins' in doc).toBe(false)
     expect(doc.commands).toEqual([
       { plugin: '@godcreator/gwb-skills', names: ['skill.list', 'skill.read'] },
@@ -50,13 +50,13 @@ describe('buildIndex：地图（三层递进的第一层）', () => {
     expect(doc.hint).toContain('plugin-manager.list')
   })
 
-  it('skills 件不在（undefined）时清单是空表——门照开', () => {
+  it('skills 插件不在（undefined）时说明书清单是空表——MCP 入口照常可用', () => {
     const doc = buildIndex({ home: 'x', version: '0.0.0', commands: [] })
     expect(doc.skills).toEqual([])
     expect(doc.commands).toEqual([])
   })
 
-  it('预算：现实规模（20 件 × 各 6 命令 + 26 说明书满长 description ≈ 实测 default 换算）≤ 18KB（UTF-8 字节）', () => {
+  it('大小上限：现实规模（20 个插件 × 各 6 条命令 + 26 份说明书、description 写满，按实测 default 换算）≤ 18KB（UTF-8 字节）', () => {
     const commands: CommandView[] = []
     for (let p = 0; p < 20; p++) {
       for (let c = 0; c < 6; c++) commands.push({ name: `pkg${p}.command.number${c}.read`, plugin: `@godcreator/gwb-pkg${p}`, description: '', usage: '' })
@@ -74,15 +74,15 @@ describe('buildIndex：地图（三层递进的第一层）', () => {
     expect(Buffer.byteLength(JSON.stringify(doc), 'utf8')).toBeLessThanOrEqual(18_432)
   })
 
-  it('同输入两次拼装逐字节一致——地图进公共前缀，字节稳定性是缓存的地基', () => {
+  it('同样的输入两次生成逐字节一致——index 的返回会进提示词的公共前缀，字节稳定才能命中缓存', () => {
     const a = JSON.stringify(buildIndex({ home: 'd', version: '1', commands: CMDS, skills: SKILLS }))
     const b = JSON.stringify(buildIndex({ home: 'd', version: '1', commands: CMDS, skills: SKILLS }))
     expect(a).toBe(b)
   })
 })
 
-describe('buildSearch：按址与兜底', () => {
-  it('裸调＝不过滤＝全貌：全部带 usage，filter 那格不出现', () => {
+describe('buildSearch：按条件过滤与不带参数返回全部', () => {
+  it('不带参数＝不过滤＝返回全部：每条都带 usage，不出现 filter 字段', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS })
     expect(doc.filter).toBeUndefined()
     expect(doc.commands).toHaveLength(4)
@@ -96,28 +96,28 @@ describe('buildSearch：按址与兜底', () => {
     expect(doc.skills[0]).toHaveProperty('description')
   })
 
-  it('老版注册表（没有 usage）不炸——当空串', () => {
+  it('旧版注册表（没有 usage）不报错——当作空串', () => {
     const doc = buildSearch({ commands: [{ name: 'a', plugin: 'p', description: '老' }] })
     expect(doc.commands[0]!.usage).toBe('')
   })
 
-  it('plugin 精确筛两张表，命中行带描述', () => {
+  it('plugin 精确过滤命令与说明书两张表，匹配的行带描述', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@godcreator/gwb-skills' } })
     expect(doc.commands.map((c) => c.name)).toEqual(['skill.list', 'skill.read'])
     expect(doc.skills).toHaveLength(0)
     expect(doc.filter).toEqual({ plugin: '@godcreator/gwb-skills' })
   })
 
-  it('prefix 是命令域意图：命令带用法，说明书表回瘦身行（不捎全表）', () => {
+  it('prefix 表示只查命令：命令带用法，说明书只回名字与插件（不附带全部描述）', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { prefix: 'skill.' } })
     expect(doc.commands.map((c) => c.name)).toEqual(['skill.list', 'skill.read'])
     expect(doc.commands[0]).toHaveProperty('usage')
-    // 全部说明书都在，但只有名字+插件——11.6KB 捎表那课的修复
+    // 全部说明书都在，但只有名字与插件——附带全部描述会让这次返回涨到 11.6KB
     expect(doc.skills).toHaveLength(2)
     for (const s of doc.skills) expect('description' in s && s.description !== undefined).toBe(false)
   })
 
-  it('prefix 与 q 同给时 q 对说明书生效，说明书带描述', () => {
+  it('prefix 与 q 同时给时，q 对说明书生效，说明书带描述', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { prefix: 'skill.', q: 'mcp' } })
     expect(doc.skills.map((s) => s.name)).toEqual(['mcp'])
   })
@@ -134,7 +134,7 @@ describe('buildSearch：按址与兜底', () => {
     expect(byName.commands.map((c) => c.name)).toEqual(['skill.read'])
   })
 
-  it('条件 AND 生效，空结果如实回空表', () => {
+  it('多个条件按 AND 组合，没有匹配就返回空表', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { plugin: '@godcreator/gwb-skills', q: 'venv' } })
     expect(doc.commands).toEqual([])
     expect(doc.skills).toEqual([])
