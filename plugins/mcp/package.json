@@ -33,7 +33,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
+    "@godcreator/gwb-commands": "^0.4.6",
     "@godcreator/gwb-node-cli": "workspace:*",
     "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-settings": "workspace:*",

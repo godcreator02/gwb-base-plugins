@@ -1,0 +1,33 @@
+---
+title: 命令插件迁往内核仓
+born-at: 2026-09-23T18:52
+type: choice
+parent: [2026-09-23-plugin-manager-moved-out]
+label: 命令插件迁出
+domain: 插件
+---
+
+## 背景
+
+命令插件 commands（`@godcreator/gwb-commands`，服务 `ctx.gwbCommands`）是内核直接依赖的插件：内核收到页面发来的命令，
+一律交给 `ctx.gwbCommands.run`，没有它界面调不到主进程里的任何能力。它和插件管理（plugin-manager，同日已搬进内核仓）
+一样要随安装包预装，新 home 第一次启动时就已经装好。放在这个仓里，内核对它的依赖要跨仓对齐版本与发版节奏。
+
+## 结论与边界
+
+commands 原样搬进内核仓 gwb-kernel 的 `plugins/commands/`：源码、测试、说明书与文档页一起搬，包名不变，以后改它、
+发它都在内核仓。这个仓删掉它的目录与文档页，总览、AGENTS、README 的插件表去掉这一行，在役插件从九个变八个。
+本仓其他插件（logger、mcp、node-cli、plugin-sources、py-cli、settings、skills）对它的开发依赖从 `workspace:*`
+改为包源上的版本范围 `^0.4.6`。「撞过的墙」里讲命令总线自身实现的四节（重名、注销、抛错、provide 用 effect 包住）
+随代码移到内核仓文档站的「命令插件」页；两节借 commands 举例的（构建产物检查、契约包走 peer）改引本仓的
+plugin-sources 与 mcp。
+
+## 否掉的候选
+
+- 留在这个仓、内核按包源版本依赖它——内核的命令分派与预装清单都绑在它身上，每次改动都要先在这个仓发版、再回内核仓对齐
+
+## 代价与遗留
+
+- 这个仓的插件改用包源上的 commands：它的接口变了，要先在内核仓发版，再在这里升版本范围并 `pnpm install`
+- 各插件源码与测试注释里提到 `gwb-commands` / `ctx.gwbCommands` 的地方只是服务名与依赖，不用改
+- 在这个仓的历史里查 commands 的旧提交，要看 2026-09-23 之前的记录

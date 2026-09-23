@@ -2,10 +2,10 @@
  * 这个站的 docfirst 配置：用哪个格式包、哪几区进 check、轨迹卡目录在哪、生成物写到哪、组件名册是什么。
  * 命令行和站读的是同一份。
  *
- * 项目根是站目录，钉的源码在仓根（../plugins/…）——引用里的路径相对项目根。
- * 这个站只钉本仓插件自己的代码；内核那边的规则与坑写在内核仓的站上（跨单元目录钉不了）。
+ * 项目根是站目录，引用的源码在仓根（../plugins/…）——引用里的路径相对项目根。
+ * 这个站只引用本仓插件自己的代码；内核那边的规则与坑写在内核仓的站上（跨单元目录的代码引用不了）。
  * 六区里只有 docs（现状）与 outputs（生成正本）进 check——只有这两区的论断跟代码对应；
- * 轨迹、交接、未来、反馈四区里草稿写的引用和轨迹卡都不进门禁，轨迹卡不许钉现行代码。
+ * 轨迹、交接、未来、反馈四区里草稿写的引用和轨迹卡都不进检查，轨迹卡不许引用现行代码。
  *
  * outputs：仓根 README.md / AGENTS.md / CLAUDE.md 和各插件的 catalog.md 都是生成物，
  * 正本是 content/outputs/ 下对应的 mdx。改 mdx 源要跑 `pnpm docfirst render` 重新生成，两份一起提交。
@@ -21,15 +21,12 @@ export default {
   trajectory: 'content/trajectory',
   outputs: {
     'content/outputs/readme.mdx': ['../README.md'],
-    'content/outputs/catalog-commands.mdx': ['../plugins/commands/catalog.md'],
     'content/outputs/catalog-data.mdx': ['../plugins/data/catalog.md'],
     'content/outputs/catalog-logger.mdx': ['../plugins/logger/catalog.md'],
     'content/outputs/catalog-skills.mdx': ['../plugins/skills/catalog.md'],
     'content/outputs/catalog-node-cli.mdx': ['../plugins/node-cli/catalog.md'],
     'content/outputs/catalog-py-cli.mdx': ['../plugins/py-cli/catalog.md'],
     'content/outputs/catalog-settings.mdx': ['../plugins/settings/catalog.md'],
-    'content/outputs/catalog-plugin-manager.mdx': ['../plugins/plugin-manager/catalog.md'],
-    'content/outputs/catalog-command-http.mdx': ['../plugins/command-http/catalog.md'],
     'content/outputs/agents.mdx': ['../AGENTS.md'],
     'content/outputs/claude.mdx': ['../CLAUDE.md'],
   },
@@ -38,7 +35,7 @@ export default {
     /**
      * 讲机制时插在正文里的 html 动画（`<iframe src="/anim/…">`，文件存放在 public/）。机读版里
      * **整个删掉**——图放不进上下文，留个空标签只是噪音。所以有一条必须遵守的规矩：
-     * **动画不能是任何一条信息的唯一载体**，同一件事正文必须用文字讲完、并且钉住动画演示的
+     * **动画不能是任何一条信息的唯一载体**，同一件事正文必须用文字讲完、并且引用动画演示的
      * 那段代码，动画只是那段文字的图解。
      */
     iframe: 'drop',

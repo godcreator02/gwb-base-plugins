@@ -6,15 +6,15 @@ docfirst: none
 
 # gwb-base-plugins
 
-gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何界面包（构建产物检查拦着）。界面平台
+gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何界面包（构建产物检查会拒绝）。界面平台
 （shell / theme / baseui；react 与令牌表随 shell 包发布）在 `s28bv-gwbbase\gwb-ui-plugins`。
-此刻九个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）；plugin-manager 依赖内核的内部约定，
-2026-09-23 搬进了内核仓 gwb-kernel 的 `plugins/`。
+此刻八个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）；plugin-manager 依赖内核的内部约定，
+2026-09-23 搬进了内核仓 gwb-kernel 的 `plugins/`；命令插件 commands（`ctx.gwbCommands`）同日也搬进了内核仓的
+`plugins/`，这个仓的插件对它的依赖写成包源上的版本范围。
 验收仓（hello）已于 2026-09-13 整体退役——组装后的验收改由 devkit 模板当场生成。
 
 | 插件 | 包名 | 服务 |
 | --- | --- | --- |
-| commands | `@godcreator/gwb-commands` | `ctx.gwbCommands` |
 | data | `@godcreator/gwb-data` | `ctx.gwbData` |
 | settings | `@godcreator/gwb-settings` | `ctx.gwbSettings` |
 | mcp | `@godcreator/gwb-mcp` | —（MCP 入口，只有这一个——工具只有 index/search/run 三个，以后也不增加） |
@@ -32,18 +32,18 @@ gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何
 pnpm install
 pnpm check          # typecheck + oxlint + vitest
 pnpm build          # 构建产物都在各包的 dist/
-pnpm doc            # docfirst check：被引用的代码变了会报黄
+pnpm doc            # docfirst check：被引用的代码变了会给出黄色警告
 ```
 
 发正式版用 devkit 插件的命令（经 MCP 入口的 `run` 调用，从哪个 home 调都行；`packages` 相对仓根、
 按依赖顺序），再装进 home 验证：
 
 ```
-devkit.release {"dir":"<仓根>","packages":["plugins/commands"]}
+devkit.release {"dir":"<仓根>","packages":["plugins/data"]}
 ```
 
 手工发布是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
-scope 路由写在用户级配置里。发完装进 home 用 `plugin-manager.install {"pkg":"@godcreator/gwb-commands"}`
+scope 路由写在用户级配置里。发完装进 home 用 `plugin-manager.install {"pkg":"@godcreator/gwb-data"}`
 （包和条目一起加）；已装的升级用 `plugin-manager.update-all`。
 
 ## 两条命名规矩
@@ -60,7 +60,7 @@ pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 ```
 
 **代码注释只写现状**——为什么这么写、遇到过什么问题，都写在文档站的「撞过的墙」那一页，并且用
-docfirst 引用对应的代码：代码一改，文档就报黄。这份 README 是生成文件，正本是
+docfirst 引用对应的代码：代码一改，文档检查就给出黄色警告。这份 README 是生成文件，正本是
 `docs-site/content/outputs/readme.mdx`；仓根 `AGENTS.md` 同理，正本是同目录的 `agents.mdx`。
 
 规则（准入判据、服务命名、依赖写法）的正本在**内核仓**，这个站只记插件自己的事。
