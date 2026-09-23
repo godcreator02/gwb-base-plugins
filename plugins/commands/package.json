@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "命令总线：件把能力登记成一张 name → handler 的注册表，界面、命令行与 agent 经同一份派发（agent 侧走 MCP 门的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
+  "description": "命令总线：插件把能力登记成「命令名 → 处理函数」的表，页面、agent 与其他插件经同一张表调用（agent 经 MCP 入口的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,7 +23,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
@@ -35,7 +35,7 @@
   "gwb": {
     "provides": {
       "gwbCommands": {
-        "summary": "命令总线：件与外界（界面、agent）的交互口——能力要被调就走它",
+        "summary": "命令总线：插件与页面、agent 之间的调用入口，能力要被调用就登记成命令",
         "usage": "ctx.gwbCommands.register({ name: '<短名>.<动作>', description: '一句话', usage: '{ 参数形状 }', plugin: '<包名>' }, handler) → 注销函数，要包 ctx.effect；plugin 写包名；agent 只看得见 description 与 usage，无参数也要写「无参数」"
       }
     }

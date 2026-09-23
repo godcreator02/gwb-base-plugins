@@ -4,21 +4,21 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物守卫：相对 import 必须带扩展名、不许有裸名 import。
- * 缺产物时整组跳过——门禁不依赖 build。为什么要这两条，见文档站。
+ * 构建产物的检查：相对 import 带扩展名；除 node 内置模块外，没有包名 import。
+ * 没构建时整组跳过，这组检查不依赖构建。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-describe.skipIf(!built)('产物', () => {
+describe.skipIf(!built)('构建产物', () => {
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
 
-  it('有产物可查', () => {
+  it('有构建产物可查', () => {
     expect(files.length).toBeGreaterThan(0)
   })
 
-  it('相对 import 一律带扩展名', () => {
+  it('相对 import 一律带扩展名——构建产物由 node 直接加载，ESM 不补扩展名', () => {
     const bad: string[] = []
     for (const file of files) {
       const text = fs.readFileSync(path.join(distDir, file), 'utf8')
@@ -30,7 +30,7 @@ describe.skipIf(!built)('产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('不许出现裸名 import——这个件该是自包含的', () => {
+  it('除了 node 内置模块，一个包名 import 都没有', () => {
     const bare: string[] = []
     for (const file of files) {
       const text = fs.readFileSync(path.join(distDir, file), 'utf8')

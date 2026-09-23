@@ -52,7 +52,7 @@ devDependencies**。
 
 ## 撞名是后来者赢，但不许静默地赢
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="26-44" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="43-55" */}
 
 插件一律平等，换掉一条命令是应有之义。但静默改派的话，调用方从此打到另一个插件的处理器上，
 **两边谁都不会报错**——所以撞名要出一条告警，说清谁换了谁。
@@ -66,7 +66,7 @@ devDependencies**。
 
 ## 一条命令抛出来不该炸到调用方
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="50-62" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
 
 它可能是界面上的一次点击。handler 自己判过成败就原样透传，没判的一律算成了。
 
@@ -75,7 +75,7 @@ devDependencies**。
 
 ## 服务用 `ctx.effect` 包着 provide
 
-{/* ref file="../plugins/commands/src/index.ts" lines="23-31" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="30-37" */}
 
 本插件卸载时服务自动撤销。不包的话，插件卸了而 `ctx.gwbCommands` 还挂在那，调用方打到一个
 已经没人维护的注册表上。
