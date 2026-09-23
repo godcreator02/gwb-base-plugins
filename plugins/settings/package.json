@@ -40,6 +40,7 @@
     "typescript": "^7.0.2"
   },
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbSettings": {
         "summary": "件的可配项——define 后界面免费长设置 UI；值跟条目走，shared 才落公共区",

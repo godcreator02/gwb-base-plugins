@@ -40,6 +40,7 @@
     "typescript": "^7.0.2"
   },
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbNodeCli": {
         "summary": "登记随包发的 node 命令行工具，起进程、收输出、按时限收尾；登记的命令自动镜像成总线命令",

@@ -33,6 +33,7 @@
     "typescript": "^7.0.2"
   },
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbCommands": {
         "summary": "命令总线：插件与页面、agent 之间的调用入口，能力要被调用就登记成命令",

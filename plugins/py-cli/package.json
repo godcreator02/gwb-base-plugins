@@ -40,6 +40,7 @@
     "typescript": "^7.0.2"
   },
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbPyCli": {
         "summary": "登记随包发的 python 命令行工具，uv venv 守卫自愈（没了当场重建）",

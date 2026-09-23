@@ -21,6 +21,7 @@
   ],
   "//gwb": "gwb 段只有 provides（自述，devkit.services 读它）：core 件不提供任何裸名（没有 gwb.shared），也不注册窗格——给人看的名字归 gwb-baseui 的窗格",
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbLogger": {
         "summary": "日志聚合的占位服务——面刻意留空，别往它上调方法",

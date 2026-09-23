@@ -35,6 +35,9 @@
     "cordis": "4.0.0-rc.9",
     "typescript": "^7.0.2"
   },
+  "gwb": {
+    "testedKernel": "0.2.7"
+  },
   "repository": {
     "type": "git",
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"

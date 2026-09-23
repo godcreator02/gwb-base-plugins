@@ -36,6 +36,7 @@
     "typescript": "^7.0.2"
   },
   "gwb": {
+    "testedKernel": "0.2.7",
     "provides": {
       "gwbSkills": {
         "summary": "挂随包发的说明书（给 agent 读的流程文档），全局单一命名空间",
