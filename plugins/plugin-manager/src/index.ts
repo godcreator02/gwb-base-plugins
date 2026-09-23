@@ -1,6 +1,3 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
 import { Service } from 'cordis'
 import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
 import { isRecord, requireKernel } from './vocab.js'
@@ -18,17 +15,6 @@ import { peerKindOf, planPeers, toPeerDependencies, type PeerKind } from './peer
 import type { PeerWarning } from './peer-warnings.js'
 import { addToHome, checkPeers, describeAddFailure, describePnpm, locatePnpm, runPnpm, runPnpmCapture, type PnpmResult } from './pnpm.js'
 import { parseOutdated, type UpdateInfo } from './outdated.js'
-import { isPluginRow, mergeScoped, parseSearch, type SearchRow } from './search.js'
-import {
-  BOOTSTRAP_SCOPE,
-  isRegistryUrl,
-  isScope,
-  maskLine,
-  mergeSources,
-  parseSources,
-  removeSource as removeSourceLines,
-  upsertSource as upsertSourceLines,
-} from './sources.js'
 import { entriesForPackage } from './uninstall.js'
 import { ownEntryId, treeOf, type EntryTreeLike } from './tree.js'
 import { BusyGate } from './busy.js'
@@ -59,15 +45,9 @@ export type { RemountedEntry } from './remount.js'
  * 有解：先摘条目后卸包，pnpm 失败报一句不回滚（改判记在件仓文档站 decisions）。只摘
  * 一条条目、包留着，走 `removeEntry`——两个动作分工，不是同一个的两种写法。
  *
- * **可装什么**走 registry 检索（`search`，npm 标准协议、基址从 pnpm 配置按 scope 来——装从哪来
- * 搜就到哪去；原先是一份手工白名单，2026-09-08 一天内两改：先随市场件并入，同日白名单
- * 也退了场），「装」这个动作也归这个件（`install`）。外加查新版本（`outdated`）与升到
- * 最新（`update`，**不建条目**——条目引的是包名，包换版本条目原样有效）。
- *
- * **第三方包源（`source.*`）管的是机器级 `~/.npmrc` 的 scope 路由**：`@godcreator` 的引导
- * 路由本就住那儿（每个 home 的出生、源码仓的装与发都指着它），所以第三方 scope 也归到
- * 机器级——home 级 `.npmrc` 只读展示（pnpm 两层合并解析、home 级同名键压过机器级）。
- * 解析增删的纯逻辑在 `sources.ts`；`@godcreator` 本身这条命令面不许写也不许删。
+ * **找插件、配包源**（registry 检索与机器级 `~/.npmrc` 的 scope 路由）在 `@godcreator/gwb-plugin-sources`，
+ * 这里只管装进 home 之后的事。查新版本（`outdated`）与升到最新（`update`）**不建条目**——条目引的是
+ * 包名，包换了版本条目照样有效。
  *
  * **一键热升（`updateAll`）= 一趟 pnpm 升完全部过期包，再逐条停用→启用重挂，不重启。**
  * 计划（谁升、谁重挂、谁最后）是 `update-all.ts` 里的纯函数；这儿只按计划执行。升级与
@@ -108,13 +88,9 @@ export const SET_LABEL_COMMAND = 'plugin-manager.set-label'
 export const OUTDATED_COMMAND = 'plugin-manager.outdated'
 export const UPDATE_COMMAND = 'plugin-manager.update'
 export const UPDATE_ALL_COMMAND = 'plugin-manager.update-all'
-export const SEARCH_COMMAND = 'plugin-manager.search'
 export const UNINSTALL_COMMAND = 'plugin-manager.uninstall'
 export const SHARED_COMMAND = 'plugin-manager.shared'
 export const TRANSFER_OWNER_COMMAND = 'plugin-manager.transfer-owner'
-export const SOURCE_ADD_COMMAND = 'plugin-manager.source.add'
-export const SOURCE_LIST_COMMAND = 'plugin-manager.source.list'
-export const SOURCE_REMOVE_COMMAND = 'plugin-manager.source.remove'
 
 /** 过户的回执。`data` / `settings` 是 false 说明那个件没装、那一半没动 */
 export interface TransferOwnerResult {
@@ -222,16 +198,6 @@ export interface UpdateAllResult {
   peerWarnings?: PeerWarning[]
 }
 
-/** 检索的回执 */
-export interface SearchReceipt {
-  ok: boolean
-  /** 成了才有：全部配好的源（或点名的 scope）上的件。**空数组 = 查成了、一个都没有**，跟「没查成」分得开 */
-  packages?: SearchRow[]
-  /** 没成时的一句话；成了但有源没查成时，点名哪几条（其余照常） */
-  error?: string
-  note?: string
-}
-
 /** 卸载的回执 */
 export interface UninstallResult {
   ok: boolean
@@ -242,57 +208,6 @@ export interface UninstallResult {
   error?: string
   /** pnpm 没成时它输出的最后几行——原因就在那儿 */
   tail?: string
-}
-
-/**
- * 写一条包源的回执。`lines` 是这次真正落盘的行，**token 一律已掩码**——回执走命令总线，
- * 凭据的一个字节都不出去。
- */
-export interface SourceAddResult {
-  ok: boolean
-  scope: string
-  registry: string
-  /** token 行写没写（公开源不需要凭据，只写路由行） */
-  tokenWritten: boolean
-  /** 机器级原来就有这条 scope：这次是原位替换，不是新追加 */
-  replaced: boolean
-  /** 落盘的行（已掩码），给回执里看得见改了什么 */
-  lines?: string[]
-  /** `pnpm config get <scope>:registry` 解析出的正是写入的地址。没跑成 pnpm 就没有这一格 */
-  verified?: boolean
-  /** 值得说一声的：源地址按默认 gitea 实例拼的、pnpm 解析到别的值（home 级有手加行压着） */
-  note?: string
-  /** 没成时的一句话 */
-  error?: string
-}
-
-/** `list` 看到的一条包源。`token` 只报有无，不报值 */
-export interface SourceReport {
-  scope: string
-  registry: string
-  /** 这条来自哪份文件——pnpm 两层合并解析，只看一层是假全景 */
-  file: 'user' | 'home'
-  /** 这条源有没有配凭据 */
-  token: boolean
-}
-
-/** 列包源的回执 */
-export interface SourceListResult {
-  /** 机器级那份 npmrc 的路径（source.add / remove 动的就是它） */
-  user: string
-  /** home 级那份的路径（只读展示；手加过的行才会存在） */
-  home: string
-  sources: SourceReport[]
-}
-
-/** 拿掉一条包源的回执 */
-export interface SourceRemoveResult {
-  ok: boolean
-  scope: string
-  /** 成了才有：被拿掉的那条路由指向的源 */
-  registry?: string
-  /** 没成时的一句话 */
-  error?: string
 }
 
 /**
@@ -381,16 +296,6 @@ export interface GwbPluginManagerApi {
    */
   updateAll(only?: readonly string[]): Promise<UpdateAllResult>
   /**
-   * 列 registry 上的件（npm 标准检索协议，`/-/v1/search`）。`scope` 不给＝查**全部配好的源**
-   * （两层 npmrc 里的所有 scope，逐源并发，一条坏不塌整表）；给了只查那条线。
-   *
-   * **registry 基址从 pnpm 配置解析**（`<scope>:registry`，退全局 `registry`）——装从哪来，
-   * 搜就到哪去；这儿不认识任何具体的源。**这条源若在 npmrc 里配了凭据，fetch 时带上
-   * Bearer**——私有源的检索接口未必匿名放行。
-   * **不抛**：解析不出基址、网络没成、响应认不出，都收敛成 `ok: false` 的一句话。
-   */
-  search(scope?: string): Promise<SearchReceipt>
-  /**
    * 卸载一个包：先把它在 `cordis.yml` 里的**全部条目**摘掉（fiber 随条目当场卸下），
    * 再 `pnpm remove` 掉包本身。设置与数据留在盘上——重装回来还是那份。
    *
@@ -407,32 +312,6 @@ export interface GwbPluginManagerApi {
   uninstall(pkg: string): Promise<UninstallResult>
   /** 给已装的包再加一条条目。回新条目的完整 entryId。包没装、id 撞了、id 的数据或设置归别的包都抛 */
   addEntry(pkg: string, id?: string, config?: unknown): Promise<string>
-  /**
-   * 往**机器级** `~/.npmrc` 写一条 scope 路由（第三方包源）。已有同 scope 就是幂等的原位替换。
-   *
-   * 源地址两条来路给一个：`registry` 直给；`owner` 走 gitea 快捷路——拼成
-   * `<gitea base>/api/packages/<owner>/npm/`，token 没显式给就去设置的 `gitea` 分区借
-   * （经 `settings.get` 命令按位置读，不经身份——服务面只读得到自己分区）。token 借不到
-   * 且没显式给，回 `ok: false`：私有源装不了，与其晚点在 install 上炸，不如现在说清。
-   *
-   * **为什么是机器级**：`@godcreator` 的引导路由本来就住在那儿，新 home 的出生、源码仓的
-   * 装与发全指着它；包源是机器级事实，home 级那份只读展示。**`@godcreator` 本身不许动**——
-   * 写它等于全机劫持，删它等于拔引导线。
-   *
-   * scope 不合规、动了引导线、`registry` 与 `owner` 都给或都不给，当场抛；盘上的事收敛成回执。
-   */
-  addSource(scope: string, opts?: { registry?: string; owner?: string; token?: string }): Promise<SourceAddResult>
-  /**
-   * 列包源现状：机器级与 home 级两份 npmrc 合着看（pnpm 是两层合并解析），逐条带出处。
-   * token 只报有无。读不到的文件当空，不抛。
-   */
-  listSources(): Promise<SourceListResult>
-  /**
-   * 从**机器级** `~/.npmrc` 拿掉一条 scope 路由；它的 token 行没有任何别的 scope 还指着时
-   * 一起收走（有人指着就留——那是别人的凭据）。home 级手加的同名行不归这条命令管，
-   * 回执里说清。`@godcreator` 当场抛（引导线）。
-   */
-  removeSource(scope: string): Promise<SourceRemoveResult>
   /**
    * 把一个 id 的数据目录与设置分区一起过户给 `pkg`。同一个件改了包名、要接着用旧数据时走它。
    * `id` 认完整 entryId 也认裸 id，不要求树上有这条条目。数据件、设置件没装的那一半跳过
@@ -497,21 +376,11 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
    */
   private chain: Promise<unknown> = Promise.resolve()
 
-  /** registry 基址的缓存，按 scope 一条一份。解析一次用到底——一个 home 活着的时候换源的概率，趋近于重开一个 home */
-  private readonly registries = new Map<string, string>()
-
-  /** 机器级 npmrc：包源路由的正本，`source.*` 动的就是它 */
-  private readonly userNpmrc: string
-  /** home 级 npmrc：只读展示（pnpm 两层合并解析，home 级同名键压过机器级） */
-  private readonly homeNpmrc: string
-
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPluginManager')
     this.own = ctx
     this.home = requireKernel(ctx).dataDir
     this.tree = treeOf(ctx)
-    this.userNpmrc = path.join(os.homedir(), '.npmrc')
-    this.homeNpmrc = path.join(this.home, '.npmrc')
     // 构造时 this.ctx 还是**提供方**自己的，logger 绑的是本件
     this.warn = (message: string): void => ctx.logger(NAME).warn(message)
     this.info = (message: string): void => ctx.logger(NAME).info(message)
@@ -686,57 +555,12 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
         },
       )
 
-      on(
-        SEARCH_COMMAND,
-        '列 registry 上的件（npm 标准检索）：全部配好的源',
-        '装从哪条源来，搜就到哪去：逐源并发查（好源并进 packages、坏源点名进 note，一条坏不塌整表；全没查成才 ok:false）。回执 packages 行带 pkg / version / description / keywords，「是不是件」按包自报的 gwb-plugin 认。参数 { scope? }——不给＝查全部配好的源（source.list 认的那两层 npmrc，引导线在前、其余按名排），给了只查那条线（如 "@j"）',
-        async (args) => {
-          const result = await this.search(scopeArg(args))
-          if (result.ok) return { ok: true, data: result }
-          return { ok: false, error: result.error ?? '没说原因' }
-        },
-      )
-
       onGuarded(UNINSTALL_COMMAND, '卸载一个包：条目与包一起拿掉', '设置与数据留盘（只删一条条目走 plugin-manager.remove-entry）。参数 { pkg }；同一时刻只跑一趟变更，重入回 { ok:false, error:"BUSY…" }', async (args) => {
         const result = await this.uninstall(text(asRecord(args), 'pkg'))
         if (result.ok) return { ok: true, data: result }
         const tail = result.tail === undefined ? '' : `\n${result.tail}`
         return { ok: false, error: `${result.error ?? '没说原因'}${tail}`, data: result }
       })
-
-      on(
-        SOURCE_ADD_COMMAND,
-        '往机器级 npmrc 写一条包源（scope 路由），第三方件用',
-        '已有同 scope 是幂等的原位替换。写的是 ~/.npmrc（机器级）：@godcreator 的引导路由本就住那儿，home 的出生、源码仓的装与发全指着它——@godcreator 本身不许经这条命令写。参数 { scope, registry?, owner?, token? }：registry 直给源地址；owner 走 gitea 快捷路——拼 <base>/api/packages/<owner>/npm/（base 借 gitea.base-url，缺省 git.tianshen02.online:28377），token 没给就去设置的 gitea 分区借，借不到且回执 ok:false。token 行按源路径配对，同 token 配多条源不叠行。回执 { ok, scope, registry, tokenWritten, replaced, lines?（已掩码）, verified?, note? }',
-        async (args) => {
-          const raw = asRecord(args)
-          const result = await this.addSource(text(raw, 'scope'), {
-            registry: optional(raw, 'registry'),
-            owner: optional(raw, 'owner'),
-            token: optional(raw, 'token'),
-          })
-          if (result.ok) return { ok: true, data: result }
-          return { ok: false, error: result.error ?? '没说原因', data: result }
-        },
-      )
-
-      on(
-        SOURCE_LIST_COMMAND,
-        '列包源现状：机器级与 home 级两份 npmrc 合着看',
-        '无参数。回执 { user, home, sources: [{ scope, registry, file, token }] }——file 是出处（user=机器级 ~/.npmrc，home=<home>/.npmrc），pnpm 两层合并解析、home 级同名键压过机器级；token 只报有无，值不出去',
-        async () => ({ ok: true, data: await this.listSources() }),
-      )
-
-      on(
-        SOURCE_REMOVE_COMMAND,
-        '从机器级 npmrc 拿掉一条包源',
-        '参数 { scope }。token 行没有任何别的 scope 还指着时一起收走，还有指着它的（共 token 的其他源）就留。@godcreator 是引导线不许删；机器级没有这条时说清（含「它在 home 级、自己动」的情形）。回执 { ok, scope, registry? }',
-        async (args) => {
-          const result = await this.removeSource(text(asRecord(args), 'scope'))
-          if (result.ok) return { ok: true, data: result }
-          return { ok: false, error: result.error ?? '没说原因', data: result }
-        },
-      )
     })
   }
 
@@ -1028,280 +852,6 @@ export default class GwbPluginManager extends Service implements GwbPluginManage
     return remountOne(this.tree, id, bareId(ownEntryId(this.own)), this.log)
   }
 
-  /**
-   * registry 基址：装从哪来，搜就到哪去。**从 pnpm 的配置解析**（`<scope>:registry` 条目，
-   * 退全局 `registry`，再退 npm 官方源）——跟 install/outdated 走的是同一份配置，这儿不
-   * 认识任何具体的源。按 scope 各缓存一份；解不出来回 undefined，调用方给一句人话。
-   */
-  private async registryBase(scope: string): Promise<string | undefined> {
-    const cached = this.registries.get(scope)
-    if (cached !== undefined) return cached
-    const found = locatePnpm(this.pnpmPath())
-    if (!found.ok) return undefined
-    for (const key of [`${scope}:registry`, 'registry']) {
-      const run = await this.queue(() => runPnpmCapture({ pnpm: found.file, cwd: this.home, args: ['config', 'get', key] }))
-      const value = run.stdout.trim()
-      if (run.exitCode === 0 && /^https?:\/\//.test(value)) {
-        const base = value.endsWith('/') ? value : `${value}/`
-        this.registries.set(scope, base)
-        this.info(`检索跟装走同一条源：${base}（pnpm config 的 ${key}）`)
-        return base
-      }
-    }
-    return undefined
-  }
-
-  /**
-   * 检索。`scope` 给了只查那条线；**不给＝查全部配好的源**（`source.list` 认的那两层
-   * npmrc 里的所有 scope，引导线在前、其余按名排）——市场页的「可装」表问的就是这个，
-   * agent 无参调它拿到的也是全景。
-   *
-   * 逐源**并发**查（总时长≈最慢一条，不是相加）；**一条坏不塌整表**：好源照常并进
-   * `packages`，坏源点名进 `note`；全部没查成才 `ok: false`。
-   */
-  async search(scope?: string): Promise<SearchReceipt> {
-    if (scope !== undefined) return this.searchOne(scope)
-
-    const scopes = await this.configuredScopes()
-    const settled = await Promise.all(scopes.map((one) => this.searchOne(one)))
-    const merged = mergeScoped(scopes.map((one, index) => ({ scope: one, ...settled[index]! })))
-    if (merged.packages.length === 0 && merged.failed.length === scopes.length) {
-      const why = merged.failed.map((failure) => `${failure.scope}：${failure.error}`).join('；')
-      return { ok: false, error: `一条源都没查成——${why}` }
-    }
-    return {
-      ok: true,
-      packages: merged.packages,
-      ...(merged.failed.length === 0
-        ? {}
-        : { note: `这几条源没查成（其余照常）：${merged.failed.map((failure) => `${failure.scope}（${failure.error}）`).join('、')}` }),
-    }
-  }
-
-  /** 配好的全部 scope，去重、稳定序：引导线永远第一位（哪怕 npmrc 一条都没有——它退全局源），其余按名排 */
-  private async configuredScopes(): Promise<string[]> {
-    const seen = new Set<string>()
-    for (const text of [await this.readNpmrc(this.userNpmrc), await this.readNpmrc(this.homeNpmrc)]) {
-      for (const { scope } of parseSources(text)) seen.add(scope)
-    }
-    return [BOOTSTRAP_SCOPE, ...[...seen].filter((scope) => scope !== BOOTSTRAP_SCOPE).sort()]
-  }
-
-  /** 查一条线。基址从 pnpm 配置按 scope 解析；源上配了凭据就带上（私有源的检索未必匿名放行） */
-  private async searchOne(scope: string): Promise<SearchReceipt> {
-    if (!isScope(scope)) {
-      return { ok: false, error: `scope 要长成 @xxx（比如 "@j"），收到的是 ${JSON.stringify(scope)}` }
-    }
-    const base = await this.registryBase(scope)
-    if (base === undefined) {
-      const found = locatePnpm(this.pnpmPath())
-      return {
-        ok: false,
-        error: found.ok
-          ? `解析不出 ${scope} 的 registry 地址（pnpm config 里没配）。装包走哪条源，检索就跟到哪；没有源先走 ${SOURCE_ADD_COMMAND}`
-          : found.error,
-      }
-    }
-    // text 钉在 scope 上：列的就是这条线的全家；「是不是件」在解析后按包自报的 keywords 认（见下）
-    const url = `${base}-/v1/search?text=${encodeURIComponent(scope)}&size=250`
-    try {
-      // 宿主是 Electron 当 node 使，Node 18 起 fetch 是全局的。这条源配了凭据就带上——
-      // 私有源的检索接口未必匿名放行，带着对公开源也无害
-      const token = await this.tokenForScope(scope)
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(10_000),
-        ...(token === undefined ? {} : { headers: { Authorization: `Bearer ${token}` } }),
-      })
-      if (!response.ok) return { ok: false, error: `registry 回了 ${String(response.status)}（${url}）` }
-      const rows = parseSearch(await response.text())
-      if (rows === undefined) {
-        return { ok: false, error: '检索响应认不出来（要的是 npm registry 的 search JSON）。' }
-      }
-      // 认「件」：看包在 manifest 里自报的 keywords（搜索回执直接带这一格，不用逐包再问）。
-      // **没有回退**：没写 `gwb-plugin` 的（lib / 共享包 / 词汇表包 / 没声明的）都不进「可装」表。
-      return { ok: true, packages: rows.filter(isPluginRow) }
-    } catch (err: unknown) {
-      return { ok: false, error: `检索没成（10 秒没等到，或源够不着）：${String(err)}` }
-    }
-  }
-
-  async addSource(scope: string, opts?: { registry?: string; owner?: string; token?: string }): Promise<SourceAddResult> {
-    // 调用方写错了的事当场抛；下面每一条「没成」都是正当结果，收敛成回执
-    if (!isScope(scope)) {
-      throw new Error(`scope 要长成 @xxx（比如 "@j"），收到的是 ${JSON.stringify(scope)}`)
-    }
-    if (scope === BOOTSTRAP_SCOPE) {
-      throw new Error(`${BOOTSTRAP_SCOPE} 是全机的引导线（每个 home 的出生、源码仓的装与发都指着它），本命令不写它`)
-    }
-    const registry = opts?.registry
-    const owner = opts?.owner
-    let token = opts?.token
-    if (registry !== undefined && owner !== undefined) {
-      throw new Error('registry 与 owner 给一个就行：owner 走 gitea 快捷路（拼源地址、借 gitea.token），registry 直给源地址')
-    }
-    if (registry === undefined && owner === undefined) {
-      throw new Error('registry 与 owner 必须给一个：owner 走 gitea 快捷路（拼源地址、借 gitea.token），registry 直给源地址')
-    }
-
-    const notes: string[] = []
-    let resolved: string
-    if (owner !== undefined) {
-      if (!/^[\w.-]+$/.test(owner)) {
-        throw new Error(`owner 要是 gitea 上的用户名或组织名（字母数字连字符，收到 ${JSON.stringify(owner)}）`)
-      }
-      const borrowed = await this.borrowGitea(owner)
-      resolved = borrowed.registry
-      if (token === undefined) {
-        if (borrowed.token === undefined) {
-          const error = `借不到 gitea.token（设置里没配，或设置件 / 命令总线不在）。私有源没凭据装不了——显式传 token，或者先把 token 配进设置的 gitea 分区`
-          this.warn(`${scope} 的源没加上：${error}`)
-          return { ok: false, scope, registry: resolved, tokenWritten: false, replaced: false, error }
-        }
-        token = borrowed.token
-      }
-      if (borrowed.note !== undefined) notes.push(borrowed.note)
-    } else {
-      if (!isRegistryUrl(registry)) {
-        throw new Error(`registry 要是个 http(s) 地址（收到 ${JSON.stringify(registry)}）`)
-      }
-      resolved = registry.endsWith('/') ? registry : `${registry}/`
-    }
-
-    const text = await this.readNpmrc(this.userNpmrc)
-    const applied = upsertSourceLines(text, {
-      scope,
-      registry: resolved,
-      ...(token === undefined ? {} : { token }),
-    })
-    await this.writeNpmrc(this.userNpmrc, applied.text)
-
-    // 自验第一道：重读文件，写入的行得真在（原子写之后理论上不可能不在，出了就是盘的事）
-    const reread = parseSources(await this.readNpmrc(this.userNpmrc)).find((hit) => hit.scope === scope)
-    if (reread === undefined || reread.registry !== resolved) {
-      const error = `写完重读没读到 ${scope} → ${resolved}（写盘异常？）`
-      this.warn(error)
-      return { ok: false, scope, registry: resolved, tokenWritten: token !== undefined, replaced: applied.replaced, error }
-    }
-
-    // 自验第二道：问 pnpm 本人。它读到别的值，多半是 home 级 .npmrc 有手加的同名行压着（项目级优先）
-    const found = locatePnpm(this.pnpmPath())
-    let verified: boolean | undefined
-    if (found.ok) {
-      const run = await this.queue(() =>
-        runPnpmCapture({ pnpm: found.file, cwd: this.home, args: ['config', 'get', `${scope}:registry`] }),
-      )
-      const value = run.stdout.trim()
-      if (run.exitCode === 0 && value === resolved) verified = true
-      else notes.push(`pnpm 解析 ${scope} 得到的是 ${value === '' ? '（空）' : value}——home 级 .npmrc 可能有一条同名 scope 压着机器级（项目级优先），对不上时以 pnpm 为准`)
-    }
-
-    this.info(`${scope} 的源${applied.replaced ? '换成了' : '加上了'} ${resolved}${token === undefined ? '' : '（带凭据）'}，落机器级 ${this.userNpmrc}`)
-    return {
-      ok: true,
-      scope,
-      registry: resolved,
-      tokenWritten: token !== undefined,
-      replaced: applied.replaced,
-      lines: applied.wrote.map(maskLine),
-      ...(verified === undefined ? {} : { verified }),
-      ...noteOf(notes),
-    }
-  }
-
-  async listSources(): Promise<SourceListResult> {
-    const sources = mergeSources([
-      { file: 'user', text: await this.readNpmrc(this.userNpmrc) },
-      { file: 'home', text: await this.readNpmrc(this.homeNpmrc) },
-    ])
-    return {
-      user: this.userNpmrc,
-      home: this.homeNpmrc,
-      // token 只报有无——值一个字节都不出去
-      sources: sources.map(({ scope, registry, file, token }) => ({ scope, registry, file, token: token !== undefined })),
-    }
-  }
-
-  async removeSource(scope: string): Promise<SourceRemoveResult> {
-    // 调用方写错了的事当场抛
-    if (!isScope(scope)) {
-      throw new Error(`scope 要长成 @xxx（比如 "@j"），收到的是 ${JSON.stringify(scope)}`)
-    }
-    if (scope === BOOTSTRAP_SCOPE) {
-      throw new Error(`${BOOTSTRAP_SCOPE} 是全机的引导线——删了每个 home 的出生、源码仓的装与发一起断。本命令不删它`)
-    }
-
-    const applied = removeSourceLines(await this.readNpmrc(this.userNpmrc), scope)
-    if (!applied.removed) {
-      const inHome = parseSources(await this.readNpmrc(this.homeNpmrc)).some((hit) => hit.scope === scope)
-      const error = inHome
-        ? `机器级 ${this.userNpmrc} 里没有 ${scope}——它来自 home 级 .npmrc（手加的），本命令只动机器级，那行自己动`
-        : `机器级 ${this.userNpmrc} 里没有 ${scope} 这条 scope 路由`
-      return { ok: false, scope, error }
-    }
-    await this.writeNpmrc(this.userNpmrc, applied.text)
-    this.info(`${scope} 的源从机器级拿掉了${applied.registry === undefined ? '' : `（原指 ${applied.registry}）`}`)
-    return { ok: true, scope, ...(applied.registry === undefined ? {} : { registry: applied.registry }) }
-  }
-
-  /**
-   * gitea 快捷路：owner → 源地址与 token。
-   *
-   * token 与 base-url 都从设置的 `gitea` 分区借——**经 `settings.get` 命令按位置读**：
-   * `ctx.gwbSettings` 的服务面绑调用方身份，只读得到自己分区；命令面是给界面用的
-   * 按位置口，正好是「读别人分区」的正规路。gitea 件没装、设置里没配，都只是退化成
-   * 默认实例 / 没 token，不抛。
-   */
-  private async borrowGitea(owner: string): Promise<{ registry: string; token?: string; note?: string }> {
-    // 与 gitea 件设置项的默认同值（正本在那边的 skill）；它没配 base-url 时两边拼出同一个地址
-    const DEFAULT_BASE = 'https://git.tianshen02.online:28377'
-    const notes: string[] = []
-    let base = DEFAULT_BASE
-    const cli = this.cli
-    if (cli === undefined) {
-      notes.push('命令总线不在，gitea 的设置借不到，源地址按默认实例拼')
-    } else {
-      const got = await cli.run('settings.get', { section: 'gitea', key: 'base-url' })
-      if (got.ok && typeof got.data === 'string' && isRegistryUrl(got.data)) base = got.data
-      else notes.push('设置里没有 gitea.base-url，源地址按默认实例拼')
-    }
-    const registry = `${base.replace(/\/+$/, '')}/api/packages/${owner}/npm/`
-    let token: string | undefined
-    if (cli !== undefined) {
-      const got = await cli.run('settings.get', { section: 'gitea', key: 'token' })
-      if (got.ok && typeof got.data === 'string' && got.data !== '') token = got.data
-    }
-    return { registry, ...(token === undefined ? {} : { token }), ...noteOf(notes) }
-  }
-
-  /**
-   * 这条 scope 现在配没配凭据：两层 npmrc 合着看，home 级同名键压过机器级——与 pnpm 的
-   * 解析次序一致，检索带上的是真正会生效的那份。只给检索用，值不出这个方法所在的调用链
-   */
-  private async tokenForScope(scope: string): Promise<string | undefined> {
-    const texts = [await this.readNpmrc(this.userNpmrc), await this.readNpmrc(this.homeNpmrc)]
-    for (const text of texts.reverse()) {
-      const hit = parseSources(text).find((entry) => entry.scope === scope)
-      if (hit !== undefined) return hit.token
-    }
-    return undefined
-  }
-
-  /** 读一份 npmrc。**读不到当空**——首装源之前它多半还不存在，这不是错误 */
-  private async readNpmrc(file: string): Promise<string> {
-    try {
-      return await fs.promises.readFile(file, 'utf8')
-    } catch {
-      return ''
-    }
-  }
-
-  /** 原子落盘：先写同目录的临时文件再改名——写到一半断电，不留半份 npmrc */
-  private async writeNpmrc(file: string, text: string): Promise<void> {
-    const temp = `${file}.gwb-tmp-${String(process.pid)}-${String(Date.now())}`
-    await fs.promises.writeFile(temp, text, 'utf8')
-    await fs.promises.rename(temp, file)
-  }
-
   async uninstall(pkg: string): Promise<UninstallResult> {
     // 调用方写错了的事当场抛；下面每一条「没成」都是正当结果，收敛成回执
     assertPkgName(pkg)
@@ -1527,15 +1077,6 @@ function onlyList(args: unknown): string[] | undefined {
     throw new Error('only 给了就要是个非空字符串数组，比如 { "only": ["@godcreator/gwb-hello"] }')
   }
   return only as string[]
-}
-
-/** `plugin-manager.search` 的可选参数：不传、传空对象都是默认线；给了就要是个非空字符串 */
-function scopeArg(args: unknown): string | undefined {
-  if (args === undefined || args === null) return undefined
-  const scope = asRecord(args)['scope']
-  if (scope === undefined || scope === null) return undefined
-  if (typeof scope !== 'string' || scope === '') throw new Error('scope 给了就要是个非空字符串，比如 "@j"')
-  return scope
 }
 
 /** 命令按参数对象调，不经身份——界面不是一个件，没有身份可绑 */

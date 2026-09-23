@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-plugin-manager",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "插件管理：管 home 里的包与 cordis.yml 条目——装卸检升、一键热升、加删条目、启停；装完跑 peers check，对不上的每一处进回执 peerWarnings；第三方包源写进机器级 npmrc（source.*）。服务 gwbPluginManager；skill 1 份；命令 17 条。",
+  "description": "插件管理：管 home 里的包与 cordis.yml 条目——安装、卸载、查新版本、升级、一键热升、加删条目、启用停用；装完运行 pnpm peers check，版本对不上的每一处写进回执 peerWarnings。找插件、配包源在 gwb-plugin-sources。服务 gwbPluginManager；skill 1 份；命令 14 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -1,0 +1,51 @@
+---
+title: 找插件与配包源从 plugin-manager 拆出，成为 gwb-plugin-sources
+born-at: 2026-09-23T07:30
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 拆出包源插件
+domain: 插件
+---
+
+## 背景
+
+人判断 plugin-manager 负责的事有很多和内核直接耦合，没法独立于内核设计，打算把它搬进内核仓，作为和内核一起
+开发的插件。逐条看了它的 18 条命令，和内核耦合的是安装与条目管理：loader 条目树的内部结构（经
+`ctx.fiber.entry.parent.tree` 取）、home 的文件布局、热升级依赖内核按真实路径解析包名。而搜索 registry、
+改 `~/.npmrc` 的包源这 4 条只和 npm 源打交道，不碰内核。人的意见：「registry 这种怎么找插件的挪出去」。
+
+## 结论与边界
+
+新插件 `@godcreator/gwb-plugin-sources`（0.1.0）接走四条命令，改名为 `plugin-sources.search`、`add`、`list`、
+`remove`，参数与回执形状不变。plugin-manager 删掉这四条，升到 0.7.0（删命令属于破坏性变更），剩 14 条命令，
+下一步整体搬进内核仓。
+
+「找 pnpm 装在哪」留在 plugin-manager：安装、升级、查新版本每次都要先找到 pnpm，挪出去会让插件管理最基本的操作
+反过来依赖一个找插件的插件。
+
+新插件查 registry 地址不再调用 `pnpm config get`，改为直接读两层 npmrc，优先级照 pnpm：`@scope:registry=`
+先于 `registry=`，home 级先于机器级，都没有用 npm 官方源。加包源后「问 pnpm 核对」那一步改为检查 home 级有没有
+同名 scope 压着机器级。
+
+新插件是函数式插件，不提供服务、不 import cordis 的值，所以不写任何 peer——按内核仓关键判据 K2 的标准写法。
+
+人同意（2026-09-23，「按你推荐的来」「go」）。
+
+## 否掉的候选
+
+- **「找 pnpm」也挪出去**——插件管理的每个写操作都要先找到 pnpm，挪出去以后没装那个插件就什么都装不了，依赖方向反了
+- **新插件调用 plugin-manager 的命令来问「这个 scope 从哪装」**——两边一定一致，但拆出去的插件又回头依赖
+  plugin-manager；读 npmrc 已经和 pnpm 读同一批配置行
+- **命名为 gwb-plugin-registry**——「registry」在 commands 插件里已经指命令表；**gwb-plugin-market**——
+  「市场」是比喻，看不出它做什么
+- **搜索并进 baseui 的插件管理窗格**——agent 也要搜索，这个能力不该只在界面里
+- 2026-09-08 曾有一个 market 插件，当天把安装与白名单并进了 plugin-manager，理由是「装了包不加条目等于什么都没
+  发生」。这次只拆出搜索与包源，安装仍在 plugin-manager，和当时并入的理由不冲突
+
+## 代价与遗留
+
+- plugin-manager 0.7.0 是破坏性版本：baseui 的插件管理窗格要改用 `plugin-sources.search`；调用过
+  `plugin-manager.search` 与 `plugin-manager.source.*` 的 agent 说明书也要跟着改
+- 用环境变量或 pnpm 全局配置指定的源，新插件看不到，检索可能和安装查的不是同一个源；本机的配置都写在
+  `~/.npmrc` 里，目前不会遇到
+- plugin-manager 源码里其余文件的注释还没按「不说黑话」清理，留到搬进内核仓、按新依赖模型精简时一起改

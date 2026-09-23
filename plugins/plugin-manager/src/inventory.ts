@@ -60,11 +60,9 @@ export interface PluginPackageView {
 }
 
 /**
- * 自报家门的那枚词：**件**在 manifest 里写 `"keywords": ["gwb", "gwb-plugin"]`。
- *
- * 这一枚词是全生态「是不是件」的**唯一判据**，两侧都要用：registry 侧按它筛「可装」表
- * （`search.ts`），盘上侧按它决定装完要不要落 cordis.yml 条目（`isLibraryManifest`）。
- * 判据只有一份，住这儿；`search.ts` 从这儿 import 再 re-export，两个名字说的是同一件事
+ * 插件在包清单里写 `"keywords": ["gwb", "gwb-plugin"]`，这个关键词是全生态判断「是不是插件」的唯一依据。
+ * 这里用它决定装完要不要往 cordis.yml 加条目（`isLibraryManifest`）；gwb-plugin-sources 用同一个词
+ * 筛选「可装」列表，两边的值必须相同
  */
 export const PLUGIN_KEYWORD = 'gwb-plugin'
 
