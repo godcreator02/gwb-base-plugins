@@ -1,48 +1,49 @@
 # gwb-base-plugins
 
-gwb 的**无头基础插件仓**——无 UI 的插件，零 UI 依赖（产物守卫钉着）。UI 平台
-（shell / theme / baseui；react 系与令牌表随 shell 包发）住 `s28bv-gwbbase\gwb-ui-plugins`。
-此刻九个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）。
-验收位（hello 仓）已于 2026-09-13 整体退役——装配态验收改由 devkit 模板现场生成。
+gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何界面包（构建产物检查拦着）。界面平台
+（shell / theme / baseui；react 与令牌表随 shell 包发布）在 `s28bv-gwbbase\gwb-ui-plugins`。
+此刻十个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）。
+验收仓（hello）已于 2026-09-13 整体退役——组装后的验收改由 devkit 模板当场生成。
 
-| 插件             | 包名                               | 服务                                       |
-| -------------- | -------------------------------- | ---------------------------------------- |
-| commands       | `@godcreator/gwb-commands`       | `ctx.gwbCommands`                        |
-| data           | `@godcreator/gwb-data`           | `ctx.gwbData`                            |
-| settings       | `@godcreator/gwb-settings`       | `ctx.gwbSettings`                        |
-| mcp            | `@godcreator/gwb-mcp`            | —（MCP 门，唯一的门——工具面封顶 index/search/run 三枚） |
-| skills         | `@godcreator/gwb-skills`         | `ctx.gwbSkills`                          |
-| node-cli       | `@godcreator/gwb-node-cli`       | `ctx.gwbNodeCli`                         |
-| py-cli         | `@godcreator/gwb-py-cli`         | `ctx.gwbPyCli`                           |
-| logger         | `@godcreator/gwb-logger`         | `ctx.gwbLogger`（薄服务，面留空）                 |
-| plugin-manager | `@godcreator/gwb-plugin-manager` | `ctx.gwbPluginManager`（装卸检升）             |
+| 插件             | 包名                               | 服务                                               |
+| -------------- | -------------------------------- | ------------------------------------------------ |
+| commands       | `@godcreator/gwb-commands`       | `ctx.gwbCommands`                                |
+| data           | `@godcreator/gwb-data`           | `ctx.gwbData`                                    |
+| settings       | `@godcreator/gwb-settings`       | `ctx.gwbSettings`                                |
+| mcp            | `@godcreator/gwb-mcp`            | —（MCP 入口，只有这一个——工具只有 index/search/run 三个，以后也不增加） |
+| skills         | `@godcreator/gwb-skills`         | `ctx.gwbSkills`                                  |
+| node-cli       | `@godcreator/gwb-node-cli`       | `ctx.gwbNodeCli`                                 |
+| py-cli         | `@godcreator/gwb-py-cli`         | `ctx.gwbPyCli`                                   |
+| logger         | `@godcreator/gwb-logger`         | `ctx.gwbLogger`（服务上没有方法）                         |
+| plugin-manager | `@godcreator/gwb-plugin-manager` | `ctx.gwbPluginManager`（安装、卸载、查新版本、升级）            |
+| plugin-sources | `@godcreator/gwb-plugin-sources` | —（找插件、配包源，只有命令）                                  |
 
-**各自到哪了不在这儿**——版本与进度只有文档站的「路线」那一页记，抄第二份必然漂。
+**各自进展到哪不在这里**——版本与进度只记在文档站的「路线」那一页，再抄一份必然不一致。
 
-## 跑起来
+## 运行
 
 ```powershell
 pnpm install
 pnpm check          # typecheck + oxlint + vitest
-pnpm build          # 产物一律落各包的 dist/
-pnpm doc            # docfirst check：钉住的代码变了会报黄
+pnpm build          # 构建产物都在各包的 dist/
+pnpm doc            # docfirst check：被引用的代码变了会报黄
 ```
 
-发正式版走 devkit 插件的命令（经 MCP 门 `run` 调，从哪个 home 调都行；`packages` 相对仓根、
-按依赖顺序），再装进 home 验：
+发正式版用 devkit 插件的命令（经 MCP 入口的 `run` 调用，从哪个 home 调都行；`packages` 相对仓根、
+按依赖顺序），再装进 home 验证：
 
 ```
 devkit.release {"dir":"<仓根>","packages":["plugins/commands"]}
 ```
 
-手工兜底是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
-scope 路由住用户级配置。发完装进 home 走 `plugin-manager.install {"pkg":"@godcreator/gwb-commands"}`
-（连包带条目）；已装的升级走 `plugin-manager.update-all`。
+手工发布是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
+scope 路由写在用户级配置里。发完装进 home 用 `plugin-manager.install {"pkg":"@godcreator/gwb-commands"}`
+（包和条目一起加）；已装的升级用 `plugin-manager.update-all`。
 
 ## 两条命名规矩
 
-**包名 `@godcreator/gwb-<插件名>`**，加前缀跟已废弃的那批错开。
-**服务名一律 `gwb` 开头小驼峰**，默认跟插件名对应；cordis 官方插件的服务照它自己的。
+**包名 `@godcreator/gwb-<插件名>`**，加前缀和已废弃的那批区分开。
+**服务名一律 `gwb` 开头小驼峰**，默认和插件名对应；cordis 官方插件的服务名照它自己的。
 
 ## 文档
 
@@ -52,8 +53,8 @@ scope 路由住用户级配置。发完装进 home 走 `plugin-manager.install {
 pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 ```
 
-**代码注释只写现状**——为什么这么写、撞过什么，全在文档站的「撞过的墙」那页，并且用
-docfirst 钉在对应代码上：代码一改文档就报黄。这份 README 是生成物，正本是
+**代码注释只写现状**——为什么这么写、遇到过什么问题，都写在文档站的「撞过的墙」那一页，并且用
+docfirst 引用对应的代码：代码一改，文档就报黄。这份 README 是生成文件，正本是
 `docs-site/content/outputs/readme.mdx`；仓根 `AGENTS.md` 同理，正本是同目录的 `agents.mdx`。
 
-规则（准入判据、服务命名、依赖三档）的正本在**内核仓**，这个站只记插件自己的事。
+规则（准入判据、服务命名、依赖写法）的正本在**内核仓**，这个站只记插件自己的事。

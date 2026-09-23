@@ -1,0 +1,78 @@
+---
+title: gwb-plugin-sources：找插件与配包源
+description: 在配好的 npm 源上搜索插件，往机器级 ~/.npmrc 增删第三方包源；registry 地址按 scope 从两层 npmrc 里找，和 pnpm 安装读同一批配置行
+docfirst: none
+---
+
+# gwb-plugin-sources
+
+包名 `@godcreator/gwb-plugin-sources`，不提供服务，只有四条命令：`plugin-sources.search`、`add`、`list`、
+`remove`。它回答两件事：配好的源上**有哪些插件可装**，**从哪些源装**。装、卸、升、条目管理在
+[gwb-plugin-manager](/docs/plugin-manager)，两个插件之间没有代码依赖：这里查到包名，交给
+`plugin-manager.install` 去装。
+
+**依赖谁**：`gwbCommands` 是硬依赖（写在 `inject` 里），没有它四条命令都注册不上；`gwbSkills` 是局部注入，
+没装说明书插件时照常工作，只是说明书 `gwb-plugin-sources` 不出现。
+
+{/* ref file="../plugins/plugin-sources/src/index.ts" lines="21-42" */}
+
+## 从哪装就在哪搜：registry 地址怎么找
+
+检索和安装必须查同一个源，否则「可装」列表里的包会装不上，或者源上有的包列不出来。pnpm 安装时按
+scope 读两份 npmrc（机器级 `~/.npmrc` 与 home 级 `<home>/.npmrc`），这里照同样的优先级找地址：
+先找 `@scope:registry=`，再找 `registry=`，每一种都是 home 级压过机器级，都没写就是 npm 官方源。
+
+{/* ref file="../plugins/plugin-sources/src/sources.ts" lines="125-137" */}
+
+这里不调用 pnpm。代价是：用环境变量或 pnpm 全局配置指定的源，这里看不到，检索可能和安装查的不是同一个源。
+本机的配置都写在 `~/.npmrc` 里，目前不会遇到。**代码里不出现任何具体源的名字与地址**——换一台机器、
+换一个源，只改 npmrc。
+
+## 检索：npm 标准协议，一条源失败不影响别的
+
+每条源走 npm registry 的标准检索接口 `/-/v1/search`，Verdaccio、npmjs、gitea 都实现了它。响应里的
+包名有两种形状（npmjs、verdaccio 把 scope 写在 name 里，gitea 分开放），解析时拼回全名。
+**「是不是插件」只看包自己在清单 `keywords` 里写没写 `gwb-plugin`**，名字前缀不参与判断：
+
+{/* ref file="../plugins/plugin-sources/src/search.ts" lines="1-24" */}
+
+不带参数的 `search` 查全部配好的源：两层 npmrc 里出现过的每个 scope，`@godcreator` 永远第一、
+其余按名字排。逐条源并发查，查成的并进 `packages`，没查成的在 `note` 里点名；全都没查成才 `ok: false`。
+插件管理窗格的「可装」列表用的就是这个：
+
+{/* ref file="../plugins/plugin-sources/src/index.ts" lines="179-237" */}
+
+## 包源写在机器级 ~/.npmrc
+
+装第三方 scope 的插件（`@j/gwb-…` 这种个人源）之前，要先让 pnpm 知道这个 scope 从哪装——
+**scope 路由与凭据写进机器级 `~/.npmrc`**。为什么是机器级：`@godcreator` 的路由本来就写在那里，
+本机每个 home 的安装、每个源码仓的安装与发版都读它，包源是整台机器共用的配置。home 级 `.npmrc`
+pnpm 也读、同名行还优先，但那里只放手工加的行：`list` 两层合起来显示、逐条标出处，`add` 与 `remove`
+不写它。
+
+解析、增改、删除都是纯函数。token 行按**源地址**配对，不按 scope：同一个 token 可以配几条源，
+各是各的一行；换源、删源时，旧源的 token 行只有在没有别的 scope 再指向同一个地址时才一起删：
+
+{/* ref file="../plugins/plugin-sources/src/sources.ts" lines="1-17" */}
+
+**`@godcreator` 不许经这里改，也不许删**：本机所有安装与发版都靠它，两种操作都当场拒绝：
+
+{/* ref file="../plugins/plugin-sources/src/index.ts" lines="244-250" */}
+
+源地址有两种给法，只给一个：`registry` 直接给地址；`owner` 走 gitea 的简便写法——拼成
+`<gitea 地址>/api/packages/<owner>/npm/`，token 没显式给就取设置 `gitea` 分区的值。取设置走的是
+`settings.get` **命令**而不是 `ctx.gwbSettings` 服务：服务只读得到调用方自己的分区，读别的插件的分区要走命令：
+
+{/* ref file="../plugins/plugin-sources/src/index.ts" lines="353-371" */}
+
+写完做两道检查：重读文件，确认写进去的行在；再看 home 级有没有同名 scope 指向别的地址——有的话
+pnpm 用的是 home 级那条，`note` 里会说。回执里的行 **token 一律遮掉**（`_authToken=***`），凭据不进回执、
+不进日志：
+
+{/* ref file="../plugins/plugin-sources/src/index.ts" lines="293-316" */}
+
+## 怎么单独测
+
+`search.ts` 与 `sources.ts` 都是纯函数：检索响应的两种包名形状、keywords 判断、多源合并、npmrc 的解析与增删、
+token 行的配对与保留、registry 地址的优先级，全部用字符串做输入测（`tests/search.test.ts`、
+`tests/sources.test.ts`）。真的连源检索、真的改 `~/.npmrc`，只在隔离 home 里实机验证。

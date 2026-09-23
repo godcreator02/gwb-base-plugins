@@ -10,6 +10,7 @@
     "py-cli",
     "settings",
     "plugin-manager",
+    "plugin-sources",
     "decisions",
     "walls"
   ]

@@ -1,0 +1,46 @@
+{
+  "name": "@godcreator/gwb-plugin-sources",
+  "version": "0.1.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "找插件与配包源：在配好的 npm 源上搜索插件（包清单 keywords 里有 gwb-plugin 的包）；往机器级 ~/.npmrc 增删第三方包源（scope 路由）。装卸升与条目管理在 plugin-manager。服务无；skill 1 份；命令 4 条。",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去",
+    "prepublishOnly": "pnpm build"
+  },
+  "devDependencies": {
+    "@godcreator/gwb-commands": "workspace:*",
+    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-repo-kit": "0.3.0",
+    "@godcreator/gwb-skills": "workspace:*",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.9",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+  },
+  "keywords": [
+    "gwb",
+    "gwb-plugin"
+  ]
+}
