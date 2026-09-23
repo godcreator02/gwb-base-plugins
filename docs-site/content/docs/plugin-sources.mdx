@@ -8,7 +8,7 @@ docfirst: none
 
 包名 `@godcreator/gwb-plugin-sources`，不提供服务，只有四条命令：`plugin-sources.search`、`add`、`list`、
 `remove`。它回答两件事：配好的源上**有哪些插件可装**，**从哪些源装**。装、卸、升、条目管理在
-[gwb-plugin-manager](/docs/plugin-manager)，两个插件之间没有代码依赖：这里查到包名，交给
+gwb-plugin-manager（源码与文档在内核仓 gwb-kernel），两个插件之间没有代码依赖：这里查到包名，交给
 `plugin-manager.install` 去装。
 
 **依赖谁**：`gwbCommands` 是硬依赖（写在 `inject` 里），没有它四条命令都注册不上；`gwbSkills` 是局部注入，

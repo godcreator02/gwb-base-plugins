@@ -1,0 +1,29 @@
+---
+title: plugin-manager 迁往内核仓
+born-at: 2026-09-23T08:40
+type: choice
+parent: [2026-09-23-plugin-sources-split]
+label: 管理插件迁出
+domain: 插件
+---
+
+## 背景
+
+找插件与配包源拆成 gwb-plugin-sources 之后，plugin-manager 只剩安装与条目管理，而这部分依赖的是内核的内部约定：
+loader 条目树的结构（经 `ctx.fiber.entry.parent.tree` 取）、home 的文件布局、内核按真实路径解析包名。这些都不在
+内核公开的 `gwbKernel` 接口里，放在这个仓里测不到它们的变化。
+
+## 结论与边界
+
+plugin-manager 原样搬进内核仓 gwb-kernel 的 `plugins/plugin-manager/`：源码、测试、说明书与文档页一起搬，包名不变，
+版本 0.7.1 起从内核仓发布。这个仓删掉它的目录与文档页，总览、AGENTS、README 的插件表去掉这一行。内核仓的轨迹卡
+「plugin-manager 搬进内核仓」记录判断标准与后续的精简计划。人同意（2026-09-23）。
+
+## 否掉的候选
+
+- 留在这个仓、由内核提供正式的条目树接口——要往内核加东西，过不了内核的准入判据
+
+## 代价与遗留
+
+- 这个仓的插件（mcp、data、settings）的说明与代码里仍然提到 `plugin-manager.*` 命令，命令名不变，不用改
+- 在这个仓的历史里查 plugin-manager 的旧提交，要看 2026-09-23 之前的记录

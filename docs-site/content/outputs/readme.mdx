@@ -8,7 +8,8 @@ docfirst: none
 
 gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何界面包（构建产物检查拦着）。界面平台
 （shell / theme / baseui；react 与令牌表随 shell 包发布）在 `s28bv-gwbbase\gwb-ui-plugins`。
-此刻十个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）。
+此刻九个插件在役：command-http 已退役（从未发版，目录已于 2026-09-22 删除）；plugin-manager 依赖内核的内部约定，
+2026-09-23 搬进了内核仓 gwb-kernel 的 `plugins/`。
 验收仓（hello）已于 2026-09-13 整体退役——组装后的验收改由 devkit 模板当场生成。
 
 | 插件 | 包名 | 服务 |
@@ -21,7 +22,6 @@ gwb 的**无界面基础插件仓**——没有界面的插件，不依赖任何
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli` |
 | py-cli | `@godcreator/gwb-py-cli` | `ctx.gwbPyCli` |
 | logger | `@godcreator/gwb-logger` | `ctx.gwbLogger`（服务上没有方法） |
-| plugin-manager | `@godcreator/gwb-plugin-manager` | `ctx.gwbPluginManager`（安装、卸载、查新版本、升级） |
 | plugin-sources | `@godcreator/gwb-plugin-sources` | —（找插件、配包源，只有命令） |
 
 **各自进展到哪不在这里**——版本与进度只记在文档站的「路线」那一页，再抄一份必然不一致。

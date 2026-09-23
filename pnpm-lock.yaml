@@ -182,33 +182,6 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  plugins/plugin-manager:
-    devDependencies:
-      '@godcreator/gwb-commands':
-        specifier: workspace:*
-        version: link:../commands
-      '@godcreator/gwb-data':
-        specifier: workspace:*
-        version: link:../data
-      '@godcreator/gwb-plugin-api':
-        specifier: ^0.2.7
-        version: 0.2.7(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-repo-kit':
-        specifier: 0.3.0
-        version: 0.3.0
-      '@godcreator/gwb-settings':
-        specifier: workspace:*
-        version: link:../settings
-      '@godcreator/gwb-skills':
-        specifier: workspace:*
-        version: link:../skills
-      cordis:
-        specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
   plugins/plugin-sources:
     devDependencies:
       '@godcreator/gwb-commands':

@@ -1,8 +1,9 @@
 # gwb-base-plugins
 
 **gwb 的无界面基础插件仓**——没有界面的插件，全部只依赖词汇表包（`@godcreator/gwb-plugin-api`）的类型。
-在役十个：commands、data、settings、mcp、skills、node-cli、py-cli、logger(core)、
-plugin-manager(core)、plugin-sources；已退役的 command-http 目录已于 2026-09-22 删除（包从未发版，
+在役九个：commands、data、settings、mcp、skills、node-cli、py-cli、logger(core)、plugin-sources。
+plugin-manager 依赖内核的内部约定，2026-09-23 搬进了内核仓 gwb-kernel 的 `plugins/`，改它去那个仓。
+已退役的 command-http 目录已于 2026-09-22 删除（包从未发版，
 入口由 mcp 承担，理由见轨迹卡「command-http 退役」；同批删掉 hello/http/baseui/shell/
 theme 五个拆分后留下的目录，都没有 package.json）。**这个仓的插件不依赖任何界面包**：peer 与构建产物里不许出现
 shell / shared-react / tokens 三个包（构建产物检查拦着；后两个已于 D7 并进 shell、停止发布，检查照旧拦旧名字）。
