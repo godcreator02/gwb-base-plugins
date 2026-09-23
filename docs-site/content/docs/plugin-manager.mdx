@@ -77,7 +77,7 @@ home 的样子。install 等顺带装的 peer 也装完之后才查。
 
 磁盘上那份清单（home 的 `package.json`）与内存里的条目树，由 `reconcile` 对成一张表，**两边都不丢**：
 
-{/* ref file="../plugins/plugin-manager/src/inventory.ts" lines="165-192" */}
+{/* ref file="../plugins/plugin-manager/src/inventory.ts" lines="163-190" */}
 
 清单里有、条目树上没有的包，报成 `entries: []`——它可能是装了还没加条目的插件，也可能是共享包（永远不该有
 条目）。这里不下结论，界面用 `plugin-manager.shared` 那张表把共享包分出去。条目树上有、清单里没有的
