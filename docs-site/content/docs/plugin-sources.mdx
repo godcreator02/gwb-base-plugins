@@ -7,11 +7,11 @@ docfirst: none
 # gwb-plugin-sources
 
 包名 `@godcreator/gwb-plugin-sources`，不提供服务，只有四条命令：`plugin-sources.search`、`add`、`list`、
-`remove`。它回答两件事：配好的源上**有哪些插件可装**，**从哪些源装**。装、卸、升、条目管理在
-gwb-plugin-manager（源码与文档在内核仓 gwb-kernel），两个插件之间没有代码依赖：这里查到包名，交给
-`plugin-manager.install` 去装。
+`remove`。它回答两件事：配好的源上**有哪些插件可装**，**从哪些源装**。安装、卸载、升级与条目管理在
+插件管理 gwb-plugin-manager（在 devkit 仓 gwb-devkit 和 devkit 一起开发），两个插件之间没有代码依赖：
+这里查到包名，交给 `plugin-manager.install` 去装。
 
-**依赖谁**：`gwbCommands` 是硬依赖（写在 `inject` 里），没有它四条命令都注册不上；`gwbSkills` 是局部注入，
+**依赖谁**：`gwbCommands` 是硬依赖（写在 `inject` 里），没有它四条命令都登记不了；`gwbSkills` 是局部注入，
 没装说明书插件时照常工作，只是说明书 `gwb-plugin-sources` 不出现。
 
 {/* ref file="../plugins/plugin-sources/src/index.ts" lines="21-42" */}
@@ -20,7 +20,7 @@ gwb-plugin-manager（源码与文档在内核仓 gwb-kernel），两个插件之
 
 检索和安装必须查同一个源，否则「可装」列表里的包会装不上，或者源上有的包列不出来。pnpm 安装时按
 scope 读两份 npmrc（机器级 `~/.npmrc` 与 home 级 `<home>/.npmrc`），这里照同样的优先级找地址：
-先找 `@scope:registry=`，再找 `registry=`，每一种都是 home 级压过机器级，都没写就是 npm 官方源。
+先找 `@scope:registry=`，再找 `registry=`，每一种都是 home 级优先于机器级，都没写就是 npm 官方源。
 
 {/* ref file="../plugins/plugin-sources/src/sources.ts" lines="125-137" */}
 
@@ -37,7 +37,7 @@ scope 读两份 npmrc（机器级 `~/.npmrc` 与 home 级 `<home>/.npmrc`），�
 {/* ref file="../plugins/plugin-sources/src/search.ts" lines="1-24" */}
 
 不带参数的 `search` 查全部配好的源：两层 npmrc 里出现过的每个 scope，`@godcreator` 永远第一、
-其余按名字排。逐条源并发查，查成的并进 `packages`，没查成的在 `note` 里点名；全都没查成才 `ok: false`。
+其余按名字排。各条源并发查询，查询成功的合并进 `packages`，失败的在 `note` 里写明是哪条源；全部失败才 `ok: false`。
 插件管理窗格的「可装」列表用的就是这个：
 
 {/* ref file="../plugins/plugin-sources/src/index.ts" lines="179-237" */}
@@ -66,7 +66,7 @@ pnpm 也读、同名行还优先，但那里只放手工加的行：`list` 两�
 {/* ref file="../plugins/plugin-sources/src/index.ts" lines="353-371" */}
 
 写完做两道检查：重读文件，确认写进去的行在；再看 home 级有没有同名 scope 指向别的地址——有的话
-pnpm 用的是 home 级那条，`note` 里会说。回执里的行 **token 一律遮掉**（`_authToken=***`），凭据不进回执、
+pnpm 用的是 home 级那条，`note` 里会写明。回执里的行 **token 一律遮盖**（`_authToken=***`），凭据不进回执、
 不进日志：
 
 {/* ref file="../plugins/plugin-sources/src/index.ts" lines="293-316" */}
