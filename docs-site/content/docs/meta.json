@@ -1,6 +1,7 @@
 {
   "pages": [
     "overview",
+    "commands",
     "data",
     "logger",
     "skills",

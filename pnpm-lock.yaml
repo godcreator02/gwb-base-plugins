@@ -76,6 +76,21 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  plugins/commands:
+    devDependencies:
+      '@godcreator/gwb-plugin-api':
+        specifier: ^0.2.7
+        version: 0.2.7(cordis@4.0.0-rc.9)
+      '@godcreator/gwb-repo-kit':
+        specifier: 0.3.0
+        version: 0.3.0
+      cordis:
+        specifier: 4.0.0-rc.9
+        version: 4.0.0-rc.9
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
   plugins/data:
     devDependencies:
       '@godcreator/gwb-plugin-api':
@@ -94,8 +109,8 @@ importers:
   plugins/logger:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -122,8 +137,8 @@ importers:
         version: 4.5.4
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-node-cli':
         specifier: workspace:*
         version: link:../node-cli
@@ -146,8 +161,8 @@ importers:
   plugins/node-cli:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -170,8 +185,8 @@ importers:
   plugins/plugin-sources:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -194,8 +209,8 @@ importers:
   plugins/py-cli:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -218,8 +233,8 @@ importers:
   plugins/settings:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -239,8 +254,8 @@ importers:
   plugins/skills:
     devDependencies:
       '@godcreator/gwb-commands':
-        specifier: ^0.4.6
-        version: 0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))
+        specifier: workspace:*
+        version: link:../commands
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -531,11 +546,6 @@ packages:
         optional: true
       react:
         optional: true
-
-  '@godcreator/gwb-commands@0.4.6':
-    resolution: {integrity: sha512-/tbM7a5+ikX6GwGt1tyAtaDQbPcdoB1yHGM8c3JtoPNRfKw9qINSbcQIVkJ5cdsu58jLFNdCh9hGq6w12n61fg==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-commands/-/0.4.6/gwb-commands-0.4.6.tgz}
-    peerDependencies:
-      '@godcreator/gwb-plugin-api': ^0.2.7
 
   '@godcreator/gwb-plugin-api@0.2.7':
     resolution: {integrity: sha512-PHqqy71X5jL6mziHVAWt7SRJJgioWlkZPXnv4CZFk2fV8BvuAgTcBGu2ekEqcYLoD7Ft+UcBcRZAizEuAVxxOQ==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-plugin-api/-/0.2.7/gwb-plugin-api-0.2.7.tgz}
@@ -3169,10 +3179,6 @@ snapshots:
       react: 19.3.0
     transitivePeerDependencies:
       - supports-color
-
-  '@godcreator/gwb-commands@0.4.6(@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9))':
-    dependencies:
-      '@godcreator/gwb-plugin-api': 0.2.7(cordis@4.0.0-rc.9)
 
   '@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9)':
     dependencies:

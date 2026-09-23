@@ -27,7 +27,7 @@
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "^0.4.6",
+    "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "^0.2.7",
     "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "workspace:*",
