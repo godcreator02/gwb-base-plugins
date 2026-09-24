@@ -57,7 +57,7 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 **命令行运行插件的登记**：`gwbNodeCli.register` 登记一条命令行工具时，同时用同一个名字调用 `gwbCommands.register`，`plugin` 默认取调用方的包名，处理函数把总线参数转成一次子进程调用；注销时两条一起注销：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="140-158" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-134" */}
 
 gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 

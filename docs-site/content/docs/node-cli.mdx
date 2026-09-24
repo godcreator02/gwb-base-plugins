@@ -42,9 +42,9 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 | 输出全量文件 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`，路径在回执的 `spillPath`；写不了时照样给尾部，只是没有 `spillPath` | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="15-41" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="9-34" */}
 
-{/* ref file="../plugins/node-cli/src/run.ts" lines="26-44" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="14-32" */}
 
 {/* has file="../plugins/node-cli/src/index.ts" text="export const LIST_COMMAND = 'node-cli.list'" */}
 
@@ -64,7 +64,7 @@ export function apply(ctx: GwbContext) {
 
 按次给的 `cwd` 必须是存在的目录的绝对路径：不是字符串、是相对路径、目录不存在，三种各回一句说明要什么的错误，不抛错。经服务的 `run` 与经命令总线调用走的是同一段检查：
 
-{/* ref file="../plugins/node-cli/src/invoke.ts" lines="33-49" */}
+{/* ref file="../plugins/node-cli/src/invoke.ts" lines="26-41" */}
 
 ## 依赖
 
