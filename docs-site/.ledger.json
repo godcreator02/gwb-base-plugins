@@ -189,13 +189,10 @@
     "has ../plugins/commands/src/registry.ts \"export interface GwbCommands {\"": {
       "kind": "has"
     },
-    "has ../plugins/commands/src/index.ts \"ctx.provide('gwbCommands', api)\"": {
-      "kind": "has"
-    },
     "../plugins/commands/src/registry.ts:37-56": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "55b92ff7e1cd029b66361626a3cfa58d0520963d",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         37,
         56
@@ -204,8 +201,8 @@
     },
     "../plugins/commands/src/registry.ts:62-84": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "55b92ff7e1cd029b66361626a3cfa58d0520963d",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         62,
         84
@@ -217,6 +214,19 @@
     },
     "has ../plugins/commands/src/index.ts \"interface SkillMount {\"": {
       "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
+      "kind": "has"
+    },
+    "../plugins/commands/src/index.ts:48-55": {
+      "kind": "git",
+      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "lines": [
+        48,
+        55
+      ],
+      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
     }
   },
   "content/docs/data.mdx": {
@@ -260,30 +270,20 @@
     "../tsconfig.base.json:4-6": {
       "kind": "git",
       "blob": "23ff4d59b9d16c3de59e5a4118dd445446a6e837",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         4,
         6
       ],
       "hash": "c23b82c3d70bd698be232a377d527c1b45cbc6c24daeb87a7069dee02a27f031"
     },
-    "../plugins/commands/tests/artifact.test.ts:21-43": {
-      "kind": "git",
-      "blob": "43d9ad1e6e6f66e10ee0668a5943c71ed79b391e",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        21,
-        43
-      ],
-      "hash": "177237d94a9d1a8ebe460d30de7f03c8c21d7fd5a7061ac5a76af8e26492555c"
-    },
     "has ../plugins/commands/package.json \"peerDependencies\"": {
       "kind": "has"
     },
     "../plugins/commands/src/registry.ts:43-55": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         43,
         55
@@ -292,38 +292,18 @@
     },
     "../plugins/commands/src/registry.ts:62-84": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         62,
         84
       ],
       "hash": "7ac3e59e8f359c38384795ea39e34e7003ac524221dd62acbb57ad9e6c5765ed"
     },
-    "../plugins/commands/src/index.ts:30-37": {
-      "kind": "git",
-      "blob": "d07c274e17254856126c1f36a81fb27d8893082a",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        30,
-        37
-      ],
-      "hash": "b7489616ce4522aa04306d0bdffff9a79e892c220bd53eb2ef0699e3d83c951c"
-    },
-    "../plugins/logger/src/index.ts:133-143": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        133,
-        143
-      ],
-      "hash": "b24212a8d7f3b39811edd1778535db2c0e2efe4ce17f28d6dd4bff96bd375a58"
-    },
     "../plugins/data/src/index.ts:61-78": {
       "kind": "git",
       "blob": "4690755968c257d619bafdf4650892ff68de0415",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         61,
         78
@@ -333,7 +313,7 @@
     "../plugins/data/src/paths.ts:35-64": {
       "kind": "git",
       "blob": "717f5f04e879d7741d0cfb0ea8551be849ab53d6",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         35,
         64
@@ -343,7 +323,7 @@
     "../plugins/settings/src/paths.ts:60-92": {
       "kind": "git",
       "blob": "419e7f6de1bf16680aa946b121f3e8951ac6de2e",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         60,
         92
@@ -353,7 +333,7 @@
     "../plugins/mcp/src/tools.ts:23-55": {
       "kind": "git",
       "blob": "c82c94bd44998e99bdf509db1b18ffb91db3c2fd",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         23,
         55
@@ -363,12 +343,32 @@
     "../plugins/mcp/src/index.ts:234-246": {
       "kind": "git",
       "blob": "087cd4019f9bb4a958ebaf7a13e2edfadbfb60be",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         234,
         246
       ],
       "hash": "3cfffe9e9c07557a4886156f00e3cbfac7e0dc347afefce4cb1a2bd4d16dc228"
+    },
+    "../plugins/commands/tests/artifact.test.ts:23-45": {
+      "kind": "git",
+      "blob": "ac7ca04cf91b5003264a4f2e77df00d8488017f0",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "lines": [
+        23,
+        45
+      ],
+      "hash": "7562d302f5f261fc46f65383b8f5cedab32070a13fda46412685b5517025a350"
+    },
+    "../plugins/commands/src/index.ts:48-55": {
+      "kind": "git",
+      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "lines": [
+        48,
+        55
+      ],
+      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
     }
   },
   "content/docs/seams/agent-surface.mdx": {
@@ -464,21 +464,18 @@
   "content/docs/seams/bus.mdx": {
     "../plugins/commands/src/registry.ts:3-19": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         3,
         19
       ],
-      "hash": "b575ed496167bd71b763a8e4673a159ff062da750cbcbeb93aa23ad3e249b871"
-    },
-    "has ../plugins/commands/src/index.ts \"ctx.provide('gwbCommands', api)\"": {
-      "kind": "has"
+      "hash": "2da7c389165715511332a1077d5fc57c2d1b494497678993df738c5ae08910e2"
     },
     "../plugins/commands/src/registry.ts:37-56": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         37,
         56
@@ -487,8 +484,8 @@
     },
     "../plugins/commands/src/registry.ts:62-84": {
       "kind": "git",
-      "blob": "e9b2387ae5542c73331e3c6e9ff748533c8e1e75",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         62,
         84
@@ -510,12 +507,31 @@
     "../plugins/node-cli/src/index.ts:140-158": {
       "kind": "git",
       "blob": "05b9721c8351c0a748ec7f05008ef2722b407e03",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
       "lines": [
         140,
         158
       ],
       "hash": "1b0bc2fef3dbc12abda086f0eda60a4a353d84b154985c5a68778f0333b0ad24"
+    },
+    "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
+      "kind": "has"
+    },
+    "../plugins/commands/src/index.ts:48-55": {
+      "kind": "git",
+      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
+      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "lines": [
+        48,
+        55
+      ],
+      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
+    },
+    "has ../plugins/commands/tests/service.test.ts \"调用方卸载后，它登记的命令自动注销\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/tests/service.test.ts \"调用方自己包了 ctx.effect 再卸载，不出错，命令照样注销\"": {
+      "kind": "has"
     }
   },
   "content/docs/seams/cli.mdx": {
