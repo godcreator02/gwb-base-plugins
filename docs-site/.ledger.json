@@ -189,44 +189,54 @@
     "has ../plugins/commands/src/registry.ts \"export interface GwbCommands {\"": {
       "kind": "has"
     },
-    "../plugins/commands/src/registry.ts:37-56": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        37,
-        56
-      ],
-      "hash": "6e8dc63694b93c3c526c924796e9d75eff2525a0ade3d168ada50eead4c4fbc7"
-    },
-    "../plugins/commands/src/registry.ts:62-84": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        62,
-        84
-      ],
-      "hash": "7ac3e59e8f359c38384795ea39e34e7003ac524221dd62acbb57ad9e6c5765ed"
-    },
-    "has ../plugins/commands/src/index.ts \"mount.gwbSkills.register(new URL('../skills/', import.meta.url))\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/src/index.ts \"interface SkillMount {\"": {
-      "kind": "has"
-    },
     "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
       "kind": "has"
     },
-    "../plugins/commands/src/index.ts:48-55": {
+    "../plugins/commands/src/index.ts:40-46": {
       "kind": "git",
-      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "blob": "63d30b17e9905215310b941bcf0989a599aa4d36",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
-        48,
-        55
+        40,
+        46
       ],
-      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
+      "hash": "7cd6be23cb64142459acb55326ed60010ecbda54e3ddb4fd605c4a60f088c4c9"
+    },
+    "../plugins/commands/src/registry.ts:76-85": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        76,
+        85
+      ],
+      "hash": "ef008485bc6d44b96a78a28e053c4044bd85bae9fa31131706e9af9202010000"
+    },
+    "../plugins/commands/src/registry.ts:91-103": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        91,
+        103
+      ],
+      "hash": "888f0c219a2c9845fc91c184b10c12342e4b18fd7b777c683969f69ed600da93"
+    },
+    "../plugins/commands/src/registry.ts:61-69": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        61,
+        69
+      ],
+      "hash": "0ad81db87dd201f032c9bdcab9e49f0cc2a83ff9ca57eeff9ddce59781f7bf43"
+    },
+    "has ../plugins/commands/src/index.ts \"contextWithSkills.effect(() => gwbSkills.register(OWN_SKILLS_DIR))\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"interface SkillDirectoryRegistrar {\"": {
+      "kind": "has"
     }
   },
   "content/docs/data.mdx": {
@@ -270,7 +280,7 @@
     "../tsconfig.base.json:4-6": {
       "kind": "git",
       "blob": "23ff4d59b9d16c3de59e5a4118dd445446a6e837",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         4,
         6
@@ -280,30 +290,10 @@
     "has ../plugins/commands/package.json \"peerDependencies\"": {
       "kind": "has"
     },
-    "../plugins/commands/src/registry.ts:43-55": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        43,
-        55
-      ],
-      "hash": "864845dbf1309b658dcfb8e2225fca064a316f9fdafbf61faa3eb4650d37ce72"
-    },
-    "../plugins/commands/src/registry.ts:62-84": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        62,
-        84
-      ],
-      "hash": "7ac3e59e8f359c38384795ea39e34e7003ac524221dd62acbb57ad9e6c5765ed"
-    },
     "../plugins/data/src/index.ts:61-78": {
       "kind": "git",
       "blob": "4690755968c257d619bafdf4650892ff68de0415",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         61,
         78
@@ -313,7 +303,7 @@
     "../plugins/data/src/paths.ts:35-64": {
       "kind": "git",
       "blob": "717f5f04e879d7741d0cfb0ea8551be849ab53d6",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         35,
         64
@@ -323,7 +313,7 @@
     "../plugins/settings/src/paths.ts:60-92": {
       "kind": "git",
       "blob": "419e7f6de1bf16680aa946b121f3e8951ac6de2e",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         60,
         92
@@ -333,7 +323,7 @@
     "../plugins/mcp/src/tools.ts:23-55": {
       "kind": "git",
       "blob": "c82c94bd44998e99bdf509db1b18ffb91db3c2fd",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         23,
         55
@@ -343,7 +333,7 @@
     "../plugins/mcp/src/index.ts:234-246": {
       "kind": "git",
       "blob": "087cd4019f9bb4a958ebaf7a13e2edfadbfb60be",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         234,
         246
@@ -353,22 +343,62 @@
     "../plugins/commands/tests/artifact.test.ts:23-45": {
       "kind": "git",
       "blob": "ac7ca04cf91b5003264a4f2e77df00d8488017f0",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         23,
         45
       ],
       "hash": "7562d302f5f261fc46f65383b8f5cedab32070a13fda46412685b5517025a350"
     },
-    "../plugins/commands/src/index.ts:48-55": {
+    "../plugins/commands/src/registry.ts:44-50": {
       "kind": "git",
-      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
-        48,
-        55
+        44,
+        50
       ],
-      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
+      "hash": "537b170608166e1e41c00a18b894b9296c4938b7dce065f1a39e6caaa6e50889"
+    },
+    "../plugins/commands/src/registry.ts:76-85": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        76,
+        85
+      ],
+      "hash": "ef008485bc6d44b96a78a28e053c4044bd85bae9fa31131706e9af9202010000"
+    },
+    "../plugins/commands/src/registry.ts:91-103": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        91,
+        103
+      ],
+      "hash": "888f0c219a2c9845fc91c184b10c12342e4b18fd7b777c683969f69ed600da93"
+    },
+    "../plugins/commands/src/registry.ts:61-69": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        61,
+        69
+      ],
+      "hash": "0ad81db87dd201f032c9bdcab9e49f0cc2a83ff9ca57eeff9ddce59781f7bf43"
+    },
+    "../plugins/commands/src/index.ts:40-46": {
+      "kind": "git",
+      "blob": "63d30b17e9905215310b941bcf0989a599aa4d36",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        40,
+        46
+      ],
+      "hash": "7cd6be23cb64142459acb55326ed60010ecbda54e3ddb4fd605c4a60f088c4c9"
     }
   },
   "content/docs/seams/agent-surface.mdx": {
@@ -464,33 +494,13 @@
   "content/docs/seams/bus.mdx": {
     "../plugins/commands/src/registry.ts:3-19": {
       "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         3,
         19
       ],
       "hash": "2da7c389165715511332a1077d5fc57c2d1b494497678993df738c5ae08910e2"
-    },
-    "../plugins/commands/src/registry.ts:37-56": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        37,
-        56
-      ],
-      "hash": "6e8dc63694b93c3c526c924796e9d75eff2525a0ade3d168ada50eead4c4fbc7"
-    },
-    "../plugins/commands/src/registry.ts:62-84": {
-      "kind": "git",
-      "blob": "263999d9d56c634559bb82ff0243f2da909a4630",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        62,
-        84
-      ],
-      "hash": "7ac3e59e8f359c38384795ea39e34e7003ac524221dd62acbb57ad9e6c5765ed"
     },
     "has ../plugins/py-cli/src/index.ts \"usage: spec.usage ?? INVOKE_SHAPE, plugin }\"": {
       "kind": "has"
@@ -507,7 +517,7 @@
     "../plugins/node-cli/src/index.ts:140-158": {
       "kind": "git",
       "blob": "05b9721c8351c0a748ec7f05008ef2722b407e03",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         140,
         158
@@ -517,21 +527,51 @@
     "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
       "kind": "has"
     },
-    "../plugins/commands/src/index.ts:48-55": {
-      "kind": "git",
-      "blob": "565f06975a734ffe724e06d2ffe88c6a04f99221",
-      "commit": "7b2798f267683ad2b3dbdcde8bb6e70eb8f753b2",
-      "lines": [
-        48,
-        55
-      ],
-      "hash": "8f657f8a4ee11e0c9ff903cb2c832928ce028858a993e64d23f5f40145080502"
-    },
     "has ../plugins/commands/tests/service.test.ts \"调用方卸载后，它登记的命令自动注销\"": {
       "kind": "has"
     },
     "has ../plugins/commands/tests/service.test.ts \"调用方自己包了 ctx.effect 再卸载，不出错，命令照样注销\"": {
       "kind": "has"
+    },
+    "../plugins/commands/src/index.ts:40-46": {
+      "kind": "git",
+      "blob": "63d30b17e9905215310b941bcf0989a599aa4d36",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        40,
+        46
+      ],
+      "hash": "7cd6be23cb64142459acb55326ed60010ecbda54e3ddb4fd605c4a60f088c4c9"
+    },
+    "../plugins/commands/src/registry.ts:76-85": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        76,
+        85
+      ],
+      "hash": "ef008485bc6d44b96a78a28e053c4044bd85bae9fa31131706e9af9202010000"
+    },
+    "../plugins/commands/src/registry.ts:91-103": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        91,
+        103
+      ],
+      "hash": "888f0c219a2c9845fc91c184b10c12342e4b18fd7b777c683969f69ed600da93"
+    },
+    "../plugins/commands/src/registry.ts:61-69": {
+      "kind": "git",
+      "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "lines": [
+        61,
+        69
+      ],
+      "hash": "0ad81db87dd201f032c9bdcab9e49f0cc2a83ff9ca57eeff9ddce59781f7bf43"
     }
   },
   "content/docs/seams/cli.mdx": {
@@ -1185,20 +1225,17 @@
     "../plugins/skills/src/index.ts:39-51": {
       "kind": "git",
       "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         39,
         51
       ],
       "hash": "ea51c073f6fd77699f855354a3365f7f0e3f2ca45b14a63756a7196d8f5efee8"
     },
-    "has ../plugins/commands/src/index.ts \"mount.gwbSkills.register(new URL('../skills/', import.meta.url))\"": {
-      "kind": "has"
-    },
     "../plugins/commands/package.json:18-22": {
       "kind": "git",
-      "blob": "9a2d1c2d890ccd153955ebd84baa8800e9a3b96a",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "blob": "ece78e4bcf278c1853b33375e8d68348b940dac2",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         18,
         22
@@ -1208,7 +1245,7 @@
     "../plugins/skills/src/collect.ts:12-23": {
       "kind": "git",
       "blob": "c80548b31aca80ba32f3c39e60f2a8eebabe0e53",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         12,
         23
@@ -1218,7 +1255,7 @@
     "../plugins/skills/src/index.ts:118-145": {
       "kind": "git",
       "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         118,
         145
@@ -1228,7 +1265,7 @@
     "../plugins/skills/src/index.ts:151-162": {
       "kind": "git",
       "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         151,
         162
@@ -1238,7 +1275,7 @@
     "../plugins/skills/src/index.ts:72-103": {
       "kind": "git",
       "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "915e8d6627fb85630a506ca1cb779207c35a7871",
+      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
       "lines": [
         72,
         103
@@ -1252,6 +1289,9 @@
       "kind": "has"
     },
     "has ../plugins/skills/tests/collect.test.ts \"缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)\"": {
       "kind": "has"
     }
   }
