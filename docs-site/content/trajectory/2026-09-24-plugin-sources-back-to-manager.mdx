@@ -1,0 +1,31 @@
+---
+title: 找插件与配包源并回插件管理
+born-at: 2026-09-24T09:50
+type: choice
+parent: [2026-09-23-plugin-sources-split]
+label: 包源并回插件管理
+domain: 插件
+---
+
+## 背景
+
+2026-09-23 把找插件、配包源的四条命令从 plugin-manager 拆成独立插件 `@godcreator/gwb-plugin-sources`，理由是
+plugin-manager 要搬进内核仓，而这四条只和 npm 源打交道、不碰内核，放进内核仓的插件管理应该只管和内核相关的事。
+2026-09-24 plugin-manager 没有留在内核仓，改去 devkit 仓 gwb-devkit，和 devkit 一起开发。
+
+supersedes:: [2026-09-23-plugin-sources-split](2026-09-23-plugin-sources-split.md)
+
+## 结论与边界
+
+人决定（2026-09-24）找插件与配包源并回插件管理：插件管理已经不在内核仓，拆分的理由不在了；找插件、配包源、装插件是
+同一件事，界面上也是同一个窗格。
+
+- 这个仓删掉 `plugins/plugin-sources`、它的插件页与接缝页「包源与检索」；文档站改成八个插件、十条接缝，旧网址临时跳转到入口页
+- 四条命令由 devkit 仓的插件管理重新提供，命令名恢复拆分前的 `plugin-manager.search`、`plugin-manager.source.add`、
+  `plugin-manager.source.list`、`plugin-manager.source.remove`，参数与回执不变。那边的改动由 devkit 仓另做
+- 设置插件的 `settings.get` 仍是按位置读凭据的路：读 `gitea` 分区 `base-url` 与 `token` 的一方换成插件管理
+
+## 代价与遗留
+
+- `@godcreator/gwb-plugin-sources` 0.1.0 这个包不再维护；装了它的 home 要由插件管理卸掉那条条目
+- 调用过 `plugin-sources.*` 的界面与 agent 说明书要改回 `plugin-manager.*`，归各自的仓

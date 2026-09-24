@@ -38,7 +38,7 @@ export { SHARED_SECTION } from './paths.js'
  */
 
 const NAME = 'gwb-settings'
-/** 登记命令时的归属：包名——agent 侧的操作键认它，不认短名 */
+/** 登记命令时写的 plugin：包名。MCP 入口按包名给命令分组，不认短名 */
 const PKG = '@godcreator/gwb-settings'
 
 /** 四条命令。登记与调用两处都用这几个常量 */
@@ -92,7 +92,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     this.ctx.effect(() => () => this.cancelWrite())
     // 命令是**可选**的：没有命令总线时服务照样完整，只是界面调不到——这一点跟
     // gwb-shell 不同，它没有命令总线就什么窗格都开不出来。
-    // 嵌套注入：命令总线在才登记，它停用就自动注销，后加载的也接得上
+    // 局部注入：命令总线在才登记，它停用就自动注销，它后加载时也会登记
     this.ctx.inject(['gwbCommands'], (ctx) => {
       const cli = ctx.gwbCommands
       // inject 保证了它在，这句只是把类型收窄
@@ -105,7 +105,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       )
       // 读设置有两条命令，判断不同：`settings.all` 是**全部列出**（一调就把整个 home 的设置列出来），
       // secret 项的明文在那里去掉；这一条是**按位置读**（调用方先知道 section/key），照旧回明文——
-      // 插件按位置读别的分区里的凭据是现有用法（plugin-sources 读 gitea 分区的 token
+      // 插件按位置读别的分区里的凭据是现有用法（插件管理配包源时读 gitea 分区的 token
       // 就用这条），两条都去掉明文只会挡住正当的读取，而拦不住真想拿的人
       ctx.effect(() =>
         cli.register({ name: GET_COMMAND, description: '按位置读一项设置（secret 项也回明文）', usage: '参数 { section, key }', plugin: PKG }, (args) =>

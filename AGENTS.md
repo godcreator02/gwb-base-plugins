@@ -1,7 +1,7 @@
 # gwb-base-plugins
 
-**gwb 的无界面基础插件仓**：九个插件 commands、mcp、skills、settings、data、logger、node-cli、py-cli、plugin-sources，
-全部只依赖词汇表包（`@godcreator/gwb-plugin-api`）的类型。插件管理（plugin-manager）在 devkit 仓 gwb-devkit，
+**gwb 的无界面基础插件仓**：八个插件 commands、mcp、skills、settings、data、logger、node-cli、py-cli，
+全部只依赖词汇表包（`@godcreator/gwb-plugin-api`）的类型。插件管理（plugin-manager，含找插件、配包源）在 devkit 仓 gwb-devkit，
 界面插件（shell、theme、baseui）在 gwb-ui-plugins，内核与词汇表包在 gwb-kernel，改它们去那些仓。
 **这个仓的插件不依赖任何界面包**：peer 里不写，构建产物检查只放行名单里的包名。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。
@@ -42,8 +42,8 @@ README 第一行运行一次能得到同样结论）、**进 git**、**不进 pn
 
 文档站在 `docs-site/`，端口 4315（`pnpm --filter gwb-base-plugins-docs-site dev`）。现状区：
 
-* **入口页** `/docs`：接缝图，插件之间的十一条接缝各有一页（`/docs/seams/…`）
-* **九个插件页**：每页写功能、接口（各属于哪条接缝）、依赖、不做的事
+* **入口页** `/docs`：接缝图，插件之间的十条接缝各有一页（`/docs/seams/…`）
+* **八个插件页**：每页写功能、接口（各属于哪条接缝）、依赖、不做的事
 * **关键设计** `/docs/design`、**开发** `/docs/develop`、**遇到过的问题** `/docs/pitfalls`
 
 其余五个区：轨迹（`trajectory/`）、交接（`spec/`）、未来（`future/`）、生成文件正本（`outputs/`）、反馈（`feedback/`）。

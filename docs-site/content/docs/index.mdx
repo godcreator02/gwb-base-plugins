@@ -1,24 +1,24 @@
 ---
 title: 从这里开始
-description: 基础插件仓是什么；九个插件之间、插件与仓外模块之间靠哪十一条接缝连起来（接缝图）；每个插件讲什么、带着不同的目的来该接着读哪几页
+description: 基础插件仓是什么；八个插件之间、插件与仓外模块之间靠哪十条接缝连起来（接缝图）；每个插件讲什么、带着不同的目的来该接着读哪几页
 ---
 
-**本页回答**：基础插件仓是什么；九个插件怎样拼在一起，每两个模块之间靠哪条接缝相连、接口是什么、细节在哪一页；每个插件讲什么、在哪一页；带着不同的目的来，接着读哪几页。
+**本页回答**：基础插件仓是什么；八个插件怎样互相连接，每两个模块之间靠哪条接缝相连、接口是什么、细节在哪一页；每个插件讲什么、在哪一页；带着不同的目的来，接着读哪几页。
 
 ## 是什么
 
-god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具、插件来源。它们都是 home 里 `cordis.yml` 点名的普通插件，只依赖内核词汇表包的类型，不依赖任何界面包；界面在界面插件仓，插件管理在 devkit 仓，内核在内核仓。为什么这么切见[关键设计](/docs/design)，怎么改、怎么发版见[开发](/docs/develop)。
+god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 点名的普通插件，只依赖内核词汇表包的类型，不依赖任何界面包；界面在界面插件仓，插件管理（装插件、找插件、配包源）在 devkit 仓，内核在内核仓。为什么这么切见[关键设计](/docs/design)，怎么改、怎么发版见[开发](/docs/develop)。
 
 ## 接缝图
 
 <Diagram name="seam-map" title="虚线框是本仓，连线是接缝，编号对应下面的表">
-- 本仓九个插件：MCP 入口 `gwb-mcp`、日志 `gwb-logger`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、插件来源 `gwb-plugin-sources`、数据 `gwb-data`
-- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；插件管理（devkit 仓）；cordis loader；子进程（Electron 以 node 模式运行、uv）；包源（npmrc、npm registry）
+- 本仓八个插件：MCP 入口 `gwb-mcp`、日志 `gwb-logger`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`
+- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；插件管理（devkit 仓）；cordis loader；子进程（Electron 以 node 模式运行、uv）
 - 各插件都经接缝 1 登记自己的命令；图上只画命令总线到别的插件那一条
-- 实线接缝有代码接口；点线接缝（8、11）只靠约定
+- 实线接缝有代码接口；点线接缝 8 只靠约定
 </Diagram>
 
-## 十一条接缝
+## 十条接缝
 
 | # | 接缝 | 连接的模块 | 接口 | 细节在 |
 | --- | --- | --- | --- | --- |
@@ -32,7 +32,6 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 8 | 条目身份（约定） | 数据、设置、说明书、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 调用它们的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run` | [命令行工具](/docs/seams/cli) |
 | 10 | 日志 | 日志 ↔ 内核日志流、日志窗格 | cordis 日志的 exporter 与缓冲、推给页面的事件、`logger.backlog` / `logger.where` | [日志](/docs/seams/log) |
-| 11 | 包源与检索（约定） | 插件来源 ↔ npmrc、npm registry、gitea 插件的设置 | npmrc 的格式、`/-/v1/search`、`settings.get {section:'gitea'}` | [包源与检索](/docs/seams/sources) |
 
 ## 包
 
@@ -46,7 +45,6 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | `@godcreator/gwb-logger` | 日志聚合，给日志窗格供数据 | [gwb-logger](/docs/logger) |
 | `@godcreator/gwb-node-cli` | 把 node 写的命令行工具变成命令 | [gwb-node-cli](/docs/node-cli) |
 | `@godcreator/gwb-py-cli` | 把 python 写的命令行工具变成命令 | [gwb-py-cli](/docs/py-cli) |
-| `@godcreator/gwb-plugin-sources` | 找插件、配包源 | [gwb-plugin-sources](/docs/plugin-sources) |
 
 ## 怎么读这张图
 

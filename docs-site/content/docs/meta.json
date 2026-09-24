@@ -13,7 +13,6 @@
     "data",
     "logger",
     "node-cli",
-    "py-cli",
-    "plugin-sources"
+    "py-cli"
   ]
 }

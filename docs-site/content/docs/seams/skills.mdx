@@ -8,7 +8,7 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 ## 连接的模块
 
 - [说明书插件](/docs/skills) `@godcreator/gwb-skills`：提供服务 `ctx.gwbSkills`，登记命令 `skill.list`、`skill.read`；`inject` 里有 `gwbCommands`
-- 带说明书的插件：本仓的 commands、settings、mcp、node-cli、py-cli、plugin-sources，以及别的仓里的插件。各自用 `ctx.inject(['gwbSkills'], …)` 局部注入，没装说明书插件时照常加载
+- 带说明书的插件：本仓的 commands、settings、mcp、node-cli、py-cli，以及别的仓里的插件。各自用 `ctx.inject(['gwbSkills'], …)` 局部注入，没装说明书插件时照常加载
 - 读说明书的一方：agent 经 MCP 入口 `run` 调 `skill.read`；MCP 插件用 `list()` 拼 `index` 里的说明书清单（见[命令表开给 agent](/docs/seams/agent-surface)）
 
 ## 接口

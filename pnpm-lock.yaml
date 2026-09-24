@@ -182,30 +182,6 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
-  plugins/plugin-sources:
-    devDependencies:
-      '@godcreator/gwb-commands':
-        specifier: workspace:*
-        version: link:../commands
-      '@godcreator/gwb-plugin-api':
-        specifier: ^0.2.7
-        version: 0.2.7(cordis@4.0.0-rc.9)
-      '@godcreator/gwb-repo-kit':
-        specifier: 0.3.0
-        version: 0.3.0
-      '@godcreator/gwb-skills':
-        specifier: workspace:*
-        version: link:../skills
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.13.3
-      cordis:
-        specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
-
   plugins/py-cli:
     devDependencies:
       '@godcreator/gwb-commands':

@@ -7,7 +7,7 @@ description: 改这个仓的插件时怎么准备、怎么构建、提交前跑�
 
 ## 什么时候进这个仓
 
-改[关键设计](/docs/design)里列的九个插件才进这个仓。插件管理在 devkit 仓 gwb-devkit，界面插件在 gwb-ui-plugins，内核与词汇表包在 gwb-kernel。动手前先读内核仓的 `AGENTS.md`，那是 gwb 各仓共同规矩的正本；写插件的完整流程（新建、修改、验证、取证）在 devkit 的说明书 `gwb-devkit`，经 MCP 入口 `run` 调 `skill.read {"name":"gwb-devkit"}` 读。
+改[关键设计](/docs/design)里列的八个插件才进这个仓。插件管理（装插件、找插件、配包源）在 devkit 仓 gwb-devkit，界面插件在 gwb-ui-plugins，内核与词汇表包在 gwb-kernel。动手前先读内核仓的 `AGENTS.md`，那是 gwb 各仓共同规矩的正本；写插件的完整流程（新建、修改、验证、取证）在 devkit 的说明书 `gwb-devkit`，经 MCP 入口 `run` 调 `skill.read {"name":"gwb-devkit"}` 读。
 
 ## 第一次准备与构建
 
@@ -30,7 +30,7 @@ pnpm check
 
 依次是类型检查（仓根 `tsc --noEmit`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。测试有三类：
 
-- **单元测试**：纯逻辑，比如命令表、路径与名字规则、MCP 的 `index`/`search` 返回、npmrc 的读写
+- **单元测试**：纯逻辑，比如命令表、路径与名字规则、MCP 的 `index`/`search` 返回、设置的解析顺序
 - **构建产物检查**（`tests/artifact.test.ts`）：相对 import 带 `.js`、包名 import 只有名单里的。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了
 - **self-report 检查**（`tests/self-report.test.ts`，检查逻辑在 `@godcreator/gwb-repo-kit`）：`package.json` 的 `description` 写齐服务名、说明书份数、命令条数；`gwb.provides` 与源码提供的服务一一对应；源码 `inject` 的每个服务名都出现在这个站的现状区。改了插件的服务、依赖或说明书，同一个提交里改插件页
 

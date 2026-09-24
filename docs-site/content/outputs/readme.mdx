@@ -5,9 +5,9 @@ description: 仓根 README.md 由这一页生成——改这里，运行 docfirs
 
 # gwb-base-plugins
 
-gwb 的**无界面基础插件仓**：九个插件，全部只依赖词汇表包 `@godcreator/gwb-plugin-api` 的类型，不依赖任何界面包。
+gwb 的**无界面基础插件仓**：八个插件，全部只依赖词汇表包 `@godcreator/gwb-plugin-api` 的类型，不依赖任何界面包。
 界面插件（shell / theme / baseui；react 与令牌表随 shell 包发布）在界面插件仓 gwb-ui-plugins；
-插件管理（plugin-manager）在 devkit 仓 gwb-devkit，和 devkit 一起开发；内核在 gwb-kernel。
+插件管理（plugin-manager，含找插件、配包源）在 devkit 仓 gwb-devkit，和 devkit 一起开发；内核在 gwb-kernel。
 
 | 插件 | 包名 | 服务 |
 | --- | --- | --- |
@@ -19,7 +19,6 @@ gwb 的**无界面基础插件仓**：九个插件，全部只依赖词汇表包
 | logger | `@godcreator/gwb-logger` | `ctx.gwbLogger`（服务上没有方法；日志经两条命令取） |
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli`（运行 node 命令行工具） |
 | py-cli | `@godcreator/gwb-py-cli` | `ctx.gwbPyCli`（运行 python 命令行工具） |
-| plugin-sources | `@godcreator/gwb-plugin-sources` | 无（搜索插件、配包源，只有命令） |
 
 每个插件在 `package.json` 的 `gwb.testedKernel` 里写明在哪个内核版本上测过。
 
@@ -55,10 +54,10 @@ scope 路由写在用户级配置里。发完装进 home 用 `plugin-manager.ins
 pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 ```
 
-入口页是插件之间的接缝图，十一条接缝各一页；九个插件各一页；另有关键设计、开发、遇到过的问题三页。
+入口页是插件之间的接缝图，十条接缝各一页；八个插件各一页；另有关键设计、开发、遇到过的问题三页。
 
 **代码注释只写现状**——为什么这么写、遇到过什么问题，写在文档站，并用 docfirst 引用对应的代码：代码一改，
 文档就标黄。这份 README 是生成文件，正本是 `docs-site/content/outputs/readme.mdx`；仓根 `AGENTS.md`
 同理，正本是同目录的 `agents.mdx`。
 
-共同规矩（准入判据、服务命名、依赖写法）的正本在内核仓与 devkit 的说明书，这个站只记这九个插件自己的事。
+共同规矩（准入判据、服务命名、依赖写法）的正本在内核仓与 devkit 的说明书，这个站只记这八个插件自己的事。

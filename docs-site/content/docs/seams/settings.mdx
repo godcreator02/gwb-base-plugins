@@ -9,7 +9,7 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 
 - [设置插件](/docs/settings) `@godcreator/gwb-settings`：提供服务 `ctx.gwbSettings`；有命令总线时登记四条 `settings.*` 命令（局部注入，没有命令总线时服务照样完整）
 - 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件（如 gitea 插件仓的 gitea 插件）用它存地址与凭据
-- 按位置读写的一方：界面插件仓里插件管理窗格的设置部分、经 MCP 入口的 agent、要读别的插件设置的插件（本仓的 plugin-sources 读 `gitea` 分区，见[包源与检索](/docs/seams/sources)）
+- 按位置读写的一方：界面插件仓里插件管理窗格的设置部分、经 MCP 入口的 agent、要读别的插件设置的插件（插件管理配包源时经 `settings.get` 读 `gitea` 分区的 `base-url` 与 `token`）
 - 插件管理（devkit 仓）：用 `owners()` / `transferOwner()`，见[数据归属](/docs/seams/owners)
 
 ## 接口

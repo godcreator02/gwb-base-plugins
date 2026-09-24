@@ -1,5 +1,5 @@
 /**
- * 接缝图：虚线框是本仓，框里是九个插件；插件与插件、插件与仓外模块之间的连线是接缝，编号与入口页的接缝表一一对应。
+ * 接缝图：虚线框是本仓，框里是八个插件；插件与插件、插件与仓外模块之间的连线是接缝，编号与入口页的接缝表一一对应。
  * 实线接缝有代码接口，点线接缝只靠约定。各插件都经接缝 1 登记命令，图上只画命令总线到仓外插件那一条。
  */
 import { BG, Box, FG, MONO, MUTED, Note } from './parts'
@@ -41,7 +41,7 @@ function Badge({ x, y, n, byConvention }: { x: number; y: number; n: number; byC
 
 export function SeamMap() {
   return (
-    <svg viewBox="0 0 760 570" role="img" aria-label="基础插件仓的九个插件与十一条接缝">
+    <svg viewBox="0 0 760 570" role="img" aria-label="基础插件仓的八个插件与十条接缝">
       <Package x={20} y={90} w={520} h={320} />
       <PackageLabel x={528} y={108} name="基础插件仓" path="gwb-base-plugins" anchor="end" />
 
@@ -55,7 +55,6 @@ export function SeamMap() {
       <SeamLine d="M445,384 V470" byConvention />
       <SeamLine d="M280,314 V470" />
       <SeamLine d="M280,130 V60" />
-      <SeamLine d="M115,384 V470" byConvention />
 
       <Box x={20} y={20} w={150} h={40} lines={['MCP 客户端', 'agent']} />
       <Box x={230} y={20} w={220} h={40} lines={['内核', '转交页面的命令 · 日志流']} />
@@ -67,12 +66,10 @@ export function SeamMap() {
       <Box x={370} y={200} w={150} h={44} lines={['说明书', 'gwb-skills']} tone="a" />
       <Box x={205} y={270} w={150} h={44} lines={['python 命令行工具', 'gwb-py-cli']} tone="a" />
       <Box x={370} y={270} w={150} h={44} lines={['设置', 'gwb-settings']} tone="a" />
-      <Box x={40} y={340} w={150} h={44} lines={['插件来源', 'gwb-plugin-sources']} tone="a" />
       <Box x={370} y={340} w={150} h={44} lines={['数据', 'gwb-data']} tone="a" />
 
       <Box x={580} y={130} w={160} h={254} lines={['别的插件', '外壳 · 插件管理 · 应用插件 …']} />
 
-      <Box x={40} y={470} w={150} h={44} lines={['包源', '.npmrc · registry']} />
       <Box x={205} y={470} w={150} h={44} lines={['子进程', 'Electron 的 node · uv']} />
       <Box x={370} y={470} w={150} h={44} lines={['cordis loader', '条目 id']} />
       <Box x={580} y={470} w={160} h={44} lines={['插件管理', 'devkit 仓']} />
@@ -87,7 +84,6 @@ export function SeamMap() {
       <Badge x={445} y={440} n={8} byConvention />
       <Badge x={280} y={440} n={9} />
       <Badge x={280} y={95} n={10} />
-      <Badge x={115} y={440} n={11} byConvention />
 
       <Note x={20} y={552}>虚线框是本仓；实线接缝有代码接口，点线接缝只靠约定；各插件都经接缝 1 登记命令，图上只画命令总线到别的插件那一条</Note>
     </svg>
