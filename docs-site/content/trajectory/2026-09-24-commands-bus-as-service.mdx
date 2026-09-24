@@ -1,0 +1,33 @@
+---
+title: 命令总线改成继承 cordis Service
+born-at: 2026-09-24T10:45
+type: choice
+parent: [2026-09-24-commands-back-to-base]
+label: 命令总线继承 Service
+domain: 插件
+---
+
+## 背景
+
+命令总线 `gwbCommands` 用 `ctx.provide` 提供一个普通对象。这种写法拿不到调用方的上下文，`register` 只能把注销函数还给调用方，
+要调用方自己包 `ctx.effect`；忘了包的插件停用后，命令名还留在命令表里，调用时报的是和停用无关的错误。devkit 仓的规则
+「cordis 服务怎么提供和使用」定下：扩展点服务一律继承 cordis 的 `Service`，服务方法里的 `this.ctx` 是调用方的上下文，
+注册的清理登记在调用方的 effect 上。
+
+## 结论与边界
+
+命令插件的服务改成继承 `Service` 的类 `GwbCommandBus`，`register` 返回 `this.ctx.effect(() => 命令表登记)` 的注销函数：
+
+- 调用方卸载时它登记的命令自动注销，不用包 `ctx.effect`
+- 调用方自己又包了一层 `ctx.effect` 时，cordis 把内层 effect 记成外层的子项，卸载时只注销一次；手动调注销函数会同时从
+  调用方的 effect 列表里移除，调第二次什么也不做
+- 考虑过「命令表登记 + `this.ctx.effect(() => 注销)` + 返回命令表的注销函数」：手动注销后那条 effect 还留在调用方的列表里，
+  直到调用方卸载，所以没用
+- `run`、`list`、同名替换、注销只删自己那条这些规则不变；本仓其他插件包着 `ctx.effect` 的登记不改
+- 调用方的上下文已经停用时再调 `register`，cordis 抛 `cannot create effect on inactive context`，不再登记一条没人注销的命令
+
+## 代价与遗留
+
+- 构建产物里多了 `import { Service } from 'cordis'`，`cordis` 写 peer，构建产物检查放行 `cordis`
+- 模块不再导出 `name` 与 `apply`，改成默认导出服务类；loader 取 `default`，`cordis.yml` 里的条目不用改
+- 新增 `tests/service.test.ts`，用真实的 cordis 上下文检查卸载后自动注销与包两层 effect 的情况

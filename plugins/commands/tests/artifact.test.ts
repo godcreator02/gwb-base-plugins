@@ -4,12 +4,14 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 构建产物的检查：相对 import 带扩展名；除 node 内置模块外，没有包名 import。
- * 没构建时整组跳过，这组检查不依赖构建。
+ * 构建产物的检查：相对 import 带扩展名；包名 import 除 node 内置模块外只有 `cordis`。
+ * `cordis` 必须留：`Service` 基类要用宿主运行的那一份。没构建时整组跳过，这组检查不依赖构建。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
+
+const ALLOWED_BARE = new Set(['cordis'])
 
 describe.skipIf(!built)('构建产物', () => {
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
@@ -30,13 +32,13 @@ describe.skipIf(!built)('构建产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('除了 node 内置模块，一个包名 import 都没有', () => {
+  it('除了 node 内置模块与 cordis，一个包名 import 都没有', () => {
     const bare: string[] = []
     for (const file of files) {
       const text = fs.readFileSync(path.join(distDir, file), 'utf8')
       for (const m of text.matchAll(/(?:from|import)\s*['"]([^'".][^'"]*)['"]/g)) {
         const spec = m[1]!
-        if (!spec.startsWith('node:')) bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:') && !ALLOWED_BARE.has(spec)) bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])

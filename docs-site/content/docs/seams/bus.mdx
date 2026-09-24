@@ -1,6 +1,6 @@
 ---
 title: 1 命令总线 gwbCommands
-description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证同名后登记的生效并告警、注销只删自己那条、run 从不抛错，登记方保证 plugin 写包名、登记包在 ctx.effect 里、参数自己校验
+description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错，登记方保证 plugin 写包名、参数自己校验
 ---
 
 **本页回答**：插件怎么把能力登记成命令、调用方怎么按名字执行；命令插件对登记方和调用方各保证什么；命令行运行插件与内核怎么用这张命令表。
@@ -18,13 +18,17 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="3-19" */}
 
-服务在命令插件的 `apply` 里提供，本插件卸载时撤销：
+服务由命令插件里继承 cordis `Service` 的类提供，本插件卸载时撤销：
 
-{/* has file="../plugins/commands/src/index.ts" text="ctx.provide('gwbCommands', api)" */}
+{/* has file="../plugins/commands/src/index.ts" text="export default class GwbCommandBus extends Service implements GwbCommands {" */}
 
 回执类型 `GwbResult` 在内核的词汇表包 `@godcreator/gwb-plugin-api` 里：`{ ok: boolean, data?, error?: string }`。
 
-**登记**：`register(def, handler)` 返回注销函数。同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
+**登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文，注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销；返回的注销函数调第二次什么也不做：
+
+{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
+
+同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
 
@@ -49,12 +53,12 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 - 处理函数返回带 `ok` 键的对象时原样返回，一个字段都不改；其余返回值包进 `data`
 - 同名命令后登记的生效，同时写一条 warn，写明原来是哪个包、现在是哪个包
 - 注销函数只删自己登记的那条：同名命令被别人接手后，先登记的一方注销不影响接手的那条
+- 登记方卸载时，它登记的命令自动注销，登记方不用包 `ctx.effect`；包了也不出错，卸载时只注销一次。注销函数重复调用无副作用
 - `plugin` 不以 `@` 开头时写一条 warn，照常登记
 - 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
 
 登记方保证：
 - `def.plugin` 写自己的包名（`@godcreator/gwb-xxx`），自己填，不从 `ctx.name` 读。MCP 入口按它给命令分组和筛选，与说明书的 `plugin` 对得上（见[命令表开给 agent](/docs/seams/agent-surface)）
-- 把 `register` 包在 `ctx.effect` 里，插件卸载时命令跟着注销；经 gwbNodeCli / gwbPyCli 登记的命令由它们登记到调用方的 effect 里，不用自己包
 - `description` 写一句话，`usage` 写参数形状与注意事项，无参数的写「无参数」
 - 处理函数自己校验参数，校验不过就抛错或返回 `{ ok: false, error }`
 - 需要总线才能工作的插件把 `gwbCommands` 写进 `export const inject`；命令对它可有可无时用 `ctx.inject(['gwbCommands'], …)` 局部注入（设置插件就是这样）
@@ -66,7 +70,7 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 ## 不负责的事
 
 - 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不区分调用方是页面、agent 还是插件
-- 命令插件不保存命令表：表只在内存里，插件卸载时由登记方注销
+- 命令插件不保存命令表：表只在内存里，登记方卸载时它登记的命令自动注销
 - 命令插件不接收页面的 IPC 消息：内核收下页面发来的命令、交给 `run`；内核不认识任何命令名
 - 命令插件不运行命令行程序：启动子进程的是 gwb-node-cli 与 gwb-py-cli
 - 命令插件不决定命令怎么展示给 agent：`index` / `search` 的格式由 MCP 入口决定
@@ -81,4 +85,10 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条" */}
 
-插件卸载时命令跟着注销、页面经内核调到命令，只能在隔离 home 里实际运行验证。
+登记方卸载时命令自动注销由 `plugins/commands/tests/service.test.ts` 在真实的 cordis 上下文里检查，其中两条覆盖登记方包与不包 `ctx.effect` 两种写法：
+
+{/* has file="../plugins/commands/tests/service.test.ts" text="调用方卸载后，它登记的命令自动注销" */}
+
+{/* has file="../plugins/commands/tests/service.test.ts" text="调用方自己包了 ctx.effect 再卸载，不出错，命令照样注销" */}
+
+页面经内核调到命令，只能在隔离 home 里实际运行验证。

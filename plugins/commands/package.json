@@ -37,7 +37,7 @@
     "provides": {
       "gwbCommands": {
         "summary": "命令总线：插件与页面、agent 之间的调用入口，能力要被调用就登记成命令",
-        "usage": "ctx.gwbCommands.register({ name: '<短名>.<动作>', description: '一句话', usage: '{ 参数形状 }', plugin: '<包名>' }, handler) → 注销函数，要包 ctx.effect；plugin 写包名；agent 只看得见 description 与 usage，无参数也要写「无参数」"
+        "usage": "ctx.gwbCommands.register({ name: '<短名>.<动作>', description: '一句话', usage: '{ 参数形状 }', plugin: '<包名>' }, handler) → 注销函数；调用方卸载时自动注销，不用包 ctx.effect；plugin 写包名；agent 只看得见 description 与 usage，无参数也要写「无参数」"
       }
     }
   },
@@ -50,6 +50,7 @@
     "gwb-plugin"
   ],
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7"
+    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "cordis": "^4.0.0-rc.9"
   }
 }

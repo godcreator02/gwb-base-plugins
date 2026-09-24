@@ -15,9 +15,9 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 {/* ref file="../tsconfig.base.json" lines="4-6" */}
 
-这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；数据、设置这类继承 cordis `Service` 的插件，名单里写死允许 `cordis` 与词汇表包）。没构建时整组跳过，`pnpm check` 不依赖构建：
+这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件，名单里写死允许 `cordis`，数据、设置还允许词汇表包）。没构建时整组跳过，`pnpm check` 不依赖构建：
 
-{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="21-43" */}
+{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="23-45" */}
 
 ### 词汇表包写 peer，不写 dev
 
@@ -25,7 +25,7 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 `gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，用这个插件的插件装上它之后必须解析得到。写成 devDependency 的话，发布出去的包不带它，用它的插件那边全部解析不到。所以词汇表包在各插件里既写 peer（给使用方）又写 dev（给自己构建）。
 
-cordis 在命令插件里只写 dev：它只出现在 `apply` 的参数类型里，不在导出的类型里。数据、设置、日志这些插件继承 cordis 的 `Service`，运行时真的 import 它，写 peer；必须和内核用同一份 cordis，两份的 `instanceof` 对不上。
+命令、数据、设置、日志这些插件继承 cordis 的 `Service`，运行时真的 import `cordis`，所以 `cordis` 也写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。
 
 ### cordis 不给服务做版本校验
 
@@ -62,17 +62,13 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 调用方可能是页面上的一次点击。处理函数自己返回了带 `ok` 的对象就原样返回，其余一律算成功。
 
-### 服务在 `ctx.effect` 里提供
+### 条目停用后命令名还在表里
 
-{/* ref file="../plugins/commands/src/index.ts" lines="30-37" */}
+症状：停用一个插件后列命令，它登记的一部分命令还在，调用时报的是 `cannot get required service "gwbData" in inactive context`，和「停用」看不出关系。原因是扩展点服务用 `ctx.provide` 提供普通对象时拿不到调用方的上下文，只能把注销函数还给调用方；那几条命令直接调 `register`、没包 `ctx.effect`，返回的注销函数没人调用，条目停用了、上下文销毁了，命令名还留在表上。
 
-命令插件卸载时服务自动撤销。不包的话，插件卸载了而 `ctx.gwbCommands` 还在，调用方调到一张已经没人维护的命令表上。
+所以命令总线继承 cordis 的 `Service`：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在调用方的 `effect` 上，登记方不包 `ctx.effect` 也会在卸载时注销；已经包了的登记方不受影响，卸载时只注销一次。经命令行运行插件登记的命令同样由运行插件把注销登记在调用方的 `effect` 上：
 
-### 登记命令不包 `ctx.effect`，条目停用后命令名还在表里
-
-症状：停用一个插件后列命令，它登记的一部分命令还在，调用时报的是 `cannot get required service "gwbData" in inactive context`，和「停用」看不出关系。原因是那几条命令直接调 `register`、没包 `ctx.effect`，返回的注销函数没人调用，条目停用了、上下文销毁了，命令名还留在表上。经命令行运行插件登记的命令不受影响，运行插件替调用方把注销登记在调用方的 `ctx.effect` 上。本仓的写法以日志插件为例：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="133-143" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
 
 对 agent 尤其不好：它看到的命令表里有一部分已经失效，照着调只会拿到一句无关的报错。
 

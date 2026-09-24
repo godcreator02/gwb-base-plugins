@@ -9,7 +9,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 ## 功能
 
-- **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；插件卸载时命令跟着注销
+- **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；登记方插件卸载时命令自动注销，登记方不用包 `ctx.effect`
 - **同名命令后登记的生效**：同时写一条告警，写明原来是哪个插件、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
 - **按名字执行命令**：页面经 `window.gwb.command`（内核应用收下后原样交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在，都回成失败回执并写明原因
@@ -42,7 +42,9 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 {/* has file="../plugins/commands/src/registry.ts" text="export interface GwbCommands {" */}
 
-{/* has file="../plugins/commands/src/index.ts" text="ctx.provide('gwbCommands', api)" */}
+服务由继承 cordis `Service` 的类 `GwbCommandBus` 提供，本插件卸载时服务自动撤销：
+
+{/* has file="../plugins/commands/src/index.ts" text="export default class GwbCommandBus extends Service implements GwbCommands {" */}
 
 用它的插件把 `gwbCommands` 写进 `export const inject`；命令对这个插件可有可无时（没有命令，服务照样完整），改用 `ctx.inject(['gwbCommands'], …)` 局部注入。登记一条命令的写法：
 
@@ -50,22 +52,22 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 export const inject = ['gwbCommands']
 
 export function apply(ctx: GwbContext) {
-  ctx.effect(() =>
-    ctx.gwbCommands.register(
-      { name: 'mine.hello', description: '回一句话', usage: '参数 { n }', plugin: '@scope/mine' },
-      (args) => ({ got: args }),
-    ),
+  ctx.gwbCommands.register(
+    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }', plugin: '@scope/mine' },
+    (args) => ({ got: args }),
   )
 }
 ```
 
 ### 登记与注销的规则
 
-- **登记包在 `ctx.effect` 里**：插件卸载时注销函数被调用，命令跟着注销。不包的话，条目停用后命令名还留在表里，调用时报的是「服务不在」这类和停用无关的错误
+- **注销跟着登记方走**：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销，不用自己包 `ctx.effect`。返回的注销函数给要提前注销的场景用，调第二次什么也不做；登记方自己又包了一层 `ctx.effect` 也没关系，卸载时只注销一次
 - **`plugin` 写包名**（`@godcreator/gwb-xxx`），由登记方自己写，不从 `ctx.name` 读（那是 cordis 的追踪属性，没写 `inject` 时读它会抛错）。agent 按包名装卸、升级插件，MCP 入口的 `search {plugin}` 按它筛选命令。写成短名只告警，照常登记
 - **`description` 与 `usage` 分开写**：`description` 是一句话介绍，出现在 MCP 入口 `index` 返回的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的命令写「无参数」。都写进 `description` 的话，`index` 返回的清单会变得很长
 - **同名命令，后登记的生效，并告警**：插件之间平等，换掉一条命令是允许的，但不告警的话调用方从此调到另一个插件上，两边都不报错
 - **注销只删自己那条**：注销函数先确认表里还是自己登记的那条记录才删除，同名命令被替换后，先登记的插件卸载不影响接手的那条
+
+{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
 
@@ -92,11 +94,11 @@ export function apply(ctx: GwbContext) {
 
 | 依赖 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- |
-| 内核里的 cordis：`provide`、`effect`、`inject`、`logger` | 提供服务、本插件卸载时撤销服务、局部注入说明书插件、写日志 | 由内核提供，不会缺 |
+| 内核里的 cordis：`Service` 基类、`effect`、`inject`、`logger`（peer） | 提供服务、把注销登记在登记方的 `effect` 上、局部注入说明书插件、写日志 | 由内核提供，不会缺；构建产物里按值 import 了 `cordis`，必须和内核用同一份，所以写 peer |
 | 说明书插件的服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用；`GwbResult` 出现在导出的类型里，用它的插件解析不到时类型检查失败，运行时没有影响 |
 
-说明书插件不写进 `export const inject`，用 `ctx.inject(['gwbSkills'], …)` 局部注入：写进 `inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出。
+说明书插件不写进服务类的 `static inject`，用 `ctx.inject(['gwbSkills'], …)` 局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出。
 
 {/* has file="../plugins/commands/src/index.ts" text="interface SkillMount {" */}
 
@@ -108,6 +110,6 @@ export function apply(ctx: GwbContext) {
 - **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；MCP 入口的工具只有 `index`、`search`、`run` 三个，命令不能登记成单独的工具
 - **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程运行命令行程序的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)，它们把自己的命令也登记到这张表上
 - **不给命令设时限**：`run` 一直等到处理函数返回；命令行程序的时限由两个命令行运行插件管
-- **不保存命令表**：表只在内存里、不写盘，登记命令的插件卸载时各自注销
+- **不保存命令表**：表只在内存里、不写盘，登记命令的插件卸载时它登记的命令自动注销
 - **不接收页面的 IPC 消息**：页面发来的命令由内核应用收下、原样交给 `run`；内核不认识任何命令名
 - **不管说明书怎么登记、怎么读**：说明书由说明书插件登记、agent 经 MCP 入口读；命令插件只把自己的 `skills/` 目录交给说明书插件

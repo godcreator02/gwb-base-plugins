@@ -12,7 +12,7 @@ export interface GwbCommandDef {
 
 /** 命令总线对外的接口。插件之间的契约，放在提供方这个包里 */
 export interface GwbCommands {
-  /** 登记一条命令，返回注销函数；调用方用 ctx.effect 包住，卸载时自动注销 */
+  /** 登记一条命令，返回注销函数。经服务 `ctx.gwbCommands` 登记时，调用方卸载会自动注销；注销函数重复调用无副作用 */
   register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void
   list(): Required<GwbCommandDef>[]
   run(name: string, args?: unknown): Promise<GwbResult>
@@ -25,7 +25,7 @@ export interface RegistryLog {
 }
 
 /**
- * 命令表本身，不依赖 ctx。
+ * 命令表本身，不依赖 ctx；注销跟着调用方走由服务类 `GwbCommandBus` 负责。
  *
  * **每次登记与执行都写日志**：执行时的异常会转成失败回执交给调用方，不写日志的话，
  * 日志里查不到谁在什么时候调了哪条命令、结果如何。
