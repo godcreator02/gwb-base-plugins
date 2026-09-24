@@ -1,0 +1,116 @@
+---
+title: 关键设计
+description: 基础插件仓为什么这么切——只放无界面的插件、插件只依赖词汇表包的类型、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 gwb.testedKernel 声明；各自推出了什么、放弃了什么
+---
+
+**本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的细节在各自的页，插件之间约定了什么在各接缝页。
+
+## 这个仓只放无界面的基础插件
+
+九个插件，都是 `cordis.yml` 里的普通条目，和别的插件一样装在 home 里、经插件管理升级、可以停用和卸载：
+
+| 插件 | 包名 | 服务 | 做什么 |
+| --- | --- | --- | --- |
+| [commands](/docs/commands) | `@godcreator/gwb-commands` | `gwbCommands` | 命令总线 |
+| [mcp](/docs/mcp) | `@godcreator/gwb-mcp` | 无 | MCP 入口，工具只有 `index`、`search`、`run` |
+| [skills](/docs/skills) | `@godcreator/gwb-skills` | `gwbSkills` | 收集插件自带的说明书 |
+| [settings](/docs/settings) | `@godcreator/gwb-settings` | `gwbSettings` | 设置 |
+| [data](/docs/data) | `@godcreator/gwb-data` | `gwbData` | 插件的数据目录 |
+| [logger](/docs/logger) | `@godcreator/gwb-logger` | `gwbLogger`（没有方法） | 收集日志、推给页面 |
+| [node-cli](/docs/node-cli) | `@godcreator/gwb-node-cli` | `gwbNodeCli` | 运行 node 命令行工具 |
+| [py-cli](/docs/py-cli) | `@godcreator/gwb-py-cli` | `gwbPyCli` | 运行 python 命令行工具 |
+| [plugin-sources](/docs/plugin-sources) | `@godcreator/gwb-plugin-sources` | 无 | 搜索插件、配包源 |
+
+不在这个仓的：
+
+- **内核**在内核仓 gwb-kernel，只放内核应用、词汇表包和安装包，一个插件也不带
+- **插件管理** `@godcreator/gwb-plugin-manager` 在 devkit 仓 gwb-devkit，和 devkit 一起开发
+- **有界面的插件**（外壳 shell、主题 theme、基础窗格 baseui，react 与令牌表随 shell 包发布）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
+
+这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
+
+## 插件只依赖词汇表包的类型
+
+词汇表包 `@godcreator/gwb-plugin-api`（内核仓）是内核对插件的契约，只有类型。插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。要用内核服务 `gwbKernel` 的插件，各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码。
+
+{/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
+
+构建用 `tsc`，不打包，构建产物由 node 直接加载。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是名单里的**，大多数插件只允许 node 内置模块，继承 cordis `Service` 的插件多允许 `cordis`，MCP 插件多允许 MCP SDK 与 zod。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
+
+依赖写法：
+
+- **词汇表包**：范围 `^0.2.7`。它的类型出现在插件导出的类型里时，peer 与 dev 都写，使用方必须解析得到；插件来源插件不导出类型，只写 dev
+- **cordis**：继承 `Service` 的插件写 peer（运行时必须和内核是同一份），只用它类型的插件写 dev
+- **本仓别的插件**：只写 devDependencies（`workspace:*`），只 `import type`
+- **生态外的运行时依赖**：只有 MCP 插件有（MCP SDK、zod），写 dependencies，跟着它装进 home
+
+版本号与依赖范围怎么写，正本是 devkit 的说明书 `gwb-release`；包名以 `@godcreator/gwb-` 开头、服务名以 `gwb` 开头的命名规矩，正本在 devkit 的说明书 `gwb-devkit`。
+
+## 插件之间只经服务和命令
+
+插件之间不 import 彼此的运行时代码，只有两种连接：
+
+- **服务**：提供方用 cordis 提供一个服务名，使用方把它写进 `inject`（缺了就不加载），或用 `ctx.inject([...], cb)` 局部注入（缺了只少一部分功能）。服务的类型由提供方的包导出，使用方写 `import type {} from '<提供方包名>'`，让 `ctx` 上有这个服务的类型，构建产物里没有这个包
+- **命令**：经命令总线按名字调用，不需要类型。例如插件来源插件读设置插件里 `gitea` 分区的值，调的是 `settings.get` 命令，不用设置插件的服务
+
+哪个依赖是必需的、哪个是可选的，每个插件页的「依赖」一节逐条写了缺了会怎样。可选的依赖一律局部注入：说明书对所有插件都是可选的；命令对设置插件是可选的（没有命令，别的插件照样读写设置，只是页面与 agent 调不到）。
+
+包之间的依赖只有一个方向：说明书插件依赖命令插件，命令插件不 import 说明书插件的类型，只按形状声明用到的 `register(dir)`。工作区里有依赖环时，pnpm 12 的 `pnpm -r` 直接报错退出。
+
+两个插件要用同一段小逻辑时各存一份，不为它新建共享包：两个命令行运行插件的 `run.ts`、`invoke.ts`，数据插件的 `entryDirName` 与设置插件的 `entrySection`。这些副本的注释互相提到对方，改一处就要改另一处；有第三个插件要用时，再判断要不要抽成包。
+
+cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安装时按 peer 范围检查的那一次，本仓插件之间又只写 devDependencies，所以服务的接口只增加、不改名、不改形状；非改不可时照 `gwb-release` 升 x 并先通知下游。细节见[遇到过的问题](/docs/pitfalls)。
+
+## 命令总线是唯一的调用面
+
+插件的能力要被页面、agent 或别的插件调用，就登记成命令总线上的命令。三类调用方用的是同一张表：
+
+- **页面**经 `window.gwb.command`，内核应用把它原样交给 `ctx.gwbCommands.run`，内核不认识任何命令名
+- **agent** 经 MCP 入口：`index`、`search` 从命令总线的 `list()` 取清单，`run` 调 `ctx.gwbCommands.run`
+- **插件**直接调 `ctx.gwbCommands.run`
+
+由此推出：
+
+- **命令行工具也是命令**：两个命令行运行插件把登记的每个工具同时登记成一条命令，不另开入口
+- **说明书也经命令读**：`skill.list`、`skill.read` 是普通命令
+- **MCP 的工具只有三个，以后也不增加**：MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里，每次调用现查命令总线（[MCP 入口](/docs/mcp)）
+- **登记命令一律包在 `ctx.effect` 里**：条目停用时命令跟着注销，命令表里只有能调通的命令
+- **每条命令写 `plugin`（包名）、`description`（一句话）、`usage`（参数形状）**：agent 只看得到这三样，命令与说明书按包名对应
+
+## 数据与设置按条目归属
+
+cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；同一个包可以配几条条目，各有各的配置。所以：
+
+- **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，设置在 `settings.json` 的 `hello` 分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
+- **调用方不自己报身份**：数据、设置、说明书、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
+- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`
+- **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
+
+## 插件用 `gwb.testedKernel` 声明兼容哪个内核
+
+内核和插件各自发版。每个插件在 `package.json` 的 `gwb.testedKernel` 里写它在哪个内核版本上测过，这个仓九个插件都写 `"0.2.7"`：
+
+{/* has file="../plugins/commands/package.json" text="testedKernel" */}
+
+- **插件管理的 `plugin-manager.list`** 拿它和运行中内核的版本比：在同一条版本线上就算测过（主版本号是 0 时前两位相同，否则主版本号相同）；没写、写的不是合法版本号、不在同一条线上的，在回执里标出来。只标出来，不拦加载
+- **devkit 的 `devkit.release`** 发插件之前检查它：没写、不合法、和 devkit 所在 home 的内核不在同一条线上，一个包都不发
+- **内核不读这个字段**
+
+内核改了接缝上已有的东西就升 x，所有插件都会被标成没在这个内核上测过；在新内核上测过之后，改这个字段再发版。
+
+## 包清单的自我描述由测试检查
+
+每个插件的 `package.json` 里有两处给人和 agent 读的描述，`pnpm check` 里各插件的 self-report 测试（检查逻辑在 `@godcreator/gwb-repo-kit`）检查它们和代码一致：
+
+- **`description`** 以「服务 …；skill N 份；命令 N 条。」结尾；源码里提供的服务名必须写在里面，`skills/` 下的说明书份数要对得上
+- **`gwb.provides`** 为每个提供的服务写一句 `summary` 与 `usage`，devkit 的 `devkit.services` 把它们带进回执；服务与声明必须一一对应
+- **源码里 `inject` 的每个服务名都要出现在这个站的现状区**，各插件页的「依赖」一节写着它们
+
+## 刻意不做的事
+
+- **不打包**：`tsc` 直接输出，构建产物由 node 加载
+- **不带界面**：界面在界面插件仓 gwb-ui-plugins
+- **不管插件的安装与条目**：在插件管理，devkit 仓 gwb-devkit
+- **不给命令分权限、不做沙箱**：插件和内核在同一个进程里，装插件就是授权；MCP 入口只绑 127.0.0.1、要 token
+- **不为十几行的重复逻辑开共享包**：见上面「插件之间只经服务和命令」
+- **旧插件仓不是模板**：废弃的插件仓 `26090623hyz/gwb-plugins` 可以查它当初为什么那么做、遇到过什么问题，结构、分层、包划分一概不照搬；它那套里的 `gwb.minAppVersion` 与精确 peer 版本号两处准入检查、`platform` 分区与 `window.confirm` 拦截、为某个插件写的特殊分支，这里都不要

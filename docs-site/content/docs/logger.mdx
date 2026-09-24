@@ -1,166 +1,64 @@
 ---
-title: gwb-logger：日志插件（core）
-description: 三路日志汇成一条流水——插件、内核、渲染层；core 插件自己聚合缓冲、开两条命令，窗格住 gwb-baseui
-docfirst: none
+title: gwb-logger · 日志
+description: gwb-logger 收集插件、内核、页面三个来源的日志，保留最近两千条，实时推给页面，并提供 logger.backlog 与 logger.where 两条命令；日志窗格在界面插件仓。本页讲它的功能、接口与所属接缝、依赖，以及哪些事不归它做
 ---
 
-# gwb-logger
+**本页回答**：日志插件有哪些功能；页面、agent 和日志窗格经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归内核或界面插件。包名 `@godcreator/gwb-logger`，源码目录 `plugins/logger/src`，入口文件 `index.ts`。
 
-包名 `@godcreator/gwb-logger`，**无头 core 插件**：挂第二个 cordis exporter 收全量、
-自己缓冲、开 `logger.backlog` / `logger.where` 两条命令、实时经内核事件口推给页面；外加
-一个面刻意留空的薄服务 `gwbLogger`（gwb-baseui 的日志窗格按服务名嵌套注入，等的就是它）。
-**窗格不住这儿**，住 `@godcreator/gwb-baseui`，装它找回。
+日志插件没有界面。人在界面上看日志用的日志窗格在界面插件仓 gwb-ui-plugins 的 `@godcreator/gwb-baseui` 里，它从这个插件取数据。
 
-## 先看分工：管道整块在这个插件里，窗格不在
+## 功能
 
-三路日志——插件与 loader 的 cordis 日志、内核自己的话、渲染层的 console（内核把它转进了
-`ctx.logger('renderer')`，所以一个 exporter 收齐）——**汇总与缓冲在这个插件**：挂第二个
-exporter 收全量、自己缓冲两千条、历史段从 cordis 自带的那圈 buffer 补、实时经内核事件口
-（`gwbKernel.emit`）推给页面。内核只做一件事：cordis 的日志全量进 stderr 与 `<home>/gwb.log`，
-人不靠任何插件也看得见。
+- **把三个来源的日志收到一处**：插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志），都经 cordis 的日志流来，插件注册一个 exporter 就全部收到
+- **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader`、`gwb` 的算内核，其余算插件；cordis 的 `success` 级别算 `info`
+- **保留最近两千条**：插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来；每条带递增的序号
+- **实时推给页面**：每收到一条，经内核的事件通道推给页面
+- **两条命令**：`logger.backlog` 取最近两千条，`logger.where` 报 home 目录与日志文件的路径
+- **提供一个没有方法的服务 `gwbLogger`**：日志窗格按服务名等它出现，服务上刻意不放任何方法
+- **就绪时写一行 info**：写明补进了多少条历史；装了日志窗格的话，这一行会出现在窗格里，可以用来确认整条链路是通的
 
-**窗格不住这个插件**：它住 `@godcreator/gwb-baseui`。
+## 接口
 
-判据一句话：**位置由「谁够得着」决定。**「插件挂不上的时候它自己也不在场——那恰恰是
-最该看日志的时候」，所以 stderr 与 `gwb.log` 那条兜底留在内核；汇总与缓冲在这个插件，
-管道整块归它。
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列日志插件提供了哪些接口、定义在哪里。
 
-cordis 官方的 `plugin-logger-console` 顶不上这个位子：它只收 cordis 日志，这条线要收齐
-三路「一切」。
-
-## node 半：薄服务加聚合，就这一段
-
-薄服务 `gwbLogger`（面刻意**留空**：gwb-baseui 的窗格按服务名嵌套注入，等的就是它，谁都别
-往上面加方法）、exporter 收全量、环形缓冲两千条、两条命令、末尾一句自检——插件的全部：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="21-147" */}
-
-两条命令注册都**不用自己包 `ctx.effect`**：插件卸载时表上那两条自动摘掉。
-
-最后那句 `info` 不是客套——装了 gwb-baseui 的话，**它会出现在日志窗格里**（来源 `plugin`、
-名字 `gwb-logger`），是整条链路最省事的一次自检。
-
-`src/index.ts` 的头注把「窗格不住这儿、装 gwb-baseui 找回」写明白了——下一个人来这儿找
-那个窗格，头注负责指路，别把 UI 补回这个插件。
-
-## 窗格里有什么
-
-**这个窗格住 `@godcreator/gwb-baseui`**——版式与交互的代码在那边；这一节留着的是
-定稿时的判据（为什么门限、为什么多选、为什么复合键），判据不随代码搬家作废。
-
-版式定稿自一份独立的效果图工程（那份工程已删——定稿先落进插件、窗格随三仓拆分搬去
-gwb-baseui 之后，留着就是第二份真相，**别去找**）。行为语义：日志行 grid 定宽列齐头
-（时间戳/级别/路标/来源名/消息，消息列不再被不定宽的来源名推得参差）；级别从徽标改成
-**无框字母加整行色调**（error/warn 行淡色底加左缘色条，info/debug 保持素底）；来源名从
-亮白降到中间档，消息是行里唯一全亮的。
-
-**三个筛选维度，两个是新加的**（母仓那份只有级别与一个平的来源下拉）：
-
-| 维度 | 形态 | 为什么 |
+| 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 级别 | 分段控件一排四个，**门限**语义（点 Warn 是「Warn 及以上」），选中挡实心、更严重侧半亮——把显示范围画出来 | 日志里 error 少 info 多，实际操作永远是把噪声压下去，而「只看 info 不看 error」这个场景不成立 |
-| 路 | 胶囊一排四个，**多选**，各带色点与条数；关掉整颗降透明（不再是删除线） | 「把渲染层的噪声关掉」是最常见的一步，单选下拉做不到；色点与流水行路标同色，筛选与行用同一个颜色锚 |
-| 来源名 | Select，**按路分组** | 名字是开集、路是闭集，两个维度性质不同，揉进一个控件就筛不干净 |
-| 搜索 | 子串、不区分大小写、同时匹配 `name` 与 `msg` | 三路合流之后噪声大一个量级，两个维度筛不到「那句话」 |
+| 命令 `logger.backlog` | 无参数，返回最近两千条日志的数组 | [1 命令总线](/docs/seams/bus) |
+| 命令 `logger.where` | 无参数，返回 `{ home, logFile }`，`logFile` 是内核写的 `<home>/gwb.log` | [1 命令总线](/docs/seams/bus) |
+| 页面事件 `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出 | [10 日志](/docs/seams/log) |
+| 一条日志 `LogEntry` | `seq`、`ts`、`source`（`plugin` / `kernel` / `renderer`）、`level`（`error` / `warn` / `info` / `debug`）、`name`、`msg`；类型由本包导出 | [10 日志](/docs/seams/log) |
+| 服务 `ctx.gwbLogger` | 没有方法；日志窗格写 `inject: ['gwbLogger']` 只为等日志插件加载 | [10 日志](/docs/seams/log) |
 
-来源名的值要用 `source|name` 这样的**复合键**——不同路的同名（比如宿主和某个插件都叫
-`install`）不能撞在一起。
+{/* has file="../plugins/logger/src/index.ts" text="export const BACKLOG_COMMAND = 'logger.backlog'" */}
 
-**各自的代价**：门限筛掉了「只看某一级」（要那个靠搜索）；两个来源维度是「与」关系，人能
-把自己筛成空表——所以空态文案必须分得清**「一条都没有」和「被筛掉了」**，后者带一颗「清筛选」。
+{/* has file="../plugins/logger/src/index.ts" text="export const WHERE_COMMAND = 'logger.where'" */}
 
-**搜索明确不做正则**：写错的表达式静默匹配不到任何东西，人只会以为没日志。也不做防抖——
-2000 条上做一次 `includes` 是微秒级的，防抖只会让输入手感发黏。
+{/* has file="../plugins/logger/src/index.ts" text="kernel.emit({ t: EVENT, line: entry })" */}
 
-**从母仓继承、形态改过的**：
+{/* has file="../plugins/logger/src/index.ts" text="export interface LogEntry {" */}
 
-- **吸附底部**（离底 24px 之内就跟着走）；「已暂停吸附」是**右下角的浮胶囊**，点它回底
-  ——吸附状态是个动作入口，不是一句话。浮胶囊挂在窗格根，不进滚动
-  容器（absolute+bottom 相对滚动内容的话，内容一长就漂出视口）
-- **时间戳带毫秒**（`HH:mm:ss.SSS`）——三路合流之后「谁先谁后」是最常问的问题
-- **「清空」叫「清屏」**——它只清这一份视图，不动缓冲也不动文件；而且**清完不会
-  自己回来**（backlog 只在挂载时取一次），重开窗格才会。这两句写在按钮的 `title` 上
-- 每行的**三字路标**（`件`/`宿主`/`主`/`渲`）保留，前面加一颗小色点，四路各一色——
-  用点不用第二个徽标，一行里颜色太多就没有重点了
+{/* has file="../plugins/logger/src/index.ts" text="new GwbLogger(ctx, 'gwbLogger')" */}
 
-**上限 2000 条**，超了从头切——这个数钉在插件的环形缓冲上（`CAP`），`logger.backlog` 回的
-就是最近这两千条，也正好顶着窗格侧的渲染成本（一行一个 div、没有虚拟滚动）。翻更早的去
-日志文件，路径 `logger.where` 报、窗格印在脚注上。虚拟滚动明确不做：真遇到需求才加。
+两条命令的登记都包在 `ctx.effect` 里，插件卸载时跟着注销。
 
-## 窗格从哪儿拿日志
+**日志窗格怎么取**：先用 `window.gwb.on` 订阅实时事件，再调 `logger.backlog` 取历史，两段按 `seq` 接上、去重。反过来先取历史再订阅，中间那一刻产生的日志会漏掉。按 `ts`、`name`、`msg` 拼字符串去重会把同一毫秒里两条一样的日志吃掉一条，所以用 `seq`。
 
-窗格那半（住 gwb-baseui）**先订实时、再取历史**：实时经内核事件口到页面的公共面
-`window.gwb.on`（认 `{ t: 'gwb-logger', line }` 那个记号），历史走 `logger.backlog`（开机
-到此刻，最近两千条）。缓冲里是开机以来的整段，窗格挂载那一刻之前推的全在里面，两段按
-`seq` 接上，交叠的那一瞬靠去重挡住。反过来的话中间那一瞬会漏。
+## 依赖
 
-**去重与排序都用 `seq`**——拿 `ts|name|msg` 拼字符串的话，同一毫秒里两句一模一样的话
-会被静默吃掉一句，三路合流之后那不是假想。
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 命令插件的服务 `gwbCommands`（写在 `export const inject` 里，[gwb-commands](/docs/commands)） | 登记两条命令 | 插件一直等待、不加载 |
+| 内核服务 `gwbKernel` 的 `emit`、`dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 推事件给页面；算 `logger.where` 返回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
+| cordis 的日志流：`ctx.logger.exporter`、`ctx.logger.buffer` | 收全部日志；补插件加载之前的历史 | 由内核提供，不会缺；`buffer` 不在时不补历史 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
+| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
 
-**为什么不经外壳转发**：外壳凭什么认识「日志」。`window.gwb` 是**页面的公共面**（谁在这页上
-跑都够得着），窗格的挂载参数是**外壳给窗格的额外便利**，两者不是替代关系。
+`@godcreator/gwb-commands` 写在 devDependencies 里：代码只 `import type {}` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。
 
-home 与日志目录不劳窗格自己去摸：这个插件开 `logger.where`，回 `{ home, logFile }`——窗格
-脚注直接用。所以它 `inject` 的只有 `gwbCommands`（没有总线历史段出不去、命令注册不上），
-commands 是 peer。
+## 不做的事
 
-## 条目按形状收，不引类型包
-
-```ts
-{ seq, ts, source, level, name, msg }
-```
-
-`source` 是 `plugin` / `host` / `main` / `renderer` 四路之一，`level` 四路给的都是真级别。
-判形函数认不出的条目**丢掉，不崩**。
-
-跟窗格那半（住 gwb-baseui）同一个规矩：浏览器半不牵 node 那边的类型包。代价是形状变了
-没有编译期守卫——判形函数（随窗格住 gwb-baseui）就是那道运行期守卫，形状的正本是上面
-钉的那段 `LogEntry`。
-
-## 这个窗格开几份
-
-**开几份不由注册说了算**：窗格开几份取决于它装着几份不同的内容（开窗格时给的 `key`），
-插件侧什么都不必声明——真要「一份钉在 Error、一份跟着某个插件的流水」，办法是拿这两个
-筛选条件当 `key` 各开一份。
-
-真开出两份时的代价：两份各订阅一次、各持 2000 条，内存与渲染都是双份，而且两份会各自
-调一次 `backlog()`。筛选状态本来就是组件本地的 state，两份天然互不干扰。
-
-**`pane.instance` 眼下用不上**：两份的隔离是 React 树天然的。它真正到期是在「筛选条件落盘」
-那天——那时键必须带 instance，否则两份互相覆盖。
-
-## 三个已知的坑（还没撞，撞了搬进「撞过的墙」）
-
-**一、日志回环。** 渲染层的 console 是三路之一：窗格自己 `console.error` 一句 → 内核收走
-（转进 `ctx.logger('renderer')`）→ 进缓冲 → 推回窗格 → 那条路上如果又打了一句，就是一变二、
-二变四，**界面当场冻死**。所以
-**窗格在收日志的路径上一个 console 都不许打**；取表失败那种非循环路径上的可以留。
-
-**二、别给弹层配「知道自己该挂哪个容器」的补丁。** 类名从源头带 `logger:` 前缀，规则全页
-有效、跟 DOM 祖先无关，弹层挂到 `body` 上照样有样式——radix Portal 直挂 `body` 不需要任何
-拽回容器的补丁；再有人提「让组件知道自己该挂哪个容器」，那是往围栏换代的来路回走。围栏
-与窗格的正本在 gwb-baseui 那边。
-
-**三、`icon` 名要查一眼。** `scroll-text` 是确定有的；`logs` 这个名字是 lucide 较新加的，用之前
-先确认在不在。图标注册随窗格那半住 gwb-baseui——真画是外壳导航的事。
-
-## 依赖为什么这么写
-
-peers 三条，各是[三档判据](/docs/overview)里的不同一档：
-
-- **契约包 `gwb-plugin-api`**：`requireKernel` 是运行时真 import——第一档，peer
-- **`gwb-commands` 插件**：一行值都没 import（只 `import type {}` 激活它的 `declare module`），
-  但 **`inject: ['gwbCommands']` 是运行期硬依赖**——home 里没有它，这个插件永远挂不上（没有
-  总线，历史段出不去、命令注册不上）。peer 的语义正是「宿主环境得提供这个」。**凡是
-  `inject` 的服务提供方，一律 peer。** 版本范围怎么写：正本在 devkit 的 release skill
-  「gwb-release」，本页不复述
-- **`cordis`**：薄服务 `extends Service`，且必须是宿主那一份——运行时真 import，
-  peer
-
-UI 侧的依赖——`gwb-shell`、`gwb-shared-react` / `gwb-tokens`，与 shadcn 那套
-dev 依赖（radix / cva / cn / lucide、`components.json` 的 `logger` 前缀）——全在
-`@godcreator/gwb-baseui`：窗格侧的依赖故事在那边讲，Tailwind 前缀围栏、Select 浮层户口
-那些也随之过去了。
-
-peer 范围怎么写（下限、上限、同胞包、`0.0.x` 怎么办）：正本在 devkit 的 release skill
-「gwb-release」——本页不复述。
+- **不写日志文件**：`<home>/gwb.log` 与 stderr 由内核写，日志插件不在时人照样看得到日志
+- **不画窗格**：日志窗格在界面插件仓 gwb-ui-plugins 的 `@godcreator/gwb-baseui`，筛选、搜索、清屏都是窗格的事
+- **不保存缓冲**：两千条只在内存里，重启就清空；更早的日志去 `gwb.log` 找
+- **不改日志级别、不决定哪些日志写进文件**：日志插件只收，不管别的插件怎么写日志
+- **服务 `gwbLogger` 上不加方法**：取数据走命令，推送走内核事件

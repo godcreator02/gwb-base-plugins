@@ -1,0 +1,84 @@
+---
+title: 1 命令总线 gwbCommands
+description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证同名后登记的生效并告警、注销只删自己那条、run 从不抛错，登记方保证 plugin 写包名、登记包在 ctx.effect 里、参数自己校验
+---
+
+**本页回答**：插件怎么把能力登记成命令、调用方怎么按名字执行；命令插件对登记方和调用方各保证什么；命令行运行插件与内核怎么用这张命令表。
+
+## 连接的模块
+
+- [命令插件](/docs/commands) `@godcreator/gwb-commands`：提供服务 `ctx.gwbCommands`，一张只在内存里的「命令名 → 处理函数」表
+- 登记命令的插件：本仓的 settings、skills、mcp、logger、node-cli、py-cli、plugin-sources，以及别的仓里的插件（插件管理在 devkit 仓，外壳在界面插件仓）
+- 调用命令的一方：别的插件直接调 `run`；[MCP 入口](/docs/mcp)把 agent 的 `run` 交给它（见[命令表开给 agent](/docs/seams/agent-surface)）；内核把页面经 `window.gwb.command` 发来的命令名和参数原样交给 `gwbCommands.run`（内核那边见内核仓文档站的「IPC 通道」）
+- [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)：把登记给它们的命令行工具同时登记成总线命令（见[命令行工具](/docs/seams/cli)）
+
+## 接口
+
+服务的类型由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核的词汇表包里：
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-19" */}
+
+服务在命令插件的 `apply` 里提供，本插件卸载时撤销：
+
+{/* has file="../plugins/commands/src/index.ts" text="ctx.provide('gwbCommands', api)" */}
+
+回执类型 `GwbResult` 在内核的词汇表包 `@godcreator/gwb-plugin-api` 里：`{ ok: boolean, data?, error?: string }`。
+
+**登记**：`register(def, handler)` 返回注销函数。同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
+
+**执行**：`run(name, args)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值一律包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
+
+**列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，没给的 `description`、`usage` 补成空串。
+
+**命令行运行插件的登记**：`gwbNodeCli.register` 登记一条命令行工具时，同时用同一个名字调用 `gwbCommands.register`，`plugin` 默认取调用方的包名，处理函数把总线参数转成一次子进程调用；注销时两条一起注销：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="141-159" */}
+
+gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
+
+{/* has file="../plugins/py-cli/src/index.ts" text="usage: spec.usage ?? INVOKE_SHAPE, plugin }" */}
+
+## 约定
+
+命令插件保证：
+- `run` 从不抛错：命令不存在回 `{ ok: false, error: '没有这条命令：<命令名>' }`，处理函数抛错回 `{ ok: false, error: '<异常文本>' }`
+- 处理函数返回带 `ok` 键的对象时原样返回，一个字段都不改；其余返回值包进 `data`
+- 同名命令后登记的生效，同时写一条 warn，写明原来是哪个包、现在是哪个包
+- 注销函数只删自己登记的那条：同名命令被别人接手后，先登记的一方注销不影响接手的那条
+- `plugin` 不以 `@` 开头时写一条 warn，照常登记
+- 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
+
+登记方保证：
+- `def.plugin` 写自己的包名（`@godcreator/gwb-xxx`），自己填，不从 `ctx.name` 读。MCP 入口按它给命令分组和筛选，与说明书的 `plugin` 对得上（见[命令表开给 agent](/docs/seams/agent-surface)）
+- 把 `register` 包在 `ctx.effect` 里，插件卸载时命令跟着注销；经 gwbNodeCli / gwbPyCli 登记的命令由它们登记到调用方的 effect 里，不用自己包
+- `description` 写一句话，`usage` 写参数形状与注意事项，无参数的写「无参数」
+- 处理函数自己校验参数，校验不过就抛错或返回 `{ ok: false, error }`
+- 需要总线才能工作的插件把 `gwbCommands` 写进 `export const inject`；命令对它可有可无时用 `ctx.inject(['gwbCommands'], …)` 局部注入（设置插件就是这样）
+
+调用方保证：
+- 只看回执的 `ok` 判断成败，失败原因读 `error`
+- 处理函数自己返回的带 `ok` 的对象会原样到达，调用方按那条命令的 `usage` 读它的字段
+
+## 不负责的事
+
+- 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不区分调用方是页面、agent 还是插件
+- 命令插件不保存命令表：表只在内存里，插件卸载时由登记方注销
+- 命令插件不接收页面的 IPC 消息：内核收下页面发来的命令、交给 `run`；内核不认识任何命令名
+- 命令插件不运行命令行程序：启动子进程的是 gwb-node-cli 与 gwb-py-cli
+- 命令插件不决定命令怎么展示给 agent：`index` / `search` 的格式由 MCP 入口决定
+
+## 测试
+
+登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 保护，其中这三条钉住回执与注销的约定：
+
+{/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数返回带 ok 的对象就原样返回，否则包成 data" */}
+
+{/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数抛错不抛给调用方，回成失败回执" */}
+
+{/* has file="../plugins/commands/tests/registry.test.ts" text="注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条" */}
+
+插件卸载时命令跟着注销、页面经内核调到命令，只能在隔离 home 里实机验证。

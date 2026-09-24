@@ -1,94 +1,73 @@
 ---
-title: gwb-data：插件的数据落盘
-description: 一个插件一份数据目录，归属是条目不是包；readDoc 没有坏了都回 undefined，writeDoc 原子落盘
+title: gwb-data · 数据
+description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目录 <home>/data/<条目 id 末段>/，一份文档一个 JSON、写入是原子的；本页讲它有哪些功能，插件经哪些接口用它、各属于哪条接缝，它依赖什么，哪些事不归它做
 ---
 
-# gwb-data
+**本页回答**：数据插件有哪些功能；插件和插件管理经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-data`，源码目录 `plugins/data/src`，入口文件 `index.ts`。
 
-包名 `@godcreator/gwb-data`，服务 `ctx.gwbData`。无界面，零第三方依赖。
+插件要在磁盘上存自己的东西（JSON 文档、图片、日志），把 `gwbData` 写进 `inject`，拿到一个只属于自己那条条目的目录，不用自己拼路径、不用自己写原子写入。数据插件没有命令、没有说明书。
 
-插件要往盘上存自己的东西（JSON 文档、图片、日志），不用自己拼路径、不用自己写原子
-落盘——写 `inject: ['gwbData']`，拿一个绑着自己身份的专属目录。
+## 功能
 
-## 它的面
+- **每条条目一个数据目录**：`<home>/data/<条目 id 的末段>/`；同一个包在 `cordis.yml` 里配两条条目，各有一个目录
+- **认得出调用方**：插件不用报自己是谁，服务从调用方的上下文里认出条目；插件没法读写别的条目的目录
+- **按名字整份读写 JSON 文档**：一份文档是目录里的 `<文档名>.json`；没有这份文档、或文件解析不了，读出来都是 `undefined`，解析不了时另写一条 warn
+- **写入是原子的**：先写同目录的临时文件，再改名覆盖目标；写失败时删掉临时文件、写一条 error 日志，异常照抛给调用方
+- **目录记着归哪个包**：目录第一次被访问时写下 `.owner.json`，之后包名对不上的一律拒绝；插件管理经 `owners`、`transferOwner` 列出和改写归属
+- **条目没写 id 时提醒**：条目 id 是 loader 生成的 8 位随机十六进制时，写一条 warn（这种 id 每次启动都变，数据每次启动都会新建一份），每条条目只写一次
+- **名字写错当场报错**：文档名与条目 id 的每一段都必须是 kebab-case，条目 id 超过两段抛错
 
-{/* ref file="../plugins/data/src/index.ts" lines="26-38" */}
+## 接口
 
-`dir` 是那个插件的专属目录，存非 JSON 时用它；`readDoc` / `writeDoc` 管的是
-`<dir>/<文档名>.json` 一份一份的整份读写。`owners` / `transferOwner` 是户主簿的两个口，
-给 `gwb-plugin-manager` 分条目 id 与过户用，见下文「户主章」。
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列数据插件提供了哪些接口、定义在哪里。
 
-## 数据落在哪：归属是条目，不是包
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 服务 `ctx.gwbData` 的 `dir`、`readDoc(doc)`、`writeDoc(doc, value)` | 调用方条目的数据目录；按文档名读、整份替换写；类型 `GwbDataApi` 由本包导出 | [6 数据](/docs/seams/data) |
+| 服务 `ctx.gwbData` 的 `owners()`、`transferOwner(id, pkg)` | 列出各数据目录归哪个包；把一个目录改归另一个包（包改了名、要接着用旧数据时） | [7 数据归属](/docs/seams/owners) |
+| 目录 `<home>/data/<条目 id 的末段>/` | 目录名由调用方的条目 id 算出：取末段，`home:hello` 得 `hello` | [8 条目身份](/docs/seams/entry-identity) |
+| 文件 `<数据目录>/.owner.json` | `{ "pkg": "<包名>" }`，记这个目录归哪个包 | [7 数据归属](/docs/seams/owners) |
+| 文件 `<数据目录>/<文档名>.json` | 一份文档，两格缩进的 JSON | [6 数据](/docs/seams/data) |
 
-`<home>/data/<条目 id 的末段>/`。**按条目 id 切、不按包名切**——`id` 才是 cordis
-条目模型里的身份，`name` 只说「装哪个包」；同一个包挂两条条目是两份独立配置的实例，
-按包名切的话它们共用一个目录、互相覆盖。姊妹插件 `gwb-settings` 的分区键是同一个答案：
+{/* has file="../plugins/data/src/index.ts" text="export interface GwbDataApi {" */}
 
-{/* ref file="../plugins/data/src/paths.ts" lines="66-80" */}
+{/* has file="../plugins/data/src/index.ts" text="super(ctx, 'gwbData')" */}
 
-entryId 为什么取末段（`home:hello` → `hello`）、超过两段为什么当场抛，撞墙经过与判据在
-[撞过的墙](/docs/walls)那页，两处代码钉着同一段论断。
+{/* has file="../plugins/data/src/paths.ts" text="return path.join(dataRoot(dataDir), entryDirName(entryId))" */}
 
-## 户主章：目录记着自己归哪个包
+{/* has file="../plugins/data/src/owner.ts" text="export const OWNER_FILE = '.owner.json'" */}
 
-目录名只是条目 id 的末段，而 `gwb-plugin-manager` 编默认 id 时去掉了 scope——`@a/gwb-foo`
-与 `@b/foo` 都叫 `foo`。条目删了数据留盘，没有别的东西记着 `data/foo` 当初是谁的。所以每个
-目录里有一个 `.owner.json`，记包名：
+{/* has file="../plugins/data/src/store.ts" text="await fs.promises.rename(tmp, file)" */}
 
-{/* ref file="../plugins/data/src/owner.ts" lines="44-58" */}
+用它的插件写 `export const inject = ['gwbData']`，之后：
 
-`dir` / `readDoc` / `writeDoc` 每次都先过这一关，核过的目录记在内存里、不重复读盘：
+```ts
+const layout = await ctx.gwbData.readDoc('layout') // 第一次运行时是 undefined，调用方自己给默认值
+await ctx.gwbData.writeDoc('layout', layout ?? { panes: [] })
+```
 
-{/* ref file="../plugins/data/src/index.ts" lines="108-116" */}
+**`dir` 是同步的 getter**：插件拿到路径就可能自己往里写，所以归属检查在取 `dir` 时同步做完；检查过的目录记在内存里，不重复读磁盘。
 
-没章的目录（这条规矩之前就在的）谁先访问归谁；章坏了当场抛，不当没章——当没章等于谁都能
-认领。包改了名要接着用旧数据，走 `plugin-manager.transfer-owner` 换章。
+**同一个条目 id、不同的包**：目录名只取条目 id 的末段，而插件管理生成默认 id 时去掉了 scope，`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`。条目删掉后数据留在磁盘上，下一个拿到这个 id 的包读到的会是前一个包的数据，所以目录里记着包名，对不上就拒绝，错误里写明两种处理办法：给条目换个 id，或确认是同一个插件改了包名、走 `plugin-manager.transfer-owner`。`.owner.json` 认不出来时抛错，不当成没有归属。
 
-## 目录自动绑定到取它的那个插件
+## 依赖
 
-`ctx.gwbData` 交出来的那个目录认得调用方是谁——插件不报名字，也就没法报别人的名字去读
-别人的数据。靠的是 cordis `Service` 的机制：方法里的 `this.ctx` 是**消费者**的 ctx，
-它的 `fiber.entry.id` 就是那个插件在 `cordis.yml` 里那条条目的 id。
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis，两份的 `instanceof` 对不上 |
+| loader 在调用方上下文上加的 `fiber.entry`（`id`、`options.name`） | 认出调用方的条目 id 与包名 | 不是经 `cordis.yml` 加载的插件调用时抛错「取不到调用方的身份」 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
+| 文件系统 | 建目录、读写文档与 `.owner.json` | 读失败当作没有这份文档；写失败把异常抛给调用方 |
 
-`accessor` 为什么不行、`Service` 为什么行，实测经过在[撞过的墙](/docs/walls)；
-这个插件里的写法：
+数据插件和[设置插件](/docs/settings)用同一个办法从条目 id 算名字：两边各有一份十几行的算法（`entryDirName` 与 `entrySection`），必须给出同一个答案，改一处就要改另一处。
 
-{/* ref file="../plugins/data/src/index.ts" lines="8-16" */}
+## 不做的事
 
-## 读与写的语义
-
-**readDoc：没有 / 坏了都回 undefined**——第一次跑没文件，调用方直接用默认值；但坏了
-要 warn 一声，数据烂掉悄悄变成「用默认值」是最难查的那种。
-
-**writeDoc：整份替换、原子落盘**——先写同目录的临时文件再 rename 覆盖。直接往目标写
-的话，写到一半崩了会留下半个文件，那份数据就毁了；rename 只在同一分区上原子，所以
-临时文件必须跟目标同目录：
-
-{/* ref file="../plugins/data/src/store.ts" lines="6-9" */}
-
-{/* ref file="../plugins/data/src/store.ts" lines="27-31" */}
-
-写失败不静默：异常照抛给调用方，但先 error 一句——很多调用方一吞，数据丢了都没声没响。
-
-## 条目没写 id，只 warn 一声
-
-home 级数据按条目 id 落目录，而条目不写 `id` 时 loader 发的是 8 位随机十六进制串、
-每次启动都变，那条条目的数据每次启动都新建一份。`dir` 每读写一次认一遍，认出随机
-id 就 warn——**不抛错**（那条条目本来能跑），**也不静默**（对不上是最难查的那种），
-一条条目只说一次：
-
-{/* ref file="../plugins/data/src/index.ts" lines="118-129" */}
-
-## 一个坑：私有字段用 TS 的 `private`，不用 `#`
-
-cordis 给每个消费者派生一份 `Object.create(this)`，而 `#` 私有字段的内部槽不在原型链上，
-派生对象上一读就炸。这个插件的字段声明钉着这条：
-
-{/* ref file="../plugins/data/src/index.ts" lines="41-50" */}
-
-## 怎么单独测
-
-`paths.ts`、`store.ts`、`owner.ts` 是纯逻辑加真 fs（临时目录），单测直接喂：路径规则三样
-（文档名 kebab、entryId 段数与字符集、随机 id 认形）、读写的容错（没有、坏了、写失败
-清临时文件）、户主章（没章盖上、别人的章拒、坏章抛、过户）。`index.ts` 的接线（身份绑定、构造时取 home）靠实机——探针插件挂上、
-落盘的目录是不是探针自己那条条目的。
+- **不管目录里的其他文件**：`dir` 交出去后，插件在里面存什么都行，数据插件不检查
+- **不是安全边界**：插件和数据插件在同一个进程里，有完整的 Node 权限，能写任何路径；名字校验只防写错
+- **不做局部更新与事务**：`writeDoc` 整份替换；同一份文档同时写两次，后改名的那次覆盖先改名的
+- **不删数据**：条目删掉后目录留在磁盘上，谁来清理不归数据插件
+- **没有命令**：页面与 agent 看不到数据目录；要给外面看，由插件自己登记命令
+- **不管设置**：设置项在 [gwb-settings](/docs/settings)，写在 `<home>/settings.json`，不在数据目录里
+- **不按包名分目录**：同一个包的两条条目是两份独立的实例，按包名分会共用一个目录、互相覆盖

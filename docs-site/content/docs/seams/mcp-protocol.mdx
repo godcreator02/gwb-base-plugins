@@ -1,0 +1,109 @@
+---
+title: 2 MCP 协议 /mcp
+description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行客户端 bin/client.mjs）；接口是 127.0.0.1 上的 HTTP 路径 /mcp——只收 POST、无状态、工具固定为 index / search / run 三个，请求要带 Bearer token 并通过 Host / Origin 白名单；MCP 插件保证 default home 固定用 2870 端口、token 每个 home 一份且重启不换、绑定成功后把端口写进 runtime.json 的 mcp 项，客户端保证带对 token 与 Host、工作台重启后重连
+---
+
+**本页回答**：外部 MCP 客户端怎么连上一个 home 的 MCP 入口；请求要满足哪几项检查；端口、token 从哪来、写在哪；MCP 插件和客户端各保证什么。工具返回的内容怎么由命令表和说明书生成，见[命令表开给 agent](/docs/seams/agent-surface)。
+
+## 连接的模块
+
+- [MCP 插件](/docs/mcp) `@godcreator/gwb-mcp`：在 `apply` 里自己启动一个 `node:http` 服务，绑 127.0.0.1
+- MCP 客户端：Claude Code、zcode 等 agent 客户端，照 `mcp.info` / `mcp.token` 给的配置片段连
+- 随包的命令行客户端 `plugins/mcp/bin/client.mjs`：零依赖的单文件脚本，按协议完成握手后调一个工具；装了 gwb-node-cli 时还登记成命令 `mcp.client`
+
+MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设置](/docs/seams/settings)）；`runtime.json` 的其余字段由内核写（内核那边见内核仓文档站的「runtime.json」）。
+
+## 接口
+
+**三个工具**，写死在 `registerTools` 里，没有运行时名单：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="121-166" */}
+
+**HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamableHTTP transport，随响应关闭；别的路径回 404，别的方法回 405（`allow: POST`）：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="330-352" */}
+
+**三项检查**在派发任何请求之前做，任何一项不过都回 401，响应体是 `{ error: 'unauthorized', message }`，`message` 写明哪一项没过、token 去哪取：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="308-317" */}
+
+{/* ref file="../plugins/mcp/src/auth.ts" lines="182-204" */}
+
+- token：请求头 `Authorization: Bearer <token>`，也认只写 token 本身
+- Host：只认 `127.0.0.1:<端口>` 与 `localhost:<端口>`，端口是实际绑定的那个
+- Origin：不带就放行（命令行工具、脚本、MCP 客户端都不带）；带了只认 `http://127.0.0.1:<端口>` 与 `http://localhost:<端口>`，`null` 不认
+
+**凭据文件与常量**：token 存在 `<home>/mcp/secret.json`（`{ "token": "…" }`，32 字节随机、base64url），第一次启动时生成，之后重启不换；文件坏了先改名成 `.broken-<时间戳>` 再生成新的：
+
+{/* ref file="../plugins/mcp/src/auth.ts" lines="26-39" */}
+
+**端口**：设置项 `port`（在 MCP 插件自己的设置分区里），缺省按 home 名给——home 名是 `gwbKernel.dataDir` 的最后一段。`default` 固定 2870，被占就不开 MCP 入口；其余 home 缺省用系统随机端口，设置里显式给了端口、被占时改用随机端口：
+
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-67" */}
+
+只绑 127.0.0.1：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="354-367" */}
+
+**runtime.json 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始：
+
+{/* ref file="../plugins/mcp/src/runtime.ts" lines="38-47" */}
+
+**两条命令**：`mcp.info` 回 `{ url, port, mcpServers, auth }`，`mcpServers` 片段里不带 token；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，片段里带 `Authorization` 头，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。MCP 入口没在监听时两条都回 `ok: false` 并写明原因：
+
+{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.token'" */}
+
+**命令行客户端的地址与 token**：地址依次取 `--url`、环境变量 `GWB_MCP_URL`、`http://127.0.0.1:2870/mcp`；token 依次取 `--token`、环境变量 `GWB_MCP_TOKEN`，地址是 default home 的缺省地址时再去读 default home 的凭据文件：
+
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="102-106" */}
+
+凭据文件的位置是脚本自己拼的：
+
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="38-46" */}
+
+这一段**靠约定**：home 目录的位置（`%APPDATA%\gwb-kernel\homes\<home>`）由内核决定，写在内核仓 `main.ts` 选定 home 的那一行与这个脚本两处；`mcp/secret.json` 这段相对路径写在 `auth.ts` 的 `SECRET_DIR` / `SECRET_FILE` 与这个脚本两处。脚本不 import 插件代码（它要能单独复制出去用），任何一处改了，脚本读不到 token，请求会收到 401。
+
+## 约定
+
+MCP 插件保证：
+- 工具恰好是 `index`、`search`、`run` 三个；加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状是 major
+- 每个请求都先过 token、Host、Origin 三项检查，任何一项不过回 401 并在日志里写一条 warn，处理函数一次都不会被调用
+- 凭据文件取不出来（磁盘满、目录不可写）时照样开端口，但所有请求一律 401，不退回成不检查
+- token 每个 home 一份、重启不换；`mcp.token {"rotate":true}` 之后旧 token 立刻失效、新 token 立刻可用
+- default home 只用设置里的端口（缺省 2870），被占就不开 MCP 入口、写一条 error，不改用别的端口
+- 只在绑定成功之后写 `runtime.json` 的 `mcp` 项，写失败只写一条 warn、MCP 入口照常服务；进程退出时不删
+- 不发清单变更通知：连接是无状态的，工具清单也不会变
+- 命令执行失败（命令不存在、参数不对）在 `run` 的结果里带 `isError`，不是协议错误，连接不断
+
+MCP 客户端保证：
+- 每个请求带 `Authorization: Bearer <token>`，发到 `127.0.0.1` 或 `localhost` 加实际端口
+- 非 default home 的端口从 `runtime.json` 的 `mcp` 项或 `mcp.info` 取，读 `runtime.json` 时自己核对记录是否还有效（pid 是否还在）
+- 工作台重启、MCP 插件升级之后重连一次：MCP 连接不会自动接上中途才启动的服务
+- `run` 结果带 `isError` 时照常读正文里的原因
+
+命令行客户端保证：
+- 先发 `initialize`、再发 `notifications/initialized`、最后 `tools/call`，所以对任何 MCP 服务都适用
+- 工具结果带 `isError` 时照常打印正文、退出码 1；传输或协议出错时写 stderr、退出码 1
+
+## 不负责的事
+
+- MCP 插件不做命令级的权限控制：token 对的请求能调命令表里的每一条命令，包括往 home 里装插件
+- MCP 插件不保持会话、不推送通知；工具清单在连接时拿到后不会变
+- MCP 插件不监听 127.0.0.1 以外的地址，不提供 HTTPS
+- MCP 插件不替客户端写配置：`mcp.info` / `mcp.token` 只给片段，写进客户端配置是客户端或用户的事
+- 客户端不校验参数形状：`run` 的 `args` 在协议层是任意值，由命令自己校验
+- 命令行客户端不负责找非 default home 的端口与 token：要用 `--url`、`--token` 显式给
+
+## 测试
+
+`plugins/mcp/tests/server.test.ts` 用内存传输连一对真的 server/client 按协议往返，钉住工具只有三个；`auth.test.ts` 钉住三项检查与换发 token；`runtime.test.ts` 钉住只改 `mcp` 项：
+
+{/* has file="../plugins/mcp/tests/server.test.ts" text="tools/list 恰好是 index / search / run 三个,没有第四个" */}
+
+{/* has file="../plugins/mcp/tests/auth.test.ts" text="rotate 之后旧 token 立刻不认、新的立刻认" */}
+
+{/* has file="../plugins/mcp/tests/runtime.test.ts" text="内核那几格原样留着,自己那格补上去" */}
+
+HTTP 服务本身（端口绑定、401 响应、default 端口被占时不开）与命令行客户端没有单元测试，只能在隔离 home 里实机验证。

@@ -1,0 +1,80 @@
+---
+title: 4 说明书 gwbSkills
+description: 连接说明书插件与带说明书的插件；接口是服务 ctx.gwbSkills 的 register(dir) / list() / read()，目录下每个子目录一份 SKILL.md，以及命令 skill.list / skill.read；说明书插件保证名字全局唯一、先登记的占住名字、只读登记过的文件，带说明书的插件保证把 skills/ 列进包的 files、frontmatter 每项写成单行
+---
+
+**本页回答**：插件怎么把随包发布的说明书交给说明书插件；目录与 SKILL.md 要满足什么；agent 怎么读到正文；说明书插件和带说明书的插件各保证什么。
+
+## 连接的模块
+
+- [说明书插件](/docs/skills) `@godcreator/gwb-skills`：提供服务 `ctx.gwbSkills`，登记命令 `skill.list`、`skill.read`；`inject` 里有 `gwbCommands`
+- 带说明书的插件：本仓的 commands、settings、mcp、node-cli、py-cli、plugin-sources，以及别的仓里的插件。各自用 `ctx.inject(['gwbSkills'], …)` 局部注入，没装说明书插件时照常加载
+- 读说明书的一方：agent 经 MCP 入口 `run` 调 `skill.read`；MCP 插件用 `list()` 拼 `index` 里的说明书清单（见[命令表开给 agent](/docs/seams/agent-surface)）
+
+## 接口
+
+**服务**：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
+
+带说明书的插件在包根放一个 `skills/` 目录，从构建产物所在的 `dist/` 往上一级找到它：
+
+{/* has file="../plugins/commands/src/index.ts" text="mount.gwbSkills.register(new URL('../skills/', import.meta.url))" */}
+
+这个目录要列进包的 `files`，否则发布出去的包里没有它：
+
+{/* ref file="../plugins/commands/package.json" lines="18-22" */}
+
+**目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份说明书，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`，`name` 缺了用目录名，`description` 缺了照收并写 warn；折叠块（`>-`、`|`）取不到值。每份说明书收下的文件有上限：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="12-23" */}
+
+超限、读不出、缺 SKILL.md 的都写 warn 写明是哪一份，不静默丢掉。
+
+**登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删自己登记的那几份，并登记到调用方的 effect 里：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="118-145" */}
+
+**读**：`read(name, file)` 只读登记时扫到的文件清单里的路径，不做路径拼接；读不到回 `undefined`：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="151-162" */}
+
+**两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="72-103" */}
+
+## 约定
+
+说明书插件保证：
+- 说明书的名字全局唯一：同名时先登记的保留，后来的不登记并写 warn（和命令总线的「后登记的生效」相反）
+- 每份说明书的 `plugin` 是登记方条目的包名，登记方报不出别人的名字
+- `files` 里 `SKILL.md` 总在第一位，路径是相对路径、用 `/` 分隔；交出去的 `GwbSkill` 里不带本机路径
+- 正文每次都从磁盘读：改了 SKILL.md 正文立刻生效；增删文件、改 frontmatter 要重新加载那个插件
+- 只读登记过的文件，参数里带 `../` 也读不到目录外的东西
+- 插件卸载时它登记的说明书自动注销
+
+带说明书的插件保证：
+- 把 `skills/` 目录列进 `package.json` 的 `files`
+- 每个子目录一份说明书，主文件叫 `SKILL.md`；frontmatter 的 `name`、`description` 写成单行，`description` 写成触发条件（agent 靠它决定要不要读正文）
+- 附件只用 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个不超过 512KB，并在 SKILL.md 正文里提到它们的路径（MCP 入口不列出附件）
+- 说明书名字不和别的插件的重名：重名时后登记的那份不会出现
+- 用局部注入接说明书插件，不写进 `export const inject`
+
+## 不负责的事
+
+- 说明书插件不扫 `node_modules`、不看条目树：只登记插件主动交来的目录
+- 说明书插件不校验正文内容，也不检查正文里提到的命令存不存在
+- 说明书插件不决定说明书怎么展示给 agent：`index` 里的清单格式归 MCP 插件
+- 带说明书的插件不负责说明书插件在不在：不在时它照常工作，只是说明书读不到
+
+## 测试
+
+扫描与 frontmatter 解析由 `plugins/skills/tests/collect.test.ts` 用真实的临时目录保护，其中这三条钉住目录形状的约定：
+
+{/* has file="../plugins/skills/tests/collect.test.ts" text="装 skill 的目录只看一层——再深的 SKILL.md 不算一个 skill" */}
+
+{/* has file="../plugins/skills/tests/collect.test.ts" text="折叠块取不到值——留空让调用方报,不静默当成有" */}
+
+{/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}
+
+身份取自调用方条目、同名时先登记的保留、插件卸载时自动注销，只能在隔离 home 里实机验证。

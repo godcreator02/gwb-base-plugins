@@ -1,12 +1,11 @@
 ---
-title: gwb-commands：命令总线
-description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令名 → 处理函数」的表；本页讲它有哪些功能，别的插件经哪些接口用它（register / run / list、回执形状、说明书 gwb-commands），它依赖什么，哪些事不归它做
-docfirst: none
+title: gwb-commands · 命令总线
+description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令名 → 处理函数」的表；本页讲它有哪些功能，别的插件经哪些接口用它（register / run / list、回执形状、说明书 gwb-commands）、各属于哪条接缝，它依赖什么，哪些事不归它做
 ---
 
-**本页回答**：命令插件有哪些功能；插件、页面和 agent 经哪些接口用它，登记、注销、执行各有什么规则；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归别的插件。
+**本页回答**：命令插件有哪些功能；插件、页面和 agent 经哪些接口用它，登记、注销、执行各有什么规则，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归别的插件。包名 `@godcreator/gwb-commands`，源码目录 `plugins/commands/src`，入口文件 `index.ts`。
 
-命令插件提供命令总线：一张「命令名 → 处理函数」的表，插件把自己的能力登记成命令，页面、agent 和别的插件都经这张表调用。包名 `@godcreator/gwb-commands`，源码在本仓 `plugins/commands/`，入口文件是 `src/index.ts`。
+命令插件提供命令总线：一张「命令名 → 处理函数」的表，插件把自己的能力登记成命令，页面、agent 和别的插件都经这张表调用。它是 `cordis.yml` 里的一条普通条目，和别的插件一样装在 home 里、可以停用和升级。
 
 ## 功能
 
@@ -20,7 +19,18 @@ docfirst: none
 
 ## 接口
 
-**服务 `ctx.gwbCommands`**：类型 `GwbCommands`，由本包导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），三个方法：
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列命令插件提供了哪些接口、定义在哪里。
+
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 服务 `ctx.gwbCommands` 的 `register`、`run` | 插件登记命令、按名字执行命令；类型 `GwbCommands`、`GwbCommandDef` 由本包导出 | [1 命令总线](/docs/seams/bus) |
+| 服务 `ctx.gwbCommands` 的 `list` | 全部命令的名字、一句话介绍、用法、包名；MCP 入口的 `index`、`search` 从这里取 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`，类型在词汇表包 `@godcreator/gwb-plugin-api` | [1 命令总线](/docs/seams/bus) |
+| 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+
+### 服务 `ctx.gwbCommands`
+
+类型 `GwbCommands`，由本包导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），三个方法：
 
 | 方法 | 做什么 |
 | --- | --- |
@@ -49,7 +59,7 @@ export function apply(ctx: GwbContext) {
 }
 ```
 
-**登记与注销的规则**：
+### 登记与注销的规则
 
 - **登记包在 `ctx.effect` 里**：插件卸载时注销函数被调用，命令跟着注销。不包的话，条目停用后命令名还留在表里，调用时报的是「服务不在」这类和停用无关的错误
 - **`plugin` 写包名**（`@godcreator/gwb-xxx`），由登记方自己写，不从 `ctx.name` 读（那是 cordis 的追踪属性，没写 `inject` 时读它会抛错）。agent 按包名装卸、升级插件，MCP 入口的 `search {plugin}` 按它筛选命令。写成短名只告警，照常登记
@@ -59,7 +69,7 @@ export function apply(ctx: GwbContext) {
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
 
-**执行的规则与回执 `GwbResult`**（类型在词汇表包 `@godcreator/gwb-plugin-api`）：
+### 执行的规则与回执 `GwbResult`
 
 - 回执只有两种形状：`{ ok: true, data }` 与 `{ ok: false, error }`
 - 处理函数自己返回了带 `ok` 的对象，原样返回，别的字段和 `ok` 在同一层（命令行运行插件的回执带 `stdout`、`exitCode` 等字段）；返回别的值，一律包成 `{ ok: true, data: 值 }`
@@ -70,9 +80,11 @@ export function apply(ctx: GwbContext) {
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
 
-这几条规则各自踩过的问题见[撞过的墙](/docs/walls)。
+这几条规则各自遇到过的问题见[遇到过的问题](/docs/pitfalls)。
 
-**说明书 `gwb-commands`**：放在包根的 `skills/gwb-commands/`，装了说明书插件就交给它登记，agent 经 MCP 入口的 `skill.read` 读。
+### 说明书 `gwb-commands`
+
+放在包根的 `skills/gwb-commands/`，装了说明书插件就交给它登记，agent 经 MCP 入口的 `run` 调 `skill.read` 读。
 
 {/* has file="../plugins/commands/src/index.ts" text="mount.gwbSkills.register(new URL('../skills/', import.meta.url))" */}
 
@@ -81,7 +93,7 @@ export function apply(ctx: GwbContext) {
 | 依赖 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- |
 | 内核里的 cordis：`provide`、`effect`、`inject`、`logger` | 提供服务、本插件卸载时撤销服务、局部注入说明书插件、写日志 | 由内核提供，不会缺 |
-| 说明书插件的服务 `gwbSkills` 的 `register(dir)`（可选，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
+| 说明书插件的服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用；`GwbResult` 出现在导出的类型里，用它的插件解析不到时类型检查失败，运行时没有影响 |
 
 说明书插件不写进 `export const inject`，用 `ctx.inject(['gwbSkills'], …)` 局部注入：写进 `inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出。
@@ -95,6 +107,7 @@ export function apply(ctx: GwbContext) {
 - **不区分调用方**：页面、agent、插件调的是同一个 `run`，不带调用方身份
 - **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；MCP 入口的工具只有 `index`、`search`、`run` 三个，命令不能登记成单独的工具
 - **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程运行命令行程序的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)，它们把自己的命令也登记到这张表上
+- **不给命令设时限**：`run` 一直等到处理函数返回；命令行程序的时限由两个命令行运行插件管
 - **不保存命令表**：表只在内存里、不写盘，登记命令的插件卸载时各自注销
 - **不接收页面的 IPC 消息**：页面发来的命令由内核应用收下、原样交给 `run`；内核不认识任何命令名
 - **不管说明书怎么登记、怎么读**：说明书由说明书插件登记、agent 经 MCP 入口读；命令插件只把自己的 `skills/` 目录交给说明书插件

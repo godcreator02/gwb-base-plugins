@@ -1,78 +1,76 @@
 ---
-title: gwb-plugin-sources：找插件与配包源
-description: 在配好的 npm 源上搜索插件，往机器级 ~/.npmrc 增删第三方包源；registry 地址按 scope 从两层 npmrc 里找，和 pnpm 安装读同一批配置行
-docfirst: none
+title: gwb-plugin-sources · 插件来源
+description: gwb-plugin-sources 在配好的 npm 源上搜索插件，往机器级 ~/.npmrc 增删第三方包源；registry 地址按 scope 从两份 npmrc 里找，和 pnpm 安装读同一批配置行。本页讲它的功能、接口与所属接缝、依赖，以及哪些事不归它做
 ---
 
-# gwb-plugin-sources
+**本页回答**：插件来源插件有哪些功能；页面、agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归插件管理。包名 `@godcreator/gwb-plugin-sources`，源码目录 `plugins/plugin-sources/src`，入口文件 `index.ts`。
 
-包名 `@godcreator/gwb-plugin-sources`，不提供服务，只有四条命令：`plugin-sources.search`、`add`、`list`、
-`remove`。它回答两件事：配好的源上**有哪些插件可装**，**从哪些源装**。安装、卸载、升级与条目管理在
-插件管理 gwb-plugin-manager（在 devkit 仓 gwb-devkit 和 devkit 一起开发），两个插件之间没有代码依赖：
-这里查到包名，交给 `plugin-manager.install` 去装。
+它回答两件事：配好的源上有哪些插件可装，从哪些源装。安装、卸载、升级与条目管理在插件管理 `@godcreator/gwb-plugin-manager`（devkit 仓 gwb-devkit），两个插件之间没有代码依赖：这里查到包名，交给 `plugin-manager.install` 去装。它不提供服务，只有四条命令。
 
-**依赖谁**：`gwbCommands` 是硬依赖（写在 `inject` 里），没有它四条命令都登记不了；`gwbSkills` 是局部注入，
-没装说明书插件时照常工作，只是说明书 `gwb-plugin-sources` 不出现。
+## 功能
 
-{/* ref file="../plugins/plugin-sources/src/index.ts" lines="21-42" */}
+- **搜索可装的插件**：不给 scope 就查全部配好的源，两份 npmrc 里出现过的每个 scope 各查一次，并发进行；`@godcreator` 永远排第一，其余按名字排
+- **一条源失败不影响别的**：查成的合并进结果，没查成的在 `note` 里写明是哪条源、为什么；全部失败才算失败
+- **「是不是插件」只看包自己的 `keywords` 里有没有 `gwb-plugin`**：包名前缀不参与判断
+- **从哪装就在哪搜**：registry 地址按 scope 从两份 npmrc 里找，和 pnpm 安装读的是同一批配置行，先找 `@scope:registry=`，再找 `registry=`，home 级优先于机器级，都没写就是 npm 官方源
+- **往机器级 `~/.npmrc` 加一条包源**：同 scope 已有就原地替换；`registry` 直接给地址，或给 `owner` 按 gitea 的格式拼地址，并从设置的 `gitea` 分区取 token
+- **删一条包源**：没有别的 scope 再指向同一个源时，那个源的 token 行一起删
+- **列出包源**：两份 npmrc 合起来，逐条标出处，token 只说有没有
+- **`@godcreator` 不许改、不许删**：本机所有 home 与源码仓的安装、发版都靠它
+- **凭据不出去**：回执里的 token 一律写成 `_authToken=***`，日志里也不写
+- **写完核对**：重读文件确认写进去的行在；home 级有同名 scope 指向别处时，`note` 里写明 pnpm 用的是 home 级那条
+- **带一份说明书 `gwb-plugin-sources`**：给 agent 讲搜索回执怎么读、两种加源的写法、token 怎么配
 
-## 从哪装就在哪搜：registry 地址怎么找
+## 接口
 
-检索和安装必须查同一个源，否则「可装」列表里的包会装不上，或者源上有的包列不出来。pnpm 安装时按
-scope 读两份 npmrc（机器级 `~/.npmrc` 与 home 级 `<home>/.npmrc`），这里照同样的优先级找地址：
-先找 `@scope:registry=`，再找 `registry=`，每一种都是 home 级优先于机器级，都没写就是 npm 官方源。
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列插件来源插件提供了哪些接口、定义在哪里。
 
-{/* ref file="../plugins/plugin-sources/src/sources.ts" lines="125-137" */}
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 命令 `plugin-sources.search` | 参数 `{ scope? }`；返回 `{ ok, packages, note? }`，每行带 `pkg`、`version`、`description`、`keywords`；用 npm registry 的标准检索接口 `/-/v1/search`，每条源 10 秒超时，配了 token 就带上 | [1 命令总线](/docs/seams/bus)、[11 包源与检索](/docs/seams/sources) |
+| 命令 `plugin-sources.add` | 参数 `{ scope, registry?, owner?, token? }`，`registry` 与 `owner` 恰好给一个；返回 `{ ok, scope, registry, tokenWritten, replaced, lines?, note? }` | [1 命令总线](/docs/seams/bus)、[11 包源与检索](/docs/seams/sources) |
+| 命令 `plugin-sources.list` | 无参数；返回 `{ user, home, sources }`，每条源带 `scope`、`registry`、`file`（`user` 或 `home`）、`token`（布尔） | [1 命令总线](/docs/seams/bus)、[11 包源与检索](/docs/seams/sources) |
+| 命令 `plugin-sources.remove` | 参数 `{ scope }`；返回 `{ ok, scope, registry? }`；机器级没有这条时写明原因，包括「它在 home 级，要手工删」 | [1 命令总线](/docs/seams/bus)、[11 包源与检索](/docs/seams/sources) |
+| 文件 `~/.npmrc`（机器级） | `add`、`remove` 改的就是它：`@scope:registry=<地址>` 一行，有 token 时再加 `//<地址去掉协议>:_authToken=<token>` 一行；token 行按源地址配对，不按 scope；写入是原子的 | [11 包源与检索](/docs/seams/sources) |
+| 文件 `<home>/.npmrc`（home 级） | 只读：搜索、列表、找地址时和机器级合起来看，同名行优先 | [11 包源与检索](/docs/seams/sources) |
+| 说明书 `gwb-plugin-sources` | 包根 `skills/gwb-plugin-sources/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-这里不调用 pnpm。代价是：用环境变量或 pnpm 全局配置指定的源，这里看不到，检索可能和安装查的不是同一个源。
-本机的配置都写在 `~/.npmrc` 里，目前不会遇到。**代码里不出现任何具体源的名字与地址**——换一台机器、
-换一个源，只改 npmrc。
+{/* has file="../plugins/plugin-sources/src/index.ts" text="export const SEARCH_COMMAND = 'plugin-sources.search'" */}
 
-## 检索：npm 标准协议，一条源失败不影响别的
+{/* has file="../plugins/plugin-sources/src/index.ts" text="export const ADD_COMMAND = 'plugin-sources.add'" */}
 
-每条源走 npm registry 的标准检索接口 `/-/v1/search`，Verdaccio、npmjs、gitea 都实现了它。响应里的
-包名有两种形状（npmjs、verdaccio 把 scope 写在 name 里，gitea 分开放），解析时拼回全名。
-**「是不是插件」只看包自己在清单 `keywords` 里写没写 `gwb-plugin`**，名字前缀不参与判断：
+{/* has file="../plugins/plugin-sources/src/index.ts" text="export const LIST_COMMAND = 'plugin-sources.list'" */}
 
-{/* ref file="../plugins/plugin-sources/src/search.ts" lines="1-24" */}
+{/* has file="../plugins/plugin-sources/src/index.ts" text="export const REMOVE_COMMAND = 'plugin-sources.remove'" */}
 
-不带参数的 `search` 查全部配好的源：两层 npmrc 里出现过的每个 scope，`@godcreator` 永远第一、
-其余按名字排。各条源并发查询，查询成功的合并进 `packages`，失败的在 `note` 里写明是哪条源；全部失败才 `ok: false`。
-插件管理窗格的「可装」列表用的就是这个：
+{/* has file="../plugins/plugin-sources/src/search.ts" text="export const PLUGIN_KEYWORD = 'gwb-plugin'" */}
 
-{/* ref file="../plugins/plugin-sources/src/index.ts" lines="179-237" */}
+{/* has file="../plugins/plugin-sources/src/sources.ts" text="export function registryFor(scope: string, layers: { home: string; user: string }): string {" */}
 
-## 包源写在机器级 ~/.npmrc
-
-装第三方 scope 的插件（`@j/gwb-…` 这种个人源）之前，要先让 pnpm 知道这个 scope 从哪装——
-**scope 路由与凭据写进机器级 `~/.npmrc`**。为什么是机器级：`@godcreator` 的路由本来就写在那里，
-本机每个 home 的安装、每个源码仓的安装与发版都读它，包源是整台机器共用的配置。home 级 `.npmrc`
-pnpm 也读、同名行还优先，但那里只放手工加的行：`list` 两层合起来显示、逐条标出处，`add` 与 `remove`
-不写它。
-
-解析、增改、删除都是纯函数。token 行按**源地址**配对，不按 scope：同一个 token 可以配几条源，
-各是各的一行；换源、删源时，旧源的 token 行只有在没有别的 scope 再指向同一个地址时才一起删：
-
-{/* ref file="../plugins/plugin-sources/src/sources.ts" lines="1-17" */}
-
-**`@godcreator` 不许经这里改，也不许删**：本机所有安装与发版都靠它，两种操作都当场拒绝：
-
-{/* ref file="../plugins/plugin-sources/src/index.ts" lines="244-250" */}
-
-源地址有两种给法，只给一个：`registry` 直接给地址；`owner` 走 gitea 的简便写法——拼成
-`<gitea 地址>/api/packages/<owner>/npm/`，token 没显式给就取设置 `gitea` 分区的值。取设置走的是
-`settings.get` **命令**而不是 `ctx.gwbSettings` 服务：服务只读得到调用方自己的分区，读别的插件的分区要走命令：
+**`owner` 的写法**：源地址拼成 `<gitea 地址>/api/packages/<owner>/npm/`，gitea 地址取设置 `gitea.base-url`，没配时用代码里写的默认 gitea 实例（与 gwb-gitea 插件那项设置的默认值相同），`note` 里写明。token 没显式给时取设置 `gitea.token`，取不到就回失败：私有源没有凭据装不了。读别的插件分区的设置只能走 `settings.get` **命令**，服务 `ctx.gwbSettings` 只读得到调用方自己的分区。
 
 {/* ref file="../plugins/plugin-sources/src/index.ts" lines="353-371" */}
 
-写完做两道检查：重读文件，确认写进去的行在；再看 home 级有没有同名 scope 指向别的地址——有的话
-pnpm 用的是 home 级那条，`note` 里会写明。回执里的行 **token 一律遮盖**（`_authToken=***`），凭据不进回执、
-不进日志：
+**为什么写机器级**：`@godcreator` 的路由本来就写在 `~/.npmrc`，本机每个 home 的安装、每个源码仓的安装与发版都读它，包源是整台机器共用的配置。
 
-{/* ref file="../plugins/plugin-sources/src/index.ts" lines="293-316" */}
+## 依赖
 
-## 怎么单独测
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 命令插件的服务 `gwbCommands`（写在 `export const inject` 里，[gwb-commands](/docs/commands)） | 登记四条命令；调 `settings.get` | 插件一直等待、不加载 |
+| 设置插件的命令 `settings.get`（[gwb-settings](/docs/settings)），读 `gitea` 分区的 `base-url` 与 `token` | `owner` 写法拼地址、取 token | 用默认 gitea 实例拼地址；没显式给 token 时 `add` 回失败 |
+| 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，插件照常工作 |
+| 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel） | 算出 `<home>/.npmrc` | 加载时抛错 |
+| 网络与各条 npm 源 | 搜索 | 这条源记进 `note`；全部失败时 `search` 回失败 |
+| 文件系统：`~/.npmrc`、`<home>/.npmrc` | 读写包源 | 读不到当作空文件；写失败异常抛给调用方，成为失败回执 |
 
-`search.ts` 与 `sources.ts` 都是纯函数：检索响应的两种包名形状、keywords 判断、多源合并、npmrc 的解析与增删、
-token 行的配对与保留、registry 地址的优先级，全部用字符串做输入测（`tests/search.test.ts`、
-`tests/sources.test.ts`）。真的连源检索、真的改 `~/.npmrc`，只在隔离 home 里实机验证。
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills`、`@godcreator/gwb-plugin-api` 都写在 devDependencies 里，代码只 `import type` 它们。
+
+## 不做的事
+
+- **不装、不卸、不升插件，不改条目**：这些在插件管理 `@godcreator/gwb-plugin-manager`
+- **不写 home 级 `.npmrc`**：那里只放手工加的行，`list` 显示、`add` 与 `remove` 不改
+- **不改、不删 `@godcreator`**
+- **不调用 pnpm**：用环境变量或 pnpm 全局配置指定的源，这里看不到，搜索可能和安装查的不是同一个源；本机的配置都写在 `~/.npmrc`
+- **不按包名判断插件**：只看 `keywords`
+- **token 不进回执、不进日志**

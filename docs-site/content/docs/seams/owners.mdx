@@ -1,0 +1,89 @@
+---
+title: 7 数据归属 owners
+description: 连接数据插件、设置插件与 devkit 仓的插件管理；接口是两个服务都有的 owners() / transferOwner(id, pkg)，归属在磁盘上记成数据目录里的 .owner.json 和 settings.json 顶层的 $owners；数据插件与设置插件保证包名对不上就拒绝，插件管理保证分配条目 id 时避开别的包的归属、包改名时经 plugin-manager.transfer-owner 转移归属
+---
+
+**本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么；插件管理怎么读归属、怎么转移归属；这几方各保证什么。
+
+## 连接的模块
+
+- [数据插件](/docs/data)：每个数据目录里一个 `.owner.json`
+- [设置插件](/docs/settings)：`settings.json` 顶层一张 `$owners`
+- 插件管理 `@godcreator/gwb-plugin-manager`（devkit 仓）：给新条目分配 id 时读两边的归属，命令 `plugin-manager.transfer-owner` 同时转移两边的归属
+
+为什么要记归属：数据目录名与设置分区名都是条目 id 的末段（见[条目身份](/docs/seams/entry-identity)），插件管理编默认 id 时去掉了 scope，`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`；条目删了数据与设置留在磁盘上，下一个同名的包拿到这个 id 就会读到前一个包的东西。
+
+## 接口
+
+**两个服务上的同名方法**：
+
+{/* ref file="../plugins/data/src/index.ts" lines="96-106" */}
+
+{/* ref file="../plugins/settings/src/index.ts" lines="187-196" */}
+
+- `owners()`：目录名或分区名（条目 id 末段）→ 包名。数据插件是异步的，设置插件是同步的；还没记过归属的不列
+- `transferOwner(id, pkg)`：把一个目录或分区的归属改成 `pkg`；`id` 认完整的 entryId，也认只有末段的 id；设置插件拒绝转移公共区 `*`
+
+**数据插件的归属文件**：`<home>/data/<id>/.owner.json`，内容 `{ "pkg": "<包名>" }`。第一次访问时没有就写上，是别的包的就抛错，文件坏了也抛错：
+
+{/* ref file="../plugins/data/src/owner.ts" lines="5-14" */}
+
+{/* ref file="../plugins/data/src/owner.ts" lines="44-58" */}
+
+**设置插件的归属表**：`settings.json` 顶层的 `$owners`，和各分区在同一个文件里、同一次原子写入。`define` 时核对：
+
+{/* ref file="../plugins/settings/src/paths.ts" lines="13-19" */}
+
+{/* ref file="../plugins/settings/src/registry.ts" lines="223-230" */}
+
+**插件管理的本地声明**：插件管理在 devkit 仓里自己声明了一个只含这两个方法的接口 `OwnerBook`：
+
+```ts
+interface OwnerBook {
+  owners(): Promise<Record<string, string>> | Record<string, string>
+  transferOwner(id: string, pkg: string): Promise<void>
+}
+```
+
+它把 `ctx.gwbData`、`ctx.gwbSettings` 直接赋给这个接口，所以两个服务改了这两个方法的签名，devkit 仓升级开发依赖之后的类型检查会报错；没升级之前发现不了。
+
+**报错里的命令名**：两边拒绝时的报错都按名字指向插件管理的命令：
+
+{/* has file="../plugins/data/src/owner.ts" text="走 plugin-manager.transfer-owner 过户" */}
+
+{/* has file="../plugins/settings/src/registry.ts" text="走 plugin-manager.transfer-owner 过户" */}
+
+这个命令名**靠约定**：它在 devkit 仓的插件管理里登记，名字写在那里和本仓这两条报错里。插件管理改了命令名，这两条报错会指向一条不存在的命令。
+
+## 约定
+
+数据插件与设置插件保证：
+- 目录或分区第一次被访问（数据）或 `define`（设置）时，没有归属就记成调用方的包名
+- 调用方的包名和记下的不同就抛错、不动任何数据，报错写明归属于谁、该怎么处理
+- 数据插件的归属文件坏了当场抛错，不当成没有归属（当成没有等于谁都能认领）；设置插件的 `$owners` 里坏掉的那一项丢掉并写 warn，那个分区回到「谁先声明归谁」
+- `transferOwner` 立刻写入磁盘，之后新包名放行、旧包名被拒
+- `owners()` 只列出有归属记录的目录或分区
+
+插件管理保证：
+- 给新条目分配 id 时读两边的 `owners()`，不把属于别的包的 id 分给新包
+- 只在确认是同一个插件改了包名时才调 `transferOwner`，并且两边一起转：数据插件或设置插件没装的那边跳过
+- 传给 `transferOwner` 的是只有末段的 id
+
+## 不负责的事
+
+- 数据插件与设置插件不判断「是不是同一个插件改了名」：包名对不上一律拒绝，由人或插件管理决定是否转移
+- 数据插件与设置插件不删除旧包留下的数据与设置
+- 插件管理不直接读写 `.owner.json` 与 `$owners`：只经这两个方法
+- 这套归属不是安全边界：插件在同一个进程里，能直接改这两个文件；它防的是同名 id 误读别人的数据
+
+## 测试
+
+数据插件的归属由 `plugins/data/tests/owner.test.ts` 保护，设置插件的归属由 `plugins/settings/tests/registry.test.ts` 保护：
+
+{/* has file="../plugins/data/tests/owner.test.ts" text="scope 不同、短名相同的包拿不到别人的目录——这就是要挡的事故" */}
+
+{/* has file="../plugins/data/tests/owner.test.ts" text="章坏了当场抛，不当没章——当没章等于谁都能认领" */}
+
+{/* has file="../plugins/settings/tests/registry.test.ts" text="过户之后新包名放行、旧包名拒" */}
+
+插件管理读归属、分配 id 的行为由 devkit 仓的测试保护；两边一起转移归属只能在隔离 home 里实机验证。

@@ -1,100 +1,73 @@
 ---
-title: gwb-skills：说明书注册表
-description: 谁有说明书谁自己登记；只管收集与查询，不认识 MCP
-docfirst: none
+title: gwb-skills · 说明书
+description: gwb-skills 收集插件自带的说明书（给 agent 读的 SKILL.md），提供服务 ctx.gwbSkills 与命令 skill.list、skill.read；本页讲它的功能、接口与所属接缝、依赖，以及哪些事不归它做
 ---
 
-# gwb-skills
+**本页回答**：说明书插件有哪些功能；插件和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归 MCP 入口或登记说明书的插件。包名 `@godcreator/gwb-skills`，源码目录 `plugins/skills/src`，入口文件 `index.ts`。
 
-skill 是**给 agent 看的说明书**（`SKILL.md` 加可选的附件，形状照 Anthropic Agent Skills
-那套）。工作台把命令开放给外部 agent 之后，agent 手上只有一张命令名清单——多步流程、
-调用顺序、遇到过的问题都没地方讲，这个插件就是写这些话的地方。
+说明书是给 agent 读的文档：一个目录，里面必有 `SKILL.md`，可以带 `references/` 之类的附件，形状照 Anthropic Agent Skills。agent 经 MCP 入口只拿得到命令名与用法，多步流程、调用顺序、遇到过的问题写在说明书里。
 
-包名 `@godcreator/gwb-skills`，服务 `ctx.gwbSkills`。没有界面，不依赖任何第三方包
-（frontmatter 是手写的逐行解析，没有引入 YAML 库）。
+## 功能
 
-## 它提供的接口
+- **插件自己登记说明书**：插件在 `apply` 里把一个目录交给说明书插件，目录下每个带 `SKILL.md` 的子目录是一份说明书；插件卸载时它的说明书跟着撤掉
+- **列表里只有正在运行的插件的说明书**：不扫 `node_modules`、不看条目启用停用，不会出现「说明书在、它讲的命令不在」
+- **说明书名全局唯一**：同名的第二份不登记，写一条 warn 说明名字被哪个插件占着
+- **正文每次都从磁盘读**：改了 `SKILL.md` 的正文立刻生效；加删文件、改 frontmatter 要重新加载那个插件，文件清单在登记那一刻就定了
+- **只读登记过的文件**：`skill.read` 按名字查表，文件名必须在登记时扫出的清单里，带 `../` 的参数读不到插件目录以外的文件；「没有这份说明书」与「没有这个文件」回同一句话
+- **扫描有上限、超出就报**：只收 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个文件 512KB，往下三层目录，一份说明书最多 64 个文件；超出的、读不了的逐条写 warn，不悄悄丢掉
+- **frontmatter 取不到 `description` 也报**：只认单行的 `key: value`，折叠写法（`>-`、`|`）取不到值；没有描述照样登记，同时写一条 warn
 
-{/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
+## 接口
 
-另外两条命令：`skill.list`（列表）与 `skill.read`（正文）。两条都是普通命令，agent 经
-[gwb-mcp](/docs/mcp) 的 `run` 按名字调用——MCP 工具只有 `index` / `search` / `run` 三个，
-本插件曾经给这两条标过 `top: true`（申请成为 MCP 顶层工具），这个字段随 commands 0.3 删除一起取消了：
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列说明书插件提供了哪些接口、定义在哪里。
 
-{/* has file="../plugins/skills/src/index.ts" text="普通命令" */}
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 服务 `ctx.gwbSkills` 的 `register(dir)` | 登记一个装说明书的目录（字符串路径或 `URL`），返回注销函数；注销也自动登记在调用方的 `ctx.effect` 上，不用自己包 | [4 说明书](/docs/seams/skills) |
+| 服务 `ctx.gwbSkills` 的 `list()`、`read(name, file?)` | 列出全部说明书；读某份说明书里的一个文件，缺省 `SKILL.md`，读不到回 `undefined`；类型 `GwbSkillsApi`、`GwbSkill` 由本包导出 | [4 说明书](/docs/seams/skills) |
+| 命令 `skill.list` | 无参数，返回 `{ count, skills }`，每份带名字、描述、所属插件的包名、文件清单 | [1 命令总线](/docs/seams/bus) |
+| 命令 `skill.read` | 参数 `{ name, file? }`，返回 `{ name, file, text }`；agent 经 MCP 入口的 `run` 调它读正文 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 
-## 三条规矩
+{/* has file="../plugins/skills/src/index.ts" text="export interface GwbSkillsApi {" */}
 
-每一条都防一种**看起来正常、其实在误导人**的情况——这个插件的设计重点全在这里。
+{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_LIST_COMMAND = 'skill.list'" */}
 
-### 由插件主动登记
+{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_READ_COMMAND = 'skill.read'" */}
 
-插件在自己的 `apply` 里登记一个目录，经 `ctx.effect` 在卸载时撤销。**不扫 `node_modules`、
-不看条目的启用停用**。
+{/* has file="../plugins/skills/src/index.ts" text="if (!found.skill.files.includes(file)) return undefined" */}
 
-所以列表里每一份说明书都对应一个此刻正在运行的插件，不会出现「说明书在、它讲的那条命令不在」
-——agent 照着一份讲着不存在的功能的说明书干活，结果是它做错了而没人知道为什么。
-
-### 正文每次都从磁盘读
-
-{/* ref file="../plugins/skills/src/index.ts" lines="151-162" */}
-
-改了 `SKILL.md` 的正文立刻生效，不用重新加载插件；内存里只存元信息。
-
-**登记时扫描的那部分不会自动更新**：加删文件、改 frontmatter 仍要重新加载插件——文件清单在
-`register` 那一刻就定了。
-
-### `read` 只查登记表，不拼路径
-
-上面那段代码的第二个 `if` 就是这道防线。按名字查表，文件名必须在扫描出的清单里——
-**一旦改成拼路径，一个带 `../` 的参数就能读出插件目录以外的任何文件**。
-
-实机验证过四种写法（`../package.json`、`../../cordis.yml`、`SKILL.md/../../../` …）全被拒绝，
-而且拒绝的文字和「没有这份说明书」一字不差——分开报错就等于告诉外面哪些名字存在。
-
-## 怎么登记
-
-在你的插件里，**用局部注入**：
+插件登记说明书的写法，用局部注入，没装说明书插件的 home 里这个插件照常加载：
 
 ```ts
-// 不写进 export const inject——写进去的话，这个插件在没装 skills 插件的 home 里就整个加载不了，
-// 而说明书不是它能不能工作的前提
 ctx.inject(['gwbSkills'], (scoped) => {
   scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
 })
 ```
 
-写 `'../skills/'` 是因为构建产物在 `dist/` 下，而说明书目录在包根。
-
-**然后把这个目录加进 `package.json` 的 `files`**：
+写 `'../skills/'` 是因为构建产物在 `dist/` 下，而说明书目录在包根。**这个目录要列进 `package.json` 的 `files`**，漏了包照样发布、照样装得上，直到插件加载时扫目录才报「读不动」。
 
 {/* has file="../plugins/node-cli/package.json" text="skills" */}
 
-漏了这一条，包照样发布、照样装得上，直到那个插件加载时去扫目录才报「读不到」。
+**登记方的身份不用自己报**：`register` 没有「你是谁」这个参数，服务从调用方上下文的 `fiber.entry.options.name` 认出包名，插件没法用别人的包名登记说明书。
 
-## 身份不用自己报
+**说明书名**：frontmatter 写了 `name` 就用它，没写用目录名。
 
-`register` 没有「你是谁」这个参数——服务从 `this.ctx.fiber.entry` 上认出调用方：
+## 依赖
 
-{/* ref file="../plugins/skills/src/index.ts" lines="105-116" */}
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 登记 `skill.list`、`skill.read` | 服务 `gwbSkills` 不提供，插件一直等待 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
+| loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
+| 文件系统 | 登记时扫目录，读正文 | 目录读不了时写 warn、这个目录一份都不登记；正文读不了回 `undefined` 并写 warn |
+| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext` 的类型 | 只在编译时用 |
 
-和 `gwb-data` 认数据目录、`gwb-shell` 认窗格归属是同一个做法。**插件不报自己的名字，
-也就没法报别人的名字**去登记一份冒名的说明书。身份也不从路径推——推出来的目录名
-是一个可以随便改的参数。
+`@godcreator/gwb-commands` 写在 devDependencies 里：代码只 `import type {}` 它，为的是让 `ctx.gwbCommands` 有类型。frontmatter 是手写的逐行解析，没有 YAML 库。
 
-## 四条上限
+## 不做的事
 
-扫描有上限：单个文件 512KB、往下三层目录、一份说明书最多 64 个文件、只收
-`.md/.txt/.json/.yml/.yaml`。超出的不会悄悄丢掉——`collectSkills` 把问题记进 `problems`，
-由调用方逐条写 warn 日志。
-
-**frontmatter 取不到 `description` 也要报一句**：只认单行的 `key: value`，折叠写法（`>-`、`|`）
-取不到值。悄悄当成空的话，作者要等到 agent 怎么都不读这份说明书时才发现描述丢了。
-
-## 它不认识 MCP，agent 经 MCP 读它
-
-对接 MCP 的是 [gwb-mcp](/docs/mcp)：skills 插件不认识 MCP，mcp 插件局部注入 `gwbSkills`，把说明书清单
-（每份的名字与描述）放进 `index` 的返回里；正文由 agent 经 `run` 调用 `skill.read` 读取，附件的目录由
-`SKILL.md` 正文自己说明，不单独列出。清单每次调用 `index` 时现取，新加载的插件立刻出现。
-
-skills 插件停用或卸载时，MCP 入口照常工作，只是 `index` 里不再有说明书清单。
+- **不认识 MCP**：说明书清单进 MCP 入口 `index` 的返回、附件清单不给 agent，都是 [MCP 入口](/docs/mcp)的决定；它局部注入 `gwbSkills` 取 `list()`
+- **不扫 `node_modules`、不找没登记的说明书**：列表里只有插件主动登记的
+- **不检查正文**：正文写什么、附件在正文里提没提到，由写说明书的插件负责
+- **不支持多行 frontmatter**：`description` 要写成一行
+- **没有别的出口**：服务的 `read` 之外，agent 读正文只经 `skill.read`

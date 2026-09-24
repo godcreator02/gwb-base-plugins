@@ -1,16 +1,19 @@
 {
   "pages": [
-    "overview",
+    "index",
+    "design",
+    "develop",
+    "pitfalls",
+    "seams",
+    "---包---",
     "commands",
+    "mcp",
+    "skills",
+    "settings",
     "data",
     "logger",
-    "skills",
-    "mcp",
     "node-cli",
     "py-cli",
-    "settings",
-    "plugin-sources",
-    "decisions",
-    "walls"
+    "plugin-sources"
   ]
 }

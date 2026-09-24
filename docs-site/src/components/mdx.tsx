@@ -1,12 +1,12 @@
 /**
- * 名册的人看那一半:docfirst.config.mjs 声明压平表,这里给 React 表。
- * 底下铺 fumadocs 的默认表,再把 pre 换成格式包那个会画状态点的——引用还没写,
- * 但接线先在位:哪天某页开始钉源码,那一页直接就能显示状态。
+ * MDX 组件的 React 表。docfirst.config.mjs 声明生成 markdown 时每个组件变成什么文字，这里给站上渲染用的组件。
+ * 先用 fumadocs 的默认组件，再加上文件树与示意图，最后把 pre 换成格式包里会显示引用状态的那个。
  */
 import defaultMdxComponents from 'fumadocs-ui/mdx'
 import { File, Files, Folder } from 'fumadocs-ui/components/files'
 import type { MDXComponents } from 'mdx/types'
 import { DocfirstPre } from '@godcreator/docfirst-workflow/fumadocs/pre'
+import { Diagram } from './diagram'
 
 type Loose = MDXComponents[string]
 
@@ -17,6 +17,7 @@ export function getMDXComponents(components: MDXComponents = {}): MDXComponents 
     Files: Files as Loose,
     Folder: Folder as Loose,
     File: File as Loose,
+    Diagram: Diagram as Loose,
     pre: DocfirstPre as unknown as NonNullable<MDXComponents['pre']>,
   }
 }

@@ -1,0 +1,77 @@
+---
+title: 6 数据 gwbData
+description: 连接数据插件与要把状态写进磁盘的插件（包括界面插件仓的外壳、devkit 仓的插件管理）；接口是服务 ctx.gwbData 的 dir、readDoc、writeDoc，目录是 <home>/data/<条目 id 末段>/，身份自动绑定到调用方条目；数据插件保证 readDoc 没有或坏了都回 undefined、writeDoc 整份原子替换，插件保证文档名用 kebab-case、自己处理读不到的情况
+---
+
+**本页回答**：插件把自己的状态存到哪、怎么读写；数据插件对读写各保证什么；用它的插件要遵守什么。目录归属怎么记、怎么转移见[数据归属](/docs/seams/owners)，目录名怎么从条目 id 算出来见[条目身份](/docs/seams/entry-identity)。
+
+## 连接的模块
+
+- [数据插件](/docs/data) `@godcreator/gwb-data`：提供服务 `ctx.gwbData`，没有命令
+- 用它的插件：写 `inject: ['gwbData']`，或用 `ctx.inject(['gwbData'], …)` 局部注入。界面插件仓的外壳用它存窗格布局，devkit 仓的插件管理用它存条目的显示名
+
+## 接口
+
+**服务**：
+
+{/* ref file="../plugins/data/src/index.ts" lines="26-38" */}
+
+`owners()` 与 `transferOwner()` 只给插件管理用，见[数据归属](/docs/seams/owners)。
+
+**目录**：`<home>/data/<条目 id 的末段>/`。同一个包加了两条条目，就是两个目录：
+
+{/* ref file="../plugins/data/src/paths.ts" lines="66-85" */}
+
+`dir`、`readDoc`、`writeDoc` 每次都先按调用方条目算出目录并核对归属；读 `dir` 时目录不在就建出来：
+
+{/* ref file="../plugins/data/src/index.ts" lines="76-94" */}
+
+**文档名**：kebab-case，一份文档存成 `<目录>/<文档名>.json`；不合规当场抛错：
+
+{/* ref file="../plugins/data/src/paths.ts" lines="26-33" */}
+
+**读**：文件不在回 `undefined`；解析不了也回 `undefined`，并写一条 warn：
+
+{/* ref file="../plugins/data/src/store.ts" lines="6-25" */}
+
+**写**：整份替换。先序列化，再写同目录的临时文件、改名覆盖；改名失败时删掉临时文件：
+
+{/* ref file="../plugins/data/src/store.ts" lines="27-46" */}
+
+## 约定
+
+数据插件保证：
+- 目录绑定到调用方的条目：插件报不出别人的条目 id，读写不到别人的目录
+- 按条目 id 分目录、不按包名：同一个包的两条条目各用各的目录
+- `readDoc` 从不因为文件不在或内容坏了而抛错：一律回 `undefined`，坏了多写一条 warn
+- `writeDoc` 整份替换，写到一半崩溃也不会留下半个文件、不会毁掉原来那份；写失败先写一条 error，再把异常抛给调用方
+- 序列化失败（比如循环引用）在建目录之前抛出
+- 条目没手写 id（8 位十六进制的随机 id）时写一条 warn，每条条目只说一次
+
+用它的插件保证：
+- 文档名用 kebab-case（小写字母、数字、单连字符），不带扩展名、不带路径
+- 自己处理 `readDoc` 回 `undefined`：第一次运行、文件坏了都是这个结果，用默认值继续
+- 存 JSON 以外的东西（图片、日志）时放在 `dir` 下，不自己拼 `<home>/data/…` 路径
+- 不写、不删目录里的 `.owner.json`
+- 条目在 `cordis.yml` 里手写 `id`：随机 id 每次启动都变，数据每次启动都新建一份
+
+## 不负责的事
+
+- 数据插件不合并写入：`writeDoc` 是整份替换，要改一个字段由调用方读出、改好、整份写回
+- 数据插件不做并发控制：同一份文档同时写两次，后完成的覆盖先完成的
+- 数据插件不校验文档内容，不做版本迁移
+- 数据插件不是安全边界：kebab-case 校验只防手滑写出意外的嵌套目录，插件本来就能直接写任何文件
+- 数据插件不删数据：条目删了，目录留在磁盘上
+- 数据插件不管 `settings.json`：设置由设置插件存在 home 根下（见[设置](/docs/seams/settings)）
+
+## 测试
+
+读写语义由 `plugins/data/tests/store.test.ts` 用真实临时目录保护，目录规则由 `paths.test.ts` 保护：
+
+{/* has file="../plugins/data/tests/store.test.ts" text="覆盖失败不会毁掉原来那份——原子落盘的意义就在这" */}
+
+{/* has file="../plugins/data/tests/store.test.ts" text="坏了:回 undefined 但**要 warn**" */}
+
+{/* has file="../plugins/data/tests/paths.test.ts" text="同一个包的两条条目各是各的目录——按包名切的话它们会互相覆盖" */}
+
+身份绑定到调用方条目（写出来的目录是调用方自己那条条目的）只能在隔离 home 里实机验证。
