@@ -108,16 +108,6 @@
     }
   },
   "content/docs/py-cli.mdx": {
-    "../plugins/py-cli/src/registry.ts:15-43": {
-      "kind": "git",
-      "blob": "5149b9735133a7ac1d9d1f35a85623ed3e7d3c0c",
-      "commit": "55b92ff7e1cd029b66361626a3cfa58d0520963d",
-      "lines": [
-        15,
-        43
-      ],
-      "hash": "34ddff0adc9440e3a4426961f71d2012836bdcf68dbccab391048cddbc95aace"
-    },
     "has ../plugins/py-cli/src/index.ts \"export const LIST_COMMAND = 'py-cli.list'\"": {
       "kind": "has"
     },
@@ -127,15 +117,25 @@
     "has ../plugins/py-cli/src/bootstrap.ts \"args: ['sync', '--frozen', '--no-dev', '--inexact', '--project', paths.projectDir],\"": {
       "kind": "has"
     },
-    "../plugins/py-cli/src/bootstrap.ts:82-92": {
+    "../plugins/py-cli/src/registry.ts:9-35": {
       "kind": "git",
-      "blob": "9ebec998660b8167392cbf7b2748dcb938c51c59",
-      "commit": "55b92ff7e1cd029b66361626a3cfa58d0520963d",
+      "blob": "cf948619431ed289f8124f16aa29faf10cc1e773",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
-        82,
-        92
+        9,
+        35
       ],
-      "hash": "81140b1f0ec8b132865588e5500dad5f291b3d2244083ed84761040b75545a9e"
+      "hash": "8a2f365b6f0d740edafed6e8f866de8e5416968959acb847352ef2aa1b6700ca"
+    },
+    "../plugins/py-cli/src/bootstrap.ts:61-72": {
+      "kind": "git",
+      "blob": "e26345fa4ca2f2b098d08972ded8b3295de6872f",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
+      "lines": [
+        61,
+        72
+      ],
+      "hash": "30a2bf6638af52b115b37da6d249775ab98fe495a39b55bc6ab539d6774c876b"
     }
   },
   "content/docs/settings.mdx": {
@@ -495,15 +495,12 @@
     "../plugins/commands/src/registry.ts:3-19": {
       "kind": "git",
       "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         3,
         19
       ],
       "hash": "2da7c389165715511332a1077d5fc57c2d1b494497678993df738c5ae08910e2"
-    },
-    "has ../plugins/py-cli/src/index.ts \"usage: spec.usage ?? INVOKE_SHAPE, plugin }\"": {
-      "kind": "has"
     },
     "has ../plugins/commands/tests/registry.test.ts \"处理函数返回带 ok 的对象就原样返回，否则包成 data\"": {
       "kind": "has"
@@ -526,7 +523,7 @@
     "../plugins/commands/src/index.ts:40-46": {
       "kind": "git",
       "blob": "63d30b17e9905215310b941bcf0989a599aa4d36",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         40,
         46
@@ -536,7 +533,7 @@
     "../plugins/commands/src/registry.ts:76-85": {
       "kind": "git",
       "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         76,
         85
@@ -546,7 +543,7 @@
     "../plugins/commands/src/registry.ts:91-103": {
       "kind": "git",
       "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         91,
         103
@@ -556,7 +553,7 @@
     "../plugins/commands/src/registry.ts:61-69": {
       "kind": "git",
       "blob": "bbed9ac0e4bff469a6621ea4a9fdf46de72de32f",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         61,
         69
@@ -566,55 +563,18 @@
     "../plugins/node-cli/src/index.ts:110-134": {
       "kind": "git",
       "blob": "3ac08c5c2bd1b641bf05d0d8b7b18861400e6367",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         110,
         134
       ],
       "hash": "c9ef83c9c139af2cd7f39319d20a92a7321a6d5987828cea050a803843a6293f"
+    },
+    "has ../plugins/py-cli/src/index.ts \"usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }\"": {
+      "kind": "has"
     }
   },
   "content/docs/seams/cli.mdx": {
-    "../plugins/py-cli/src/index.ts:61-85": {
-      "kind": "git",
-      "blob": "433e3241a8f00c775693e35c9530ab8b5c5291eb",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
-      "lines": [
-        61,
-        85
-      ],
-      "hash": "af34c3c8ef4328d6cd2d71cde0cdea1e98c2f9fb6565c44c1a68c8a185aa296f"
-    },
-    "../plugins/py-cli/src/registry.ts:14-43": {
-      "kind": "git",
-      "blob": "5149b9735133a7ac1d9d1f35a85623ed3e7d3c0c",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
-      "lines": [
-        14,
-        43
-      ],
-      "hash": "2f34b656a6f6647fd1da0b0c2599822d92b31b8c2ddd76f39b8e64635b1cb7a3"
-    },
-    "../plugins/py-cli/src/bootstrap.ts:40-50": {
-      "kind": "git",
-      "blob": "effee477d27677790367f5712a6f5f9ff8da081d",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
-      "lines": [
-        40,
-        50
-      ],
-      "hash": "567e43d80162fd6fa5af9a876f448725acfb1b1762f1881ac386d3e821668358"
-    },
-    "../plugins/py-cli/src/bootstrap.ts:127-150": {
-      "kind": "git",
-      "blob": "effee477d27677790367f5712a6f5f9ff8da081d",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
-      "lines": [
-        127,
-        150
-      ],
-      "hash": "20c5ade87721902d48678540ab4bd67510826d830698469dad420e2297e8bc2d"
-    },
     "has ../plugins/node-cli/src/run.ts \"是这份的副本，一字不差\"": {
       "kind": "has"
     },
@@ -633,7 +593,7 @@
     "../plugins/node-cli/src/index.ts:42-53": {
       "kind": "git",
       "blob": "3ac08c5c2bd1b641bf05d0d8b7b18861400e6367",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         42,
         53
@@ -643,7 +603,7 @@
     "../plugins/node-cli/src/registry.ts:9-34": {
       "kind": "git",
       "blob": "f272a96165eaa4d76a5d8886de092bd1b01006e3",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         9,
         34
@@ -653,7 +613,7 @@
     "../plugins/node-cli/src/invoke.ts:12-24": {
       "kind": "git",
       "blob": "cc40faad0aea39293712712d583e9626d99df62a",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         12,
         24
@@ -663,7 +623,7 @@
     "../plugins/node-cli/src/index.ts:25-26": {
       "kind": "git",
       "blob": "3ac08c5c2bd1b641bf05d0d8b7b18861400e6367",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         25,
         26
@@ -673,7 +633,7 @@
     "../plugins/node-cli/src/index.ts:156-168": {
       "kind": "git",
       "blob": "3ac08c5c2bd1b641bf05d0d8b7b18861400e6367",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         156,
         168
@@ -683,7 +643,7 @@
     "../plugins/node-cli/src/run.ts:9-32": {
       "kind": "git",
       "blob": "e9ca7e63e23cc05dee141b12a8650b757dbcbbeb",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         9,
         32
@@ -693,7 +653,7 @@
     "../plugins/node-cli/src/run.ts:109-132": {
       "kind": "git",
       "blob": "e9ca7e63e23cc05dee141b12a8650b757dbcbbeb",
-      "commit": "41ed4e8f7ca9b8f3655efa0eea219d0f1a5efcc4",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
       "lines": [
         109,
         132
@@ -704,6 +664,49 @@
       "kind": "has"
     },
     "has ../plugins/node-cli/tests/service.test.ts \"cwd 优先级：按次给的 > 登记时给的 > entry 所在目录\"": {
+      "kind": "has"
+    },
+    "../plugins/py-cli/src/index.ts:58-77": {
+      "kind": "git",
+      "blob": "8a983c14d6d413bf8955b17e18a69b1b102ad6f2",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
+      "lines": [
+        58,
+        77
+      ],
+      "hash": "c478b759c2ffd5060d3f98a1a4ae614bb9463f3031456761e72b091682e12537"
+    },
+    "../plugins/py-cli/src/registry.ts:9-35": {
+      "kind": "git",
+      "blob": "cf948619431ed289f8124f16aa29faf10cc1e773",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
+      "lines": [
+        9,
+        35
+      ],
+      "hash": "8a2f365b6f0d740edafed6e8f866de8e5416968959acb847352ef2aa1b6700ca"
+    },
+    "../plugins/py-cli/src/bootstrap.ts:23-33": {
+      "kind": "git",
+      "blob": "e26345fa4ca2f2b098d08972ded8b3295de6872f",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
+      "lines": [
+        23,
+        33
+      ],
+      "hash": "567e43d80162fd6fa5af9a876f448725acfb1b1762f1881ac386d3e821668358"
+    },
+    "../plugins/py-cli/src/bootstrap.ts:107-125": {
+      "kind": "git",
+      "blob": "e26345fa4ca2f2b098d08972ded8b3295de6872f",
+      "commit": "0e524bf1b25d0ec8341e0e8a665a6da5c881d5e6",
+      "lines": [
+        107,
+        125
+      ],
+      "hash": "3fe33f96c29678565b69965519459c794ca480c61f81111fa0ab2ca43b45c4db"
+    },
+    "has ../plugins/py-cli/tests/service.test.ts \"venv 没就绪、也建不起来时 run 抛错，并写 warn\"": {
       "kind": "has"
     }
   },
