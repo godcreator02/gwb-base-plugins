@@ -846,80 +846,83 @@
     }
   },
   "content/docs/seams/log.mdx": {
-    "../plugins/logger/src/index.ts:21-27": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        21,
-        27
-      ],
-      "hash": "3b57df24529795af21b7d87d8787758ddaed973d91e0317885b58854d13382c0"
-    },
-    "../plugins/logger/src/index.ts:46-56": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        46,
-        56
-      ],
-      "hash": "50b4fda530cb6c922ba7b8a5db634b6f4b4eb0a1d14025c7ca901d878c4fa5df"
-    },
-    "../plugins/logger/src/index.ts:66-72": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        66,
-        72
-      ],
-      "hash": "ebf10b5ee1448123b53c7b01994886a4704375cef398e9006b36b01943f4b38c"
-    },
-    "../plugins/logger/src/index.ts:104-112": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        104,
-        112
-      ],
-      "hash": "2d38cb84782b39f4e1d675a50138f481a839d2a4e1e534c35d56feba58d3f158"
-    },
-    "../plugins/logger/src/index.ts:131-133": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        131,
-        133
-      ],
-      "hash": "dda38084e18bf2f5b1a3c3f9eb99e34db6665d1a7f87612e74dca105cef7527f"
-    },
-    "../plugins/logger/src/index.ts:135-143": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        135,
-        143
-      ],
-      "hash": "939464ed65e8a58237c035b80e4660dabfb2e092df4bb28dc95c2e75ed2a9f7f"
-    },
-    "../plugins/logger/src/index.ts:32-38": {
-      "kind": "git",
-      "blob": "496caeb39f74da71ec53ae6173ca00ae5f87fd92",
-      "commit": "3ec32ec959a4cc65fb1b8284b57e2630f8099830",
-      "lines": [
-        32,
-        38
-      ],
-      "hash": "932240637d86c1c5283556d12eb9b656f4b265cf9a8ec616eddbe2e45fc71137"
-    },
     "has ../plugins/logger/tests/artifact.test.ts \"裸名只许词汇表包与 cordis\"": {
       "kind": "has"
     },
     "has ../plugins/logger/tests/source.test.ts \"kernel 与 loader 是内核\"": {
+      "kind": "has"
+    },
+    "../plugins/logger/src/index.ts:10-15": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        10,
+        15
+      ],
+      "hash": "a93190411d4825784ccdc5e1f4aa4f8c56c196d19178c969a72bcfcbb6e3d3d2"
+    },
+    "../plugins/logger/src/index.ts:29-39": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        29,
+        39
+      ],
+      "hash": "50b4fda530cb6c922ba7b8a5db634b6f4b4eb0a1d14025c7ca901d878c4fa5df"
+    },
+    "../plugins/logger/src/index.ts:49-55": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        49,
+        55
+      ],
+      "hash": "eb68dee2a0f1d8b09ef1f61d560bdacdaffaca6d8a518bd0730899f6a2f5d609"
+    },
+    "../plugins/logger/src/index.ts:111-119": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        111,
+        119
+      ],
+      "hash": "10d718aee37661ebfb593829e05bee1f23681381558a0f6963ecd13b37d46488"
+    },
+    "../plugins/logger/src/index.ts:121-123": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        121,
+        123
+      ],
+      "hash": "053d94f00619f47350eef12cb80d58cb09a7ccd028611d77139681c141e54a9b"
+    },
+    "../plugins/logger/src/index.ts:127-137": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        127,
+        137
+      ],
+      "hash": "19bc7cd9363660745892398a2fb8c59186a266fa40fbb542eba8a590912a9028"
+    },
+    "../plugins/logger/src/index.ts:20-21": {
+      "kind": "git",
+      "blob": "10d35744f5720180e0a696b6cdb3f9c4eb90c18a",
+      "commit": "ff023d1a3155d1ee9465de1f8b231473d3f14265",
+      "lines": [
+        20,
+        21
+      ],
+      "hash": "221aa90329fc3b62e5c0936b1764f422c0a820348e257af92dedbd69c40e6b13"
+    },
+    "has ../plugins/logger/tests/apply.test.ts \"装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复\"": {
       "kind": "has"
     }
   },
