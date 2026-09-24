@@ -17,7 +17,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 <Diagram name="mcp-tools" title="三个工具的内容从哪来、run 的回执怎么翻译（分步）">
 - `index`（无参数）：每次重新读取 `gwbCommands.list()`、`gwbSkills.list()` 与 `instructions.md`，返回说明书清单和按包名分组的命令名
 - `search`（`plugin?`、`prefix?`、`q?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage`
-- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`
+- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`，带上 `{ via: 'mcp' }`
 - `run` 的回执分三种形状：同时有 `stdout` 与 `exitCode` 的命令行工具回执只留六项；有 `ok`、`data`、`error` 以外的键的原样转成文本；标准回执失败时回「执行失败：…」并带 `isError`
 </Diagram>
 
@@ -37,7 +37,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 - `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，这时说明书只回名字与包名；`q` 在名字、description、usage 里找子串；命中的命令行总带 `usage`；不带参数返回全部
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
-**`run`**：先把参数处理一次（有的客户端把对象参数序列化成字符串发来，能解析成 JSON 就用解析结果），再交给 `gwbCommands.run`，每次调用都写一条日志，最后按回执的形状翻译：
+**`run`**：先把参数处理一次（有的客户端把对象参数序列化成字符串发来，能解析成 JSON 就用解析结果），再交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`（处理函数据此知道是 agent 调的），每次调用都写一条日志，最后按回执的形状翻译：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="222-226" */}
 
@@ -93,7 +93,7 @@ MCP 插件保证：
 
 ## 不负责的事
 
-- MCP 插件不校验参数、不给命令分权限：`args` 原样交给 `gwbCommands.run`
+- MCP 插件不校验参数、不给命令分权限：`args` 原样交给 `gwbCommands.run`；带上的来源 `mcp` 只是告诉处理函数，不限制能调哪条命令
 - MCP 插件不把命令登记成单独的工具，也不列出装了哪些插件（那是插件管理的 `plugin-manager.list`）
 - 命令插件、说明书插件不知道 MCP 插件的存在，不为它调整任何格式
 - 说明书插件不决定 `index` / `search` 里说明书行长什么样

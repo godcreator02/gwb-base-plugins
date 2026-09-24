@@ -14,15 +14,26 @@ export interface GwbCommandDef {
 /** 命令表里存的样子：`plugin` 是登记方的完整包名 */
 export type RegisteredCommandDef = Required<GwbCommandDef>
 
+/** 请求从哪来：`ui` 是页面经内核转来的，`mcp` 是 agent 经 MCP 入口调的，`plugin` 是别的插件直接调的 */
+export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'
+
+/** 交给处理函数的第二个参数。命令总线只转交，不按来源限制谁能调什么 */
+export interface GwbCommandContext {
+  via: GwbRequestSource
+}
+
+export type GwbCommandHandler = (args: unknown, context: GwbCommandContext) => unknown
+
 /** 命令总线对外的接口。插件之间的契约，放在提供方这个包里 */
 export interface GwbCommands {
   /**
    * 登记一条命令，返回注销函数。name、description、usage 缺一或为空串、plugin 与调用方的包名不同都直接抛错。
    * 调用方卸载会自动注销；注销函数重复调用无副作用
    */
-  register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void
+  register(def: GwbCommandDef, handler: GwbCommandHandler): () => void
   list(): RegisteredCommandDef[]
-  run(name: string, args?: unknown): Promise<GwbResult>
+  /** 内核转页面的命令时带 `{ via: 'ui' }`，MCP 入口带 `{ via: 'mcp' }`；插件直接调不带，处理函数收到的是 `plugin` */
+  run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>
 }
 
 /** 命令表写日志用的两个级别。运行时传入 cordis 的 logger，它有这两个级别 */
@@ -31,19 +42,19 @@ export interface RegistryLog {
   warn: (message: string) => void
 }
 
-type CommandHandler = (args?: unknown) => unknown
-
 /** 命令表本身：只收检查过的定义，登记方是谁由调用者给出 */
 export interface CommandTable {
-  register(def: RegisteredCommandDef, handler: CommandHandler): () => void
+  register(def: RegisteredCommandDef, handler: GwbCommandHandler): () => void
   list(): RegisteredCommandDef[]
-  run(name: string, args?: unknown): Promise<GwbResult>
+  run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>
 }
 
 interface CommandRegistration {
   def: RegisteredCommandDef
-  handler: CommandHandler
+  handler: GwbCommandHandler
 }
+
+const DIRECT_PLUGIN_CALL: GwbCommandContext = { via: 'plugin' }
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== ''
@@ -121,14 +132,14 @@ export function createRegistry(log: RegistryLog): CommandTable {
       return [...registrationsByName.values()].map((registration) => registration.def)
     },
 
-    async run(name, args) {
+    async run(name, args, context = DIRECT_PLUGIN_CALL) {
       const registration = registrationsByName.get(name)
       if (registration === undefined) {
         log.warn(`调用了不存在的命令：${name}`)
         return { ok: false, error: `没有这条命令：${name}` }
       }
       try {
-        return receiptFromHandlerResult(log, name, await registration.handler(args))
+        return receiptFromHandlerResult(log, name, await registration.handler(args, context))
       } catch (thrown) {
         log.warn(`命令 ${name} 抛出异常，已转成失败回执：${String(thrown)}`)
         return { ok: false, error: String(thrown) }

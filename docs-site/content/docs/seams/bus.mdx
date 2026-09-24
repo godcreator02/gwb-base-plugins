@@ -1,6 +1,6 @@
 ---
 title: 1 命令总线 gwbCommands
-description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证 name / description / usage 缺一项就拒收、plugin 取调用方的包名、同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错，登记方保证三项写全、参数自己校验
+description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证 name / description / usage 缺一项就拒收、plugin 取调用方的包名、同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错、请求来源 via 原样交给处理函数，登记方保证三项写全、参数自己校验
 ---
 
 **本页回答**：插件怎么把能力登记成命令、调用方怎么按名字执行；命令插件对登记方和调用方各保证什么；命令行运行插件与内核怎么用这张命令表。
@@ -9,14 +9,14 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 - [命令插件](/docs/commands) `@godcreator/gwb-commands`：提供服务 `ctx.gwbCommands`，一张只在内存里的「命令名 → 处理函数」表
 - 登记命令的插件：本仓的 settings、skills、mcp、logger、node-cli、py-cli，以及别的仓里的插件（插件管理在 devkit 仓，外壳在界面插件仓）
-- 调用命令的一方：别的插件直接调 `run`；[MCP 入口](/docs/mcp)把 agent 的 `run` 交给它（见[命令表开给 agent](/docs/seams/agent-surface)）；内核把页面经 `window.gwb.command` 发来的命令名和参数原样交给 `gwbCommands.run`（内核那边见内核仓文档站的「IPC 通道」）
+- 调用命令的一方：别的插件直接调 `run`；[MCP 入口](/docs/mcp)把 agent 的 `run` 交给它（见[命令表开给 agent](/docs/seams/agent-surface)）；内核把页面经 `window.gwb.command` 发来的命令名和参数交给 `gwbCommands.run`，带上 `{ via: 'ui' }`（内核那边见内核仓文档站的「IPC 通道」）
 - [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)：把登记给它们的命令行工具同时登记成总线命令（见[命令行工具](/docs/seams/cli)）
 
 ## 接口
 
 服务的类型由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核的词汇表包里：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-26" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-37" */}
 
 服务由命令插件里继承 cordis `Service` 的类提供，本插件卸载时撤销：
 
@@ -25,23 +25,23 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 回执类型 `GwbResult` 在内核的词汇表包 `@godcreator/gwb-plugin-api` 里：`{ ok: boolean, data?, error?: string }`。
 
 <Diagram name="command-run" title="一条命令从调用方到处理函数、回执原路返回（分步）">
-- 三类调用方：页面调 `window.gwb.command`，内核收下后原样交给 `run`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run`；别的插件直接调 `ctx.gwbCommands.run`
+- 三类调用方：页面调 `window.gwb.command`，内核收下后交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
 - 命令总线按命令名查内存里的命令表，找不到回 `{ ok: false, error: '没有这条命令：<命令名>' }`
-- 找到就把参数原样交给登记方的处理函数：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
+- 找到就把参数和来源交给登记方的处理函数（没带来源就是 `{ via: 'plugin' }`）：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
 - 回执沿原路回到调用方；成功写 info，失败写 warn
 </Diagram>
 
 **登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文：包名从它 fiber 上 loader 放的条目取（见[条目身份](/docs/seams/entry-identity)），注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销；返回的注销函数调第二次什么也不做：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="45-65" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="54-74" */}
 
 `name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同，都在进表之前抛错：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="57-76" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="68-87" */}
 
 同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="109-118" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="120-129" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
@@ -51,11 +51,13 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 - 第 4 步：B 卸载，B 的注销函数删掉这条命令
 </Diagram>
 
-**执行**：`run(name, args)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值一律包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
+**执行**：`run(name, args, context?)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值一律包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="124-136" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="135-147" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="95-103" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="106-114" */}
+
+**请求来源**：`run(name, args, context?)` 的第三个参数是 `{ via }`，原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由内核转页面的命令时带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到的是 `plugin`。命令总线只转交来源，不按它限制谁能调哪条命令；要按来源区分行为的是处理函数自己（比如块笔记的核心插件按来源记下每次提交，撤销键只撤来自界面的提交）。
 
 **列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名。
 
@@ -78,6 +80,7 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 - `name`、`description`、`usage` 缺一项或为空串就抛错，不进表；错误文本写明哪个包、哪条命令、缺哪一项、该怎么写
 - `plugin` 由命令总线从调用方 fiber 上的条目取；登记方写了不同的包名就抛错，取不到条目也抛错
 - 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
+- 处理函数的第二个参数总是 `{ via }`：调用方带了来源就原样交给它，没带就是 `plugin`
 
 登记方保证：
 - `description` 写一句话，`usage` 写参数形状与注意事项，无参数的写「无参数」
@@ -91,9 +94,10 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 ## 不负责的事
 
-- 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不区分调用方是页面、agent 还是插件
+- 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不按来源限制调用：页面、agent、插件能调的命令一样
+- 命令插件不判断来源：`via` 是调用方自己写的，内核与 MCP 入口各写各的
 - 命令插件不保存命令表：表只在内存里，登记方卸载时它登记的命令自动注销
-- 命令插件不接收页面的 IPC 消息：内核收下页面发来的命令、交给 `run`；内核不认识任何命令名
+- 命令插件不接收页面的 IPC 消息：内核收下页面发来的命令、带上 `{ via: 'ui' }` 交给 `run`；内核不认识任何命令名
 - 命令插件不运行命令行程序：启动子进程的是 gwb-node-cli 与 gwb-py-cli
 - 命令插件不决定命令怎么展示给 agent：`index` / `search` 的格式由 MCP 入口决定
 
@@ -107,7 +111,13 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数抛错不抛给调用方，回成失败回执" */}
 
+{/* has file="../plugins/commands/tests/registry.test.ts" text="调用时带的来源原样交给处理函数；不带就是 plugin" */}
+
 {/* has file="../plugins/commands/tests/registry.test.ts" text="注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条" */}
+
+MCP 入口调 `run` 时带 `{ via: 'mcp' }` 由 `plugins/mcp/tests/apply.test.ts` 经真的 MCP 协议检查：
+
+{/* has file="../plugins/mcp/tests/apply.test.ts" text="booted.bus.register({ name: 'demo.via'" */}
 
 取包名与登记方卸载时命令自动注销由 `plugins/commands/tests/service.test.ts` 在真实的 cordis 加 loader 上检查（插件按包名建成条目加载，fiber 上有 loader 放的条目），其中这几条覆盖从嵌套上下文取包名与登记方包不包 `ctx.effect` 两种写法：
 

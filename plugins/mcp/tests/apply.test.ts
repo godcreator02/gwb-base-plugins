@@ -23,10 +23,10 @@ afterEach(() => {
 
 interface RegisteredCommand {
   def: { name: string; description?: string; usage?: string; plugin: string }
-  handler: (args?: unknown) => unknown
+  handler: (args: unknown, context: { via: string }) => unknown
 }
 
-/** 命令总线替身：登记、列出、按真总线的规矩执行（带 ok 的原样回，其余包成 { ok: true, data }） */
+/** 命令总线替身：登记、列出、按真总线的规矩执行（来源不给就是 plugin；带 ok 的原样回，其余包成 { ok: true, data }） */
 function fakeCommandBus() {
   const commands = new Map<string, RegisteredCommand>()
   return {
@@ -36,10 +36,10 @@ function fakeCommandBus() {
       return () => void commands.delete(def.name)
     },
     list: () => [...commands.values()].map((c) => ({ description: '', usage: '', ...c.def })),
-    async run(commandName: string, args?: unknown): Promise<GwbResult> {
+    async run(commandName: string, args?: unknown, context: { via: string } = { via: 'plugin' }): Promise<GwbResult> {
       const command = commands.get(commandName)
       if (command === undefined) return { ok: false, error: `没有这条命令：${commandName}` }
-      const handlerResult = await command.handler(args)
+      const handlerResult = await command.handler(args, context)
       if (handlerResult !== null && typeof handlerResult === 'object' && 'ok' in handlerResult) return handlerResult as GwbResult
       return { ok: true, data: handlerResult }
     },
@@ -193,6 +193,10 @@ describe('MCP 插件装上之后', () => {
     }
     expect(index.home).toBe('side')
     expect(index.commands).toContainEqual({ plugin: '@t/demo', names: ['demo.echo'] })
+
+    booted.bus.register({ name: 'demo.via', plugin: '@t/demo', description: '回请求来源' }, (_args, context) => context.via)
+    const via = await client.callTool({ name: 'run', arguments: { command: 'demo.via' } })
+    expect(JSON.parse((via.content as { text: string }[])[0]!.text)).toEqual({ ok: true, data: 'mcp' })
     await client.close()
     await booted.mcpFiber.dispose()
   })

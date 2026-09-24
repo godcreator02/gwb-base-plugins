@@ -51,7 +51,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 <Diagram name="mcp-tools" title="三个工具的内容从哪来、run 的回执怎么翻译（分步）">
 - `index`（无参数）：每次重新读取 `gwbCommands.list()`、`gwbSkills.list()` 与 `instructions.md`，返回说明书清单和按包名分组的命令名
 - `search`（`plugin?`、`prefix?`、`q?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage`
-- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`
+- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`，带上 `{ via: 'mcp' }`
 - `run` 的回执分三种形状：同时有 `stdout` 与 `exitCode` 的命令行工具回执只留六项；有 `ok`、`data`、`error` 以外的键的原样转成文本；标准回执失败时回「执行失败：…」并带 `isError`
 </Diagram>
 

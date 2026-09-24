@@ -50,6 +50,19 @@ describe('createRegistry', () => {
     expect(await cli.run('a.b', { n: 1 })).toEqual({ ok: true, data: { got: { n: 1 } } })
   })
 
+  it('调用时带的来源原样交给处理函数；不带就是 plugin', async () => {
+    const cli = createRegistry(silent)
+    const contextsSeen: unknown[] = []
+    cli.register(registeredDef('a.who'), (_args, context) => {
+      contextsSeen.push(context)
+      return null
+    })
+    await cli.run('a.who', undefined, { via: 'mcp' })
+    await cli.run('a.who', undefined, { via: 'ui' })
+    await cli.run('a.who', undefined)
+    expect(contextsSeen).toEqual([{ via: 'mcp' }, { via: 'ui' }, { via: 'plugin' }])
+  })
+
   it('没登记的命令回 ok: false，原因里带命令名', async () => {
     const cli = createRegistry(silent)
     const res = (await cli.run('nope', undefined)) as { ok: boolean; error?: string }

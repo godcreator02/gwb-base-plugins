@@ -220,7 +220,7 @@ function createToolHandlers(commandBus: GwbCommands, log: Logger, state: Endpoin
       return textResult(doc)
     },
     async run(command, rawArgs) {
-      const result = await commandBus.run(command, coerceArgs(rawArgs))
+      const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })
       logAgentRun(log, command, result)
       return isCliRunResult(result) ? cliRunResult(result) : toolResult(result)
     },

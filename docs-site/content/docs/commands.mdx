@@ -12,7 +12,8 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 - **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；登记方插件卸载时命令自动注销，登记方不用包 `ctx.effect`
 - **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错；命令记在哪个包名下由命令总线从调用方取，登记方写的 `plugin` 与之不同也抛错
 - **同名命令后登记的生效**：同时写一条告警，写明原来是哪个插件、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
-- **按名字执行命令**：页面经 `window.gwb.command`（内核应用收下后原样交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
+- **按名字执行命令**：页面经 `window.gwb.command`（内核应用收下后交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
+- **转交请求来源**：内核带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数的第二个参数收到的就是 `plugin`；命令总线只转交，不按来源限制能调什么
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在，都回成失败回执并写明原因
 - **列出全部命令**：每条带名字、一句话介绍、用法和所属插件的包名
 - **写日志**：每次登记、执行都写一行日志
@@ -36,7 +37,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 | 方法 | 做什么 |
 | --- | --- |
 | `register(def, handler)` | 登记一条命令，返回注销函数。`def` 的类型是 `GwbCommandDef`：`name`、`description`（一句话介绍）、`usage`（参数形状与注意事项）三项必写，`plugin`（登记方的包名）可以不写 |
-| `run(name, args)` | 按名字执行一条命令，返回 `Promise<GwbResult>`，不抛错 |
+| `run(name, args, context?)` | 按名字执行一条命令，返回 `Promise<GwbResult>`，不抛错。`context` 是 `{ via }`，原样成为处理函数的第二个参数，不给就是 `{ via: 'plugin' }` |
 | `list()` | 返回全部命令的说明，每条的 `plugin` 是登记方的完整包名 |
 
 {/* has file="../plugins/commands/src/registry.ts" text="export interface GwbCommandDef {" */}
@@ -77,18 +78,18 @@ export function apply(ctx: GwbContext) {
 - **同名命令，后登记的生效，并告警**：插件之间平等，换掉一条命令是允许的，但不告警的话调用方从此调到另一个插件上，两边都不报错
 - **注销只删自己那条**：注销函数先确认表里还是自己登记的那条记录才删除，同名命令被替换后，先登记的插件卸载不影响接手的那条
 
-{/* ref file="../plugins/commands/src/index.ts" lines="45-65" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="54-74" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="57-76" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="68-87" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="109-118" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="120-129" */}
 
 ### 执行的规则与回执 `GwbResult`
 
 <Diagram name="command-run" title="一条命令从调用方到处理函数、回执原路返回（分步）">
-- 三类调用方：页面调 `window.gwb.command`，内核收下后原样交给 `run`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run`；别的插件直接调 `ctx.gwbCommands.run`
+- 三类调用方：页面调 `window.gwb.command`，内核收下后交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
 - 命令总线按命令名查内存里的命令表，找不到回 `{ ok: false, error: '没有这条命令：<命令名>' }`
-- 找到就把参数原样交给登记方的处理函数：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
+- 找到就把参数和来源交给登记方的处理函数（没带来源就是 `{ via: 'plugin' }`）：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
 - 回执沿原路回到调用方；成功写 info，失败写 warn
 </Diagram>
 
@@ -99,9 +100,9 @@ export function apply(ctx: GwbContext) {
 - 参数由处理函数自己校验，校验不过就抛错，命令插件把它转成失败回执
 - 成功写 info 日志，失败与找不到命令写 warn：异常都转成了回执，不写日志的话查不到谁在什么时候调了哪条命令、结果如何
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="124-136" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="135-147" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="95-103" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="106-114" */}
 
 这几条规则各自遇到过的问题见[遇到过的问题](/docs/pitfalls)。
 
@@ -129,10 +130,10 @@ export function apply(ctx: GwbContext) {
 
 - **不登记任何命令**：表里每一条都是别的插件登记的，命令做什么由登记它的插件决定
 - **不校验参数、不给命令分权限**：参数由处理函数自己校验；登记时只检查命令的定义
-- **不区分调用方**：页面、agent、插件调的是同一个 `run`，不带调用方身份
+- **不按来源限制调用**：页面、agent、插件调的是同一个 `run`、同一张表；来源只转交给处理函数，由处理函数自己决定用不用它（比如记进历史）。来源是内核与 MCP 入口自己写的，命令插件不核实
 - **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；MCP 入口的工具只有 `index`、`search`、`run` 三个，命令不能登记成单独的工具
 - **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程运行命令行程序的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)，它们把自己的命令也登记到这张表上
 - **不给命令设时限**：`run` 一直等到处理函数返回；命令行程序的时限由两个命令行运行插件管
 - **不保存命令表**：表只在内存里、不写进文件，登记命令的插件卸载时它登记的命令自动注销
-- **不接收页面的 IPC 消息**：页面发来的命令由内核应用收下、原样交给 `run`；内核不认识任何命令名
+- **不接收页面的 IPC 消息**：页面发来的命令由内核应用收下、带上 `{ via: 'ui' }` 交给 `run`；内核不认识任何命令名
 - **不管说明书怎么登记、怎么读**：说明书由说明书插件登记、agent 经 MCP 入口读；命令插件只把自己的 `skills/` 目录交给说明书插件

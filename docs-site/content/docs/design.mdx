@@ -69,12 +69,13 @@ cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安�
 
 插件的能力要被页面、agent 或别的插件调用，就登记成命令总线上的命令。三类调用方用的是同一张表：
 
-- **页面**经 `window.gwb.command`，内核应用把它原样交给 `ctx.gwbCommands.run`，内核不认识任何命令名
-- **agent** 经 MCP 入口：`index`、`search` 从命令总线的 `list()` 取清单，`run` 调 `ctx.gwbCommands.run`
-- **插件**直接调 `ctx.gwbCommands.run`
+- **页面**经 `window.gwb.command`，内核应用把它交给 `ctx.gwbCommands.run` 并带上 `{ via: 'ui' }`，内核不认识任何命令名
+- **agent** 经 MCP 入口：`index`、`search` 从命令总线的 `list()` 取清单，`run` 调 `ctx.gwbCommands.run` 并带上 `{ via: 'mcp' }`
+- **插件**直接调 `ctx.gwbCommands.run`，不带来源，处理函数收到的是 `{ via: 'plugin' }`
 
 由此推出：
 
+- **来源只转交、不限制**：三类调用方能调的命令一样，命令总线只把 `via` 转交给处理函数；要按来源区分的是处理函数自己（块笔记的核心插件按来源记下每次提交，撤销键只撤来自界面的）
 - **命令行工具也是命令**：两个命令行运行插件把登记的每个工具同时登记成一条命令，不另开入口
 - **说明书也经命令读**：`skill.list`、`skill.read` 是普通命令
 - **MCP 的工具只有三个，以后也不增加**：MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里，每次调用现查命令总线（[MCP 入口](/docs/mcp)）

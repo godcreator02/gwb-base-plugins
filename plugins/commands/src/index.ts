@@ -1,9 +1,18 @@
 import { Service } from 'cordis'
 import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
 // 相对 import 必须带 .js：构建产物由 node 直接加载，ESM 不补扩展名
-import { checkedCommandDef, createRegistry, type CommandTable, type GwbCommandDef, type GwbCommands, type RegisteredCommandDef } from './registry.js'
+import {
+  checkedCommandDef,
+  createRegistry,
+  type CommandTable,
+  type GwbCommandContext,
+  type GwbCommandDef,
+  type GwbCommandHandler,
+  type GwbCommands,
+  type RegisteredCommandDef,
+} from './registry.js'
 
-export type { GwbCommands, GwbCommandDef, RegisteredCommandDef } from './registry.js'
+export type { GwbCommandContext, GwbCommandDef, GwbCommandHandler, GwbCommands, GwbRequestSource, RegisteredCommandDef } from './registry.js'
 
 /** loader 挂在 fiber 上的条目，只取用到的那一项；不在 cordis 的类型里 */
 interface FiberWithLoaderEntry {
@@ -59,7 +68,7 @@ export default class GwbCommandBus extends Service implements GwbCommands {
    * 注销登记在调用方的 effect 上、随它卸载。
    * 返回 cordis 的 effect 注销函数：重复调用、或被调用方外层的 `ctx.effect` 包住，都只执行一次
    */
-  register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void {
+  register(def: GwbCommandDef, handler: GwbCommandHandler): () => void {
     const checkedDef = checkedCommandDef(this.packageNameOfCaller(def.name), def)
     return this.ctx.effect(() => this.commandTable.register(checkedDef, handler), `命令 ${checkedDef.name}`)
   }
@@ -68,8 +77,8 @@ export default class GwbCommandBus extends Service implements GwbCommands {
     return this.commandTable.list()
   }
 
-  run(name: string, args?: unknown): Promise<GwbResult> {
-    return this.commandTable.run(name, args)
+  run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult> {
+    return this.commandTable.run(name, args, context)
   }
 }
 

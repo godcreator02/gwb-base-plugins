@@ -11,14 +11,14 @@ import { StepControls, useSteps } from './steps'
 type Part = 'page' | 'agent' | 'plugin' | 'kernel' | 'mcp' | 'run' | 'table' | 'handler' | 'passThrough' | 'wrapped' | 'thrown' | 'missing'
 
 const STEPS: { title: string; detail: string; lit: Part[]; returning?: boolean }[] = [
-  { title: '全貌', detail: '页面、agent、别的插件调的是同一个 gwbCommands.run，查的是同一张命令表；命令总线不区分调用方。', lit: [] },
+  { title: '全貌', detail: '页面、agent、别的插件调的是同一个 gwbCommands.run，查的是同一张命令表；命令总线只把来源 via 转交给处理函数，不按它限制能调什么。', lit: [] },
   {
     title: '第 1 步：调用进来',
-    detail: '页面调 window.gwb.command，内核收下后原样交给 run；agent 调 MCP 入口的 run 工具，MCP 入口交给 run；别的插件直接调 ctx.gwbCommands.run。',
+    detail: '页面调 window.gwb.command，内核收下后交给 run 并带上 { via: "ui" }；agent 调 MCP 入口的 run 工具，MCP 入口带上 { via: "mcp" }；别的插件直接调 ctx.gwbCommands.run，不带来源。',
     lit: ['page', 'agent', 'plugin', 'kernel', 'mcp', 'run'],
   },
   { title: '第 2 步：按命令名查表', detail: '命令表只在内存里。找不到这条命令，直接回 { ok: false, error: \'没有这条命令：<命令名>\' }，写一条 warn。', lit: ['run', 'table', 'missing'] },
-  { title: '第 3 步：执行处理函数', detail: '参数原样交给登记方的处理函数，由它自己校验；命令总线不校验参数、不设时限。', lit: ['table', 'handler'] },
+  { title: '第 3 步：执行处理函数', detail: '参数原样交给登记方的处理函数，由它自己校验；来源是第二个参数，没带就是 { via: "plugin" }。命令总线不校验参数、不设时限。', lit: ['table', 'handler'] },
   {
     title: '第 4 步：结果变成回执',
     detail: '处理函数返回带 ok 的对象，原样返回；返回别的值，包成 { ok: true, data }；抛错，收成 { ok: false, error }，不抛给调用方。',
@@ -50,8 +50,8 @@ export function CommandRun() {
         <Box x={10} y={120} w={150} h={48} lines={['agent', 'MCP 客户端']} tone={lit('agent')} />
         <Box x={10} y={200} w={150} h={48} lines={['别的插件', 'ctx.gwbCommands.run']} tone={lit('plugin')} mono />
 
-        <Box x={190} y={40} w={140} h={48} lines={['内核', '原样交给 run']} tone={lit('kernel')} />
-        <Box x={190} y={120} w={140} h={48} lines={['MCP 入口', 'run 工具']} tone={lit('mcp')} />
+        <Box x={190} y={40} w={140} h={48} lines={['内核', '带 via: "ui"']} tone={lit('kernel')} />
+        <Box x={190} y={120} w={140} h={48} lines={['MCP 入口', '带 via: "mcp"']} tone={lit('mcp')} />
 
         {link(160, 190, 64)}
         {link(330, 380, 64)}
@@ -60,7 +60,7 @@ export function CommandRun() {
         {link(160, 380, 224, back ? '回执' : '直接调用')}
 
         <Frame x={368} y={10} w={236} h={250} label="命令总线 gwbCommands" />
-        <Box x={380} y={36} w={80} h={212} lines={['run', '(name, args)', '从不抛错']} tone={lit('run')} mono />
+        <Box x={380} y={36} w={80} h={212} lines={['run', '(name, args,', 'context?)', '从不抛错']} tone={lit('run')} mono />
         <Box x={474} y={36} w={118} h={212} lines={['命令表', 'skill.read', 'logger.backlog', 'mcp.info', '…']} tone={lit('table')} mono />
         <Arrow from={[460, 142]} to={[474, 142]} tone={state.step === 2 ? 'a' : undefined} />
 
