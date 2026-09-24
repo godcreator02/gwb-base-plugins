@@ -80,4 +80,8 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 {/* has file="../plugins/data/tests/paths.test.ts" text="同一个包的两条条目各是各的目录——按包名切的话它们会互相覆盖" */}
 
-身份绑定到调用方条目（写出来的目录是调用方自己那条条目的）只能在隔离 home 里实际运行验证。
+服务这一层（目录按调用方条目算、归属不符时三个方法都抛错、写失败先写 error、随机 id 只告警一次）由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
+
+{/* has file="../plugins/data/tests/service.test.ts" text="目录归别的包时 dir、readDoc、writeDoc 都抛错，报错指向 plugin-manager.transfer-owner" */}
+
+loader 真的把调用方自己那条条目放在 fiber 上，只能在隔离 home 里实际运行验证。
