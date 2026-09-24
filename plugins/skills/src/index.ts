@@ -1,162 +1,142 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Service } from 'cordis'
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
-// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@godcreator/gwb-commands'
-import { collectSkills, SKILL_ENTRY, type CollectedSkill, type GwbSkill } from './collect.js'
+import { Service, type Logger } from 'cordis'
+import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
+// 这个 import 同时激活命令插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands
+import type { GwbCommands } from '@godcreator/gwb-commands'
+import { collectSkills, SKILL_ENTRY, type CollectedSkill, type CollectProblem, type GwbSkill } from './collect.js'
 
 export type { GwbSkill } from './collect.js'
 export { SKILL_ENTRY } from './collect.js'
 
-/**
- * skill 服务：**谁有说明书谁自己挂上来**。
- *
- * skill 是给 agent 看的说明书（`SKILL.md` + 可选的附件）。工作台把命令面开给外部
- * agent 之后，agent 手上只有一张命令名清单——多步流程、调用顺序、踩过的坑无处可讲，
- * 这个件就是那些话的落点。
- *
- * 三条纪律，各自挡住一种骗人的局面：
- *
- * - **挂载是主动的**：件在自己的 `apply` 里挂一个目录，随 `ctx.effect` 卸载回收。
- *   不扫 `node_modules`、不问条目树的启停——表里每一条都对应一个此刻真挂着的件，
- *   不会出现「skill 在、它讲的命令不在」
- * - **正文每次现读盘**：改了 `SKILL.md` 的正文立刻生效，不必重挂件；内存里只留元信息。
- *   （加删文件、改 frontmatter 仍要重挂——那些是注册时扫的）
- * - **读文件只认登记过的清单**：名字来查表，不做路径拼接——拼接就意味着一个带 `../`
- *   的参数能读出件目录以外的任何文件
- *
- * 暴露给外部 agent 的那一面**不在这儿**：这个件只管收集与查询，不认识 MCP。
- */
-
-/** 取表那条命令。注册与调用两处同吃这一个常量 */
 export const SKILL_LIST_COMMAND = 'skill.list'
-
-/** 读正文那条命令。服务面的 `read` 在这一版还没有别的出口，缺了它就没人调得到 */
 export const SKILL_READ_COMMAND = 'skill.read'
 
-/** 消费方拿到的那一格。写 `inject: ['gwbSkills']` 才有 */
+const PLUGIN_NAME = 'gwb-skills'
+const PACKAGE_NAME = '@godcreator/gwb-skills'
+
+/** 调用方拿到的接口。写 `inject: ['gwbSkills']` 或局部注入才有 */
 export interface GwbSkillsApi {
   /**
-   * 挂一个装 skill 的目录（下面每个子目录是一个 skill），回注销函数。
-   * **别忘了把那个目录加进自己 `package.json` 的 `files`**——漏了包照发照装得上，
-   * 到挂载时才报「skill 目录读不动」。
+   * 登记一个装说明书的目录（下面每个子目录是一份），回注销函数。
+   * 这个目录要列进自己 `package.json` 的 `files`，漏了包照样发布、装得上，到登记时才报「skill 目录读不动」
    */
   register(dir: string | URL): () => void
-  /** 此刻挂着的全部 skill */
+  /** 此刻登记着的全部说明书 */
   list(): GwbSkill[]
-  /** 读某份 skill 里的一个文件（缺省 `SKILL.md`），每次现读盘。不在表里回 undefined */
+  /** 读某份说明书里的一个文件（缺省 `SKILL.md`），每次从磁盘读。不在表里回 undefined */
   read(name: string, file?: string): Promise<string | undefined>
 }
 
+function logCollectProblems(log: Logger, pkg: string, problems: CollectProblem[]): void {
+  for (const problem of problems) log.warn(`[${pkg}] ${problem.where}：${problem.message}`)
+}
+
 export default class GwbSkills extends Service implements GwbSkillsApi {
-  /** 没有命令总线就不挂——inject 是 cordis 的等待机制，不是建议 */
   static inject = ['gwbCommands']
 
-  /**
-   * skill 名 → 那一份（名字全局唯一，见 register 的重名纪律）。
-   * **用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份 `Object.create(this)`，
-   * 而 `#` 私有字段的内部槽不在原型链上，派生对象上一读就炸。
-   */
-  private readonly byName = new Map<string, CollectedSkill>()
+  /** 用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错 */
+  private readonly skillsByName = new Map<string, CollectedSkill>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbSkills')
   }
 
-  /**
-   * 服务就绪时把两条命令挂上；effect 包着，本件卸载时自动注销。
-   * 两条都是普通命令——MCP 门工具面封顶于 index / search / run 三枚，说明书经 run 按名调
-   */
   [Service.init](): void {
-    const cli = this.ctx.gwbCommands
+    const commandBus = this.ctx.gwbCommands
     // inject 保证了它在，这句只是把类型收窄
-    if (cli === undefined) return
-    this.ctx.effect(() =>
-      cli.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: '@godcreator/gwb-skills' },
-        () => ({ count: this.byName.size, skills: this.list() }),
-      ),
-    )
-    this.ctx.effect(() =>
-      cli.register(
-        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@godcreator/gwb-skills' },
-        async (args) => {
-          const req = args as { name?: unknown; file?: unknown } | undefined
-          const skillName = req?.name
-          if (typeof skillName !== 'string' || skillName === '') {
-            return { ok: false, error: `${SKILL_READ_COMMAND} 要 { name: string, file?: string }` }
-          }
-          const file = typeof req?.file === 'string' && req.file !== '' ? req.file : SKILL_ENTRY
-          const text = await this.read(skillName, file)
-          // 读不到就说读不到。**不区分「没这份 skill」与「没这个文件」**——两者都是
-          // 「不在登记表里」，分开报等于告诉外面哪些名字存在
-          if (text === undefined) return { ok: false, error: `读不到 ${skillName}/${file}（不在登记表里）` }
-          return { ok: true, data: { name: skillName, file, text } }
-        },
-      ),
-    )
+    if (commandBus === undefined) return
+    this.registerSkillCommands(commandBus)
     this.ctx
-      .logger('gwb-skills')
+      .logger(PLUGIN_NAME)
       .info(`skill 注册就绪（ctx.gwbSkills），取表走 ${SKILL_LIST_COMMAND}、读正文走 ${SKILL_READ_COMMAND}`)
   }
 
-  /**
-   * 挂它的是哪个件。方法里的 `this.ctx` 是**消费者**的 ctx，`fiber.entry` 是 loader
-   * 挂上的（不是 cordis 本体的面），所以按运行时形状取、不动全局类型声明
-   */
-  private owner(): string {
+  private registerSkillCommands(commandBus: GwbCommands): void {
+    this.ctx.effect(() =>
+      commandBus.register(
+        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: PACKAGE_NAME },
+        () => ({ count: this.skillsByName.size, skills: this.list() }),
+      ),
+    )
+    this.ctx.effect(() =>
+      commandBus.register(
+        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: PACKAGE_NAME },
+        (args) => this.runSkillReadCommand(args),
+      ),
+    )
+  }
+
+  private async runSkillReadCommand(args: unknown): Promise<GwbResult> {
+    const readArgs = args as { name?: unknown; file?: unknown } | undefined
+    const skillName = readArgs?.name
+    if (typeof skillName !== 'string' || skillName === '') {
+      return { ok: false, error: `${SKILL_READ_COMMAND} 要 { name: string, file?: string }` }
+    }
+    const file = typeof readArgs?.file === 'string' && readArgs.file !== '' ? readArgs.file : SKILL_ENTRY
+    const text = await this.read(skillName, file)
+    // 不区分「没这份说明书」与「没这个文件」，免得外面借报错探出哪些名字存在
+    if (text === undefined) return { ok: false, error: `读不到 ${skillName}/${file}（不在登记表里）` }
+    return { ok: true, data: { name: skillName, file, text } }
+  }
+
+  /** `fiber.entry` 是 loader 加上的，不在 cordis 的类型里，按运行时形状取 */
+  private callerPackageName(): string {
     const fiber = this.ctx.fiber as unknown as { entry?: { options?: { name?: unknown } } } | undefined
     const name = fiber?.entry?.options?.name
     if (typeof name !== 'string' || name === '') {
-      throw new Error('取不到调用方的身份——ctx.gwbSkills 只能在经 cordis.yml 挂上的件里用')
+      throw new Error('取不到调用方的身份——ctx.gwbSkills 只能在经 cordis.yml 加载的插件里用')
     }
     return name
   }
 
-  register(dir: string | URL): () => void {
-    const owner = this.owner()
-    const root = dir instanceof URL ? fileURLToPath(dir) : path.resolve(dir)
-    const log = this.ctx.logger('gwb-skills')
-    const { skills, problems } = collectSkills(root, owner)
-    for (const p of problems) log.warn(`[${owner}] ${p.where}：${p.message}`)
-
-    const taken: string[] = []
-    for (const found of skills) {
-      const clash = this.byName.get(found.skill.name)
-      if (clash !== undefined) {
-        // 静默覆盖会让 agent 读到另一个件的说明书，而症状只是「它照着做但做错了」
-        log.warn(`[${owner}] skill 名 ${found.skill.name} 已被 ${clash.skill.plugin} 占着，这一份没挂`)
+  /** 同名的先到先得：已被别的包占住的那份不收、写 warn。回收下的名字 */
+  private addSkillsKeepingFirstComer(log: Logger, pkg: string, collectedSkills: CollectedSkill[]): string[] {
+    const addedSkillNames: string[] = []
+    for (const collected of collectedSkills) {
+      const holder = this.skillsByName.get(collected.skill.name)
+      if (holder !== undefined) {
+        log.warn(`[${pkg}] skill 名 ${collected.skill.name} 已被 ${holder.skill.plugin} 占着，这一份不登记`)
         continue
       }
-      this.byName.set(found.skill.name, found)
-      taken.push(found.skill.name)
+      this.skillsByName.set(collected.skill.name, collected)
+      addedSkillNames.push(collected.skill.name)
     }
-    if (taken.length > 0) log.info(`[${owner}] 挂上 ${taken.length} 份 skill：${taken.join('、')}`)
+    return addedSkillNames
+  }
 
-    const off = (): void => {
-      // 只撤自己挂上的那几个：别人后来挂的同名一份不动
-      for (const key of taken) this.byName.delete(key)
+  register(dir: string | URL): () => void {
+    const pkg = this.callerPackageName()
+    const skillsDir = dir instanceof URL ? fileURLToPath(dir) : path.resolve(dir)
+    const log = this.ctx.logger(PLUGIN_NAME)
+    const { skills, problems } = collectSkills(skillsDir, pkg)
+    logCollectProblems(log, pkg, problems)
+
+    const addedSkillNames = this.addSkillsKeepingFirstComer(log, pkg, skills)
+    if (addedSkillNames.length > 0) log.info(`[${pkg}] 登记了 ${addedSkillNames.length} 份 skill：${addedSkillNames.join('、')}`)
+
+    const unregisterAddedSkills = (): void => {
+      for (const skillName of addedSkillNames) this.skillsByName.delete(skillName)
     }
-    // 挂在**调用方**的 effect 上（this.ctx 在方法里是消费者的），件卸载时自动摘
-    this.ctx.effect(() => off)
-    return off
+    // this.ctx 是调用方的上下文，调用方卸载时自动注销
+    this.ctx.effect(() => unregisterAddedSkills)
+    return unregisterAddedSkills
   }
 
   list(): GwbSkill[] {
-    return [...this.byName.values()].map((found) => found.skill)
+    return [...this.skillsByName.values()].map((found) => found.skill)
   }
 
   async read(name: string, file: string = SKILL_ENTRY): Promise<string | undefined> {
-    const found = this.byName.get(name)
+    const found = this.skillsByName.get(name)
     if (found === undefined) return undefined
-    // 只认登记表里的那几份——这张表是扫出来的，条目里不会有 `..`
+    // 只认登记时扫出的清单，不做路径拼接：清单是扫出来的，里面不会有 `..`
     if (!found.skill.files.includes(file)) return undefined
     try {
       return await fs.readFile(path.join(found.dir, ...file.split('/')), 'utf8')
-    } catch (err) {
-      this.ctx.logger('gwb-skills').warn(`读 ${name}/${file} 失败：${String(err)}`)
+    } catch (readError) {
+      this.ctx.logger(PLUGIN_NAME).warn(`读 ${name}/${file} 失败：${String(readError)}`)
       return undefined
     }
   }
