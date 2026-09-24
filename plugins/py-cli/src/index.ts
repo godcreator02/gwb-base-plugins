@@ -1,9 +1,8 @@
 import path from 'node:path'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator/gwb-plugin-api'
-// 只为激活 commands 件的 `declare module 'cordis'`——它给 ctx 加上 gwbCommands 这个名字
-import type {} from '@godcreator/gwb-commands'
-// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
+// 这两个 import 同时激活命令插件与说明书插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands、gwbSkills
+import type { GwbCommands } from '@godcreator/gwb-commands'
 import type {} from '@godcreator/gwb-skills'
 import { ensureVenv, venvPaths, type BootstrapResult } from './bootstrap.js'
 import { checkCwd, parseInvocation } from './invoke.js'
@@ -18,157 +17,142 @@ export { checkCwd, parseInvocation } from './invoke.js'
 export { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './registry.js'
 export { STAMP_NAME, venvPaths } from './bootstrap.js'
 
-/**
- * 跑 python 写的 CLI。**消费方件**的包根下带一个 python 项目（`py/`），守卫用 uv 在那儿
- * 建一个 venv——件装在 `node_modules` 里，venv 也就在 `node_modules` 里——然后 spawn venv
- * 里的可执行文件。这个件自己不带任何 python 项目，它只做运行器。
- *
- * **守卫是幂等的,而且每次跑命令之前都过一遍**：已经好了就是三次 fs 调用、零进程；
- * venv 被外力抹掉了（`pnpm install` 重解整个 `.pnpm/<hash>` 目录就会）当场重建。
- * 自愈不是单独一条路径,它就是守卫本身。
- *
- * **登记的命令同时挂进 `gwbCommands` 总线**,所以这个件硬 `inject` 总线。
- */
-
-/** 此刻登记了哪些 */
 export const LIST_COMMAND = 'py-cli.list'
 
 const PLUGIN_NAME = 'gwb-py-cli'
+const PACKAGE_NAME = '@godcreator/gwb-py-cli'
 
-/**
- * 给 python 子进程的两条。机器级 `PYTHONUTF8=1` 是本生态的前提,这儿再注一遍是
- * 零成本的兜底——少了它 Windows 上中文输出就是一片乱码,而且报错报得莫名其妙
- */
+/** 构建产物在 dist/ 下，包根的 skills/ 就是 '../skills/'；这个目录要列进 package.json 的 files */
+const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)
+
+/** 少了这两条，Windows 上 python 子进程的中文输出是乱码 */
 const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
 
-/**
- * 每条登记进总线的命令，描述末尾都带这一句：agent 只看描述就得知道参数怎么给。
- * 写在这儿而不是让每个消费方件自己写，是因为形状是运行器定的，件只定它自己那半
- */
+/** 总线命令缺省的用法：参数形状由运行插件定，登记方只写自己那部分 */
 const INVOKE_SHAPE =
   '参数 { args?: string[], cwd?: string }：args 追加在固定参数后（直接给一串也当 args）；' +
   'cwd 要是存在的目录的绝对路径，缺省落在包根的 py/ 下'
 
-/** 一次调用被拒（cwd 不合规之类）：没起进程，回一句说清要什么的话 */
+/** 一次调用被拒（cwd 不合规之类）：没启动进程，回一句说清要什么的话 */
 export interface CliRunRefused {
   ok: false
   error: string
 }
 
-/** `run` 回的两种：跑过了（进程回执）或没跑（被拒） */
+/** `run` 回的两种：运行过了（进程回执）或没运行（被拒） */
 export type CliRunOutcome = CliRunResult | CliRunRefused
 
-/** 消费方拿到的那一格。写 `inject: ['gwbPyCli']` 才有 */
+type VenvIdentity = Pick<RegisteredPyCli, 'packageRoot' | 'distName' | 'version' | 'name'>
+
+/** `Scripts/<command>.exe`，或 `Scripts/python.exe -m <module>` */
+function executableAndPrefixArgs(registration: RegisteredPyCli): { command: string; prefixArgs: string[] } {
+  const paths = venvPaths(registration.packageRoot)
+  const command =
+    registration.command !== undefined
+      ? path.join(paths.scriptsDir, `${registration.command}.exe`)
+      : path.join(paths.scriptsDir, 'python.exe')
+  const prefixArgs = registration.module !== undefined ? ['-m', registration.module] : []
+  return { command, prefixArgs }
+}
+
+/** 调用方拿到的接口。写 `inject: ['gwbPyCli']` 才有 */
 export interface GwbPyCliApi {
   /**
-   * 校验一次 venv：不在就建、版本对不上就同步、已经好了就跳过。**幂等**。
-   *
-   * 不抛——uv 不在 PATH、同步没成，一律收敛成 `{ ready: false, reason }`。
-   * 同一个包根上并发调只会真跑一趟。
+   * 检查一次 venv：不在就建、版本对不上就同步、已经好了就跳过。幂等。
+   * 不抛——uv 不在 PATH、同步没成，一律回 `{ ready: false, reason }`。同一个包根上并发调用只真跑一次
    */
   ensureReady(opts: { packageRoot: string; distName: string; version: string }): Promise<BootstrapResult>
   /**
-   * 登记一条命令。身份不用给——由这儿从调用方的 fiber 上取。
-   *
-   * 顺手发起一次守卫（不挡着件挂上）。回一个注销函数给要提前摘的场景，
-   * **不用自己包 `ctx.effect`**：件卸载时这条命令自动从表上、也从命令总线上摘掉。
+   * 登记一条命令，身份从调用方的 fiber 上取；顺带发起一次 venv 检查，不等它完成。
+   * 回注销函数；不用自己包 `ctx.effect`，插件卸载时自动从表上和命令总线上注销
    */
   register(spec: PyCliSpec): () => void
-  /** 此刻表里有哪些条,按登记先后 */
+  /** 此刻表里有哪些，按登记先后 */
   list(): RegisteredPyCli[]
   /**
-   * 跑一条。跑之前守卫过一遍,所以 venv 没了会当场重建。`opts.cwd` 是**按次**给的工作目录，
-   * 必须是存在的目录的绝对路径，不合规**不抛**、回 `{ ok: false, error }`（`spec.cwd` 仍是缺省）。
-   * 没这条命令时抛
+   * 运行一条。运行前先检查 venv，venv 没了会当场重建。`opts.cwd` 是按次给的工作目录，
+   * 必须是存在的目录的绝对路径，不合规不抛、回 `{ ok: false, error }`（`spec.cwd` 仍是缺省）。没这条命令时抛
    */
   run(name: string, extraArgs?: readonly string[], opts?: { cwd?: string }): Promise<CliRunOutcome>
 }
 
-/** 挂进总线的描述：件写的那半在前，运行器定的参数形状在后 */
 export default class GwbPyCli extends Service implements GwbPyCliApi {
-  /** 没有命令总线就不挂——inject 是 cordis 的等待机制,不是建议 */
   static inject = ['gwbCommands']
 
-  /**
-   * 注册表本体。**用 TS 的 `private` 不用 `#`**：cordis 给每个消费者派生一份
-   * `Object.create(this)`,而 `#` 私有字段的内部槽不在原型链上,派生对象上一读就炸。
-   */
-  private readonly registry: PyCliRegistry
-  /** 提供方自己的 ctx。往总线上挂命令得用这一份——消费者未必 inject 过 gwbCommands */
-  private readonly own: GwbContext
-  /** 提供方自己的嗓门。构造时 this.ctx 还是自己，logger 绑的是本件 */
-  private readonly info: (message: string) => void
-  private readonly warn: (message: string) => void
-  private readonly error: (message: string) => void
-  /** 正在跑的守卫,按包根去重。并发调 run 时不该同时起两个 uv sync */
-  private readonly inflight = new Map<string, Promise<BootstrapResult>>()
+  /** 用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错 */
+  private readonly pyCliRegistry: PyCliRegistry
+  /** 本插件自己的上下文。方法里的 `this.ctx` 是调用方的，调用方未必 inject 过 gwbCommands，往总线登记命令要用这一份 */
+  private readonly providerContext: GwbContext
+  private readonly logInfo: (message: string) => void
+  private readonly logWarn: (message: string) => void
+  private readonly logError: (message: string) => void
+  /** 正在进行的 venv 检查，按包根去重：并发运行时不同时启动两个 uv sync */
+  private readonly venvChecksInFlight = new Map<string, Promise<BootstrapResult>>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbPyCli')
-    this.own = ctx
-    // 构造时 this.ctx 还是**提供方**自己的,logger 绑的是本件
+    this.providerContext = ctx
+    // 构造时 this.ctx 还是本插件自己的上下文，logger 记在本插件名下
     const logger = ctx.logger(PLUGIN_NAME)
-    this.info = (message: string): void => logger.info(message)
-    this.warn = (message: string): void => logger.warn(message)
-    this.error = (message: string): void => logger.error(message)
-    this.registry = createRegistry((message) => this.warn(message))
+    this.logInfo = (message: string): void => logger.info(message)
+    this.logWarn = (message: string): void => logger.warn(message)
+    this.logError = (message: string): void => logger.error(message)
+    this.pyCliRegistry = createRegistry((message) => this.logWarn(message))
   }
 
-  /** 服务就绪时把看表那条命令挂上；effect 包着,本件卸载时自动注销 */
   [Service.init](): void {
-    const cli = this.own.gwbCommands
-    // inject 保证了它在,这句只是把类型收窄
-    if (cli === undefined) return
+    const commandBus = this.providerContext.gwbCommands
+    // inject 保证了它在，这句只是把类型收窄
+    if (commandBus === undefined) return
+    this.registerListCommand(commandBus)
+    this.providerContext.logger(PLUGIN_NAME).info(`python CLI 运行插件就绪（ctx.gwbPyCli），列表走 ${LIST_COMMAND}`)
+    this.registerOwnSkillsWheneverSkillsPluginIsLoaded()
+  }
 
-    this.own.effect(() =>
-      cli.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: '@godcreator/gwb-py-cli' }, () =>
-        this.registry.list(),
+  private registerListCommand(commandBus: GwbCommands): void {
+    this.providerContext.effect(() =>
+      commandBus.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: PACKAGE_NAME }, () =>
+        this.pyCliRegistry.list(),
       ),
     )
-    this.own.logger(PLUGIN_NAME).info(`python CLI 运行器就绪（ctx.gwbPyCli）,看表走 ${LIST_COMMAND}`)
-    // 说明书那一格,**局部注入**:没装 skills 件的 home 里运行器照常挂。
-    // 产物在 dist/ 下,包根的 skills/ 是 '../skills/';那个目录得进 package.json 的 files
-    this.own.inject(['gwbSkills'], (scoped) => {
-      scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
+  }
+
+  private registerOwnSkillsWheneverSkillsPluginIsLoaded(): void {
+    this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {
+      contextWithSkills.effect(() => contextWithSkills.gwbSkills.register(OWN_SKILLS_DIR))
     })
   }
 
-  /** 守卫一趟并把结果说出来。日志的措辞就是实机验收时要看的那一行 */
-  private async bootstrap(
-    record: Pick<RegisteredPyCli, 'packageRoot' | 'distName' | 'version' | 'name'>,
-    logger: { info: (m: string) => void; warn: (m: string) => void },
-  ): Promise<BootstrapResult> {
-    const result = await this.ensureReady(record)
+  /** 检查一次 venv 并把结果写进日志 */
+  private async ensureReadyAndLog(identity: VenvIdentity, logger: { info: (m: string) => void; warn: (m: string) => void }): Promise<BootstrapResult> {
+    const result = await this.ensureReady(identity)
     if (result.ready) {
-      logger.info(result.action === 'skipped' ? `venv 已就绪,跳过：${record.name}` : `venv 建好了：${record.name}`)
+      logger.info(result.action === 'skipped' ? `venv 已就绪,跳过：${identity.name}` : `venv 建好了：${identity.name}`)
     } else {
-      logger.warn(`venv 没就绪,${record.name} 跑不了：${result.reason ?? '没说原因'}`)
+      logger.warn(`venv 没就绪,${identity.name} 跑不了：${result.reason ?? '没说原因'}`)
     }
     return result
   }
 
   async ensureReady(opts: { packageRoot: string; distName: string; version: string }): Promise<BootstrapResult> {
-    const key = path.resolve(opts.packageRoot)
-    const running = this.inflight.get(key)
-    if (running !== undefined) return running
+    const packageRootKey = path.resolve(opts.packageRoot)
+    const checkInFlight = this.venvChecksInFlight.get(packageRootKey)
+    if (checkInFlight !== undefined) return checkInFlight
 
-    const task = ensureVenv({
+    const venvCheck = ensureVenv({
       packageRoot: opts.packageRoot,
       distName: opts.distName,
       version: opts.version,
-      log: (message) => this.own.logger(PLUGIN_NAME).info(message),
+      log: (message) => this.providerContext.logger(PLUGIN_NAME).info(message),
     }).finally(() => {
-      this.inflight.delete(key)
+      this.venvChecksInFlight.delete(packageRootKey)
     })
-    this.inflight.set(key, task)
-    return task
+    this.venvChecksInFlight.set(packageRootKey, venvCheck)
+    return venvCheck
   }
 
-  /**
-   * 登记它的是哪个件。方法里的 `this.ctx` 是**消费者**的 ctx,`fiber.entry` 是 loader
-   * 挂上的（不是 cordis 本体的面）,所以按运行时形状取、不动全局类型声明
-   */
-  private owner(): string {
+  /** `fiber.entry` 是 loader 加上的，不在 cordis 的类型里，按运行时形状取 */
+  private callerPackageName(): string {
     const fiber = this.ctx.fiber as unknown as { entry?: { options?: { name?: unknown } } } | undefined
     const name = fiber?.entry?.options?.name
     if (typeof name !== 'string' || name === '') {
@@ -177,87 +161,91 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     return name
   }
 
-  register(spec: PyCliSpec): () => void {
-    const plugin = this.owner()
-    const off = this.registry.register(plugin, spec)
-    this.info(`CLI ${spec.name}（${plugin}）登记上了`)
-    const record = this.registry.get(spec.name)!
-    const cli = this.own.gwbCommands
-    const offCli = cli?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin }, (args) => {
+  /** 用同一个名字登记成总线命令，plugin 取调用方的包名 */
+  private registerOnCommandBus(spec: PyCliSpec, callerPackage: string): (() => void) | undefined {
+    const commandBus = this.providerContext.gwbCommands
+    return commandBus?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })
-    const dispose = (): void => {
-      off()
-      offCli?.()
+  }
+
+  register(spec: PyCliSpec): () => void {
+    const callerPackage = this.callerPackageName()
+    const unregisterFromTable = this.pyCliRegistry.register(callerPackage, spec)
+    this.logInfo(`CLI ${spec.name}（${callerPackage}）已登记`)
+    const registration = this.pyCliRegistry.get(spec.name)!
+    const unregisterFromBus = this.registerOnCommandBus(spec, callerPackage)
+    const unregister = (): void => {
+      unregisterFromTable()
+      unregisterFromBus?.()
     }
-    // 挂在**调用方**的 effect 上,件卸载时自动摘
-    this.ctx.effect(() => dispose)
-    // 顺手把它的 venv 建起来,不挡着调用方的 apply 往下走
-    void this.bootstrap(record, this.own.logger(PLUGIN_NAME))
-    return dispose
+    // this.ctx 是调用方的上下文，调用方卸载时自动注销
+    this.ctx.effect(() => unregister)
+    // 顺带把它的 venv 建起来，不挡着调用方的 apply 往下走
+    void this.ensureReadyAndLog(registration, this.providerContext.logger(PLUGIN_NAME))
+    return unregister
   }
 
   list(): RegisteredPyCli[] {
-    return this.registry.list()
+    return this.pyCliRegistry.list()
   }
 
   async run(name: string, extraArgs: readonly string[] = [], opts?: { cwd?: string }): Promise<CliRunOutcome> {
     return this.invoke(name, extraArgs, opts?.cwd)
   }
 
-  /** `run` 与总线那条路同吃这一处。`cwdRaw` 是没收窄过的——总线递来什么都得先过 `checkCwd` */
-  private async invoke(name: string, extraArgs: readonly string[], cwdRaw: unknown): Promise<CliRunOutcome> {
-    const found = this.registry.get(name)
-    if (found === undefined) throw new Error(`没有这条 python CLI：${name}`)
-    // 按次的 cwd 不合规就不起进程、也不跑守卫：错误文本就是文档,回去让调用方读
-    const perCall = checkCwd(cwdRaw)
-    if (!perCall.ok) {
-      this.warn(`${name} 没跑：${perCall.error}`)
-      return { ok: false, error: perCall.error }
+  /** `run` 与总线命令都走这里。`uncheckedCwd` 没收窄过，总线传来什么都得先过 `checkCwd` */
+  private async invoke(name: string, extraArgs: readonly string[], uncheckedCwd: unknown): Promise<CliRunOutcome> {
+    const registration = this.pyCliRegistry.get(name)
+    if (registration === undefined) throw new Error(`没有这条 python CLI：${name}`)
+    // cwd 不合规就不启动进程，也不检查 venv
+    const perCallCwd = checkCwd(uncheckedCwd)
+    if (!perCallCwd.ok) {
+      this.logWarn(`${name} 没跑：${perCallCwd.error}`)
+      return { ok: false, error: perCallCwd.error }
     }
-    return this.runRecord(found, extraArgs, perCall.cwd)
+    return this.runRegistered(registration, extraArgs, perCallCwd.cwd)
   }
 
-  /**
-   * 真正跑一条。**先守卫再跑**——幂等，已就绪时只是三次 fs 调用；venv 被外力抹掉时
-   * 当场重建。自愈就是这一句，没有单独的重试路径。
-   */
-  private async runRecord(record: RegisteredPyCli, extraArgs: readonly string[], cwd: string | undefined): Promise<CliRunResult> {
-    const ready = await this.ensureReady(record)
+  /** 每次运行前都检查 venv：已就绪时只是三次文件系统调用，venv 被删了当场重建，没有单独的重试路径 */
+  private async assertVenvReady(registration: RegisteredPyCli): Promise<void> {
+    const ready = await this.ensureReady(registration)
     if (!ready.ready) {
-      // register 时那趟守卫有日志,run 时这道重验过去静默抛——venv 坏了的现场得留一句
-      this.warn(`venv 没就绪,${record.name} 跑不了：${ready.reason ?? '没说原因'}`)
-      throw new Error(`venv 没就绪,${record.name} 跑不了：${ready.reason ?? '没说原因'}`)
+      // 登记时那次检查写过日志，这里抛错之前也要留一句，不然运行时 venv 坏了日志里看不出来
+      this.logWarn(`venv 没就绪,${registration.name} 跑不了：${ready.reason ?? '没说原因'}`)
+      throw new Error(`venv 没就绪,${registration.name} 跑不了：${ready.reason ?? '没说原因'}`)
     }
-    const paths = venvPaths(record.packageRoot)
-    // Scripts 与 .exe 是 Windows 专属——Windows-only 是本生态的分发前提,见 bootstrap 的头注
-    const command =
-      record.command !== undefined
-        ? path.join(paths.scriptsDir, `${record.command}.exe`)
-        : path.join(paths.scriptsDir, 'python.exe')
-    const prefix = record.module !== undefined ? ['-m', record.module] : []
-    // 起跑与收尾都出声:一条子进程从生到死,日志里得能对上账
-    this.info(`跑 ${record.name}（追加 ${extraArgs.length} 个参数,时限 ${record.timeoutMs}ms）`)
+  }
+
+
+  private async runRegistered(registration: RegisteredPyCli, extraArgs: readonly string[], perCallCwd: string | undefined): Promise<CliRunResult> {
+    await this.assertVenvReady(registration)
+    const { command, prefixArgs } = executableAndPrefixArgs(registration)
+    this.logInfo(`运行 ${registration.name}（追加 ${extraArgs.length} 个参数，时限 ${registration.timeoutMs}ms）`)
     const result = await runProcess({
       command,
-      args: [...prefix, ...record.args, ...extraArgs],
+      args: [...prefixArgs, ...registration.args, ...extraArgs],
       // 按次给的 > 登记时给的 > 那个 python 项目目录
-      cwd: cwd ?? record.cwd ?? paths.projectDir,
-      env: { ...PY_ENV, ...record.env },
-      timeoutMs: record.timeoutMs,
+      cwd: perCallCwd ?? registration.cwd ?? venvPaths(registration.packageRoot).projectDir,
+      env: { ...PY_ENV, ...registration.env },
+      timeoutMs: registration.timeoutMs,
     })
-    if (result.ok) {
-      this.info(`${record.name} 跑完了：退出码 ${String(result.exitCode)}，耗时 ${result.durationMs}ms`)
-    } else if (result.exitCode === null && !result.timedOut) {
-      // 起不来（可执行文件不在之类）：原因 runProcess 收进了 stderr
-      this.error(`${record.name} 起不动：${result.stderr.text.trim().slice(-300) || '没说原因'}`)
-    } else if (result.timedOut) {
-      this.warn(`${record.name} 超时（时限 ${result.timeoutMs}ms），整棵进程树已收掉`)
-    } else {
-      this.warn(`${record.name} 没跑成：退出码 ${String(result.exitCode)}\n${result.stderr.text.trim().slice(-500)}`)
-    }
+    this.logRunOutcome(registration.name, result)
     return result
+  }
+
+  private logRunOutcome(name: string, result: CliRunResult): void {
+    if (result.ok) {
+      this.logInfo(`${name} 运行完成：退出码 ${String(result.exitCode)}，耗时 ${result.durationMs}ms`)
+    } else if (result.exitCode === null && !result.timedOut) {
+      // 启动失败（可执行文件不在之类）：原因 runProcess 写进了 stderr
+      this.logError(`${name} 启动失败：${result.stderr.text.trim().slice(-300) || '没说原因'}`)
+    } else if (result.timedOut) {
+      this.logWarn(`${name} 超时（时限 ${result.timeoutMs}ms），已结束整个进程树`)
+    } else {
+      this.logWarn(`${name} 运行失败：退出码 ${String(result.exitCode)}\n${result.stderr.text.trim().slice(-500)}`)
+    }
   }
 }
 
