@@ -23,11 +23,11 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 **事件记号与两条命令的名字**：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="21-27" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="10-15" */}
 
 **一条日志的形状**：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="46-56" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="29-39" */}
 
 - `seq`：日志插件从 1 开始编的号，唯一；去重与排序都用它
 - `ts`：毫秒时间戳，cordis 没给就用收到的时刻
@@ -36,25 +36,25 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 **来源按 logger 名字分类**：`renderer` 是页面，`kernel`、`loader` 是内核，其余一律算插件：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="66-72" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="49-55" */}
 
-这张名单**靠约定**：`kernel` 与 `renderer` 两个名字由内核仓的 `main.ts` 定，`loader` 是 cordis loader 自己的 logger 名；日志插件在 `KERNEL_NAMES` 里另写一份。内核改名或新增名字，这边会把它算成插件，不会报错。
+这张名单**靠约定**：`kernel` 与 `renderer` 两个名字由内核仓的 `main.ts` 定，`loader` 是 cordis loader 自己的 logger 名；日志插件在 `KERNEL_LOGGER_NAMES` 里另写一份。内核改名或新增名字，这边会把它算成插件，不会报错。
 
 **第二个 exporter**：日志级别设为 3（`debug` 也收），每收到一条就存进 2000 条的环形缓冲、再经 `gwbKernel.emit` 推给页面：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="104-112" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="111-119" */}
 
 注册之前的日志从 cordis 自带的缓冲 `ctx.logger.buffer`（info 及以上）补进来，先补再注册，两段不重叠：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="131-133" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="121-123" */}
 
 **两条命令**：`logger.backlog`（无参数）回缓冲里最近 2000 条的数组；`logger.where`（无参数）回 `{ home, logFile }`：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="135-143" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="127-137" */}
 
-**空服务 `gwbLogger`**：没有方法。窗格插件用 `ctx.inject(['gwbLogger'], …)` 等它出现，出现就说明日志插件已加载、`logger.backlog` 可以调了：
+**空服务 `gwbLogger`**：没有方法。窗格插件用 `ctx.inject(['gwbLogger'], …)` 等它出现，出现就说明日志插件已加载、`logger.backlog` 可以调了。嵌套注入按服务名等待，少了这个服务，窗格会一直等下去、也不报错：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="32-38" */}
+{/* ref file="../plugins/logger/src/index.ts" lines="20-21" */}
 
 **窗格那边另写的一份**：日志窗格在浏览器里运行，不 import 日志插件的类型；`LogEntry`、`LogSource`、`LogLevel` 的形状，以及 `'gwb-logger'`、`'logger.backlog'`、`'logger.where'` 这几个字符串，都在界面插件仓的窗格代码里另写一份。这一份**靠约定**：写在本插件 `src/index.ts` 与界面插件仓 baseui 的日志窗格代码两处。窗格收到认不出的条目会丢掉、不崩溃，所以这边改了形状，症状是窗格里少了日志、不报错。
 
@@ -97,4 +97,8 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 {/* has file="../plugins/logger/tests/source.test.ts" text="kernel 与 loader 是内核" */}
 
-窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。补读缓冲、推到页面、`logger.backlog` 与窗格按 `seq` 拼接，只能在隔离 home 里实际运行验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。
+补读缓冲、推到页面、两千条上限、两条命令的登记与注销，由 `apply.test.ts` 在真实的 cordis 上下文里测，内核与命令总线用替身：
+
+{/* has file="../plugins/logger/tests/apply.test.ts" text="装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复" */}
+
+窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。窗格按 `seq` 拼接历史与实时日志，只能在隔离 home 里实际运行验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。
