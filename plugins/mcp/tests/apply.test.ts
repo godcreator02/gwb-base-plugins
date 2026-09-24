@@ -182,7 +182,7 @@ describe('MCP 插件装上之后', () => {
 
     const ran = await client.callTool({ name: 'run', arguments: { command: 'demo.echo', args: '{"x":1}' } })
     expect(JSON.parse((ran.content as { text: string }[])[0]!.text)).toEqual({ ok: true, data: { x: 1 } })
-    expect(textsOf(booted.logs, 'info')).toContain('agent 调了 demo.echo：成了')
+    expect(textsOf(booted.logs, 'info')).toContain('agent 调了 demo.echo：成功')
 
     const failed = await client.callTool({ name: 'run', arguments: { command: 'nope' } })
     expect(failed.isError).toBe(true)
@@ -246,9 +246,9 @@ describe('MCP 插件装上之后', () => {
     const booted = await bootMcp('default')
     const info = await booted.runCommand('mcp.info')
     expect(info.ok).toBe(false)
-    expect(info.error).toContain('MCP 门没在监听（default home 要的是 2870 口）')
+    expect(info.error).toContain('MCP 入口没在监听（default home 要的是 2870 端口）')
     expect((await booted.runCommand('mcp.token')).ok).toBe(false)
-    expect(textsOf(booted.logs, 'error').some((t) => t.startsWith('default home 的 MCP 门 2870 没开成'))).toBe(true)
+    expect(textsOf(booted.logs, 'error').some((t) => t.startsWith('default home 的 MCP 入口没能监听 2870 端口'))).toBe(true)
     await booted.mcpFiber.dispose()
     if (blockedByUs) blocker.close()
   })

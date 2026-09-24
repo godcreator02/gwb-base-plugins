@@ -26,7 +26,7 @@ export function assertDocName(value: string): void {
 function assertAtMostMaxSegments(entryId: string, segments: string[]): void {
   if (segments.length > MAX_ID_SEGMENTS) {
     throw new Error(
-      `条目 id ${JSON.stringify(entryId)} 有 ${segments.length} 段，超过 ${MAX_ID_SEGMENTS} 段就算不出数据目录：数据目录按末段算，嵌套出来的同名末段会撞进同一个目录。`,
+      `条目 id ${JSON.stringify(entryId)} 有 ${segments.length} 段，超过 ${MAX_ID_SEGMENTS} 段就算不出数据目录：数据目录按末段算，嵌套出来的同名末段会对应到同一个目录。`,
     )
   }
 }

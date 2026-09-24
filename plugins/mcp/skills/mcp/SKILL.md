@@ -10,7 +10,7 @@ description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401�
 ## 连上一个工作台
 
 1. 取连接片段：调 `mcp.info`（无参数）。还没有能用的 MCP 连接时，在命令行运行 `node <gwb-mcp 包目录>/bin/client.mjs run mcp.info`（default home 不用给任何参数，见「从命令行调命令」）。
-2. 回执 `data.mcpServers` 是照抄就能用的片段：`{ "gwb": { "type": "http", "url": "…", "headers": { "Authorization": "Bearer <当前 token>" } } }`。把它写进客户端的 MCP 配置。
+2. 回执 `data.mcpServers` 是直接复制就能用的片段：`{ "gwb": { "type": "http", "url": "…", "headers": { "Authorization": "Bearer <当前 token>" } } }`。把它写进客户端的 MCP 配置。
 3. 重连客户端。
 4. 调 `index`。
 
@@ -30,7 +30,7 @@ description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401�
 按顺序排查，哪一步解决了就停：
 
 1. 工具全灰、调不通：工作台没启动，或这个 home 没装 `gwb-mcp`。启动工作台（开始菜单「gwb-kernel」，或运行 `%LOCALAPPDATA%\Programs\gwb-kernel\gwb-kernel.exe`；从内核源码启动的看 gwb-kernel 仓 AGENTS 的「怎么跑」），然后重连客户端：MCP 连接不会自动接上中途才启动的工作台。
-2. 运行 `node <gwb-mcp 包目录>/bin/client.mjs index`。报连不上入口，就看 `<home>\gwb.log` 里 `gwb-mcp` 的那几行：`MCP 门就绪` 带着地址，`没开成` 带着原因。default 的 2870 被别的进程占着时入口不开、也不换端口：让人腾出 2870 再重启这个 home。
+2. 运行 `node <gwb-mcp 包目录>/bin/client.mjs index`。报连不上入口，就看 `<home>\gwb.log` 里 `gwb-mcp` 的那几行：`MCP 入口已就绪` 带着地址，`MCP 入口没能监听` 或 `MCP 入口没能启动` 带着原因。default 的 2870 被别的进程占着时入口不开、也不换端口：让人让出 2870 端口，再重启这个 home。
 3. 回 401：token 没带、对不上，或刚换过。重新取 `mcp.info` 的片段写进配置、重连。`gwb.log` 里 `拒绝了一条请求：…` 那一行写着没过的是 token、`Host` 还是 `Origin` 哪项检查。
 4. 回 403：入口只回 401，403 来自中间的代理，让客户端直连 `127.0.0.1`。
 5. 返回 `isError` 的文本：入口是通的，是命令自身失败，照说明书 `gwb-commands` 的「命令失败了」处理。

@@ -20,7 +20,7 @@ const PACKAGE_NAME = '@godcreator/gwb-skills'
 export interface GwbSkillsApi {
   /**
    * 登记一个装说明书的目录（下面每个子目录是一份），回注销函数。
-   * 这个目录要列进自己 `package.json` 的 `files`，漏了包照样发布、装得上，到登记时才报「skill 目录读不动」
+   * 这个目录要列进自己 `package.json` 的 `files`，漏了包照样发布、装得上，到登记时才报「说明书目录读不了」
    */
   register(dir: string | URL): () => void
   /** 此刻登记着的全部说明书 */
@@ -50,13 +50,13 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     this.registerSkillCommands(commandBus)
     this.ctx
       .logger(PLUGIN_NAME)
-      .info(`skill 注册就绪（ctx.gwbSkills），取表走 ${SKILL_LIST_COMMAND}、读正文走 ${SKILL_READ_COMMAND}`)
+      .info(`说明书插件就绪（ctx.gwbSkills），列出说明书调 ${SKILL_LIST_COMMAND}、读正文调 ${SKILL_READ_COMMAND}`)
   }
 
   private registerSkillCommands(commandBus: GwbCommands): void {
     this.ctx.effect(() =>
       commandBus.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻挂着的 skill（名字 + 描述 + 挂它的件）', usage: '无参数', plugin: PACKAGE_NAME },
+        { name: SKILL_LIST_COMMAND, description: '此刻登记着的全部说明书（每份带名字、描述、登记它的插件的包名、文件清单）', usage: '无参数', plugin: PACKAGE_NAME },
         () => ({ count: this.skillsByName.size, skills: this.list() }),
       ),
     )

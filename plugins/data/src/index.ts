@@ -80,11 +80,11 @@ export default class GwbData extends Service implements GwbDataApi {
   }
 
   async transferOwner(id: string, pkg: string): Promise<void> {
-    if (typeof pkg !== 'string' || pkg === '') throw new Error('过户要给一个非空的包名')
+    if (typeof pkg !== 'string' || pkg === '') throw new Error('改归属要给一个非空的包名')
     const dir = entryDir(this.homeDir, id)
     stampOwner(dir, pkg)
     this.verifiedOwnerByDir.set(dir, pkg)
-    this.ctx.logger(PLUGIN_NAME).info(`数据目录 ${dir} 过户给 ${pkg}`)
+    this.ctx.logger(PLUGIN_NAME).info(`数据目录 ${dir} 改归 ${pkg}`)
   }
 
   /** 算出这条条目的目录并核对归属：没有归属就记上，归别的包就抛错 */

@@ -36,13 +36,13 @@ export function assertSection(value: string): void {
   if (value === SHARED_SECTION) {
     throw new Error(`${JSON.stringify(SHARED_SECTION)} 是公共区的保留名，条目 id 不能叫它。`)
   }
-  if (value === '') throw new Error('分区名是空的——算不出这一项该落在哪。')
+  if (value === '') throw new Error('分区名是空的——算不出这一项该存在哪个分区。')
 }
 
 function assertAtMostMaxSegments(entryId: string, segments: string[]): void {
   if (segments.length > MAX_ID_SEGMENTS) {
     throw new Error(
-      `条目 id ${JSON.stringify(entryId)} 有 ${segments.length} 段，超过 ${MAX_ID_SEGMENTS} 段就算不出分区名：分区按末段算，嵌套出来的同名末段会撞进同一个分区。`,
+      `条目 id ${JSON.stringify(entryId)} 有 ${segments.length} 段，超过 ${MAX_ID_SEGMENTS} 段就算不出分区名：分区按末段算，嵌套出来的同名末段会对应到同一个分区。`,
     )
   }
 }

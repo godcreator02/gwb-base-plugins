@@ -19,12 +19,12 @@ description: 调 python 命令行工具的命令、第一次运行很慢、回�
 
 ## venv 没就绪
 
-venv 建不起来时不启动进程，回执是失败回执：总线上 `error` 是 `Error: venv 没就绪,<名字> 跑不了：<原因>`，经 MCP 入口是 `isError` 的文本。按原因处理：
+venv 建不成时不启动进程，回执是失败回执：总线上 `error` 是 `Error: venv 没就绪，<名字> 无法运行：<原因>`，经 MCP 入口是 `isError` 的文本。按原因处理：
 
-1. `拉不起 uv`：机器上没装 uv 或它不在 PATH 上。让人装好 uv，然后重调（每次运行前都重新检查 venv，不用重新加载插件）。
+1. `启动不了 uv`：机器上没装 uv 或它不在 PATH 上。让人装好 uv，然后重调（每次运行前都重新检查 venv，不用重新加载插件）。
 2. `uv sync 超时`：第一次可能在下载 python 解释器，重调一次。
-3. `uv sync 没成`：原因里带着 uv 输出的尾部，多半是登记方的 python 项目有问题（缺 `uv.lock`、依赖装不上）；把原因报告给登记方插件的维护者。
-4. `uv sync 跑完了,但 venv 还是不对`：登记时给的 `distName`、`version` 和 `pyproject.toml` 对不上，同样报告给登记方。
+3. `uv sync 失败`：原因里带着 uv 输出的尾部，多半是登记方的 python 项目有问题（缺 `uv.lock`、依赖装不上）；把原因报告给登记方插件的维护者。
+4. `uv sync 运行完了，但 venv 还是不对`：登记时给的 `distName`、`version` 和 `pyproject.toml` 对不上，同样报告给登记方。
 
 venv 就绪但回执 `exitCode` 为 `null`、`timedOut` 为 `false`：程序没启动起来，多半是登记的 `command` 在 `[project.scripts]` 里没有，原因在 `stderr.text`。
 

@@ -45,7 +45,7 @@ describe('收窄一条 spec', () => {
 
   it('command 与 module 一个都不给,不收', () => {
     expect(() => normalize('gwb-foo', { name: 'foo.run', packageRoot: ROOT, distName: 'x', version: '1' })).toThrow(
-      /command（入口点垫片）或 module/,
+      /command（\[project\.scripts\] 里的入口点名）或 module/,
     )
   })
 

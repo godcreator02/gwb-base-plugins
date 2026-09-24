@@ -149,12 +149,12 @@ describe('GwbData 的归属', () => {
     expect(() => old.dir).toThrow('归 @new/gwb-foo')
     await manager.transferOwner('foo', '@newer/gwb-foo')
     expect(await manager.owners()).toEqual({ foo: '@newer/gwb-foo' })
-    expect(textsOf(logs, 'info').some((t) => t.includes('过户给 @newer/gwb-foo'))).toBe(true)
+    expect(textsOf(logs, 'info').some((t) => t.includes('改归 @newer/gwb-foo'))).toBe(true)
   })
 
   it('transferOwner 的包名为空时抛错', async () => {
     const { root } = await bootData()
     const manager = await callerData(root, null)
-    await expect(manager.transferOwner('foo', '')).rejects.toThrow('过户要给一个非空的包名')
+    await expect(manager.transferOwner('foo', '')).rejects.toThrow('改归属要给一个非空的包名')
   })
 })

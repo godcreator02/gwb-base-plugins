@@ -63,7 +63,7 @@ function assertValidCommandName(name: unknown): asserts name is string {
 
 function assertAbsoluteEntry(name: string, entry: unknown): void {
   if (typeof entry !== 'string' || entry === '') {
-    throw new Error(`命令 ${name} 没给 entry——要跑哪个 js 得说清楚`)
+    throw new Error(`命令 ${name} 没给 entry——要写明运行哪个 js`)
   }
   // 相对路径没法解释：这里不知道该相对于谁
   if (!path.isAbsolute(entry)) {

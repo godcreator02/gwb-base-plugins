@@ -72,7 +72,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 | --- | --- | --- |
 | 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `py-cli.list` | 服务 `gwbPyCli` 不提供，插件一直等待 |
 | 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不起来，回执原因是「拉不起 uv（PATH 上没有？）」；装上 uv 后再调用一次就行，每次运行前都会重新检查 venv，不用重新加载插件 |
+| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不成，回执原因是「启动不了 uv（PATH 上没有？）」；装上 uv 后再调用一次就行，每次运行前都会重新检查 venv，不用重新加载插件 |
 | Windows 的 venv 布局（`Scripts/*.exe`、`Lib/site-packages`） | 找要运行的程序、读装了哪个版本 | 别的系统上找不到程序；工作台只支持 Windows |
 | cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |

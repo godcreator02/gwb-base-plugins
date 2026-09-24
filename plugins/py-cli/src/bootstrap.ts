@@ -116,12 +116,12 @@ async function defaultSync(paths: VenvPaths): Promise<{ ok: boolean; error?: str
   // 启动不了 uv 时 spawn 的报错写进了 stderr，按那个字符串判断
   const text = `${result.stderr.text}${result.stdout.text}`
   if (/ENOENT/.test(text)) {
-    return { ok: false, error: '拉不起 uv（PATH 上没有？）：装上 uv 或把它加进 PATH，再调用一次（每次运行前都会重新检查 venv）。' }
+    return { ok: false, error: '启动不了 uv（PATH 上没有？）：装上 uv 或把它加进 PATH，再调用一次（每次运行前都会重新检查 venv）。' }
   }
   if (result.timedOut) {
-    return { ok: false, error: `uv sync 超时（${SYNC_TIMEOUT_MS}ms）——首次可能在下 python 解释器,重来一次试试` }
+    return { ok: false, error: `uv sync 超时（${SYNC_TIMEOUT_MS}ms）——第一次运行时可能在下载 python 解释器，再调用一次试试` }
   }
-  return { ok: false, error: `uv sync 没成（退出码 ${String(result.exitCode)}）：\n${text.slice(-2000)}` }
+  return { ok: false, error: `uv sync 失败（退出码 ${String(result.exitCode)}）：\n${text.slice(-2000)}` }
 }
 
 function staleReasonNow(opts: BootstrapOptions, paths: VenvPaths): string | undefined {
@@ -137,7 +137,7 @@ function staleReasonNow(opts: BootstrapOptions, paths: VenvPaths): string | unde
 
 /**
  * 检查一次，不是最新的就同步；已经好了就直接跳过，不启动任何进程。
- * 不抛：uv 不在、同步没成，一律回 `{ ready: false, reason }`
+ * 不抛：uv 不在、同步失败，一律回 `{ ready: false, reason }`
  */
 export async function ensureVenv(opts: BootstrapOptions): Promise<BootstrapResult> {
   const paths = venvPaths(opts.packageRoot)
@@ -148,7 +148,7 @@ export async function ensureVenv(opts: BootstrapOptions): Promise<BootstrapResul
   const sync = opts.sync ?? defaultSync
   const result = await sync(paths)
   if (!result.ok) {
-    return { ready: false, reason: result.error ?? '没说原因', action: 'failed' }
+    return { ready: false, reason: result.error ?? '没给出原因', action: 'failed' }
   }
 
   // 记号最后写：同步到一半失败的 venv 不该带着「已建好」的记号
@@ -161,7 +161,7 @@ export async function ensureVenv(opts: BootstrapOptions): Promise<BootstrapResul
   // uv 报成功、但装的不是要的那个版本，这里要认出来
   const staleAfterSync = staleReasonNow(opts, paths)
   if (staleAfterSync !== undefined) {
-    return { ready: false, reason: `uv sync 跑完了,但 venv 还是不对：${staleAfterSync}`, action: 'failed' }
+    return { ready: false, reason: `uv sync 运行完了，但 venv 还是不对：${staleAfterSync}`, action: 'failed' }
   }
   return { ready: true, action: 'synced' }
 }

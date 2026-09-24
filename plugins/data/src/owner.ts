@@ -50,7 +50,7 @@ export function claimDir(dir: string, pkg: string): void {
   if (owner === pkg) return
   if (owner !== undefined) {
     throw new Error(
-      `数据目录 ${dir} 归 ${owner}，${pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，走 plugin-manager.transfer-owner 过户`,
+      `数据目录 ${dir} 归 ${owner}，${pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，就调 plugin-manager.transfer-owner 改归属`,
     )
   }
   stampOwner(dir, pkg)

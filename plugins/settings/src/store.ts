@@ -38,7 +38,7 @@ export function readSettings(file: string, warn: (message: string) => void): Sto
 /** 每个文件排在最后的那次写入，写完（成功或失败）就兑现；只用来排队，失败由那次写入自己的 promise 交给调用方 */
 const lastQueuedWriteByFile = new Map<string, Promise<void>>()
 
-/** 同一个文件的写入按发起顺序一次一个：每次都是整份替换，后发起的那次必须最后落盘 */
+/** 同一个文件的写入按发起顺序一次一个：每次都是整份替换，后发起的那次必须最后写进文件 */
 function writeInCallOrder(file: string, write: () => Promise<void>): Promise<void> {
   const previous = lastQueuedWriteByFile.get(file)
   const current = previous === undefined ? write() : previous.then(write)
@@ -68,7 +68,7 @@ async function replaceFileAtomically(file: string, text: string): Promise<void> 
   }
 }
 
-/** 整份替换，同一个文件的多次写入按发起顺序落盘 */
+/** 整份替换，同一个文件的多次写入按发起顺序写进文件 */
 export async function writeSettings(file: string, home: StoredHome): Promise<void> {
   // 归属表放最前，人打开文件先看到各分区归谁
   const data = { [OWNERS_KEY]: home.owners, ...home.sections }

@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 
-// `index` 与 `search` 两个工具的返回。index 是地图（说明书带完整描述、命令只报名字），search 给命令的用法
+// `index` 与 `search` 两个工具的返回。index 给全部说明书（带完整描述）与命令名，search 给命令的用法
 
-/** 描述正常是一句话；只有超过这个长度才截，防的是失控的长文把地图撑爆 */
+/** 描述正常是一句话；只有超过这个长度才截，防的是写得过长的描述把 index 的返回撑大 */
 const DESCRIPTION_CLAMP = 200
 
 /** 超过 200 字才截、拼省略号。不取「第一句」：那会把触发文本砍残 */
@@ -11,9 +11,9 @@ export function clampDescription(text: string): string {
   return trimmed.length <= DESCRIPTION_CLAMP ? trimmed : `${trimmed.slice(0, DESCRIPTION_CLAMP)}…`
 }
 
-/** 地图末尾的提示：下一步去哪查 */
+/** index 返回末尾的提示：下一步去哪查 */
 const HINT =
-  '命令参数形状：search {"plugin":"<包名>"} 或 {"prefix":"<前缀>"}；说明书正文：run skill.read {"name":"<名>"}；装了什么件问 plugin-manager.list；动过插件后重调 index 刷新。'
+  '命令参数形状：search {"plugin":"<包名>"} 或 {"prefix":"<前缀>"}；说明书正文：run skill.read {"name":"<名>"}；装了哪些插件问 plugin-manager.list；装卸或升级过插件后重新调 index。'
 
 /** 命令那几样。与 `gwb-commands` 的 list() 条目对得上，直接传 */
 export interface CommandView {
@@ -69,7 +69,7 @@ function commandNamesByPlugin(commands: readonly CommandView[]): Array<{ plugin:
   return [...namesByPlugin].map(([plugin, names]) => ({ plugin, names }))
 }
 
-/** 现拼一份地图。commands 与 skills 由调用方现取 */
+/** 生成 index 的返回。commands 与 skills 由调用方每次调用时取 */
 export function buildIndex(input: {
   home: string
   version: string
@@ -132,7 +132,7 @@ function skillMatches(skill: SkillView, query: SearchQuery): boolean {
   return true
 }
 
-/** 现拼一份检索结果 */
+/** 生成 search 的返回 */
 export function buildSearch(input: {
   commands: readonly CommandView[]
   skills?: readonly SkillView[]

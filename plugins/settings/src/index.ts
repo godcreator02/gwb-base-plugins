@@ -94,7 +94,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     // init 里 this.ctx 还是本插件自己的上下文，定时器随本插件卸载取消
     this.ctx.effect(() => () => this.cancelMergedWrite())
     this.registerCommandsWheneverCommandBusIsLoaded()
-    this.ctx.logger(PLUGIN_NAME).info(`设置就绪（ctx.gwbSettings），取表走 ${ALL_COMMAND}`)
+    this.ctx.logger(PLUGIN_NAME).info(`设置就绪（ctx.gwbSettings），取全部设置调 ${ALL_COMMAND}`)
     this.registerOwnSkillsWheneverSkillsPluginIsLoaded()
   }
 
@@ -189,7 +189,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     const section = entrySection(id)
     this.settingsRegistry.transfer(section, pkg)
     await this.writeSettingsFile()
-    this.logInfo(`设置分区 ${section} 过户给 ${pkg}`)
+    this.logInfo(`设置分区 ${section} 改归 ${pkg}`)
   }
 
   /** 调用方没声明过这一项就抛错 */
@@ -221,7 +221,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     try {
       await writeSettings(this.settingsFile, { sections: this.settingsRegistry.file(), owners: this.settingsRegistry.owners() })
     } catch (writeError: unknown) {
-      this.logWarn(`设置落盘失败：${String(writeError)}`)
+      this.logWarn(`设置写入文件失败：${String(writeError)}`)
       throw writeError
     }
   }

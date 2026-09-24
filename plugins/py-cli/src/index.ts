@@ -30,8 +30,8 @@ const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }
 
 /** 总线命令缺省的用法：参数形状由运行插件定，登记方只写自己那部分 */
 const INVOKE_SHAPE =
-  '参数 { args?: string[], cwd?: string }：args 追加在固定参数后（直接给一串也当 args）；' +
-  'cwd 要是存在的目录的绝对路径，缺省落在包根的 py/ 下'
+  '参数 { args?: string[], cwd?: string }：args 追加在固定参数后（直接给一个字符串数组也当 args）；' +
+  'cwd 要是存在的目录的绝对路径，缺省是包根下的 py/ 目录'
 
 /** 一次调用被拒（cwd 不合规之类）：没启动进程，回一句说清要什么的话 */
 export interface CliRunRefused {
@@ -105,7 +105,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     // inject 保证了它在，这句只是把类型收窄
     if (commandBus === undefined) return
     this.registerListCommand(commandBus)
-    this.providerContext.logger(PLUGIN_NAME).info(`python CLI 运行插件就绪（ctx.gwbPyCli），列表走 ${LIST_COMMAND}`)
+    this.providerContext.logger(PLUGIN_NAME).info(`python CLI 运行插件就绪（ctx.gwbPyCli），列出已登记的工具调 ${LIST_COMMAND}`)
     this.registerOwnSkillsWheneverSkillsPluginIsLoaded()
   }
 
@@ -127,9 +127,9 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
   private async ensureReadyAndLog(identity: VenvIdentity, logger: { info: (m: string) => void; warn: (m: string) => void }): Promise<BootstrapResult> {
     const result = await this.ensureReady(identity)
     if (result.ready) {
-      logger.info(result.action === 'skipped' ? `venv 已就绪,跳过：${identity.name}` : `venv 建好了：${identity.name}`)
+      logger.info(result.action === 'skipped' ? `venv 已就绪，跳过：${identity.name}` : `venv 建好了：${identity.name}`)
     } else {
-      logger.warn(`venv 没就绪,${identity.name} 跑不了：${result.reason ?? '没说原因'}`)
+      logger.warn(`venv 没就绪，${identity.name} 无法运行：${result.reason ?? '没给出原因'}`)
     }
     return result
   }
@@ -156,7 +156,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     const fiber = this.ctx.fiber as unknown as { entry?: { options?: { name?: unknown } } } | undefined
     const name = fiber?.entry?.options?.name
     if (typeof name !== 'string' || name === '') {
-      throw new Error('取不到调用方的身份——ctx.gwbPyCli 只能在经 cordis.yml 挂上的件里用')
+      throw new Error('取不到调用方的身份——ctx.gwbPyCli 只能在经 cordis.yml 加载的插件里用')
     }
     return name
   }
@@ -202,7 +202,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     // cwd 不合规就不启动进程，也不检查 venv
     const perCallCwd = checkCwd(uncheckedCwd)
     if (!perCallCwd.ok) {
-      this.logWarn(`${name} 没跑：${perCallCwd.error}`)
+      this.logWarn(`${name} 没有运行：${perCallCwd.error}`)
       return { ok: false, error: perCallCwd.error }
     }
     return this.runRegistered(registration, extraArgs, perCallCwd.cwd)
@@ -213,8 +213,8 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     const ready = await this.ensureReady(registration)
     if (!ready.ready) {
       // 登记时那次检查写过日志，这里抛错之前也要留一句，不然运行时 venv 坏了日志里看不出来
-      this.logWarn(`venv 没就绪,${registration.name} 跑不了：${ready.reason ?? '没说原因'}`)
-      throw new Error(`venv 没就绪,${registration.name} 跑不了：${ready.reason ?? '没说原因'}`)
+      this.logWarn(`venv 没就绪，${registration.name} 无法运行：${ready.reason ?? '没给出原因'}`)
+      throw new Error(`venv 没就绪，${registration.name} 无法运行：${ready.reason ?? '没给出原因'}`)
     }
   }
 
@@ -240,7 +240,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
       this.logInfo(`${name} 运行完成：退出码 ${String(result.exitCode)}，耗时 ${result.durationMs}ms`)
     } else if (result.exitCode === null && !result.timedOut) {
       // 启动失败（可执行文件不在之类）：原因 runProcess 写进了 stderr
-      this.logError(`${name} 启动失败：${result.stderr.text.trim().slice(-300) || '没说原因'}`)
+      this.logError(`${name} 启动失败：${result.stderr.text.trim().slice(-300) || '没给出原因'}`)
     } else if (result.timedOut) {
       this.logWarn(`${name} 超时（时限 ${result.timeoutMs}ms），已结束整个进程树`)
     } else {

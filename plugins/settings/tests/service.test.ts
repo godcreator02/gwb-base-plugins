@@ -181,7 +181,7 @@ describe('GwbSettings 服务', () => {
     await settings.transferOwner('home:hello', '@t/gwb-hello-2')
     expect(settings.owners()).toEqual({ hello: '@t/gwb-hello-2' })
     expect(readFileJson()['$owners']).toEqual({ hello: '@t/gwb-hello-2' })
-    expect(textsOf(logs, 'info')).toContain('设置分区 hello 过户给 @t/gwb-hello-2')
+    expect(textsOf(logs, 'info')).toContain('设置分区 hello 改归 @t/gwb-hello-2')
   })
 
   it('取不到调用方身份时 define 与 get 抛错', async () => {
@@ -196,7 +196,7 @@ describe('GwbSettings 服务', () => {
     const { root, logs } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string' }))
     await expect(settings.set('level', 'x')).rejects.toThrow()
-    expect(textsOf(logs, 'warn').some((t) => t.startsWith('设置落盘失败'))).toBe(true)
+    expect(textsOf(logs, 'warn').some((t) => t.startsWith('设置写入文件失败'))).toBe(true)
   })
 
   it('说明书服务在时登记包根的 skills/ 目录', async () => {

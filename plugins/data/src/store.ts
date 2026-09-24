@@ -23,7 +23,7 @@ export async function readDoc(dir: string, doc: string, warn: (message: string) 
 /** 每个文件排在最后的那次写入，写完（成功或失败）就兑现；只用来排队，失败由那次写入自己的 promise 交给调用方 */
 const lastQueuedWriteByFile = new Map<string, Promise<void>>()
 
-/** 同一个文件的写入按发起顺序一次一个：每次都是整份替换，后发起的那次必须最后落盘 */
+/** 同一个文件的写入按发起顺序一次一个：每次都是整份替换，后发起的那次必须最后写进文件 */
 function writeInCallOrder(file: string, write: () => Promise<void>): Promise<void> {
   const previous = lastQueuedWriteByFile.get(file)
   const current = previous === undefined ? write() : previous.then(write)
@@ -53,7 +53,7 @@ async function replaceFileAtomically(file: string, text: string): Promise<void> 
   }
 }
 
-/** 整份替换，同一份文档的多次写入按发起顺序落盘 */
+/** 整份替换，同一份文档的多次写入按发起顺序写进文件 */
 export async function writeDoc(dir: string, doc: string, value: unknown): Promise<void> {
   const file = docFileIn(dir, doc)
   // 先序列化：循环引用之类要在建目录之前抛出，别留下空目录；也保证排队期间调用方再改这个对象，这次写的仍是发起时的内容

@@ -52,7 +52,7 @@ ctx.inject(['gwbSkills'], (scoped) => {
 })
 ```
 
-写 `'../skills/'` 是因为构建产物在 `dist/` 下，而说明书目录在包根。**这个目录要列进 `package.json` 的 `files`**，漏了包照样发布、照样装得上，直到插件加载时扫目录才报「读不动」。
+写 `'../skills/'` 是因为构建产物在 `dist/` 下，而说明书目录在包根。**这个目录要列进 `package.json` 的 `files`**，漏了包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」。
 
 {/* has file="../plugins/node-cli/package.json" text="skills" */}
 

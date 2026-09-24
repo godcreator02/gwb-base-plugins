@@ -55,7 +55,7 @@ describe('日志插件装上之后', () => {
   it('登记 logger.backlog 与 logger.where，plugin 写包名；插件卸载时两条都注销', async () => {
     const { bus, fiber } = await bootLogger()
     expect(bus.list()).toEqual([
-      { name: 'logger.backlog', description: '开机到此刻的日志', usage: '最近两千条。无参数', plugin: '@godcreator/gwb-logger' },
+      { name: 'logger.backlog', description: '工作台启动以来的日志', usage: '最近两千条。无参数', plugin: '@godcreator/gwb-logger' },
       { name: 'logger.where', description: 'home 与日志文件在哪', usage: '无参数', plugin: '@godcreator/gwb-logger' },
     ])
     await fiber.dispose()

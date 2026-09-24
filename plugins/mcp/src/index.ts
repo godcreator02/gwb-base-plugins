@@ -86,8 +86,8 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'index',
     {
       description:
-        '这台工作台的完整地图：说明书名录带完整描述、命令按件分组只报名字（参数形状在 search；' +
-        '装了哪些件问 plugin-manager.list）。无参数，连上先调一次——它现拼，装了新件下一次调用就在。',
+        '这台工作台的全部说明书（带完整描述）与按插件分组的全部命令名（参数形状在 search；' +
+        '装了哪些插件问 plugin-manager.list）。无参数，连上后先调一次——每次调用时重新生成，新装的插件下一次调用就能看到。',
     },
     async () => handlers.index(),
   )
@@ -96,12 +96,12 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'search',
     {
       description:
-        '按条件找命令与说明书，命中行带完整用法（参数形状在 usage 里）。裸调＝不过滤＝' +
-        '全貌全用法（约八千 token，陌生 home 深度进场用一次）；带条件只回命中的一角。',
+        '按条件找命令与说明书，匹配的命令带完整用法（参数形状在 usage 里）。不带参数就不过滤，' +
+        '返回全部命令与说明书和完整用法（约八千 token，第一次接触一个 home 时调一次）；带条件只返回匹配的部分。',
       inputSchema: {
-        plugin: z.string().optional().describe('精确插件名（包名），命令与说明书一起筛'),
-        prefix: z.string().optional().describe('命令名前缀，如 "skill."；说明书表回瘦身行'),
-        q: z.string().optional().describe('名字、一句话或用法里找子串，不分大小写'),
+        plugin: z.string().optional().describe('插件包名，精确匹配，命令与说明书一起过滤'),
+        prefix: z.string().optional().describe('命令名前缀，如 "skill."；只给它时说明书只返回名字与所属插件'),
+        q: z.string().optional().describe('在名字、一句话介绍或用法里找子串，不分大小写'),
       },
     },
     async (raw) => handlers.search(searchQueryFrom(raw)),
@@ -111,8 +111,8 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'run',
     {
       description:
-        '按命令名调工作台的一切命令（先 index 看地图、search 看用法）。' +
-        '命令自身失败（不存在、参数不对）不算协议错误，回的是 isError 的结果文本，照常往下读。',
+        '按命令名调用工作台的任意命令（先用 index 看有哪些命令、用 search 看用法）。' +
+        '命令自身失败（不存在、参数不对）不算协议错误，返回的是 isError 的结果文本，照常往下读。',
       inputSchema: {
         command: z.string().describe('命令名，如 skill.read'),
         args: z.unknown().optional().describe('可选参数，形状看 search 里那条命令的 usage；命令自己校验'),
@@ -122,7 +122,7 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   )
 }
 
-/** 每个请求一个 server：instructions 与三个工具在发布时就定了，index 与 search 的内容每次调用现取 */
+/** 每个请求一个 server：instructions 与三个工具在发布时就定了，index 与 search 的内容每次调用时重新取 */
 function createMcpServer(version: string): McpServer {
   return new McpServer(
     { name: 'gwb', version },
@@ -154,7 +154,7 @@ function definePortSettingAndChoose(ctx: GwbContext, home: string): PortChoice {
     type: 'number',
     default: defaultPort(home),
     description:
-      'default home 认死 2870（被占就不开这道口，不退让）；其它 home 0 = 系统随机口，给了口被占就退让。改了要重启这个 home 才生效',
+      'default home 固定用 2870（被占用就不开 MCP 入口，也不换端口）；其他 home 填 0 表示由系统分配端口，填了具体端口而被占用时改用系统分配的端口。改了要重启这个 home 才生效',
   })
   return choosePort(home, ctx.gwbSettings.get(PORT_KEY))
 }
@@ -167,13 +167,13 @@ function loadSecretOrRefuseAll(log: Logger, dataDir: string): EndpointState['sec
   try {
     const loaded = loadOrCreateToken(dataDir)
     if (loaded.created) {
-      log.info(`第一次开这道口：token 已经生成好了（${loaded.file}）。取法：mcp.token 命令，或命令行脸直接读它`)
+      log.info(`第一次启动 MCP 入口：token 已生成（${loaded.file}）。取法：mcp.token 命令，或由命令行客户端 bin/client.mjs 自动读这个文件`)
     } else if (loaded.regenerated) {
-      log.warn(`凭据文件读不出 token，已另存一份坏的（${loaded.file}.broken-*）并换了一份新的：所有客户端都要改配置`)
+      log.warn(`凭据文件读不出 token，已把坏文件另存为 ${loaded.file}.broken-* 并生成新 token：所有客户端都要改配置`)
     }
     return { token: loaded.token, file: loaded.file }
   } catch (loadError) {
-    log.error(`凭据文件取不出来，这道口一律 401（不降级成无鉴权）：${String(loadError)}`)
+    log.error(`凭据文件取不出来，MCP 入口对所有请求一律回 401（不降级成不鉴权）：${String(loadError)}`)
     return undefined
   }
 }
@@ -196,25 +196,25 @@ function logAgentRun(log: Logger, command: string, result: GwbResult): void {
       ? String((result as { error: unknown }).error)
       : undefined
   if (result !== null && typeof result === 'object' && (result as { ok?: unknown }).ok === true) {
-    log.info(`agent 调了 ${command}：成了`)
+    log.info(`agent 调了 ${command}：成功`)
   } else {
-    log.warn(`agent 调了 ${command}：没成（${error ?? '没说原因'}）`)
+    log.warn(`agent 调了 ${command}：失败（${error ?? '没给出原因'}）`)
   }
 }
 
-/** 三个工具的处理函数。命令表与说明书清单每次调用现取，运行中新加载的插件下一次调用就在 */
+/** 三个工具的处理函数。命令表与说明书清单每次调用时重新取，运行中新加载的插件下一次调用就能看到 */
 function createToolHandlers(commandBus: GwbCommands, log: Logger, state: EndpointState, home: string, version: string): ToolHandlers {
   return {
     index() {
       const doc = buildIndex({ home, version, commands: commandBus.list(), skills: state.skills?.list() })
-      log.info(`agent 看了一遍地图（${doc.commands.reduce((n, g) => n + g.names.length, 0)} 条命令、${doc.skills.length} 份说明书）`)
+      log.info(`agent 调了 index（${doc.commands.reduce((n, g) => n + g.names.length, 0)} 条命令、${doc.skills.length} 份说明书）`)
       return textResult(doc)
     },
     search(query) {
       const doc = buildSearch({ commands: commandBus.list(), skills: state.skills?.list(), query })
       log.info(
-        `agent 搜了一遍（命中 ${doc.commands.length} 条命令、${doc.skills.length} 份说明书${
-          doc.filter === undefined ? '，裸调全貌' : ''
+        `agent 调了 search（匹配 ${doc.commands.length} 条命令、${doc.skills.length} 份说明书${
+          doc.filter === undefined ? '，没带条件' : ''
         }）`,
       )
       return textResult(doc)
@@ -306,20 +306,20 @@ function reportListening(ready: Promise<number>, ctx: GwbContext, log: Logger, s
   ready.then(
     async (port) => {
       state.listeningPort = port
-      log.info(`MCP 门就绪（${home} home）：${endpointUrl(port)}——要 Authorization 头，绑 127.0.0.1 本机自用`)
+      log.info(`MCP 入口已就绪（${home} home）：${endpointUrl(port)}——请求要带 Authorization 头；只监听 127.0.0.1，仅本机可用`)
       try {
         writeRuntimeMcp(requireKernel(ctx).dataDir, { port, url: endpointUrl(port) })
       } catch (writeError) {
-        log.warn(`运行记录 ${RUNTIME_FILE} 没写成（这道门照常服务）：${String(writeError)}`)
+        log.warn(`运行记录 ${RUNTIME_FILE} 没写成功（MCP 入口照常服务）：${String(writeError)}`)
       }
     },
     (listenError: unknown) => {
       log.error(
         home === DEFAULT_HOME
-          ? `default home 的 MCP 门 ${choice.port} 没开成，这次不开这道门。` +
-              `**不退让到别的端口**：连上来的会话认死这个串，退让等于把它送给占着口的那个 home。` +
-              `腾开 ${choice.port} 再重启这个 home。原因：${String(listenError)}`
-          : `${home} home 的 MCP 门没开成（要的是 ${choice.port}）：${String(listenError)}`,
+          ? `default home 的 MCP 入口没能监听 ${choice.port} 端口，这次不开 MCP 入口。` +
+              `**不换到别的端口**：客户端配置里写的都是这个地址，换端口等于把这些客户端交给占着这个端口的那个 home。` +
+              `让出 ${choice.port} 端口后再重启这个 home。原因：${String(listenError)}`
+          : `${home} home 的 MCP 入口没能启动（要的端口是 ${choice.port}）：${String(listenError)}`,
       )
     },
   )
@@ -339,8 +339,8 @@ function listeningStatusOf(ready: Promise<number>, state: EndpointState, home: s
         (port) => port,
         () => null,
       ),
-    notListeningError: () => `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${state.listenError ?? '原因未记下'}`,
-    secretMissingError: () => `凭据文件取不出来（${home} home），这道口现在一律 401。先解决磁盘/权限问题再重启这个 home`,
+    notListeningError: () => `MCP 入口没在监听（${home} home 要的是 ${choice.port} 端口）：${state.listenError ?? '没记下原因'}`,
+    secretMissingError: () => `凭据文件取不出来（${home} home），MCP 入口现在对所有请求一律回 401。先解决磁盘或权限问题，再重启这个 home`,
   }
 }
 
@@ -350,9 +350,9 @@ function registerInfoCommand(ctx: GwbContext, commandBus: GwbCommands, state: En
     commandBus.register(
       {
         name: 'mcp.info',
-        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段，片段里带 Authorization 请求头与当前 token）',
+        description: 'MCP 入口的连接信息（url 与可直接复制的 mcpServers 片段，片段里带 Authorization 请求头与当前 token）',
         usage:
-          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段里带 Authorization: Bearer <当前 token>，贴进客户端配置即可连；只读当前 token、不换（换用 mcp.token {"rotate":true}）。**回执里有明文凭据，会进你的会话记录**。门没开或凭据文件取不出来时回 ok:false 说原因',
+          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段里带 Authorization: Bearer <当前 token>，粘贴进客户端配置就能连接；只读当前 token、不换（换 token 用 mcp.token {"rotate":true}）。**回执里有明文凭据，会进入你的会话记录**。MCP 入口没开或凭据文件取不出来时回 ok:false 并说明原因',
         plugin: PACKAGE_NAME,
       },
       async () => {
@@ -370,9 +370,9 @@ function registerTokenCommand(ctx: GwbContext, commandBus: GwbCommands, log: Log
     commandBus.register(
       {
         name: 'mcp.token',
-        description: 'MCP 门的 token：取当前的，或换一份新的（换完旧客户端一律 401）',
+        description: 'MCP 入口的 token：取当前的，或换一份新的（换完之后旧客户端一律 401）',
         usage:
-          '{"rotate":true} 换发一份新的；不给就回当前这份。回执 { ok, data: { token, file, rotated, mcpServers } }——mcpServers 片段里带的就是这份 token，贴进客户端即可连。**回执里有明文凭据，会进你的会话记录**',
+          '{"rotate":true} 换一份新的；不给参数就返回当前这份。回执 { ok, data: { token, file, rotated, mcpServers } }——mcpServers 片段里带的就是这份 token，粘贴进客户端配置就能连接。**回执里有明文凭据，会进入你的会话记录**',
         plugin: PACKAGE_NAME,
       },
       async (raw: unknown) => {
@@ -410,9 +410,9 @@ function registerCliClientWheneverNodeCliIsLoaded(ctx: GwbContext): void {
     contextWithNodeCli.gwbNodeCli.register({
       name: 'mcp.client',
       plugin: PACKAGE_NAME,
-      description: '在命令行直接调这扇门（零依赖单文件，node ≥18，连包都不用装）',
+      description: '在命令行直接调用 MCP 入口（零依赖单文件，node ≥18，不用装任何包）',
       usage:
-        '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。门的地址 --url 或环境变量 GWB_MCP_URL，缺省 http://127.0.0.1:2870/mcp（default home 认死 2870，隔离 home 的口看 devkit.home.list 的 mcp 格）。业务失败正文照印、退出码 1',
+        '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。入口地址用 --url 或环境变量 GWB_MCP_URL 给，缺省 http://127.0.0.1:2870/mcp（default home 固定用 2870 端口，隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段）。命令失败时照样打印正文，退出码 1',
       entry: CLIENT_ENTRY,
     })
   })

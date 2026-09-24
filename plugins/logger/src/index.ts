@@ -126,7 +126,7 @@ function startCollectingLogs(ctx: GwbContext, kernel: GwbKernelApi): LogEntry[] 
 
 function registerLogCommands(ctx: GwbContext, commandBus: GwbCommands, kernel: GwbKernelApi, recentEntries: LogEntry[]): void {
   ctx.effect(() =>
-    commandBus.register({ name: BACKLOG_COMMAND, description: '开机到此刻的日志', usage: '最近两千条。无参数', plugin: PACKAGE_NAME }, () => [...recentEntries]),
+    commandBus.register({ name: BACKLOG_COMMAND, description: '工作台启动以来的日志', usage: '最近两千条。无参数', plugin: PACKAGE_NAME }, () => [...recentEntries]),
   )
   ctx.effect(() =>
     commandBus.register(
@@ -149,5 +149,5 @@ export function apply(ctx: GwbContext): void {
   registerLogCommands(ctx, commandBus, kernel, recentEntries)
 
   // 装了日志窗格的话，这一行出现在窗格里，可以用来确认整条链路是通的
-  ctx.logger(name).info(`日志插件就绪：补了历史 ${recentEntries.length} 条`)
+  ctx.logger(name).info(`日志插件就绪：补收了加载之前的 ${recentEntries.length} 条日志`)
 }

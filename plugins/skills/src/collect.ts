@@ -107,7 +107,7 @@ function listTextFiles(dir: string, problems: CollectProblem[], relativeDir = ''
   try {
     dirEntries = fs.readdirSync(dir, { withFileTypes: true })
   } catch (readError) {
-    problems.push({ where: here, message: `读不动：${String(readError)}` })
+    problems.push({ where: here, message: `读不了：${String(readError)}` })
     return []
   }
   const relativePaths: string[] = []
@@ -152,7 +152,7 @@ function collectOneSkill(root: string, skillDirName: string, plugin: string, pro
   try {
     text = fs.readFileSync(entryFile, 'utf8')
   } catch (readError) {
-    problems.push({ where: `${skillDirName}/${SKILL_ENTRY}`, message: `读不动：${String(readError)}` })
+    problems.push({ where: `${skillDirName}/${SKILL_ENTRY}`, message: `读不了：${String(readError)}` })
     return undefined
   }
   const frontmatter = parseFrontmatter(text)
@@ -178,7 +178,7 @@ export function collectSkills(root: string, plugin: string): CollectResult {
   try {
     dirEntries = fs.readdirSync(root, { withFileTypes: true })
   } catch (readError) {
-    return { skills: [], problems: [{ where: '.', message: `skill 目录读不动：${String(readError)}` }] }
+    return { skills: [], problems: [{ where: '.', message: `说明书目录读不了：${String(readError)}` }] }
   }
   for (const dirEntry of sortedDirEntries(dirEntries)) {
     if (!dirEntry.isDirectory()) continue

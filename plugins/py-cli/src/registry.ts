@@ -83,7 +83,7 @@ function whichEntryPointIsGiven(name: string, spec: PyCliSpec): { hasCommand: bo
   const hasCommand = typeof spec.command === 'string' && spec.command !== ''
   const hasModule = typeof spec.module === 'string' && spec.module !== ''
   if (!hasCommand && !hasModule) {
-    throw new Error(`命令 ${name} 得说清跑什么：command（入口点垫片）或 module（python -m）给一个`)
+    throw new Error(`命令 ${name} 要写明运行什么：command（[project.scripts] 里的入口点名）或 module（python -m 的模块名）给一个`)
   }
   if (hasCommand && hasModule) {
     throw new Error(`命令 ${name} 的 command 与 module 只能给一个`)

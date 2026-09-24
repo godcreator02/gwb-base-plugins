@@ -128,10 +128,10 @@ describe('GwbPyCli 服务', () => {
     ])
     const busCommand = bus.list().find((c) => c.name === 'tool.run')!
     expect(busCommand).toMatchObject({ plugin: '@t/gwb-tool', description: '一个工具' })
-    expect(busCommand.usage).toContain('缺省落在包根的 py/ 下')
+    expect(busCommand.usage).toContain('缺省是包根下的 py/ 目录')
     expect(runCommand('py-cli.list')).toEqual(pyCli.list())
     await bootstrapLogged(logs, 'tool.run')
-    expect(textsOf(logs, 'info')).toContain('venv 已就绪,跳过：tool.run')
+    expect(textsOf(logs, 'info')).toContain('venv 已就绪，跳过：tool.run')
   })
 
   it('ensureReady 在 venv 已就绪时回 { ready: true, action: skipped }', async () => {
@@ -186,7 +186,7 @@ describe('GwbPyCli 服务', () => {
     const { pyCli } = await caller(root, '@t/gwb-tool')
     pyCli.register(toolSpec())
     expect(await pyCli.run('tool.run', [], { cwd: 'relative/dir' })).toEqual({ ok: false, error: 'cwd 要是绝对路径（这儿不知道该相对于谁），给的是：relative/dir' })
-    expect(textsOf(logs, 'warn').some((t) => t.startsWith('tool.run 没跑'))).toBe(true)
+    expect(textsOf(logs, 'warn').some((t) => t.startsWith('tool.run 没有运行'))).toBe(true)
     await expect(pyCli.run('nope')).rejects.toThrow('没有这条 python CLI：nope')
   })
 
@@ -194,8 +194,8 @@ describe('GwbPyCli 服务', () => {
     const { root, logs } = await bootPyCli()
     const { pyCli } = await caller(root, '@t/gwb-tool')
     pyCli.register(toolSpec())
-    await expect(pyCli.run('tool.run')).rejects.toThrow('venv 没就绪,tool.run 跑不了')
-    expect(textsOf(logs, 'warn').some((t) => t.startsWith('venv 没就绪,tool.run 跑不了'))).toBe(true)
+    await expect(pyCli.run('tool.run')).rejects.toThrow('venv 没就绪，tool.run 无法运行')
+    expect(textsOf(logs, 'warn').some((t) => t.startsWith('venv 没就绪，tool.run 无法运行'))).toBe(true)
   }, 60_000)
 
   it('注销函数同时撤掉表里那条与总线命令；调用方卸载时自动注销', async () => {

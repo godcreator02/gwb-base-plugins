@@ -190,7 +190,7 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     const holder = ownerBySection[ownSection]
     if (holder !== undefined && holder !== owner.pkg) {
       throw new Error(
-        `设置分区 ${ownSection} 归 ${holder}，${owner.pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，走 plugin-manager.transfer-owner 过户`,
+        `设置分区 ${ownSection} 归 ${holder}，${owner.pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，就调 plugin-manager.transfer-owner 改归属`,
       )
     }
     ownerBySection[ownSection] = owner.pkg
@@ -285,7 +285,7 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
     transfer(section, pkg) {
       assertSection(section)
-      if (pkg === '') throw new Error('过户要给一个非空的包名')
+      if (pkg === '') throw new Error('改归属要给一个非空的包名')
       ownerBySection[section] = pkg
     },
 

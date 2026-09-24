@@ -131,7 +131,7 @@ describe('GwbNodeCli 服务', () => {
     nodeCli.register(spec())
     const outcome = await nodeCli.run('hello.run', [], { cwd: 'relative/dir' })
     expect(outcome).toEqual({ ok: false, error: 'cwd 要是绝对路径（这儿不知道该相对于谁），给的是：relative/dir' })
-    expect(logs.some((m) => m.type === 'warn' && String(m.args[0]).startsWith('hello.run 没跑'))).toBe(true)
+    expect(logs.some((m) => m.type === 'warn' && String(m.args[0]).startsWith('hello.run 没有运行'))).toBe(true)
   })
 
   it('总线命令收 { args, cwd } 或直接一串参数', async () => {

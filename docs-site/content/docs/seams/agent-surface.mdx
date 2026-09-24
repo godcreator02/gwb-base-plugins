@@ -33,7 +33,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="205-221" */}
 
-- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示。description 不取「第一句」：那会把触发条件砍残；写成一句话是登记方的责任，截断只防失控的长文把清单撑爆
+- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；写成一句话是登记方的责任，截断只防写得过长的描述把清单撑大
 - `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，这时说明书只回名字与包名；`q` 在名字、description、usage 里找子串；命中的命令行总带 `usage`；不带参数返回全部
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
@@ -65,7 +65,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 {/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update-all" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="调 unit-folder.list 现查" */}
+{/* has file="../plugins/mcp/instructions.md" text="调 unit-folder.list 查" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="15-16" */}
 
