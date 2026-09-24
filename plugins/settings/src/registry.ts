@@ -1,31 +1,29 @@
 import { isRecord } from './vocab.js'
 import { assertKey, assertSection, entrySection, OWNERS_KEY, SHARED_SECTION } from './paths.js'
 
-/** 注册表本体：内存里的两张表 + 定义表 + 解析规则。不碰 ctx、不碰 fs，于是可测 */
+// 这个文件不碰 ctx、不碰 fs：内存里的设置表、声明表与解析规则
 
 export type SettingType = 'string' | 'number' | 'boolean' | 'secret' | 'string-list'
 
-/** 一项设置的自述。件在 apply 里声明。**没有机器级**——home 自持全部配置 */
+/** 一项设置的声明，插件在 apply 里给 */
 export interface SettingDef {
   /** kebab-case */
   key: string
   /** 界面上的标签 */
   title: string
   /**
-   * 界面照它挑控件。`secret` 两件事：界面打码显示，**`settings.all` 那一份不回值**
-   * （只回 `secret` / `isSet` / `mask` 三格，见 `all()`）；**存储照样明文**——要真值
-   * 按位置走 `settings.get`，服务面自己那一格也照旧读得到。
-   * `string-list` 是字符串数组，界面逐行编辑
+   * 界面照它挑控件。`secret`：界面打码显示，`settings.all` 不回值（只回 `secret` / `isSet` / `mask`），
+   * 存储照样是明文，`settings.get` 与服务的 `get` 读得到真值。`string-list` 是字符串数组，界面逐行编辑
    */
   type: SettingType
-  /** 写 true 进公共区，别的件不用 define 就读得到 */
+  /** 写 true 进公共区，别的插件不用 define 就读得到 */
   shared?: boolean
   description?: string
-  /** 盘上没值时 get 回它 */
+  /** 文件里没值时 get 回它 */
   default?: unknown
 }
 
-/** 盘上一项的形状。`value` 缺席就是「还没设过」，不是「设成了 undefined」 */
+/** 文件里一项的形状。`value` 缺席就是「还没设过」，不是「设成了 undefined」 */
 export interface StoredSetting {
   title?: string
   type?: string
@@ -36,95 +34,75 @@ export interface StoredSetting {
 /** 一份文件：分区 → 设置名 → 那一项 */
 export type SettingsFile = Record<string, Record<string, StoredSetting>>
 
-/** 户主表：分区名 → 包名。盘上住在文件顶层的 `$owners` 键下 */
+/** 归属表：分区名 → 包名。在文件里是顶层的 `$owners` 键 */
 export type SettingsOwners = Record<string, string>
 
-/** 调用方是谁。落盘的分区名取 entryId 的末段 */
+/** 调用方是谁。分区名取 entryId 的末段 */
 export interface Owner {
   entryId: string
   pkg: string
 }
 
-/** 一项设置在盘上的位置 */
+/** 一项设置在文件里的位置 */
 export interface Slot {
   section: string
   key: string
 }
 
-/**
- * `settings.all` 给 secret 行的掩码。**长度恒定**——照真实长度打码等于把长度也交出去。
- *
- * 掩码只是「这儿本该有个值」的记号：设没设过认 `isSet`，别从掩码本身推任何东西。
- */
+/** `settings.all` 给 secret 行的掩码。长度恒定：照真实长度打码等于把长度交出去。设没设过看 `isSet`，别从掩码推 */
 export const SECRET_MASK = '••••'
 
-/**
- * 枚举面的那一行，`settings.all` 命令交出去的就是它。
- *
- * **secret 行没有 `value` 也没有 `default`**——枚举口一调就把整个 home 的凭据摆到调用方
- * （界面、经 MCP 够到命令面的外部 agent）眼前，而它本来要的只是「这一项配没配」。
- * 真值的正当取用是按位置取：`settings.get` 与 `ctx.gwbSettings.get`，两条都照旧回明文。
- */
+/** `settings.all` 交出去的一行。secret 行没有 `value` 也没有 `default` */
 export interface SettingView extends Slot {
   title?: string
   type?: string
   description?: string
-  /** 明文的值。**secret 行没有这一格**，看 `secret` / `isSet` / `mask` 三格 */
+  /** 明文的值。secret 行没有这一项，看 `secret` / `isSet` / `mask` */
   value?: unknown
-  /**
-   * 声明方递的默认值——只有此刻 live 的项才带：它住在内存定义表里**不落盘**，
-   * 界面拿它画灰占位（「没设过时生效的是这个」）。件停了以后的陈旧默认没有显示的意义。
-   * **secret 行不带**：默认值也是值，写死的凭据一样是凭据
-   */
+  /** 声明方给的默认值，只有此刻有插件声明着的项才带（它不写进文件）。secret 行不带：写死的凭据也是凭据 */
   default?: unknown
-  /** 此刻有件声明着它吗。件停了盘上那份还在，但这里是 false */
+  /** 此刻有插件声明着它吗。插件停了文件里那份还在，但这里是 false */
   live: boolean
-  /** 这一项是 `secret` 型吗。非 secret 行不带这一格 */
+  /** 这一项是 `secret` 型吗。非 secret 行不带 */
   secret?: true
-  /** secret 行设过值没有。非 secret 行不带这一格 */
+  /** secret 行设过值没有。非 secret 行不带 */
   isSet?: boolean
-  /** secret 行已设置时的定长掩码。没设过就不带——空掩码会被念成「设了个空值」 */
+  /** secret 行已设置时的定长掩码。没设过就不带——空掩码会被读成「设了个空值」 */
   mask?: string
 }
 
 export interface SettingsRegistry {
-  /** 把盘上读来的这份装进来。只在构造时调一次 */
+  /** 把文件里读来的这份装进来。只在构造时调一次 */
   load(home: SettingsFile, owners: SettingsOwners): void
   define(owner: Owner, def: SettingDef): () => void
   get(owner: Owner, key: string): unknown
   /** 算出这一项该往哪写。没声明过回 undefined */
   locate(owner: Owner, key: string): Slot | undefined
-  /**
-   * 按位置直读，不经身份。`settings.get` 命令走这条——它不是一个件，没有身份可绑。
-   *
-   * **这条照旧回明文，secret 项也回**：它是按位取用（调用方知道自己要哪一格，
-   * 借的是「把凭据放在设置里、谁配的谁用」这条既有模式），不是枚举口。
-   * 要收的是枚举——见 `all()`。两条口都收会把正当取用一起掐死，而拦不住真想拿的人
-   */
+  /** 按位置直读，不经身份，secret 项也回明文。`settings.get` 命令走这条 */
   read(slot: Slot): unknown
   put(slot: Slot, value: unknown): void
   drop(slot: Slot): void
-  /** 内存里的那一份，给落盘用 */
+  /** 内存里的那一份，写文件用 */
   file(): SettingsFile
-  /** 户主表，给落盘与 `owners()` 用 */
+  /** 归属表，写文件与 `owners()` 用 */
   owners(): SettingsOwners
-  /** 把一个分区过户给 `pkg` */
+  /** 把一个分区改归 `pkg` */
   transfer(section: string, pkg: string): void
-  /** 全部设置的全局视图，给 `settings.all` 命令。**secret 行不回明文**，见 `SettingView` */
+  /** 全部设置，给 `settings.all` 命令。secret 行不回明文，见 `SettingView` */
   all(): SettingView[]
 }
 
-/**
- * 定义表的键。NUL 做分隔——条目 id 与设置名都不可能含它。
- *
- * 用的是**末段**，跟落盘的分区名一个写法：同一个 owner 两种写法迟早有人对不上。
- * 这张表在内存里，键不落盘。
- */
-function defKey(owner: Owner, key: string): string {
+interface Declaration {
+  owner: Owner
+  def: SettingDef
+}
+
+/** 声明表的键：分区名（末段，和文件里的分区名同一种写法）+ NUL + 设置名。条目 id 与设置名都不可能含 NUL */
+function declarationKey(owner: Owner, key: string): string {
   return `${entrySection(owner.entryId)}\u0000${key}`
 }
 
-/** 一项声明落在哪一格：共享项进公共区，其余按条目 id 的末段（见 `entrySection`） */
+/** 共享项进公共区，其余按条目 id 的末段 */
 function slotOf(owner: Owner, def: SettingDef): Slot {
   const section = def.shared === true ? SHARED_SECTION : entrySection(owner.entryId)
   return { section, key: def.key }
@@ -134,15 +112,7 @@ function viewKey(slot: Slot): string {
   return `${slot.section}\u0000${slot.key}`
 }
 
-/**
- * 一行收成枚举面能给的样子：**secret 行不回明文**。
- *
- * 摘掉两样：`value`（真值）与 `default`（声明方的默认值——默认值也是值，写死的凭据
- * 一样是凭据）。补上三样：`secret`、`isSet`、设过才有的 `mask`。认不认得出「设没设过」
- * 全看 `isSet`，别拿 `value` 在不在推——那一格这儿永远不在。
- *
- * 非 secret 行**原样返回**，一个字节都不动：界面与别的调用方照旧按 `value` 拿值。
- */
+/** secret 行摘掉 `value` 与 `default`，补上 `secret`、`isSet`、设过才有的 `mask`；非 secret 行原样返回 */
 function maskSecret(view: SettingView): SettingView {
   if (view.type !== 'secret') return view
   const { value: _value, default: _default, ...rest } = view
@@ -150,37 +120,37 @@ function maskSecret(view: SettingView): SettingView {
   return { ...rest, secret: true, isSet, ...(isSet ? { mask: SECRET_MASK } : {}) }
 }
 
-/**
- * 盘上读来的东西收窄成 `SettingsFile`。用户手改坏了一格，只丢那一格，不是整份不认。
- * 坏了都要 warn ——数据烂掉悄悄变成「用默认值」是最难查的那种。
- */
+function validItemsOfSection(items: Record<string, unknown>, section: string, warn: (message: string) => void, where: string): Record<string, StoredSetting> {
+  const validItems: Record<string, StoredSetting> = {}
+  for (const [key, item] of Object.entries(items)) {
+    if (!isRecord(item)) {
+      warn(`${where} 的 ${section}/${key} 不是一个对象，跳过`)
+      continue
+    }
+    validItems[key] = item as StoredSetting
+  }
+  return validItems
+}
+
+/** 文件里读来的东西收窄成 `SettingsFile`。手改坏了一项只丢那一项并写 warn，不是整份不认 */
 export function toSettingsFile(raw: unknown, warn: (message: string) => void, where: string): SettingsFile {
   if (!isRecord(raw)) {
     warn(`${where} 顶层不是一个对象，当没有处理`)
     return {}
   }
-  const out: SettingsFile = {}
+  const settingsBySection: SettingsFile = {}
   for (const [section, items] of Object.entries(raw)) {
-    // 户主表另读，见 `toOwners`
     if (section === OWNERS_KEY) continue
     if (!isRecord(items)) {
       warn(`${where} 的分区 ${section} 不是一个对象，跳过`)
       continue
     }
-    const bucket: Record<string, StoredSetting> = {}
-    for (const [key, item] of Object.entries(items)) {
-      if (!isRecord(item)) {
-        warn(`${where} 的 ${section}/${key} 不是一个对象，跳过`)
-        continue
-      }
-      bucket[key] = item as StoredSetting
-    }
-    out[section] = bucket
+    settingsBySection[section] = validItemsOfSection(items, section, warn, where)
   }
-  return out
+  return settingsBySection
 }
 
-/** 盘上读来的东西里取出户主表。坏了的那一格丢掉并 warn——丢了只是那个分区回到「谁先来归谁」 */
+/** 文件里读来的东西里取出归属表。坏了的那一项丢掉并 warn，那个分区回到「谁先声明归谁」 */
 export function toOwners(raw: unknown, warn: (message: string) => void, where: string): SettingsOwners {
   const table = isRecord(raw) ? raw[OWNERS_KEY] : undefined
   if (table === undefined) return {}
@@ -188,85 +158,105 @@ export function toOwners(raw: unknown, warn: (message: string) => void, where: s
     warn(`${where} 的 ${OWNERS_KEY} 不是一个对象，当没有处理`)
     return {}
   }
-  const out: SettingsOwners = {}
+  const ownerBySection: SettingsOwners = {}
   for (const [section, pkg] of Object.entries(table)) {
     if (typeof pkg !== 'string' || pkg === '') {
       warn(`${where} 的 ${OWNERS_KEY}.${section} 不是一个包名，跳过`)
       continue
     }
-    out[section] = pkg
+    ownerBySection[section] = pkg
   }
-  return out
+  return ownerBySection
+}
+
+/** 先于任何改动做完全部校验，返回调用方的分区名 */
+function assertDefinable(owner: Owner, def: SettingDef): string {
+  assertKey(def.key)
+  const ownSection = entrySection(owner.entryId)
+  assertSection(ownSection)
+  if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)
+  return ownSection
 }
 
 export function createRegistry(warn: (message: string) => void): SettingsRegistry {
-  const defs = new Map<string, { owner: Owner; def: SettingDef }>()
-  let files: SettingsFile = {}
-  let owners: SettingsOwners = {}
+  const declarationsByKey = new Map<string, Declaration>()
+  let settingsBySection: SettingsFile = {}
+  let ownerBySection: SettingsOwners = {}
 
-  /** 读一格的值。缺席与「设成了 undefined」在这儿是同一件事 */
-  const valueAt = (slot: Slot): unknown => files[slot.section]?.[slot.key]?.value
+  const valueAt = (slot: Slot): unknown => settingsBySection[slot.section]?.[slot.key]?.value
+
+  /** 分区没有归属就归调用方，归别的包就抛错 */
+  const claimSection = (ownSection: string, owner: Owner): void => {
+    const holder = ownerBySection[ownSection]
+    if (holder !== undefined && holder !== owner.pkg) {
+      throw new Error(
+        `设置分区 ${ownSection} 归 ${holder}，${owner.pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，走 plugin-manager.transfer-owner 过户`,
+      )
+    }
+    ownerBySection[ownSection] = owner.pkg
+  }
+
+  /** 插件加载着时声明是权威：标题、类型、说明覆盖文件里的，值不动 */
+  const writeDeclarationIntoFile = (owner: Owner, def: SettingDef): void => {
+    const slot = slotOf(owner, def)
+    const section = (settingsBySection[slot.section] ??= {})
+    section[def.key] = {
+      ...section[def.key],
+      title: def.title,
+      type: def.type,
+      description: def.description,
+    }
+  }
+
+  /** 此刻有声明的各项的位置，与其中带默认值的那些 */
+  const liveViewKeysAndDefaults = (): { liveViewKeys: Set<string>; declaredDefaultByViewKey: Map<string, unknown> } => {
+    const liveViewKeys = new Set<string>()
+    const declaredDefaultByViewKey = new Map<string, unknown>()
+    for (const { owner, def } of declarationsByKey.values()) {
+      const view = viewKey(slotOf(owner, def))
+      liveViewKeys.add(view)
+      if (def.default !== undefined) declaredDefaultByViewKey.set(view, def.default)
+    }
+    return { liveViewKeys, declaredDefaultByViewKey }
+  }
 
   return {
     load(home, table) {
-      files = home
-      owners = table
+      settingsBySection = home
+      ownerBySection = table
     },
 
     define(owner, def) {
-      assertKey(def.key)
-      // 分区名算一遍就是校验：id 不合规、段数超了都在这儿抛——抛在动表之前
-      const own = entrySection(owner.entryId)
-      assertSection(own)
-      // 空 title 是「这一项没说自己是谁」，让它进表只会在界面上多一格没标签的框
-      if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)
-      // 核章：分区没主就归它，是别的包的就拒——不拒的话它会把前一个包留下的设置当自己的读
-      const holder = owners[own]
-      if (holder !== undefined && holder !== owner.pkg) {
-        throw new Error(
-          `设置分区 ${own} 归 ${holder}，${owner.pkg} 用不了。多半是两个包名不同的件算出了同一个条目 id——给这条条目换个 id；确认是同一个件改了包名，走 plugin-manager.transfer-owner 过户`,
-        )
-      }
-      owners[own] = owner.pkg
+      const ownSection = assertDefinable(owner, def)
+      claimSection(ownSection, owner)
 
-      const k = defKey(owner, def.key)
-      // 撞名后来者赢，但要告警——跟命令总线、窗格注册一个规矩
-      if (defs.has(k)) warn(`${owner.entryId} 重复声明了设置 ${def.key}，后来者生效`)
-      const record = { owner, def }
-      defs.set(k, record)
+      const key = declarationKey(owner, def.key)
+      if (declarationsByKey.has(key)) warn(`${owner.entryId} 重复声明了设置 ${def.key}，后来者生效`)
+      const declaration: Declaration = { owner, def }
+      declarationsByKey.set(key, declaration)
+      writeDeclarationIntoFile(owner, def)
 
-      // 元信息落进内存表：件挂着时**代码是权威**，盘上那份被覆盖。值不动
-      const slot = slotOf(owner, def)
-      const section = (files[slot.section] ??= {})
-      section[def.key] = {
-        ...section[def.key],
-        title: def.title,
-        type: def.type,
-        description: def.description,
-      }
-
-      // 注销只收自己那份：撞名之后先来者的注销函数不该把后来者摘掉
+      // 只删自己这份：重复声明之后，先声明的一方注销时不能删掉后来的那份
       return () => {
-        if (defs.get(k) === record) defs.delete(k)
+        if (declarationsByKey.get(key) === declaration) declarationsByKey.delete(key)
       }
     },
 
     get(owner, key) {
-      const record = defs.get(defKey(owner, key))
-      if (record !== undefined) {
-        const found = valueAt(slotOf(record.owner, record.def))
-        return found === undefined ? record.def.default : found
+      const declaration = declarationsByKey.get(declarationKey(owner, key))
+      if (declaration !== undefined) {
+        const stored = valueAt(slotOf(declaration.owner, declaration.def))
+        return stored === undefined ? declaration.def.default : stored
       }
-      // 没声明过，那多半是在读别的件声明进公共区的项——凭据就是这么跨件共享的
-      const shared = files[SHARED_SECTION]?.[key]?.value
+      const shared = settingsBySection[SHARED_SECTION]?.[key]?.value
       if (shared !== undefined) return shared
       warn(`${owner.entryId} 读了一项谁也没声明过的设置：${key}`)
       return undefined
     },
 
     locate(owner, key) {
-      const record = defs.get(defKey(owner, key))
-      return record === undefined ? undefined : slotOf(record.owner, record.def)
+      const declaration = declarationsByKey.get(declarationKey(owner, key))
+      return declaration === undefined ? undefined : slotOf(declaration.owner, declaration.def)
     },
 
     read(slot) {
@@ -274,52 +264,44 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     },
 
     put(slot, value) {
-      const section = (files[slot.section] ??= {})
+      const section = (settingsBySection[slot.section] ??= {})
       section[slot.key] = { ...section[slot.key], value }
     },
 
     drop(slot) {
-      const stored = files[slot.section]?.[slot.key]
+      const stored = settingsBySection[slot.section]?.[slot.key]
       if (stored === undefined) return
-      // 抹掉值，定义还在——get 因此回落到 default
       const { value: _dropped, ...rest } = stored
-      files[slot.section]![slot.key] = rest
+      settingsBySection[slot.section]![slot.key] = rest
     },
 
     file() {
-      return files
+      return settingsBySection
     },
 
     owners() {
-      return owners
+      return ownerBySection
     },
 
     transfer(section, pkg) {
       assertSection(section)
       if (pkg === '') throw new Error('过户要给一个非空的包名')
-      owners[section] = pkg
+      ownerBySection[section] = pkg
     },
 
     all() {
-      const live = new Set<string>()
-      const defaults = new Map<string, unknown>()
-      for (const { owner, def } of defs.values()) {
-        const view = viewKey(slotOf(owner, def))
-        live.add(view)
-        if (def.default !== undefined) defaults.set(view, def.default)
-      }
-
-      const out: SettingView[] = []
-      for (const [section, items] of Object.entries(files)) {
+      const { liveViewKeys, declaredDefaultByViewKey } = liveViewKeysAndDefaults()
+      const rows: SettingView[] = []
+      for (const [section, items] of Object.entries(settingsBySection)) {
         for (const [key, stored] of Object.entries(items)) {
           const slot: Slot = { section, key }
           const view = viewKey(slot)
-          const declared = defaults.get(view)
-          out.push({ ...slot, ...stored, ...(declared !== undefined ? { default: declared } : {}), live: live.has(view) })
+          const declaredDefault = declaredDefaultByViewKey.get(view)
+          rows.push({ ...slot, ...stored, ...(declaredDefault !== undefined ? { default: declaredDefault } : {}), live: liveViewKeys.has(view) })
         }
       }
-      // 出门统一过一道：secret 行的明文到这儿为止，见 `maskSecret`
-      return out.map(maskSecret)
+      // secret 行的明文在这里拦下，见 `maskSecret`
+      return rows.map(maskSecret)
     },
   }
 }
