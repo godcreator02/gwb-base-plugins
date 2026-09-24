@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Context } from 'cordis'
+import { Context, Service } from 'cordis'
 import type { Fiber, Message, Plugin } from 'cordis'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import GwbPyCli, { venvPaths, type CliRunResult, type GwbPyCliApi, type PyCliSpec } from '../src/index.js'
@@ -216,5 +216,57 @@ describe('GwbPyCli 服务', () => {
     const { root } = await bootPyCli()
     const { pyCli } = await caller(root, null)
     expect(() => pyCli.register(toolSpec())).toThrow('取不到调用方的身份')
+  })
+})
+
+describe('GwbPyCli 经调用方的上下文登记总线命令', () => {
+  it('总线看到的登记方是调用方，不是运行插件自己', async () => {
+    layOutReadyVenv()
+    const root = new Context()
+    const logs: Message[] = []
+    root.logger.exporter({ export: (message) => void logs.push(message) })
+    const seenPackages: string[] = []
+    /** 按服务写的总线替身：登记时记下 this.ctx 上 loader 条目的包名，也就是真命令总线认作登记方的那个 */
+    class IdentityRecordingBus extends Service {
+      constructor(ctx: Context) {
+        super(ctx, 'gwbCommands')
+      }
+      register(): () => void {
+        const fiber = this.ctx.fiber as unknown as { entry?: { options: { name: string } } }
+        seenPackages.push(fiber.entry?.options.name ?? '（没有条目）')
+        return () => {}
+      }
+      list(): [] {
+        return []
+      }
+      async run(): Promise<{ ok: true }> {
+        return { ok: true }
+      }
+    }
+    const busPlugin: Plugin = IdentityRecordingBus
+    await root.plugin(busPlugin)
+    const pyCliPlugin: Plugin = GwbPyCli
+    await root.plugin(pyCliPlugin)
+    const { pyCli } = await caller(root, '@t/gwb-tool')
+    pyCli.register(toolSpec({ description: '一个工具' }))
+    await bootstrapLogged(logs, 'tool.run')
+    expect(seenPackages.at(-1)).toBe('@t/gwb-tool')
+  })
+
+  it('总线拒收时撤掉表里那条，把总线的错抛给调用方', async () => {
+    const root = new Context()
+    root.provide('gwbCommands', {
+      register(def: { name: string }) {
+        if (def.name !== 'py-cli.list') throw new Error(`总线拒收 ${def.name}`)
+        return () => {}
+      },
+      list: () => [],
+      run: async () => ({ ok: true }),
+    })
+    const pyCliPlugin: Plugin = GwbPyCli
+    await root.plugin(pyCliPlugin)
+    const { pyCli } = await caller(root, '@t/gwb-tool')
+    expect(() => pyCli.register(toolSpec())).toThrow('总线拒收 tool.run')
+    expect(pyCli.list()).toEqual([])
   })
 })

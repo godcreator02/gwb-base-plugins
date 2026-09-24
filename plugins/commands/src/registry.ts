@@ -1,20 +1,27 @@
 import type { GwbResult } from '@godcreator/gwb-plugin-api'
 
-/** 一条命令的说明。`plugin` 由登记方自己填写 */
+/** 一条命令的说明 */
 export interface GwbCommandDef {
   name: string
   /** 一句话介绍，出现在 MCP 入口 index 的清单里，作用与说明书的 description 相同 */
-  description?: string
-  /** 用法：参数形状、注意事项。search 命中的那一行带它，调用之前看它（无参数的命令可以不给） */
-  usage?: string
-  plugin: string
+  description: string
+  /** 用法：参数形状、注意事项。search 命中的那一行带它，调用之前看它；无参数的命令写「无参数」 */
+  usage: string
+  /** 登记方的包名。不给由服务从调用方取；给了必须与调用方的包名相同 */
+  plugin?: string
 }
+
+/** 命令表里存的样子：`plugin` 是登记方的完整包名 */
+export type RegisteredCommandDef = Required<GwbCommandDef>
 
 /** 命令总线对外的接口。插件之间的契约，放在提供方这个包里 */
 export interface GwbCommands {
-  /** 登记一条命令，返回注销函数。经服务 `ctx.gwbCommands` 登记时，调用方卸载会自动注销；注销函数重复调用无副作用 */
+  /**
+   * 登记一条命令，返回注销函数。name、description、usage 缺一或为空串、plugin 与调用方的包名不同都直接抛错。
+   * 调用方卸载会自动注销；注销函数重复调用无副作用
+   */
   register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void
-  list(): Required<GwbCommandDef>[]
+  list(): RegisteredCommandDef[]
   run(name: string, args?: unknown): Promise<GwbResult>
 }
 
@@ -26,22 +33,49 @@ export interface RegistryLog {
 
 type CommandHandler = (args?: unknown) => unknown
 
+/** 命令表本身：只收检查过的定义，登记方是谁由调用者给出 */
+export interface CommandTable {
+  register(def: RegisteredCommandDef, handler: CommandHandler): () => void
+  list(): RegisteredCommandDef[]
+  run(name: string, args?: unknown): Promise<GwbResult>
+}
+
 interface CommandRegistration {
-  def: Required<GwbCommandDef>
+  def: RegisteredCommandDef
   handler: CommandHandler
 }
 
-function withEmptyTextFilledIn(def: GwbCommandDef): Required<GwbCommandDef> {
-  return { name: def.name, description: def.description ?? '', usage: def.usage ?? '', plugin: def.plugin }
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== ''
 }
 
-function warnWhenPluginIsNotPackageName(log: RegistryLog, def: GwbCommandDef): void {
-  if (!def.plugin.startsWith('@')) {
-    log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @godcreator/gwb-xxx），收到的是「${def.plugin}」`)
+const HOW_TO_WRITE_REQUIRED_TEXT = {
+  description: '写一句话说明这条命令做什么',
+  usage: '写参数形状与注意事项，无参数的命令写「无参数」',
+} as const
+
+/**
+ * 登记方传来的定义是外部输入：逐项检查，不合规抛错并写明哪个包、哪条命令、缺什么、该怎么写。
+ * `callerPackage` 是服务从调用方取到的包名，`plugin` 不给就用它
+ */
+export function checkedCommandDef(callerPackage: string, def: GwbCommandDef): RegisteredCommandDef {
+  if (!isNonEmptyString(def.name)) {
+    throw new Error(`包 ${callerPackage} 登记的命令缺 name：name 要是非空字符串，写成「<短名>.<动作>」`)
   }
+  for (const field of ['description', 'usage'] as const) {
+    if (!isNonEmptyString(def[field])) {
+      throw new Error(`包 ${callerPackage} 的命令 ${def.name} 缺 ${field}：${field} 要是非空字符串，${HOW_TO_WRITE_REQUIRED_TEXT[field]}`)
+    }
+  }
+  if (def.plugin !== undefined && def.plugin !== callerPackage) {
+    throw new Error(
+      `包 ${callerPackage} 的命令 ${def.name} 的 plugin 写的是「${String(def.plugin)}」，与调用方的包名 ${callerPackage} 不同：删掉 plugin，或写成 ${callerPackage}`,
+    )
+  }
+  return { name: def.name, description: def.description, usage: def.usage, plugin: callerPackage }
 }
 
-function logRegistrationOrOverride(log: RegistryLog, incoming: Required<GwbCommandDef>, previous: CommandRegistration | undefined): void {
+function logRegistrationOrOverride(log: RegistryLog, incoming: RegisteredCommandDef, previous: CommandRegistration | undefined): void {
   if (previous !== undefined) {
     log.warn(`命令 ${incoming.name} 被重复登记，后登记的生效：${previous.def.plugin} → ${incoming.plugin}`)
   } else {
@@ -68,15 +102,14 @@ function receiptFromHandlerResult(log: RegistryLog, name: string, handlerResult:
   return { ok: true, data: handlerResult }
 }
 
-/** 命令表本身，不依赖 ctx；注销跟着调用方走由服务类 `GwbCommandBus` 负责 */
-export function createRegistry(log: RegistryLog): GwbCommands {
+/** 命令表本身，不依赖 ctx；取登记方身份、注销跟着调用方走由服务类 `GwbCommandBus` 负责 */
+export function createRegistry(log: RegistryLog): CommandTable {
   const registrationsByName = new Map<string, CommandRegistration>()
 
   return {
     register(def, handler) {
-      warnWhenPluginIsNotPackageName(log, def)
-      const registration: CommandRegistration = { def: withEmptyTextFilledIn(def), handler }
-      logRegistrationOrOverride(log, registration.def, registrationsByName.get(def.name))
+      const registration: CommandRegistration = { def, handler }
+      logRegistrationOrOverride(log, def, registrationsByName.get(def.name))
       registrationsByName.set(def.name, registration)
       // 只删自己这条：同名命令被后来者替换后，先登记的一方注销时不能删掉接手的那条
       return () => {

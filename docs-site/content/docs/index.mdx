@@ -29,7 +29,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 5 | 设置 | 设置 ↔ 各插件与界面 | `gwbSettings` 的方法、`settings.*` 四条命令 | [设置](/docs/seams/settings) |
 | 6 | 数据 | 数据 ↔ 各插件 | `gwbData` 的 `dir`、`readDoc`、`writeDoc` | [数据](/docs/seams/data) |
 | 7 | 数据归属 | 数据、设置 ↔ 插件管理 | `owners()`、`transferOwner(id, pkg)` | [数据归属](/docs/seams/owners) |
-| 8 | 条目身份（约定） | 数据、设置、说明书、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
+| 8 | 条目身份（约定） | 数据、设置、说明书、命令、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id 与包名；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 调用它们的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run` | [命令行工具](/docs/seams/cli) |
 | 10 | 日志 | 日志 ↔ 内核日志流、日志窗格 | cordis 日志的 exporter 与缓冲、推给页面的事件、`logger.backlog` / `logger.where` | [日志](/docs/seams/log) |
 

@@ -34,13 +34,13 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="42-53" */}
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="9-34" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="9-35" */}
 
 **gwb-py-cli 的服务与登记参数**：`command`（`[project.scripts]` 里的入口点名）与 `module`（`python -m` 的模块名）二选一；多一个 `ensureReady`：
 
 {/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" */}
 
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="9-35" */}
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="9-36" */}
 
 **总线参数**：登记的命令经总线调用时，参数给一个字符串数组就是追加参数，给 `{ args?, cwd? }` 也认，别的当成没有参数：
 
@@ -52,7 +52,7 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="25-26" */}
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="156-168" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" */}
 
 **怎么启动 python 子进程**：每次运行前先检查 venv，venv 在 `<packageRoot>/py/.venv`；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
 
@@ -83,6 +83,7 @@ venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `u
 - 登记时就校验：名字为空或带空白、node 的 `entry` 不是绝对路径、py 的 `packageRoot` 不是绝对路径或缺 `distName` / `version`、`command` 与 `module` 都给或都不给、超时不在范围内，当场抛错：拖到运行时才发现的话，报错的地方已经离登记的地方很远
 - 同名后登记的生效并写 warn；注销只删自己那条；注销函数登记到调用方的 effect 里，插件卸载时命令从运行插件的表上和总线上一起注销
 - 总线上那条命令的 `usage` 缺省是运行插件写的参数说明
+- 总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉运行插件表里那条，把错抛给调用方
 - argv 全程是数组，不经过 shell：引号、空格、中文参数原样到达子进程
 - 不继承内核进程的工作目录
 - 子进程的 stdin 是空的；环境变量是内核进程的环境加上运行插件与 spec 给的几条

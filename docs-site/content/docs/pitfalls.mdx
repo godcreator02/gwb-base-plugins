@@ -48,9 +48,9 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 ### 同名命令后登记的生效，但要告警
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="44-50" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="78-84" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="109-118" */}
 
 插件之间平等，换掉一条命令是允许的。但不告警的话，调用方从此调到另一个插件的处理函数上，两边都不报错，所以同名时写一条告警，写明原来是哪个插件、现在是哪个。
 
@@ -60,9 +60,9 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 ### 处理函数抛错不抛给调用方
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="124-136" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="95-103" */}
 
 调用方可能是页面上的一次点击。处理函数自己返回了带 `ok` 的对象就原样返回，其余一律算成功。
 
@@ -72,7 +72,7 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 所以命令总线继承 cordis 的 `Service`：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在调用方的 `effect` 上，登记方不包 `ctx.effect` 也会在卸载时注销；已经包了的登记方不受影响，卸载时只注销一次。经命令行运行插件登记的命令同样由运行插件把注销登记在调用方的 `effect` 上：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="58-65" */}
 
 对 agent 尤其不好：它看到的命令表里有一部分已经失效，照着调只会拿到一句无关的报错。
 
@@ -89,7 +89,15 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 身份从 `this.ctx.fiber.entry` 上取：`entry.id` 决定数据存在哪，`entry.options.name` 是包名。`entry` 是 loader 加上的属性，不是 cordis 本身的接口，所以代码按运行时的形状取、不改全局类型声明；根上下文上没有它。
 
+插件在 `ctx.inject([...], cb)` 的回调里、或 `ctx.plugin(子插件)` 装的子插件里调服务，`this.ctx.fiber` 是那个子 fiber，上面照样有同一个 `entry`：loader 在每个新 fiber 创建时检查父上下文上有没有条目记号，条目的上下文是插件上下文的原型，子 fiber 的父上下文顺着原型链能读到它，于是挂上同一个条目。所以取身份只读 `this.ctx.fiber.entry`，不用沿 `fiber.parent` 往上找；命令总线的测试用真 loader 验证了这一点。
+
 继承 `Service` 的插件，私有字段用 TypeScript 的 `private`，不用 `#`：cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。
+
+### 替调用方登记命令，命令总线要经调用方的上下文取
+
+两个命令行运行插件把调用方登记的工具转登记成总线命令。命令总线从取它的那个上下文认登记方：运行插件经自己的上下文（`inject` 过 `gwbCommands` 的那份）取总线的话，总线认出的登记方是运行插件自己，与写进去的调用方包名对不上，登记被拒。调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛 `cannot get property "gwbCommands" without inject`。所以运行插件用 `this.ctx.get('gwbCommands')`：`get` 不查 `inject`，拿到的总线认的是调用方：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
 
 ### 数据与设置按条目归属，不按包
 

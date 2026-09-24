@@ -60,7 +60,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
   private readonly logInfo: (message: string) => void
   private readonly logWarn: (message: string) => void
   private readonly logError: (message: string) => void
-  /** 本插件自己的上下文。方法里的 `this.ctx` 是调用方的，调用方未必 inject 过 gwbCommands，往总线登记命令要用这一份 */
+  /** 本插件自己的上下文。方法里的 `this.ctx` 是调用方的；登记本插件自己的命令、写本插件的日志用这一份 */
   private readonly providerContext: GwbContext
 
   constructor(ctx: GwbContext) {
@@ -107,10 +107,13 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     return name
   }
 
-  /** 用同一个名字登记成总线命令；plugin 缺省是调用方的包名 */
+  /**
+   * 用同一个名字登记成总线命令。总线要经调用方的上下文取（`ctx.get` 不查 inject）：总线从取它的上下文认登记方的包名，
+   * 经本插件的上下文取会把命令记在本插件名下、与 plugin 对不上而被拒
+   */
   private registerOnCommandBus(spec: NodeCliSpec, callerPackage: string): (() => void) | undefined {
-    const commandBus = this.providerContext.gwbCommands
-    return commandBus?.register(
+    const commandBusSeenByCaller = this.ctx.get('gwbCommands')
+    return commandBusSeenByCaller?.register(
       { name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: spec.plugin ?? callerPackage },
       (args) => {
         const invocation = parseInvocation(args)
@@ -119,11 +122,21 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
     )
   }
 
+  /** 总线拒收（缺 description、plugin 不是调用方的包名）时撤掉已进表的那条再抛 */
+  private registerOnCommandBusOrUndoTable(spec: NodeCliSpec, callerPackage: string, unregisterFromTable: () => void): (() => void) | undefined {
+    try {
+      return this.registerOnCommandBus(spec, callerPackage)
+    } catch (busRefusal) {
+      unregisterFromTable()
+      throw busRefusal
+    }
+  }
+
   register(spec: NodeCliSpec): () => void {
     const callerPackage = this.callerPackageName()
     const unregisterFromTable = this.nodeCliRegistry.register(callerPackage, spec)
+    const unregisterFromBus = this.registerOnCommandBusOrUndoTable(spec, callerPackage, unregisterFromTable)
     this.logInfo(`CLI ${spec.name}（${callerPackage}）已登记`)
-    const unregisterFromBus = this.registerOnCommandBus(spec, callerPackage)
     const unregister = (): void => {
       unregisterFromTable()
       unregisterFromBus?.()

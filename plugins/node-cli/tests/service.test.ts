@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Context } from 'cordis'
+import { Context, Service } from 'cordis'
 import type { Fiber, Message, Plugin } from 'cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import GwbNodeCli, { type CliRunResult, type GwbNodeCliApi, type NodeCliSpec } from '../src/index.js'
@@ -168,5 +168,58 @@ describe('GwbNodeCli 服务', () => {
     const { root } = await bootNodeCli()
     const { nodeCli } = await caller(root, null)
     expect(() => nodeCli.register(spec())).toThrow('取不到调用方的身份')
+  })
+})
+
+describe('GwbNodeCli 经调用方的上下文登记总线命令', () => {
+  /** 装一个按服务写的总线替身：登记时记下 this.ctx 上 loader 条目的包名，也就是真命令总线认作登记方的那个 */
+  async function bootWithIdentityRecordingBus(): Promise<{ root: Context; seenPackages: string[] }> {
+    const root = new Context()
+    const seenPackages: string[] = []
+    class IdentityRecordingBus extends Service {
+      constructor(ctx: Context) {
+        super(ctx, 'gwbCommands')
+      }
+      register(): () => void {
+        const fiber = this.ctx.fiber as unknown as { entry?: { options: { name: string } } }
+        seenPackages.push(fiber.entry?.options.name ?? '（没有条目）')
+        return () => {}
+      }
+      list(): [] {
+        return []
+      }
+      async run(): Promise<{ ok: true }> {
+        return { ok: true }
+      }
+    }
+    const busPlugin: Plugin = IdentityRecordingBus
+    await root.plugin(busPlugin)
+    const nodeCliPlugin: Plugin = GwbNodeCli
+    await root.plugin(nodeCliPlugin)
+    return { root, seenPackages }
+  }
+
+  it('总线看到的登记方是调用方，不是运行插件自己', async () => {
+    const { root, seenPackages } = await bootWithIdentityRecordingBus()
+    const { nodeCli } = await caller(root, '@t/gwb-hello')
+    nodeCli.register(spec({ description: '打个招呼' }))
+    expect(seenPackages.at(-1)).toBe('@t/gwb-hello')
+  })
+
+  it('总线拒收时撤掉表里那条，把总线的错抛给调用方', async () => {
+    const root = new Context()
+    root.provide('gwbCommands', {
+      register(def: { name: string }) {
+        if (def.name !== 'node-cli.list') throw new Error(`总线拒收 ${def.name}`)
+        return () => {}
+      },
+      list: () => [],
+      run: async () => ({ ok: true }),
+    })
+    const nodeCliPlugin: Plugin = GwbNodeCli
+    await root.plugin(nodeCliPlugin)
+    const { nodeCli } = await caller(root, '@t/gwb-hello')
+    expect(() => nodeCli.register(spec())).toThrow('总线拒收 hello.run')
+    expect(nodeCli.list()).toEqual([])
   })
 })

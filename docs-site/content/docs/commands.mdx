@@ -10,11 +10,12 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 ## 功能
 
 - **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；登记方插件卸载时命令自动注销，登记方不用包 `ctx.effect`
+- **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错；命令记在哪个包名下由命令总线从调用方取，登记方写的 `plugin` 与之不同也抛错
 - **同名命令后登记的生效**：同时写一条告警，写明原来是哪个插件、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
 - **按名字执行命令**：页面经 `window.gwb.command`（内核应用收下后原样交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在，都回成失败回执并写明原因
 - **列出全部命令**：每条带名字、一句话介绍、用法和所属插件的包名
-- **写日志**：每次登记、执行都写一行日志；`plugin` 写成短名而不是包名时写一条告警
+- **写日志**：每次登记、执行都写一行日志
 - **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么拆、失败有哪几种
 
 ## 接口
@@ -34,9 +35,9 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 | 方法 | 做什么 |
 | --- | --- |
-| `register(def, handler)` | 登记一条命令，返回注销函数。`def` 的类型是 `GwbCommandDef`：`name`、`description`（一句话介绍）、`usage`（参数形状与注意事项）、`plugin`（登记方的包名） |
+| `register(def, handler)` | 登记一条命令，返回注销函数。`def` 的类型是 `GwbCommandDef`：`name`、`description`（一句话介绍）、`usage`（参数形状与注意事项）三项必写，`plugin`（登记方的包名）可以不写 |
 | `run(name, args)` | 按名字执行一条命令，返回 `Promise<GwbResult>`，不抛错 |
-| `list()` | 返回全部命令的说明，`description`、`usage` 没给的补成空串 |
+| `list()` | 返回全部命令的说明，每条的 `plugin` 是登记方的完整包名 |
 
 {/* has file="../plugins/commands/src/registry.ts" text="export interface GwbCommandDef {" */}
 
@@ -53,7 +54,7 @@ export const inject = ['gwbCommands']
 
 export function apply(ctx: GwbContext) {
   ctx.gwbCommands.register(
-    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }', plugin: '@scope/mine' },
+    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }' },
     (args) => ({ got: args }),
   )
 }
@@ -70,14 +71,17 @@ export function apply(ctx: GwbContext) {
 </Diagram>
 
 - **注销跟着登记方走**：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销，不用自己包 `ctx.effect`。返回的注销函数给要提前注销的场景用，调第二次什么也不做；登记方自己又包了一层 `ctx.effect` 也没关系，卸载时只注销一次
-- **`plugin` 写包名**（`@godcreator/gwb-xxx`），由登记方自己写，不从 `ctx.name` 读（那是 cordis 的追踪属性，没写 `inject` 时读它会抛错）。agent 按包名装卸、升级插件，MCP 入口的 `search {plugin}` 按它筛选命令。写成短名只告警，照常登记
-- **`description` 与 `usage` 分开写**：`description` 是一句话介绍，出现在 MCP 入口 `index` 返回的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的命令写「无参数」。都写进 `description` 的话，`index` 返回的清单会变得很长
+- **`name`、`description`、`usage` 必写，缺了抛错**：三项都要是非空字符串，错误文本写明哪个包、哪条命令、缺哪一项、该怎么写。`usage` 为空时 agent 分不清这条命令是没有参数还是登记方忘了写，所以无参数的命令也要写「无参数」
+- **`description` 与 `usage` 分开写**：`description` 是一句话介绍，出现在 MCP 入口 `index` 返回的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回。都写进 `description` 的话，`index` 返回的清单会变得很长
+- **`plugin` 由命令总线取**：`register` 从调用方 fiber 上 loader 放的条目读包名（`entry.options.name`），记成这条命令的 `plugin`；调用方在 `ctx.inject`、`ctx.plugin` 里建的子上下文也带着同一个条目。登记方可以不写 `plugin`，写了就必须与取到的包名相同，不同就抛错并写明两者。取不到条目（不是经 `cordis.yml` 加载的插件在调用）也抛错。agent 按包名装卸、升级插件，MCP 入口的 `search {plugin}` 按它筛选命令
 - **同名命令，后登记的生效，并告警**：插件之间平等，换掉一条命令是允许的，但不告警的话调用方从此调到另一个插件上，两边都不报错
 - **注销只删自己那条**：注销函数先确认表里还是自己登记的那条记录才删除，同名命令被替换后，先登记的插件卸载不影响接手的那条
 
-{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="45-65" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="57-76" */}
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="109-118" */}
 
 ### 执行的规则与回执 `GwbResult`
 
@@ -95,9 +99,9 @@ export function apply(ctx: GwbContext) {
 - 参数由处理函数自己校验，校验不过就抛错，命令插件把它转成失败回执
 - 成功写 info 日志，失败与找不到命令写 warn：异常都转成了回执，不写日志的话查不到谁在什么时候调了哪条命令、结果如何
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="124-136" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="95-103" */}
 
 这几条规则各自遇到过的问题见[遇到过的问题](/docs/pitfalls)。
 
@@ -112,6 +116,7 @@ export function apply(ctx: GwbContext) {
 | 依赖 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- |
 | 内核里的 cordis：`Service` 基类、`effect`、`inject`、`logger`（peer） | 提供服务、把注销登记在登记方的 `effect` 上、局部注入说明书插件、写日志 | 由内核提供，不会缺；构建产物里按值 import 了 `cordis`，必须和内核用同一份，所以写 peer |
+| loader 放在调用方 fiber 上的条目 `entry`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 不是经 `cordis.yml` 加载的插件登记命令时，`register` 抛错 |
 | 说明书插件的服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用；`GwbResult` 出现在导出的类型里，用它的插件解析不到时类型检查失败，运行时没有影响 |
 
@@ -122,7 +127,7 @@ export function apply(ctx: GwbContext) {
 ## 不做的事
 
 - **不登记任何命令**：表里每一条都是别的插件登记的，命令做什么由登记它的插件决定
-- **不校验参数、不给命令分权限**：参数由处理函数自己校验
+- **不校验参数、不给命令分权限**：参数由处理函数自己校验；登记时只检查命令的定义
 - **不区分调用方**：页面、agent、插件调的是同一个 `run`，不带调用方身份
 - **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；MCP 入口的工具只有 `index`、`search`、`run` 三个，命令不能登记成单独的工具
 - **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程运行命令行程序的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)，它们把自己的命令也登记到这张表上

@@ -81,7 +81,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
 
   /** 用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错 */
   private readonly pyCliRegistry: PyCliRegistry
-  /** 本插件自己的上下文。方法里的 `this.ctx` 是调用方的，调用方未必 inject 过 gwbCommands，往总线登记命令要用这一份 */
+  /** 本插件自己的上下文。方法里的 `this.ctx` 是调用方的；登记本插件自己的命令、写本插件的日志用这一份 */
   private readonly providerContext: GwbContext
   private readonly logInfo: (message: string) => void
   private readonly logWarn: (message: string) => void
@@ -161,21 +161,34 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
     return name
   }
 
-  /** 用同一个名字登记成总线命令，plugin 取调用方的包名 */
+  /**
+   * 用同一个名字登记成总线命令，plugin 取调用方的包名。总线要经调用方的上下文取（`ctx.get` 不查 inject）：
+   * 总线从取它的上下文认登记方的包名，经本插件的上下文取会把命令记在本插件名下、与 plugin 对不上而被拒
+   */
   private registerOnCommandBus(spec: PyCliSpec, callerPackage: string): (() => void) | undefined {
-    const commandBus = this.providerContext.gwbCommands
-    return commandBus?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }, (args) => {
+    const commandBusSeenByCaller = this.ctx.get('gwbCommands')
+    return commandBusSeenByCaller?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })
   }
 
+  /** 总线拒收（缺 description 之类）时撤掉已进表的那条再抛 */
+  private registerOnCommandBusOrUndoTable(spec: PyCliSpec, callerPackage: string, unregisterFromTable: () => void): (() => void) | undefined {
+    try {
+      return this.registerOnCommandBus(spec, callerPackage)
+    } catch (busRefusal) {
+      unregisterFromTable()
+      throw busRefusal
+    }
+  }
+
   register(spec: PyCliSpec): () => void {
     const callerPackage = this.callerPackageName()
     const unregisterFromTable = this.pyCliRegistry.register(callerPackage, spec)
-    this.logInfo(`CLI ${spec.name}（${callerPackage}）已登记`)
     const registration = this.pyCliRegistry.get(spec.name)!
-    const unregisterFromBus = this.registerOnCommandBus(spec, callerPackage)
+    const unregisterFromBus = this.registerOnCommandBusOrUndoTable(spec, callerPackage, unregisterFromTable)
+    this.logInfo(`CLI ${spec.name}（${callerPackage}）已登记`)
     const unregister = (): void => {
       unregisterFromTable()
       unregisterFromBus?.()

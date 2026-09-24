@@ -34,7 +34,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | `spec`：`name`、`entry`（js 的绝对路径）、`description?`、`usage?`、`args?`（固定参数）、`cwd?`、`env?`、`timeoutMs?`、`plugin?`（登记到命令总线时写的包名，缺省是调用方的包名）；类型 `NodeCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | `spec`：`name`、`entry`（js 的绝对路径）、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`args?`（固定参数）、`cwd?`、`env?`、`timeoutMs?`、`plugin?`（登记到命令总线时写的包名，缺省是调用方的包名，给了也必须是调用方的包名）；类型 `NodeCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
 | 服务 `ctx.gwbNodeCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，`extraArgs` 追加在固定参数后面；名字不存在时抛错 | [9 命令行工具](/docs/seams/cli) |
 | 回执 `CliRunResult` | `ok`（退出码 0 且没超时）、`exitCode`、`signal`、`timedOut`、`timeoutMs`、`stdout` 与 `stderr`（各是 `{ text, truncated, spillPath? }`）、`durationMs`；按次给的 `cwd` 不合规时不启动进程，回 `{ ok: false, error }` | [9 命令行工具](/docs/seams/cli) |
 | 登记出来的命令 | 参数给一个数组就是追加参数，给 `{ args?, cwd? }` 也认；回执带 `ok`，命令总线原样返回 | [1 命令总线](/docs/seams/bus) |
@@ -42,7 +42,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 | 输出全量文件 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`，路径在回执的 `spillPath`；写不了时照样给尾部，只是没有 `spillPath` | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="9-34" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="9-35" */}
 
 {/* ref file="../plugins/node-cli/src/run.ts" lines="12-30" */}
 

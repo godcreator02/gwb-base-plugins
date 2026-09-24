@@ -10,6 +10,7 @@ export const MAX_TIMEOUT_MS = 2_147_483_647
 export interface NodeCliSpec {
   /** 命令名，同时是登记到 gwbCommands 总线上的名字 */
   name: string
+  /** 一句话介绍。登记成总线命令时命令总线要求非空，不给登记会被拒 */
   description?: string
   /** 用法（参数形状、注意事项）。缺省用运行插件写的参数形状说明 */
   usage?: string
@@ -28,7 +29,7 @@ export interface NodeCliSpec {
   timeoutMs?: number
   /**
    * 登记成总线命令时写的 `plugin`。缺省是调用方条目的包名（MCP 入口的 `search` 按它精确筛）；
-   * 只在要把命令归到别的包名下时给
+   * 给了也必须是调用方的包名，不同的命令总线会拒
    */
   plugin?: string
 }

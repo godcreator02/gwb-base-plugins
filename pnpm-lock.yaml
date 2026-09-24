@@ -78,6 +78,9 @@ importers:
 
   plugins/commands:
     devDependencies:
+      '@cordisjs/plugin-loader':
+        specifier: 1.0.0-rc.6
+        version: 1.0.0-rc.6(cordis@4.0.0-rc.9)
       '@godcreator/gwb-plugin-api':
         specifier: ^0.2.7
         version: 0.2.7(cordis@4.0.0-rc.9)
@@ -86,7 +89,7 @@ importers:
         version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -101,7 +104,7 @@ importers:
         version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -122,7 +125,7 @@ importers:
         version: 24.13.3
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -153,7 +156,7 @@ importers:
         version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -177,7 +180,7 @@ importers:
         version: 24.13.3
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -201,7 +204,7 @@ importers:
         version: 24.13.3
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -222,7 +225,7 @@ importers:
         version: link:../skills
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -240,7 +243,7 @@ importers:
         version: 0.3.0
       cordis:
         specifier: 4.0.0-rc.9
-        version: 4.0.0-rc.9
+        version: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -280,6 +283,15 @@ packages:
       react-dom: ^17 || ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
+        optional: true
+
+  '@cordisjs/plugin-loader@1.0.0-rc.6':
+    resolution: {integrity: sha512-WVdhzzoHr7YsotBZobhYsohSkviE/y2gHsC18gNGjv0amdwSCjGEdEsQrUcyjKc0CusAdsxjp2U3sprjb5xFDw==}
+    peerDependencies:
+      cordis: ^4.0.0-rc.9
+      node-addon-require-builtin: ^0.1.0
+    peerDependenciesMeta:
+      node-addon-require-builtin:
         optional: true
 
   '@emnapi/runtime@1.11.3':
@@ -2995,6 +3007,11 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
+  '@cordisjs/plugin-loader@1.0.0-rc.6(cordis@4.0.0-rc.9)':
+    dependencies:
+      cordis: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
+      cosmokit: 1.8.1
+
   '@emnapi/runtime@1.11.3':
     dependencies:
       tslib: 2.8.1
@@ -3158,7 +3175,7 @@ snapshots:
 
   '@godcreator/gwb-plugin-api@0.2.7(cordis@4.0.0-rc.9)':
     dependencies:
-      cordis: 4.0.0-rc.9
+      cordis: 4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6)
 
   '@godcreator/gwb-repo-kit@0.3.0': {}
 
@@ -3901,10 +3918,12 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  cordis@4.0.0-rc.9:
+  cordis@4.0.0-rc.9(@cordisjs/plugin-loader@1.0.0-rc.6):
     dependencies:
       '@standard-schema/spec': 1.1.0
       cosmokit: 1.8.1
+    optionalDependencies:
+      '@cordisjs/plugin-loader': 1.0.0-rc.6(cordis@4.0.0-rc.9)
 
   cors@2.8.6:
     dependencies:

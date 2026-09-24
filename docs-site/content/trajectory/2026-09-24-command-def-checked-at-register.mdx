@@ -1,0 +1,36 @@
+---
+title: 命令定义改在登记时检查，plugin 改由命令总线从调用方取
+born-at: 2026-09-24T17:20
+type: choice
+parent: [2026-09-24-commands-bus-as-service]
+label: 登记时查定义
+domain: 插件
+---
+
+## 背景
+
+命令的 `description`、`usage` 在 `GwbCommandDef` 里是可选的，没给的被命令表静默补成空串；`plugin` 由登记方自己填，命令表只在它不以 `@` 开头时写一条 warn，照常登记（这条软检查来自 [三个工具那次改动](2026-09-14-three-tool-face.md)）。「每条命令三项写全、`plugin` 是包名」原本由 devkit 仓的测试守卫包 `@godcreator/gwb-repo-kit` 在各仓的 `pnpm check` 里检查。
+
+repo-kit 退役，这条检查要换个地方。在测试守卫里查有两个缺口：只有装了 repo-kit 的仓才受保护，别的仓（应用插件、实验仓）登记出空 `usage` 也没人拦；而空 `usage` 到了 MCP 入口的 `search` 里，agent 分不清这条命令是没有参数，还是登记方忘了写。
+
+## 结论与边界
+
+检查挪到运行时，`gwbCommands.register` 直接拒绝：
+
+- `name`、`description`、`usage` 必须是非空字符串，`GwbCommandDef` 里 `description`、`usage` 改成必填；缺一项就抛错，错误文本写明哪个包、哪条命令、缺哪一项、该怎么写（无参数的命令 `usage` 写「无参数」）
+- `plugin` 改由命令总线从调用方取：`register` 读 `this.ctx.fiber.entry.options.name`，也就是 loader 放在调用方 fiber 上的那条条目的包名，和外壳插件的 `ownerOfCaller`、数据与设置插件取身份的写法相同。`GwbCommandDef.plugin` 改成可选，不给就用取到的包名，给了但不同就抛错并写明两者；`list()` 回的每条 `plugin` 仍是完整包名
+- 取不到条目（不是经 `cordis.yml` 加载的插件在调用）也抛错，不回退到登记方自报的名字：登记方自报正是要去掉的那条路
+- 删掉「短名只告警」与「空串补齐」两段旧逻辑
+
+为什么 `plugin` 不再让登记方自己填：自报的包名可以写错（短名、旧名、抄来的别家包名），写错了 MCP 入口按包名给命令分组、和说明书对应就对不上，而命令总线手里本来就有调用方的真实身份。
+
+调查过嵌套上下文取不取得到条目，结论是取得到，不用沿 `fiber.parent` 往上找。loader（`@cordisjs/plugin-loader` 1.0.0-rc.6 与内核用的 rc.7，源码 `lib/index.js` 里 `Loader` 构造函数的 `internal/plugin` 监听）在每个新 fiber 创建时检查 `fiber.parent[Entry.key]`，有就把 `fiber.entry` 设成它；`Entry.key` 这个记号是条目自己的上下文上的属性，而插件的上下文、它在 `ctx.inject` 回调里拿到的上下文、`ctx.plugin` 装的子插件的上下文，都经 cordis 的 `extend`（`Object.create`）从条目上下文派生，顺着原型链读得到这个记号，于是嵌套 fiber 挂上的是同一个条目。`ctx.inject` 本身就是 `ctx.plugin({ inject, apply })`。命令总线自己不登记命令，内核只调 `run` 不登记，这两处不受影响。`plugins/commands/tests/service.test.ts` 用真 cordis 加真 loader 验证了在 `ctx.inject` 回调、`ctx.plugin` 子插件、再套一层 `inject`、`Service.init` 里登记都取到外层条目的包名，不经 loader 直接 `root.plugin` 的插件登记会抛错。
+
+两个命令行运行插件跟着改：它们把调用方登记的工具转登记成总线命令，原来经自己的上下文取总线，新规则下总线会把登记方认成运行插件自己、与写进去的调用方包名对不上而拒收。改成 `this.ctx.get('gwbCommands')`，经调用方的上下文取总线（`get` 不查 `inject`，调用方不必 `inject` 了 `gwbCommands`）；总线拒收时撤掉运行插件表里那条再抛。
+
+## 代价与遗留
+
+- 破坏性改动：原来接受的输入（缺 `description` / `usage`、`plugin` 写短名、不经 loader 的上下文里登记）现在抛错，命令插件升次版本号 0.4.6 → 0.5.0。别的仓里缺 `usage` 的登记要在跟进 0.5 之前补上
+- node-cli、py-cli 必须和命令插件一起升级：旧版运行插件配新命令总线时，转登记的命令全部被拒
+- 经 node-cli / py-cli 登记、没写 `description` 的工具，原来照常登记，现在 `register` 抛错
+- 命令插件的测试多了开发依赖 `@cordisjs/plugin-loader`，版本跟着仓里的 cordis 走

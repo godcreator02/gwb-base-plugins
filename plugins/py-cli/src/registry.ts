@@ -10,6 +10,7 @@ export const MAX_TIMEOUT_MS = 2_147_483_647
 export interface PyCliSpec {
   /** 命令名，同时是登记到 gwbCommands 总线上的名字 */
   name: string
+  /** 一句话介绍。登记成总线命令时命令总线要求非空，不给登记会被拒 */
   description?: string
   /** 用法（参数形状、注意事项）。缺省用运行插件写的参数形状说明 */
   usage?: string

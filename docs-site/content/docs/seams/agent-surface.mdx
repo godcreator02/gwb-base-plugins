@@ -81,7 +81,7 @@ MCP 插件保证：
 - agent 每次调 `run` 都写一条日志：成功写 info，失败写 warn 并带原因
 
 命令插件保证：
-- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`（没给的补空串）
+- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`，四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名
 - `run()` 不抛错，回执形状见[命令总线](/docs/seams/bus)
 
 说明书插件保证：

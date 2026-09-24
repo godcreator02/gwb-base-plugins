@@ -1,6 +1,6 @@
 ---
 title: 1 命令总线 gwbCommands
-description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错，登记方保证 plugin 写包名、参数自己校验
+description: 连接命令插件与所有登记、调用命令的插件；接口是服务 ctx.gwbCommands 的 register / run / list 三个方法和回执 { ok, data, error }；命令插件保证 name / description / usage 缺一项就拒收、plugin 取调用方的包名、同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错，登记方保证三项写全、参数自己校验
 ---
 
 **本页回答**：插件怎么把能力登记成命令、调用方怎么按名字执行；命令插件对登记方和调用方各保证什么；命令行运行插件与内核怎么用这张命令表。
@@ -16,7 +16,7 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 服务的类型由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核的词汇表包里：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-19" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-26" */}
 
 服务由命令插件里继承 cordis `Service` 的类提供，本插件卸载时撤销：
 
@@ -31,13 +31,17 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 - 回执沿原路回到调用方；成功写 info，失败写 warn
 </Diagram>
 
-**登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文，注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销；返回的注销函数调第二次什么也不做：
+**登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文：包名从它 fiber 上 loader 放的条目取（见[条目身份](/docs/seams/entry-identity)），注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销；返回的注销函数调第二次什么也不做：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="45-65" */}
+
+`name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同，都在进表之前抛错：
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="57-76" */}
 
 同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="109-118" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
@@ -49,15 +53,15 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 **执行**：`run(name, args)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值一律包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="124-136" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="95-103" */}
 
-**列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，没给的 `description`、`usage` 补成空串。
+**列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名。
 
-**命令行运行插件的登记**：`gwbNodeCli.register` 登记一条命令行工具时，同时用同一个名字调用 `gwbCommands.register`，`plugin` 默认取调用方的包名，处理函数把总线参数转成一次子进程调用；注销时两条一起注销：
+**命令行运行插件的登记**：`gwbNodeCli.register` 登记一条命令行工具时，同时用同一个名字调用 `gwbCommands.register`，处理函数把总线参数转成一次子进程调用；注销时两条一起注销。命令总线是经调用方的上下文（`this.ctx.get('gwbCommands')`）取的，所以总线认出的登记方是调用方而不是运行插件；总线拒收时运行插件撤掉自己表里那条再把错抛给调用方：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="110-134" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-147" */}
 
 gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
@@ -71,12 +75,13 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 - 同名命令后登记的生效，同时写一条 warn，写明原来是哪个包、现在是哪个包
 - 注销函数只删自己登记的那条：同名命令被别人接手后，先登记的一方注销不影响接手的那条
 - 登记方卸载时，它登记的命令自动注销，登记方不用包 `ctx.effect`；包了也不出错，卸载时只注销一次。注销函数重复调用无副作用
-- `plugin` 不以 `@` 开头时写一条 warn，照常登记
+- `name`、`description`、`usage` 缺一项或为空串就抛错，不进表；错误文本写明哪个包、哪条命令、缺哪一项、该怎么写
+- `plugin` 由命令总线从调用方 fiber 上的条目取；登记方写了不同的包名就抛错，取不到条目也抛错
 - 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
 
 登记方保证：
-- `def.plugin` 写自己的包名（`@godcreator/gwb-xxx`），自己填，不从 `ctx.name` 读。MCP 入口按它给命令分组和筛选，与说明书的 `plugin` 对得上（见[命令表开给 agent](/docs/seams/agent-surface)）
 - `description` 写一句话，`usage` 写参数形状与注意事项，无参数的写「无参数」
+- 在经 `cordis.yml` 加载的插件里登记（含它 `ctx.inject`、`ctx.plugin` 出来的子上下文）；`def.plugin` 不写，要写就写自己的包名。MCP 入口按命令的 `plugin` 给命令分组和筛选，与说明书的 `plugin` 对得上（见[命令表开给 agent](/docs/seams/agent-surface)）
 - 处理函数自己校验参数，校验不过就抛错或返回 `{ ok: false, error }`
 - 需要总线才能工作的插件把 `gwbCommands` 写进 `export const inject`；命令对它可有可无时用 `ctx.inject(['gwbCommands'], …)` 局部注入（设置插件就是这样）
 
@@ -94,7 +99,9 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 ## 测试
 
-登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 保护，其中这三条覆盖回执与注销的约定：
+登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 保护，其中这几条覆盖定义检查、回执与注销的约定：
+
+{/* has file="../plugins/commands/tests/registry.test.ts" text="%s 为空串被拒，消息写明包、命令、缺哪个字段、该怎么写" */}
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数返回带 ok 的对象就原样返回，否则包成 data" */}
 
@@ -102,7 +109,13 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条" */}
 
-登记方卸载时命令自动注销由 `plugins/commands/tests/service.test.ts` 在真实的 cordis 上下文里检查，其中两条覆盖登记方包与不包 `ctx.effect` 两种写法：
+取包名与登记方卸载时命令自动注销由 `plugins/commands/tests/service.test.ts` 在真实的 cordis 加 loader 上检查（插件按包名建成条目加载，fiber 上有 loader 放的条目），其中这几条覆盖从嵌套上下文取包名与登记方包不包 `ctx.effect` 两种写法：
+
+{/* has file="../plugins/commands/tests/service.test.ts" text="在 ctx.inject 的回调里登记也取得到调用方的包名" */}
+
+{/* has file="../plugins/commands/tests/service.test.ts" text="在 ctx.plugin 装的子插件里登记也取得到调用方的包名，再套一层 inject 也一样" */}
+
+{/* has file="../plugins/commands/tests/service.test.ts" text="plugin 与调用方的包名不同就抛错，消息里写着两者，命令不进表" */}
 
 {/* has file="../plugins/commands/tests/service.test.ts" text="调用方卸载后，它登记的命令自动注销" */}
 

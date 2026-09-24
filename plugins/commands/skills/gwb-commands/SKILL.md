@@ -48,20 +48,23 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 ## 在插件里登记命令
 
 1. 声明依赖：命令是插件的必需部分，写 `export const inject = ['gwbCommands']`；可有可无，用 `ctx.inject(['gwbCommands'], (ctx) => { … })` 局部注入。
-2. 调 `ctx.gwbCommands.register(def, handler)`，`def` 四项：
+2. 调 `ctx.gwbCommands.register(def, handler)`，`def` 三项必写、都是非空字符串：
    - `name`：`<插件短名>.<动作>`，登记前用 `search {"q": "<名字>"}` 确认没有重名（同名时后登记的生效并写告警）
    - `description`：一句话说命令做什么，出现在 `index` 里
    - `usage`：参数形状与注意事项，无参数写「无参数」，只在 `search` 命中时返回
-   - `plugin`：本插件的包名（`@godcreator/gwb-xxx`），自己写，写成短名会有告警
+
+   `plugin` 不用写：命令总线从调用方的 cordis 条目取包名。写了就必须是本插件的包名。
 3. 写 `handler`：自己校验参数，不对就抛错，错误文本写清要什么形状；返回普通值，总线把它包进 `data`。只有要让字段出现在回执顶层时，才返回带 `ok` 的对象。
-4. 注销：命令总线 0.4.6 起，`register` 把注销登记在调用方的 `effect` 上，插件卸载时命令自动注销，直接调用即可；返回的注销函数只在要提前注销时用。开发依赖里的命令总线低于 0.4.6 时，写成 `ctx.effect(() => ctx.gwbCommands.register(…))`。
+4. 注销：`register` 把注销登记在调用方的 `effect` 上，插件卸载时命令自动注销，直接调用即可；返回的注销函数只在要提前注销时用。
+
+`register` 当场抛错、命令不进表的情况：三项里缺一项或为空串；`plugin` 与本插件的包名不同；调用方不是经 `cordis.yml` 加载的插件，取不到包名。错误文本写明哪个包、哪条命令、缺什么。
 
 完成的判据：重新加载插件后，`index` 里本插件包名下有这条命令，`run` 它回 `ok: true`；停用插件后 `index` 里没有它。
 
 ## 规矩
 
 - 扩展点用服务，数据读写和动作用命令，同一能力只提供一种调用方式：devkit 仓 `docs-site/content/docs/rules/services.mdx`
-- 登记命令时 `plugin` 写包名，参数形状写进 `usage`，无参数写「无参数」：devkit 仓 `docs-site/content/docs/rules/services.mdx`
+- 登记命令时参数形状写进 `usage`，无参数写「无参数」：devkit 仓 `docs-site/content/docs/rules/services.mdx`
 - 调别的插件的能力只经服务和命令，调命令只写命令名、不 import 提供方的常量：devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
 
 ## 回执参考

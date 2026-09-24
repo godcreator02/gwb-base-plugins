@@ -40,12 +40,13 @@ description: 调 node 命令行工具的命令、读它的退出码与输出、�
 3. 调 `ctx.gwbNodeCli.register({ name, entry, description, usage?, args?, cwd?, env?, timeoutMs?, plugin? })`：
    - `name` 不带空白，同时是命令名
    - `entry` 是上一步的绝对路径
-   - `usage` 不给时自动补上参数形状那一句；`plugin` 不给时取本插件的包名
+   - `description` 必须写：命令总线拒收没有 description 的命令
+   - `usage` 不给时自动补上参数形状那一句；`plugin` 不给时取本插件的包名，给了必须就是本插件的包名
    - `timeoutMs` 缺省 60 秒
 4. 插件卸载时这条命令自动从表上和命令总线上注销，不用包 `ctx.effect`。
 5. js 所在的目录写进 `package.json` 的 `files`。
 
-登记不合规（名字为空或带空白、`entry` 不是绝对路径、时限不是正数或超过上限）时 `register` 当场抛错。
+登记不合规（名字为空或带空白、`entry` 不是绝对路径、时限不是正数或超过上限、没写 `description`、`plugin` 不是本插件的包名）时 `register` 当场抛错，这条不进表。
 
 完成的判据：`node-cli.list` 里有这一条，`plugin` 是本插件的包名；`run` 它回 `ok: true`。
 

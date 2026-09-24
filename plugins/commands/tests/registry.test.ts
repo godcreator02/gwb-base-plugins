@@ -1,14 +1,52 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRegistry, type RegistryLog } from '../src/registry.js'
+import { checkedCommandDef, createRegistry, type GwbCommandDef, type RegisteredCommandDef, type RegistryLog } from '../src/registry.js'
 
 const noop = (): void => {}
 /** 不写日志的假日志函数。要检查告警的用例自己传 vi.fn() */
 const silent: RegistryLog = { info: noop, warn: noop }
 
+/** 检查过的定义：命令表只收这种 */
+function registeredDef(name: string, plugin = '@t/p'): RegisteredCommandDef {
+  return { name, description: '试', usage: '无参数', plugin }
+}
+
+describe('checkedCommandDef', () => {
+  const complete: GwbCommandDef = { name: 'a.b', description: '一句话', usage: '参数 { n }' }
+
+  it('plugin 不给就填调用方的包名', () => {
+    expect(checkedCommandDef('@t/caller', complete)).toEqual({ ...complete, plugin: '@t/caller' })
+  })
+
+  it('plugin 给了且与调用方的包名相同，照常通过', () => {
+    expect(checkedCommandDef('@t/caller', { ...complete, plugin: '@t/caller' })).toEqual({ ...complete, plugin: '@t/caller' })
+  })
+
+  it('plugin 与调用方的包名不同就抛错，消息里写着两者', () => {
+    expect(() => checkedCommandDef('@t/caller', { ...complete, plugin: 'gwb-caller' })).toThrow(/gwb-caller.*@t\/caller/)
+  })
+
+  it.each([
+    ['name', { ...complete, name: '' }, /@t\/caller.*缺 name/],
+    ['name', { ...complete, name: '  ' }, /缺 name/],
+    ['description', { ...complete, description: '' }, /@t\/caller 的命令 a\.b 缺 description/],
+    ['usage', { ...complete, usage: '' }, /@t\/caller 的命令 a\.b 缺 usage.*无参数/],
+  ])('%s 为空串被拒，消息写明包、命令、缺哪个字段、该怎么写', (_field, def, message) => {
+    expect(() => checkedCommandDef('@t/caller', def)).toThrow(message)
+  })
+
+  it.each(['name', 'description', 'usage'] as const)('%s 缺失或不是字符串被拒', (field) => {
+    const missing = { ...complete } as Record<string, unknown>
+    delete missing[field]
+    expect(() => checkedCommandDef('@t/caller', missing as unknown as GwbCommandDef)).toThrow(`缺 ${field}`)
+    const notString = { ...complete, [field]: 42 } as unknown as GwbCommandDef
+    expect(() => checkedCommandDef('@t/caller', notString)).toThrow(`缺 ${field}`)
+  })
+})
+
 describe('createRegistry', () => {
   it('登记了就能调用', async () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'a.b', description: '试', plugin: 'p' }, (args) => ({ got: args }))
+    cli.register(registeredDef('a.b'), (args) => ({ got: args }))
     expect(await cli.run('a.b', { n: 1 })).toEqual({ ok: true, data: { got: { n: 1 } } })
   })
 
@@ -21,15 +59,15 @@ describe('createRegistry', () => {
 
   it('处理函数返回带 ok 的对象就原样返回，否则包成 data', async () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'raw', plugin: 'p' }, () => ({ ok: false, error: '我自己判的' }))
-    cli.register({ name: 'wrapped', plugin: 'p' }, () => 42)
+    cli.register(registeredDef('raw'), () => ({ ok: false, error: '我自己判的' }))
+    cli.register(registeredDef('wrapped'), () => 42)
     expect(await cli.run('raw', undefined)).toEqual({ ok: false, error: '我自己判的' })
     expect(await cli.run('wrapped', undefined)).toEqual({ ok: true, data: 42 })
   })
 
   it('处理函数抛错不抛给调用方，回成失败回执', async () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'boom', plugin: 'p' }, () => {
+    cli.register(registeredDef('boom'), () => {
       throw new Error('出错了')
     })
     const res = (await cli.run('boom', undefined)) as { ok: boolean; error?: string }
@@ -39,43 +77,32 @@ describe('createRegistry', () => {
 
   it('异步的处理函数也支持', async () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'slow', plugin: 'p' }, async () => 'ok了')
+    cli.register(registeredDef('slow'), async () => 'ok了')
     expect(await cli.run('slow', undefined)).toEqual({ ok: true, data: 'ok了' })
   })
 
   it('list 返回登记过的命令', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'x', description: '甲', usage: '参数 { n }', plugin: 'p1' }, noop)
-    cli.register({ name: 'y', plugin: 'p2' }, noop)
+    cli.register({ name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1' }, noop)
+    cli.register(registeredDef('y', '@t/p2'), noop)
     expect(cli.list()).toEqual([
-      { name: 'x', description: '甲', usage: '参数 { n }', plugin: 'p1' },
-      { name: 'y', description: '', usage: '', plugin: 'p2' },
+      { name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1' },
+      { name: 'y', description: '试', usage: '无参数', plugin: '@t/p2' },
     ])
-  })
-
-  it('plugin 写成短名时告警一句，照常登记，不当成失败', () => {
-    const log = { info: vi.fn(), warn: vi.fn() }
-    const cli = createRegistry(log)
-    cli.register({ name: 'a.b', plugin: 'gwb-old' }, noop)
-    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('gwb-old'))
-    expect(cli.list()).toHaveLength(1)
-    log.warn.mockClear()
-    cli.register({ name: 'c.d', plugin: '@godcreator/gwb-new' }, noop)
-    expect(log.warn).not.toHaveBeenCalled()
   })
 
   it('同名登记后，命令表里的记录换成后登记的那条', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
-    expect(cli.list()).toEqual([{ name: 'dup', description: '', usage: '', plugin: '@t/后来的' }])
+    cli.register(registeredDef('dup', '@t/先来的'), () => 1)
+    cli.register(registeredDef('dup', '@t/后来的'), () => 2)
+    expect(cli.list()).toEqual([registeredDef('dup', '@t/后来的')])
   })
 
   it('登记与执行都写日志：成功写 info，失败与找不到命令写 warn', async () => {
     const log = { info: vi.fn(), warn: vi.fn() }
     const cli = createRegistry(log)
-    cli.register({ name: 'fine', plugin: '@t/p' }, () => 1)
-    cli.register({ name: 'sad', plugin: '@t/p' }, () => ({ ok: false, error: '执行了但结果是失败' }))
+    cli.register(registeredDef('fine'), () => 1)
+    cli.register(registeredDef('sad'), () => ({ ok: false, error: '执行了但结果是失败' }))
     await cli.run('fine', undefined)
     await cli.run('sad', undefined)
     await cli.run('nope', undefined)
@@ -91,8 +118,8 @@ describe('createRegistry', () => {
   it('同名时后登记的生效，并告警写明原来是谁、现在是谁', async () => {
     const warn = vi.fn()
     const cli = createRegistry({ info: noop, warn })
-    cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
+    cli.register(registeredDef('dup', '@t/先来的'), () => 1)
+    cli.register(registeredDef('dup', '@t/后来的'), () => 2)
     expect(await cli.run('dup', undefined)).toEqual({ ok: true, data: 2 })
     expect(warn).toHaveBeenCalledOnce()
     const msg = String(warn.mock.calls[0]?.[0])
@@ -103,15 +130,15 @@ describe('createRegistry', () => {
 
   it('注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条', async () => {
     const cli = createRegistry(silent)
-    const offFirst = cli.register({ name: 'dup', plugin: '@t/先来的' }, () => 1)
-    cli.register({ name: 'dup', plugin: '@t/后来的' }, () => 2)
+    const offFirst = cli.register(registeredDef('dup', '@t/先来的'), () => 1)
+    cli.register(registeredDef('dup', '@t/后来的'), () => 2)
     offFirst()
     expect(await cli.run('dup', undefined)).toEqual({ ok: true, data: 2 })
   })
 
   it('注销之后就调用不到了', async () => {
     const cli = createRegistry(silent)
-    const off = cli.register({ name: 'gone', plugin: 'p' }, () => 1)
+    const off = cli.register(registeredDef('gone'), () => 1)
     off()
     expect((await cli.run('gone', undefined)) as { ok: boolean }).toMatchObject({ ok: false })
     expect(cli.list()).toEqual([])

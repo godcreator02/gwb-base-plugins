@@ -39,6 +39,7 @@ venv 就绪但回执 `exitCode` 为 `null`、`timedOut` 为 `false`：程序没�
    - `packageRoot` 是包根的绝对路径，比如 `fileURLToPath(new URL('..', import.meta.url))`
    - `distName`、`version` 与 `pyproject.toml` 的项目名、版本一致：检查 venv 时拿它们比对已装的版本
    - `command: 'x'` 运行 `Scripts/x.exe`；`module: 'x.cli'` 运行 `python -m x.cli`；两个只给一个
+   - `description` 必须写：命令总线拒收没有 description 的命令，`register` 当场抛错
    - 总线命令的 `plugin` 固定是本插件的包名
 5. 插件卸载时这条命令自动注销，不用包 `ctx.effect`。`register` 顺带开始建 venv，不阻塞 `apply`。
 
