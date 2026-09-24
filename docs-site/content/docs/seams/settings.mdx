@@ -23,25 +23,25 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 
 **服务**：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="50-64" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="41-55" */}
 
 **一项设置的声明**：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-26" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
 
 **身份自动绑定**：`define` / `get` / `set` / `delete` 都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="142-155" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="143-153" */}
 
 **公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找本插件声明过的项，没有就读公共区，别的插件不用 `define` 也读得到：
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="10-11" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="5-6" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="254-265" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
 
 **四条命令**按 `{ section, key }` 定位，不经身份：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="96-133" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="101-135" */}
 
 | 命令 | 参数 | 回执 |
 | --- | --- | --- |
@@ -50,13 +50,15 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 | `settings.set` | `{ section, key, value }` | `{ ok: true }` |
 | `settings.delete` | `{ section, key }` | `{ ok: true }`；只抹值，定义还在 |
 
-**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）：
+删值和写值一样按位置：删条目的界面要能顺手把那个插件的设置值删干净，不然文件里留下一堆没有归属的值。
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="137-151" */}
+**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`），照真实长度打码等于把长度也交出去：
+
+{/* ref file="../plugins/settings/src/registry.ts" lines="115-121" */}
 
 **存储**：`<home>/settings.json`，和 `cordis.yml` 并排，一个 home 一份。顶层是 `$owners`（分区归属，见[数据归属](/docs/seams/owners)）和各分区；分区下是设置名到 `{ title, type, description, value }` 的表。整份替换，先写同目录的临时文件再改名：
 
-{/* ref file="../plugins/settings/src/store.ts" lines="40-60" */}
+{/* ref file="../plugins/settings/src/store.ts" lines="37-52" */}
 
 ## 约定
 
@@ -86,6 +88,7 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 
 - 设置插件不校验值的类型，也不检查 `settings.set` 写的位置有没有插件声明过
 - 设置插件不加密：`settings.json` 里 secret 项也是明文
+- 设置插件不是安全边界：名字校验只防手滑（名字里带斜杠、条目占用公共区），插件本来就能直接改这个文件
 - 设置插件不提供机器级设置：每个 home 一份，要跨 home 共享就复制文件
 - 设置插件不画界面：编辑设置的界面在界面插件仓的插件管理窗格里，经 `settings.*` 命令读写
 - 声明方不负责别的插件读不读它公共区里的项
@@ -100,4 +103,8 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 
 {/* has file="../plugins/settings/tests/registry.test.ts" text="按位取用照旧拿得到真值：服务面 get 与 read（settings.get 那条路）" */}
 
-身份绑定到调用方条目（写进磁盘的分区是调用方自己那条条目的）只能在隔离 home 里实际运行验证。
+服务这一层（构造时同步读文件、分区按调用方条目算、写删没声明过的项抛错、调用方卸载后不再 `live`、写失败先 warn 再抛）与四条命令，由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
+
+{/* has file="../plugins/settings/tests/service.test.ts" text="构造时同步读完 settings.json：调用方 apply 里第一次 get 就读得到盘上的值" */}
+
+loader 真的把调用方自己那条条目放在 fiber 上，只能在隔离 home 里实际运行验证。

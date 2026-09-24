@@ -27,7 +27,7 @@ description: 连接数据、设置、说明书、node-cli、py-cli 五个插件�
 
 设置插件的写法相同：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="142-155" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="143-153" */}
 
 说明书插件与两个命令行运行插件只取包名：
 
@@ -50,7 +50,7 @@ description: 连接数据、设置、说明书、node-cli、py-cli 五个插件�
 
 设置插件的版本：
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="60-92" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="42-66" */}
 
 这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则都相同，两处注释互相指着对方。改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，插件管理按 id 查两边归属时也会对不上（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
 
