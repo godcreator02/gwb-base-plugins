@@ -26,7 +26,7 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 - `level`：cordis 的 `success` 归入 `info`
 - `msg`：用 cordis 自己的 `Logger.format` 格式化后的正文
 
-**来源按 logger 名字分类**：`renderer` 是页面，`kernel`、`loader`、`gwb` 是内核，其余一律算插件：
+**来源按 logger 名字分类**：`renderer` 是页面，`kernel`、`loader` 是内核，其余一律算插件：
 
 {/* ref file="../plugins/logger/src/index.ts" lines="66-72" */}
 
@@ -71,7 +71,7 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 - 在收日志的路径上不写 `console`：页面 console 会被内核转回日志流，再推回窗格，形成循环
 
 写日志的插件保证：
-- 用 `ctx.logger('<自己的名字>')`，名字不用 `kernel`、`loader`、`gwb`、`renderer`，否则会被算成内核或页面
+- 用 `ctx.logger('<自己的名字>')`，名字不用 `kernel`、`loader`、`renderer`，否则会被算成内核或页面
 
 ## 不负责的事
 
@@ -83,8 +83,10 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 ## 测试
 
-日志插件只有构建产物检查（`plugins/logger/tests/artifact.test.ts`）与自述检查，没有逻辑测试：
+日志插件有构建产物检查（`plugins/logger/tests/artifact.test.ts`）、自述检查，以及来源分类的测试（`source.test.ts`）：
 
 {/* has file="../plugins/logger/tests/artifact.test.ts" text="裸名只许词汇表包与 cordis" */}
 
-窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。补读缓冲、来源分类、推到页面、`logger.backlog` 与窗格按 `seq` 接上，只能在隔离 home 里实机验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。
+{/* has file="../plugins/logger/tests/source.test.ts" text="kernel 与 loader 是内核" */}
+
+窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。补读缓冲、推到页面、`logger.backlog` 与窗格按 `seq` 接上，只能在隔离 home 里实机验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。

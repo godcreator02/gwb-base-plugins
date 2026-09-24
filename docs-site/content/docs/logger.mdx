@@ -10,7 +10,7 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 ## 功能
 
 - **把三个来源的日志收到一处**：插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志），都经 cordis 的日志流来，插件注册一个 exporter 就全部收到
-- **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader`、`gwb` 的算内核，其余算插件；cordis 的 `success` 级别算 `info`
+- **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader` 的算内核，其余算插件；cordis 的 `success` 级别算 `info`
 - **保留最近两千条**：插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来；每条带递增的序号
 - **实时推给页面**：每收到一条，经内核的事件通道推给页面
 - **两条命令**：`logger.backlog` 取最近两千条，`logger.where` 报 home 目录与日志文件的路径

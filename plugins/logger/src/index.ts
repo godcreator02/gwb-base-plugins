@@ -64,9 +64,9 @@ interface LogMessage {
 }
 
 /** 这几个 logger 名是内核在说话：内核自己、loader 报引导链的事。其余一律是件 */
-const KERNEL_NAMES = new Set(['kernel', 'loader', 'gwb'])
+const KERNEL_NAMES = new Set(['kernel', 'loader'])
 
-function sourceOf(loggerName: string): LogSource {
+export function sourceOf(loggerName: string): LogSource {
   if (loggerName === 'renderer') return 'renderer'
   return KERNEL_NAMES.has(loggerName) ? 'kernel' : 'plugin'
 }
