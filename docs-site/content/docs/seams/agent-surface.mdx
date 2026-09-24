@@ -20,11 +20,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 说明书插件在或不在，由局部注入时的 effect 维护：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="227-234" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="224-231" */}
 
 **`index` 与 `search` 每次调用都重新读取**命令表和说明书清单，运行中新登记的命令下一次调用就在：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="260-281" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="257-278" */}
 
 - `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示
 - `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，这时说明书只回名字与包名；`q` 在名字、description、usage 里找子串；命中的命令行总带 `usage`；不带参数返回全部
@@ -32,7 +32,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 **`run`**：先把参数处理一次（有的客户端把对象参数序列化成字符串发来，能解析成 JSON 就用解析结果），再交给 `gwbCommands.run`，每次调用都写一条日志，最后按回执的形状翻译：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="242-258" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="239-255" */}
 
 **回执的三种形状**靠键名区分：
 
@@ -91,7 +91,7 @@ MCP 插件保证：
 
 ## 测试
 
-`plugins/mcp/tests/tools.test.ts` 钉住回执翻译，`inventory.test.ts` 钉住 `index` / `search` 的生成规则：
+`plugins/mcp/tests/tools.test.ts` 覆盖回执的转换，`inventory.test.ts` 覆盖 `index` / `search` 的生成规则：
 
 {/* has file="../plugins/mcp/tests/tools.test.ts" text="带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平" */}
 
@@ -99,4 +99,4 @@ MCP 插件保证：
 
 {/* has file="../plugins/mcp/tests/inventory.test.ts" text="skills 插件不在（undefined）时说明书清单是空表——MCP 入口照常可用" */}
 
-MCP 插件拿到的是运行中真的命令表与说明书清单，这一段接线只能在隔离 home 里实机验证。
+MCP 插件拿到的是运行中真的命令表与说明书清单，这一段调用只能在隔离 home 里实际运行验证。

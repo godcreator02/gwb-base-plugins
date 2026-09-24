@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "MCP 门：把命令面开给 agent——工具面封顶 index / search / run 三枚（加枚＝major），无状态 streamableHTTP、要 Authorization token（每 home 一份、落盘、重启不换），default 认死 2870；index 里另带一节件表（包名 + 版本 + 那句话，纯界面件与库也在表里）。另随包一支零依赖 CLI（mcp.client）给无 MCP 客户端的环境。服务无；skill 1 份；命令 3 条。",
+  "description": "MCP 入口：把命令总线开给 agent——工具只有 index / search / run 三个（加一个工具是 major 变更），无状态 streamableHTTP、要 Authorization token（每个 home 一份、写在磁盘上、重启不换），default 固定用 2870 端口；index 只列说明书与命令名，装了哪些插件问 plugin-manager.list。另带一个零依赖的命令行客户端（mcp.client），给没有 MCP 客户端的环境用。服务无；skill 1 份；命令 3 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
-  "//dependencies": "**这两条是 dependencies 不是 peer**：运行时真 import，而这个件没有导出面（不 provide 服务、没人 import 它的类型），所以没有「消费方必须解析得到」这回事——它们是本件私有的实现依赖，跟着它一起装进 home。SDK 那串传递依赖（express/hono/cors/jose/ajv…）解包 4.3MB，是认下的代价",
+  "//dependencies": "**这两条是 dependencies 不是 peer**：运行时真的 import，而这个插件不导出任何东西（不提供服务、没人 import 它的类型），所以没有「使用方必须解析得到」的问题——它们是本插件私有的实现依赖，跟着它一起装进 home。代价是 SDK 的传递依赖（express/hono/cors/jose/ajv…）解包约 4.3MB",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^4.5.4"

@@ -17,7 +17,7 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 **gwb-node-cli 的服务与登记参数**：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="58-75" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="57-74" */}
 
 {/* ref file="../plugins/node-cli/src/registry.ts" lines="14-41" */}
 
@@ -35,9 +35,9 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 **怎么启动 node 子进程**：可执行文件一律是 `process.execPath`，也就是 Electron 本身，所以加上环境变量 `ELECTRON_RUN_AS_NODE=1` 让它以 node 模式运行；argv 是 `[entry, ...spec.args, ...追加参数]`，工作目录依次取按次给的、登记时给的、`entry` 所在目录：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="34-39" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="34-38" */}
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="180-189" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="179-188" */}
 
 **怎么启动 python 子进程**：每次运行前先检查 venv，venv 在 `<packageRoot>/py/.venv`；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
 
@@ -108,4 +108,4 @@ gwb-py-cli 另外保证：
 
 {/* has file="../plugins/py-cli/tests/bootstrap.test.ts" text="没有出身记号——多半是连着包目录从别处拷来的" */}
 
-启动子进程、输出写临时文件、超时杀进程树、`uv sync` 建 venv 没有单元测试，只能在隔离 home 里实机验证。
+启动子进程、输出写临时文件、超时杀进程树、`uv sync` 建 venv 没有单元测试，只能在隔离 home 里实际运行验证。

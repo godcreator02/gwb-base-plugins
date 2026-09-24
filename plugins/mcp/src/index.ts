@@ -7,12 +7,12 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod'
 import type { GwbContext } from '@godcreator/gwb-plugin-api'
 import { requireKernel } from './vocab.js'
-// 只为激活那两个件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbSettings
+// 只为激活这两个插件的 `declare module 'cordis'`——它们给 ctx 加上 gwbCommands / gwbSettings
 import type {} from '@godcreator/gwb-commands'
 import type {} from '@godcreator/gwb-settings'
-// 只为激活 skills 件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
+// 只为激活 skills 插件的 `declare module 'cordis'`——下面局部注入要用 gwbSkills 这个名字
 import type {} from '@godcreator/gwb-skills'
-// 只为激活 node-cli 件的 `declare module 'cordis'`——下面局部注入要用 gwbNodeCli 这个名字
+// 只为激活 node-cli 插件的 `declare module 'cordis'`——下面局部注入要用 gwbNodeCli 这个名字
 import type {} from '@godcreator/gwb-node-cli'
 import { DEFAULT_HOME, choosePort, connectionInfo, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
 import { gateRequest, loadOrCreateToken, rotateToken, type GateVerdict } from './auth.js'
@@ -27,56 +27,54 @@ import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
 import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type ToolResult } from './tools.js'
 
 /**
- * MCP 门（`gwb-mcp`）：把命令面开给外部 agent（方向永远是 agent → 工作台）。
- * 2026-09-14 复位成唯一的门，同日工具面重设计为三枚——判据见轨迹卡「MCP 复位」
- * 与「三枚面」。门本身出问题时的逃生道是随包的 `bin/client.mjs`（总线命令 `mcp.client`）。
+ * MCP 入口（`gwb-mcp`）：把命令总线开给外部 agent，方向只有 agent → 工作台。
+ * 入口本身出问题时，还能用随包的命令行客户端 `bin/client.mjs`（总线命令 `mcp.client`）。
  *
- * - **自己起 `node:http`**。渲染层走内核那条 IPC 桥，只有外部 agent 需要真 HTTP，
- *   而这个 server 上眼下就只有本件一个客户——真出现第二个要开口的件，那时再把它拆出去
- * - `/mcp` 是**无状态 streamableHTTP**：每请求现造一对 server + transport，随响应关闭。
- *   发不出 list_changed 那类通知，而且**如实不广告这个能力**（capabilities 里显式
- *   false——SDK 缺省会谎报 true，等于邀请客户端等一个永不来的通知）。工具面封顶之后
- *   清单里没有会变的东西，这个能力本来也用不上
- * - **工具面封顶三枚**：`index`（地图：全部命令与说明书各带一句话）、`search`（按址取
- *   详情与兜底搜索，命中行带 usage；裸调＝全貌）、`run`（按名调一切命令）。写死在
- *   `registerTools`，没有运行时名单，登记方也没有申报顶层的字段。**封顶的粒度**：加一枚
- *   是 major 级协议变更、给现有枚加可选参数是 minor、改回执形状是 major——测试钉着
- *   tools/list 恰好这三枚。命令面的多变全在 `run` 的参数里，每次调用现打总线——与件的
- *   热重挂同一个新鲜度
- * - **说明书也从这道门出**：清单（一句话）进 `index` 的 skills 项，正文经 `run` 调
- *   `skill.read`；files 不投影——附件的目录归 SKILL.md 正文自己管。skills 件不在时门照开，
- *   清单那格是空表
- * - **口开在哪由 home 名定**，值从 `port` 设置来（配置一律走 `gwbSettings`，不吃
- *   `cordis.yml` 的 config）：`default` 认死 2870、被占就不开这道口（判断在 `endpoint.ts`，
- *   理由也在那儿）；其它 home 缺省系统随机口
- * - **要 token**（0.10 起；0.4 摘过、0.5～0.9 一路无鉴权）。回环绑定分得开本机与外部网络，
- *   分不开本机上的不同主体：浏览器里的页面、别的 home 的客户端配置、随手写的脚本都够得着
- *   127.0.0.1，而这道门后面是完整命令注册表。判据与「为什么不用 SDK 那三个开关」都在
- *   `auth.ts` 的头注里。**token 每 home 一份、落盘、重启不换**——0.4 摘它的理由是
- *   「跟着重启换新，逼人反复翻日志捞」，那条债由「持久」解开，不是由「取消鉴权」解开
- * - **取 token 的两条路**：`mcp.info`（只读）与 `mcp.token`（可换发）的回执片段里带着 token；命令行脸直接读凭据文件，
- *   不用手抄（`node bin/client.mjs index` 开箱即用）
- * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
- *   而下游要的是「说出 home 名就连得上它」。只补自己那格，内核那几格原样保留
+ * - **自己启动 `node:http`**。页面走内核的 IPC，只有外部 agent 需要真的 HTTP，而这个 server
+ *   上只有本插件一个使用方——出现第二个要开 HTTP 端口的插件时，再把它拆出去
+ * - `/mcp` 是**无状态 streamableHTTP**：每个请求新建一对 server + transport，随响应关闭，
+ *   所以发不出 list_changed 这类通知。构造时声明了 `tools.listChanged: false`，但 SDK 的
+ *   `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`；工具只有三个、
+ *   不会变，客户端等不到通知也不影响使用
+ * - **工具只有三个**：`index`（全部命令名与说明书的清单）、`search`（按条件取命令用法，
+ *   不带参数返回全部）、`run`（按名字调任何命令）。写死在 `registerTools`，没有运行时名单，
+ *   登记命令的一方也没有「放成顶层工具」的字段。**变更的级别**：加一个工具是 major 级协议
+ *   变更、给现有工具加可选参数是 minor、改回执形状是 major——测试检查 tools/list 恰好是
+ *   这三个。命令的变化全在 `run` 的参数里，每次调用都现调命令总线，插件在运行中重新加载后
+ *   下一次调用就是新的
+ * - **说明书也经这个入口给出**：清单（一句话）在 `index` 的 skills 项，正文经 `run` 调
+ *   `skill.read`；不列 files——附件的目录写在 SKILL.md 正文里。skills 插件不在时入口照开，
+ *   清单那一项是空表
+ * - **端口由 home 名决定**，值从 `port` 设置来（配置一律经 `gwbSettings`，不读 `cordis.yml`
+ *   的 config）：`default` 固定用 2870、被占就不开入口（判断与理由在 `endpoint.ts`）；
+ *   其它 home 缺省用系统分配的端口
+ * - **要 token**。只绑回环地址分得开本机与外部网络，分不开本机上的不同主体：浏览器里的
+ *   页面、别的 home 的客户端配置、随手写的脚本都能访问 127.0.0.1，而这个入口后面是完整的
+ *   命令注册表。理由与「为什么不用 SDK 那三个开关」写在 `auth.ts` 开头的注释里。
+ *   **token 每个 home 一份、写在磁盘上、重启不换**，客户端配置一次就不用再改
+ * - **取 token 的两条路**：`mcp.info`（只读）与 `mcp.token`（可换一份新的）的回执片段里
+ *   带着 token；命令行客户端直接读凭据文件（`node bin/client.mjs index` 不给参数就能用）
+ * - **绑定成功之后把端口写进 home 的 `runtime.json`**（见 `runtime.ts`）：端口运行时才确定，
+ *   而别的程序要的是「说出 home 名就能连上」。只改自己那一项，内核写的其他项原样保留
  */
 
 export const name = 'gwb-mcp'
 
 /**
- * 那支命令行脸的身体（`bin/client.mjs`）。`../bin/` 两态都对：源码态本模块在 `src/`、
- * 产物态在 `dist/`，都是包根下一层
+ * 命令行客户端的脚本（`bin/client.mjs`）。`../bin/` 在源码与构建产物里都对：本模块在 `src/`
+ * 或 `dist/`，都是包根下一层
  */
 const CLIENT_ENTRY = fileURLToPath(new URL('../bin/client.mjs', import.meta.url))
 
-/** 缺哪个都不挂——inject 是 cordis 的等待机制，不是建议。settings 是硬依赖：端口从它来 */
+/** 缺哪个都不加载——inject 是 cordis 的等待机制，不是建议。settings 是硬依赖：端口从它来 */
 export const inject = ['gwbCommands', 'gwbSettings']
 
-/** 端口那一项设置的 key。改了要重启这个 home 才生效——口是 apply 时开的 */
+/** 端口那一项设置的 key。改了要重启这个 home 才生效——端口在 apply 时打开 */
 const PORT_KEY = 'port'
 
 /**
- * 报给 MCP 客户端的版本号：**本件自己的**。工具面是这个件渲染出来的，报「门是哪一版」。
- * 读不出来就 0.0.0，不为一个版本号让整道门起不来
+ * 报给 MCP 客户端的版本号：**本插件自己的**。工具由这个插件提供，报的是入口是哪一版。
+ * 读不出来就 0.0.0，不为一个版本号让整个入口起不来
  */
 function ownVersion(): string {
   try {
@@ -99,15 +97,14 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
 }
 
 /**
- * 凭据取不出来时那道门一律 401，回执里得说清「去哪拿 token」。这句提示是拒绝路径上唯一
- * 的指路，抽成纯函数是为了两件事：**验机时能直接断言它带没带指路**，以及别在接线里
- * 拼一段没人测过的文案。
+ * 401 的回执里要说清「去哪拿 token」，这是拒绝时唯一的提示。抽成纯函数，测试能直接检查它
+ * 带没带提示，也不在 apply 里拼一段没人测过的文案。
  */
 export function credentialNote(file: string | undefined): string {
   return `token 取法见 mcp.token 命令${file === undefined ? '' : `（或读 ${file}）`}`
 }
 
-/** 三枚工具的执行口。抽成可注入的形状——测试用内存信道连一对，不用起 http */
+/** 三个工具的处理函数。抽成可传入的形状——测试用内存传输连一对，不用启动 http */
 export interface ToolHandlers {
   index(): ToolResult | Promise<ToolResult>
   search(query: SearchQuery): ToolResult | Promise<ToolResult>
@@ -115,8 +112,8 @@ export interface ToolHandlers {
 }
 
 /**
- * 工具面的全部：就三次 `registerTool`，**封顶的契约**。测试钉着 tools/list 恰好这三枚
- * ——谁想加第四枚，先过 major 版本那场对话，别在这儿顺手。
+ * 全部工具：就三次 `registerTool`，**工具只有三个是对外的契约**。测试检查 tools/list 恰好是
+ * 这三个——要加第四个，先按 major 版本变更讨论，别在这里顺手加。
  */
 export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   server.registerTool(
@@ -173,9 +170,9 @@ export function apply(ctx: GwbContext): void {
   if (cli === undefined) return
 
   /**
-   * 这道口开在哪：home 名（`dataDir` 的末段）加 `port` 设置一起定，判断全在 `endpoint.ts`，
-   * 这儿只接线。`gwbKernel` 不写进 `inject`，用 `requireKernel` 取。
-   * 设置的缺省按 home 名给，跟 choosePort 不给值时的答案一致——界面上看到的就是真会用的口
+   * 端口由 home 名（`dataDir` 的最后一段）加 `port` 设置一起决定，判断全在 `endpoint.ts`。
+   * `gwbKernel` 不写进 `inject`，用 `requireKernel` 取。
+   * 设置的缺省按 home 名给，跟 choosePort 不给值时的答案一致——界面上看到的就是实际会用的端口
    */
   const home = homeNameOf(requireKernel(ctx).dataDir)
   ctx.gwbSettings.define({
@@ -189,15 +186,15 @@ export function apply(ctx: GwbContext): void {
   const choice = choosePort(home, ctx.gwbSettings.get(PORT_KEY))
 
   /**
-   * 这道门的凭据。**在 apply 里取而不是绑成之后再取**：绑之前就可能有用例来敲门，而
-   * 「门开着但不知道自己的 token」是比「门没开」更坏的中间态。
+   * 入口的凭据。**在 apply 里取，不等绑定成功再取**：绑定之前就可能有请求进来，而
+   * 「入口开着但不知道自己的 token」比「入口没开」更糟。
    *
-   * **`let` 不是随手写的**：`mcp.token {"rotate":true}` 换发之后必须回写到这儿，判据才
-   * 当场换新。只写文件不回写的话，回执已经报了新 token、门却还认旧的——症状是「换完
-   * 新的用不了、旧的还能用」，要重挂这个件才生效。这一条被隔离 home 验机抓过一次。
+   * **必须是 `let`**：`mcp.token {"rotate":true}` 换了新 token 之后要写回这里，检查才立刻
+   * 用新的。只写文件不写回的话，回执报了新 token、入口却还认旧的——症状是「换完新的用不了、
+   * 旧的还能用」，要重新加载插件才生效。隔离 home 里验证时出过一次。
    *
-   * 取不出来（磁盘满、目录不可写）不让整个件挂掉：那道门照常开、`secret` 是 undefined，
-   * 所有请求一律 401，日志里说清楚原因。**宁可全拒也不放行**。
+   * 取不出来（磁盘满、目录不可写）不让整个插件加载失败：入口照常开、`secret` 是 undefined，
+   * 所有请求一律 401，日志里说清楚原因。**宁可全部拒绝也不放行**。
    */
   let secret: { token: string; file: string } | undefined
   try {
@@ -213,16 +210,16 @@ export function apply(ctx: GwbContext): void {
   }
 
   /**
-   * 绑成之后才知道的真实口。Host / Origin 的允许名单要的是**这个**数——`default` 认死
-   * 2870、别的 home 可能是系统随机口，拿候选值拼名单会在随机口上把自己拒掉。
-   * 绑成之前用候选值（那一刻还没有请求进得来）
+   * 绑定成功之后才知道的实际端口。Host / Origin 的允许名单要用**这个**数——`default` 固定
+   * 2870、别的 home 可能是系统分配的端口，拿设置里的值拼名单会在系统分配的端口上把自己拒掉。
+   * 绑定成功之前用设置里的值（那时还没有请求进得来）
    */
   let listeningPort: number | undefined
 
   /**
-   * 说明书清单那格。**局部注入,不写进 export const inject**:skills 件不在时这道门照开——
-   * 清单不是它能不能干活的前提。effect 里上下线对称:skills 件停了/卸了置空,
-   * 下一次 index 就不带清单。门自己也带一份说明书（skills/ 目录得进 package.json 的 files）
+   * 说明书清单。**局部注入，不写进 export const inject**：skills 插件不在时入口照开——
+   * 清单不是入口能工作的前提。skills 插件停用或卸载时 effect 把它置空，下一次 index 就不带
+   * 清单。本插件自己也带一份说明书（skills/ 目录要写进 package.json 的 files）
    */
   let skills: SkillsSlot | undefined
   ctx.inject(['gwbSkills'], (scoped) => {
@@ -234,17 +231,17 @@ export function apply(ctx: GwbContext): void {
   })
 
   /**
-   * `run` 那枚的执行口：agent 的调用一律留痕，回执按形状翻译——CLI 运行器透传的那份摊平
-   * （`stdout`/`exitCode` 在信封外的），其余走普通信封。写成箭头函数不是风格——`function`
-   * 声明会 hoist，TS 认为它可能在上面那句 `if (cli === undefined) return` 之前就被调用，
-   * 于是不给 `cli` 保留窄化
+   * `run` 的处理函数：agent 的每次调用都写日志，回执按形状转换——命令行运行插件的回执
+   * （`stdout`/`exitCode` 在 `data` 外面）单独转，其余按普通回执转。必须写成箭头函数：`function`
+   * 声明会提升，TS 认为它可能在上面那句 `if (cli === undefined) return` 之前就被调用，
+   * 于是不保留 `cli` 的类型收窄
    */
   const runCommand = async (command: string, rawArgs: unknown): Promise<ToolResult> => {
-    // 有的客户端发对象参数时把它序列化成了字符串（见 coerceArgs 头注），这儿收口
+    // 有的客户端发对象参数时把它序列化成了字符串（见 coerceArgs 开头的注释），在这里转回来
     const args = coerceArgs(rawArgs)
     const result = await cli.run(command, args)
-    // 这道口是露在外面的：agent 每次调用都得留痕。commands.run 记不了「是 agent
-    // 调的」——这一条补的正是来源
+    // 这个入口对外开放：agent 的每次调用都要写日志。commands.run 的日志里看不出「是 agent
+    // 调的」——这一条补的就是来源
     const error =
       result !== null && typeof result === 'object' && 'error' in result
         ? String((result as { error: unknown }).error)
@@ -257,7 +254,7 @@ export function apply(ctx: GwbContext): void {
     return isCliRunResult(result) ? cliRunResult(result) : toolResult(result)
   }
 
-  /** `index` 那枚的执行口：现拼——每次都现取命令注册表与说明书清单，热挂上来的件当场就在 */
+  /** `index` 的处理函数：每次都现取命令注册表与说明书清单，运行中新加载的插件下一次调用就在 */
   const indexNow = (): ToolResult => {
     const doc = buildIndex({
       home,
@@ -269,7 +266,7 @@ export function apply(ctx: GwbContext): void {
     return textResult(doc)
   }
 
-  /** `search` 那枚的执行口：同源现筛 */
+  /** `search` 的处理函数：与 `index` 用同一份命令表和说明书清单，现取现筛 */
   const searchNow = (query: SearchQuery): ToolResult => {
     const doc = buildSearch({ commands: cli.list(), skills: skills?.list(), query })
     log.info(
@@ -281,16 +278,16 @@ export function apply(ctx: GwbContext): void {
   }
 
   /**
-   * 现造一台 MCP server。**每请求一台**：instructions 与工具面是部署期定死的，而 index 与
-   * search 的内容每次调用现拼，不在连接里冻结任何会变的东西
+   * 新建一个 MCP server。**每个请求一个**：instructions 与三个工具在发布时就定了，而 index 与
+   * search 的内容每次调用现取，连接里不保存任何会变的东西
    */
   const buildServer = (): McpServer => {
     const server = new McpServer(
       { name: 'gwb', version },
       {
         instructions: loadInstructions(),
-        // 无状态口发不出清单变更通知——能力位在 handle 里注册完工具后拨回 false
-        // （SDK 的 McpServer 注册工具时硬编码 true，构造项盖不掉，见 handle 里那段注）
+        // 无状态的入口发不出清单变更通知，所以声明 false；但 SDK 的 registerTool 会把它改成
+        // true，客户端实际看到的是 true（见本文件开头的注释）
         capabilities: { tools: { listChanged: false } },
       },
     )
@@ -299,11 +296,11 @@ export function apply(ctx: GwbContext): void {
 
   const server = http.createServer((req, res) => {
     /**
-     * **三道判据在这儿，派发任何东西之前**：token、Host、Origin。顺序是有意的——先问
-     * 「你是谁」，再问「你是从哪儿来的」。判据全在 `auth.ts`，这儿只接线与留痕。
+     * **三项检查在这里，派发任何请求之前**：token、Host、Origin。顺序是有意的——先问
+     * 「你是谁」，再问「你从哪儿来」。检查逻辑全在 `auth.ts`，这里只调用并写日志。
      *
-     * 拒绝一条请求**不记 info 那一档**：这个口天天被探（浏览器预检、扫描器、别的 home
-     * 连错口），记成信息会把真正的响动埋掉。warn 带原因，出事了 grep 得到。
+     * 拒绝一条请求**记 warn、带原因**：这个端口经常收到无关请求（浏览器预检、扫描器、别的
+     * home 连错端口），出了问题 grep 得到。
      */
     const verdict: GateVerdict = gateRequest({
       headers: req.headers,
@@ -316,9 +313,9 @@ export function apply(ctx: GwbContext): void {
       return
     }
     /**
-     * **这里的 promise 必须有人接住**。漏成没人管的 rejection，整个工作台就靠内核那条
-     * `process.on('unhandledRejection')` 兜着——它只记不退，可这一条本来就该在这儿接住，
-     * 请求方等着一份回执。旧线上真炸过：一发错 token 的请求让宿主 code=1 退出
+     * **这里的 promise 必须 catch**。漏掉的 rejection 只剩内核的
+     * `process.on('unhandledRejection')` 记一行日志，而请求方还在等回执。以前的版本出过：
+     * 一个带错 token 的请求让宿主进程以 code=1 退出
      */
     void handle(req, res).catch((err: unknown) => {
       if (!res.headersSent) sendJson(res, 500, { error: 'internal' })
@@ -341,7 +338,7 @@ export function apply(ctx: GwbContext): void {
     }
     const mcp = buildServer()
     registerTools(mcp, { index: indexNow, search: searchNow, run: (command, args) => runCommand(command, args) })
-    // 空对象 = 无状态：不给 sessionIdGenerator，每请求现造一对、随响应关闭
+    // 空对象 = 无状态：不给 sessionIdGenerator，每个请求新建一对、随响应关闭
     const transport = new StreamableHTTPServerTransport({})
     res.on('close', () => {
       void transport.close()
@@ -351,7 +348,7 @@ export function apply(ctx: GwbContext): void {
     await transport.handleRequest(req, res)
   }
 
-  /** 监听一次。绑 127.0.0.1——这道口只服务本机 */
+  /** 监听一次。绑 127.0.0.1——这个入口只服务本机 */
   function listenOnce(p: number): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const onError = (err: Error): void => {
@@ -367,14 +364,14 @@ export function apply(ctx: GwbContext): void {
   }
 
   /**
-   * 监听没成时的原因。**这一格必须在 `ready` 的第一个 catch 里填**：填晚了，先注册的
-   * 那个处理器已经跑完，`mcp.info` 会拿到一句「原因未记下」
+   * 监听失败的原因。**必须在 `ready` 的第一个 catch 里赋值**：赋晚了，先注册的那个处理函数
+   * 已经跑完，`mcp.info` 会拿到一句「原因未记下」
    */
   let listenError: string | undefined
 
   const ready = listenOnce(choice.port).catch(async (err: NodeJS.ErrnoException) => {
     const occupied = err.code === 'EADDRINUSE'
-    // 许退让的只有「显式给了口的非 default home」——见 endpoint.ts
+    // 被占时能换端口的只有「设置里显式给了端口的非 default home」——见 endpoint.ts
     if (occupied && choice.fallback) {
       log.warn(`127.0.0.1:${choice.port} 已被占用（另一个 home？），改用系统分配端口`)
       return listenOnce(0)
@@ -388,11 +385,11 @@ export function apply(ctx: GwbContext): void {
       listeningPort = p
       log.info(`MCP 门就绪（${home} home）：${endpointUrl(p)}——要 Authorization 头，绑 127.0.0.1 本机自用`)
       /**
-       * 把这道口落进 home 的运行记录，**只在绑成了这一刻**：下游要的是「说出 home 名就
-       * 连得上它」，而这个数运行时才定。没绑成不写——那时这个 home 上根本没有这道门，
-       * 写一格假的比不写坏得多。
+       * 把端口写进 home 的运行记录，**只在绑定成功时写**：别的程序要的是「说出 home 名就
+       * 能连上」，而端口运行时才确定。没绑定成功不写——那时这个 home 上根本没有入口，
+       * 写一项假的比不写更糟。
        *
-       * **写失败不影响这道门**：记录是附属品，门照常服务。
+       * **写失败不影响入口**：运行记录只是附带的，入口照常服务。
        */
       try {
         writeRuntimeMcp(requireKernel(ctx).dataDir, { port: p, url: endpointUrl(p) })
@@ -401,7 +398,7 @@ export function apply(ctx: GwbContext): void {
       }
     },
     (err: unknown) => {
-      // 本件其它部分照常挂着，只是这道门没开——mcp.info 会把同一句话再说一遍
+      // 本插件其它部分照常加载，只是入口没开——mcp.info 会把同一句话再说一遍
       log.error(
         home === DEFAULT_HOME
           ? `default home 的 MCP 门 ${choice.port} 没开成，这次不开这道门。` +
@@ -462,8 +459,8 @@ export function apply(ctx: GwbContext): void {
         let rotated = false
         if (want) {
           const made = rotateToken(requireKernel(ctx).dataDir)
-          // **回写这份在场的凭据**：不然回执报了新 token、门还认旧的，要重挂这个件才生效。
-          // 判据当场换新＝下一发请求就按新 token 判——隔离 home 验机抓过这一条
+          // **写回内存里的凭据**：不然回执报了新 token、入口还认旧的，要重新加载插件才生效。
+          // 写回之后下一个请求就按新 token 检查
           secret = { token: made.token, file: made.file }
           token = made.token
           rotated = true
@@ -482,11 +479,11 @@ export function apply(ctx: GwbContext): void {
     ),
   )
 
-  // ── 一条 node CLI ──────────────────────────────────────────────────────────
+  // ── 命令行客户端 ──────────────────────────────────────────────────────────
 
-  // CLI 形态的东西一律经 gwbNodeCli 登记，不做总线命令、不进程内调：登记的命令自动镜像
-  // 成总线命令，于是经门的 run 就够得到，回执自带 stdout 与退出码。**局部注入**：node-cli
-  // 件不在时这道门照开——命令行脸是甜点不是前提
+  // 命令行工具一律经 gwbNodeCli 登记，不直接登记总线命令、不在进程内调：登记的命令自动
+  // 同时登记成总线命令，于是经入口的 run 就能调，回执带 stdout 与退出码。**局部注入**：
+  // node-cli 插件不在时入口照开——命令行客户端是附带的，不是前提
   ctx.inject(['gwbNodeCli'], (scoped) => {
     scoped.gwbNodeCli.register({
       name: 'mcp.client',
@@ -498,7 +495,7 @@ export function apply(ctx: GwbContext): void {
     })
   })
 
-  // 本件卸载时把 server 关干净
+  // 本插件卸载时把 server 关干净
   ctx.effect(() => () => {
     server.closeAllConnections()
     server.close()

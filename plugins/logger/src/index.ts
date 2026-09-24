@@ -2,26 +2,26 @@ import path from 'node:path'
 import { Service } from 'cordis'
 import type { GwbContext } from '@godcreator/gwb-plugin-api'
 import { requireKernel } from './vocab.js'
-// 只为激活那个件的 `declare module 'cordis'`——给 ctx 加上 gwbCommands
+// 只为激活 commands 插件的 `declare module 'cordis'`——给 ctx 加上 gwbCommands
 import type {} from '@godcreator/gwb-commands'
 
 /**
- * 纯 core：**无头场景的日志件**。
+ * 无界面的**日志插件**。
  *
- * 内核只做一件事：cordis 的日志全量进 stderr 与 `<home>/gwb.log`，人不靠任何件也看得见。
- * 这儿卖的是聚合缓冲、agent 查询命令、页面事件流：挂第二个 exporter 收全量、自己缓冲、
- * 历史段从 cordis 自带的那圈 buffer 补、实时经内核事件口（`gwbKernel.emit`）推给页面。
- * 三路（件、内核、渲染层）都经 cordis logger 过来——内核把渲染层 console 转进了
- * `ctx.logger('renderer')`，所以这儿一个 exporter 收齐。
+ * 内核只做一件事：cordis 的日志全部写进 stderr 与 `<home>/gwb.log`，不装任何插件也看得见。
+ * 这个插件提供的是缓冲、agent 查询命令、推给页面的事件：注册第二个 exporter 收全部日志、自己缓冲、
+ * 注册之前的日志从 cordis 自带的环形缓冲补读、实时的经内核事件（`gwbKernel.emit`）推给页面。
+ * 三个来源（插件、内核、页面）都经 cordis logger 过来——内核把页面的 console 转进了
+ * `ctx.logger('renderer')`，所以这里一个 exporter 就收齐。
  *
- * 窗格（UI 面板）不住这儿——0.3 劈 core 后它住 `@godcreator/gwb-baseui`，装它找回。
+ * 日志窗格不在这里，在界面插件仓的 `@godcreator/gwb-baseui`。
  */
 export const name = 'gwb-logger'
 
-/** 没有总线历史段出不去（命令注册不上）。外壳不再是依赖——窗格住 gwb-baseui */
+/** 没有命令总线，历史日志取不出去（命令登记不上）。窗格在 gwb-baseui，不依赖外壳 */
 export const inject = ['gwbCommands']
 
-/** 事件载荷的记号：`{ t: EVENT, line: LogEntry }`。页面上谁订 window.gwb.on 都收得到，靠它认 */
+/** 事件载荷的记号：`{ t: EVENT, line: LogEntry }`。页面上订阅 window.gwb.on 的都收得到，靠它认出日志事件 */
 export const EVENT = 'gwb-logger'
 export const BACKLOG_COMMAND = 'logger.backlog'
 export const WHERE_COMMAND = 'logger.where'
@@ -30,10 +30,10 @@ export const WHERE_COMMAND = 'logger.where'
 const CAP = 2000
 
 /**
- * 薄服务：消费方的嵌套注入按**服务名**等待，而本件 0.2 时代只有命令没有服务——
- * gwb-baseui 那格日志窗格等的 `gwbLogger` 永远 PENDING、静默不注册（2026-09-12
- * 三仓拆分实机验出）。服务面刻意**留空**：取数走命令（`logger.backlog` / `where`）、
- * 页面推送走内核事件口——谁都别往这儿加方法，除非出现第二个绕不开服务的消费者。
+ * 空服务：使用方的嵌套注入按**服务名**等待——没有这个服务，gwb-baseui 的日志窗格等的
+ * `gwbLogger` 永远等不到、也不报错（界面插件仓拆出去时在隔离 home 里验出过）。
+ * 服务上刻意**没有方法**：取数据走命令（`logger.backlog` / `where`）、推给页面走内核事件——
+ * 别往这里加方法，除非出现第二个绕不开服务的使用方。
  */
 class GwbLogger extends Service {}
 
@@ -63,7 +63,7 @@ interface LogMessage {
   args?: unknown[]
 }
 
-/** 这几个 logger 名是内核在说话：内核自己、loader 报引导链的事。其余一律是件 */
+/** 这几个 logger 名是内核在写日志：内核自己、loader 报加载过程的事。其余一律是插件 */
 const KERNEL_NAMES = new Set(['kernel', 'loader'])
 
 export function sourceOf(loggerName: string): LogSource {
@@ -80,17 +80,17 @@ function levelOf(type: string): LogLevel {
 export function apply(ctx: GwbContext): void {
   const kernel = requireKernel(ctx)
   const cli = ctx.gwbCommands
-  // inject 保证了它在，这句只是把类型收窄（commands 件把它声明成可选的）
+  // inject 保证了它在，这句只是把类型收窄（commands 插件把它声明成可选的）
   if (cli === undefined) return
 
-  // 先把服务挂上再干活：消费方的嵌套注入等的就是它，晚了人家那格窗格就开不出来
+  // 先提供服务再做别的：使用方的嵌套注入等的就是它，晚了日志窗格就开不出来
   new GwbLogger(ctx, 'gwbLogger')
 
   // Logger 类从一个实例的 constructor 上取，不 import cordis 的内部；format 是静态方法，%s/%o/Error 它都会
   const factory = ctx.logger as unknown as {
     (loggerName: string): { constructor: { format(exporter: unknown, message: unknown): string } }
     exporter(exporter: unknown): void
-    /** cordis 自带的那圈缓冲（LoggerService 构造时挂的第一个 exporter），info 及以上一千条 */
+    /** cordis 自带的环形缓冲（LoggerService 构造时注册的第一个 exporter），info 及以上一千条 */
     buffer?: LogMessage[]
   }
   const Logger = factory(name).constructor
@@ -128,7 +128,7 @@ export function apply(ctx: GwbContext): void {
     }
   }
 
-  // 先补历史再挂 exporter：buffer 里是挂上之前的那些，之后的两边都收、不交叠
+  // 先补历史再注册 exporter：buffer 里是注册之前的日志，之后的由 exporter 收，两段不重叠
   for (const message of factory.buffer ?? []) keep(toEntry(message))
   factory.exporter(exporter)
 
@@ -142,7 +142,7 @@ export function apply(ctx: GwbContext): void {
     ),
   )
 
-  // 这句不是客套：它是整条链路（exporter → 缓冲 → 事件口）最省事的一次自检——装了 gwb-baseui
+  // 这句日志用来检查整条链路（exporter → 缓冲 → 内核事件）是否通了——装了 gwb-baseui
   // 的话，它就出现在日志窗格里（来源 plugin、名字 gwb-logger）
   ctx.logger(name).info(`日志件就绪：补了历史 ${ring.length} 条`)
 }

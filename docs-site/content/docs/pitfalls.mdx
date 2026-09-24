@@ -153,7 +153,7 @@ error TS1127: Invalid character.
 
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="237-249" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="234-246" */}
 
 ### 客户端把 `args` 转成字符串：无参数的命令正常，带参数的全部失败
 

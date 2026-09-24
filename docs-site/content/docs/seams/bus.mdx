@@ -36,7 +36,7 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 **命令行运行插件的登记**：`gwbNodeCli.register` 登记一条命令行工具时，同时用同一个名字调用 `gwbCommands.register`，`plugin` 默认取调用方的包名，处理函数把总线参数转成一次子进程调用；注销时两条一起注销：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="141-159" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="140-158" */}
 
 gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
@@ -73,7 +73,7 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 ## 测试
 
-登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 保护，其中这三条钉住回执与注销的约定：
+登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 保护，其中这三条覆盖回执与注销的约定：
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数返回带 ok 的对象就原样返回，否则包成 data" */}
 
@@ -81,4 +81,4 @@ gwb-py-cli 的写法相同，`plugin` 固定取调用方的包名：
 
 {/* has file="../plugins/commands/tests/registry.test.ts" text="注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条" */}
 
-插件卸载时命令跟着注销、页面经内核调到命令，只能在隔离 home 里实机验证。
+插件卸载时命令跟着注销、页面经内核调到命令，只能在隔离 home 里实际运行验证。

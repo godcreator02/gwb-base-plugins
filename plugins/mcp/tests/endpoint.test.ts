@@ -16,7 +16,7 @@ describe('homeNameOf', () => {
     expect(homeNameOf('/home/me/.config/gwb-kernel/homes/probe')).toBe('probe')
   })
 
-  it('末尾的分隔符先剥掉——不然末段是空串,default 就认不出来了', () => {
+  it('末尾的分隔符先去掉——不然末段是空串,default 就认不出来了', () => {
     expect(homeNameOf('C:\\gwb\\homes\\default\\')).toBe('default')
     expect(homeNameOf('/gwb/homes/default//')).toBe('default')
   })
@@ -27,12 +27,12 @@ describe('homeNameOf', () => {
 })
 
 describe('choosePort：default home', () => {
-  it('不给配置就是 2870,而且不退让', () => {
+  it('不给配置就是 2870,而且被占时不换端口', () => {
     expect(choosePort('default')).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(DEFAULT_HOME_PORT).toBe(2870)
   })
 
-  it('显式给了口就用那个,照样不退让——退让就是把会话送给占口的那个 home', () => {
+  it('显式给了端口就用那个,照样不换——换了就是把会话送给占着端口的那个 home', () => {
     expect(choosePort('default', 3999)).toEqual({ port: 3999, fallback: false })
   })
 
@@ -41,13 +41,13 @@ describe('choosePort：default home', () => {
     expect(choosePort('default', -1)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', 70000)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', Number.NaN)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
-    // 设置件不做运行时校验,什么形状都可能进来
+    // 设置插件不做运行时校验,什么形状都可能进来
     expect(choosePort('default', 'abc')).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', null)).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
     expect(choosePort('default', { port: 1 })).toEqual({ port: DEFAULT_HOME_PORT, fallback: false })
   })
 
-  it('数字串也认——界面上一格文本框写进来的就是串', () => {
+  it('数字串也认——界面上文本框写进来的就是串', () => {
     expect(choosePort('default', '3999')).toEqual({ port: 3999, fallback: false })
     expect(choosePort('probe', ' 2871 ')).toEqual({ port: 2871, fallback: true })
     expect(choosePort('probe', '')).toEqual({ port: 0, fallback: false })
@@ -64,12 +64,12 @@ describe('defaultPort：port 设置的缺省', () => {
 })
 
 describe('choosePort：其它 home', () => {
-  it('不给配置就是系统随机口——多 home 同开是常态,没有哪个串是它的契约', () => {
+  it('不给配置就用系统分配的端口——多个 home 同时运行是常态,没有哪个地址是它的契约', () => {
     expect(choosePort('probe')).toEqual({ port: 0, fallback: false })
     expect(choosePort('probe', 0)).toEqual({ port: 0, fallback: false })
   })
 
-  it('显式给了口就试那个,被占许退让', () => {
+  it('显式给了端口就试那个,被占时可以换', () => {
     expect(choosePort('probe', 2871)).toEqual({ port: 2871, fallback: true })
   })
 
@@ -84,7 +84,7 @@ describe('choosePort：其它 home', () => {
 })
 
 describe('endpointUrl', () => {
-  it('钉死 127.0.0.1——这道口只服务本机', () => {
+  it('主机名固定是 127.0.0.1——入口只服务本机', () => {
     expect(endpointUrl(2870)).toBe('http://127.0.0.1:2870/mcp')
   })
 })
@@ -100,7 +100,7 @@ describe('mcpServers', () => {
     })
   })
 
-  it('url 原样搬进片段——报的口与片段里的口不许各是各的', () => {
+  it('url 原样写进片段——报的端口与片段里的端口必须一致', () => {
     const entry = mcpServers(endpointUrl(51234), 'tok-abc').gwb as McpServerEntry
     expect(entry.url).toBe(endpointUrl(51234))
   })

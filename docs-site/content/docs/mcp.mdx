@@ -27,7 +27,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 端点 `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP；别的路径回 404，非 POST 回 405；能力位 `tools.listChanged` 为 `false` | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 端点 `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP；别的路径回 404，非 POST 回 405；构造 server 时声明 `tools.listChanged: false`，但 SDK 的 `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`，实际从不发清单变更通知 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 请求头 `Authorization: Bearer <token>` | 也认只写 token 本身的写法；缺了或对不上回 401 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 请求头 `Host`、`Origin` | `Host` 必须是 `127.0.0.1:<端口>` 或 `localhost:<端口>`；带了 `Origin` 就必须是这两个地址的 `http://` 形式，`null` 不认；不带 `Origin` 的非浏览器客户端照常放行 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | initialize 返回的 `instructions` | 包根 `instructions.md` 的全文，加载时读一次 | [2 MCP 协议](/docs/seams/mcp-protocol) |
@@ -46,7 +46,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（在名字、一句话介绍、用法里找子串，不分大小写） | 匹配的命令，每条带 `usage`；匹配的说明书；只给 `prefix` 时说明书只回名字与插件；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | `run` | `command`、`args?` | 命令的回执转成文本；命令失败（不存在、参数不对）回 `isError` 的文本，不是协议错误 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="110-166" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="107-163" */}
 
 三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。测试用内存传输连一对真的 server 与 client，`tools/list` 必须恰好是这三个。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
 

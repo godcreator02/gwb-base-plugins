@@ -17,15 +17,15 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 **三个工具**，写死在 `registerTools` 里，没有运行时名单：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="121-166" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="118-163" */}
 
 **HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamableHTTP transport，随响应关闭；别的路径回 404，别的方法回 405（`allow: POST`）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="330-352" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="327-349" */}
 
 **三项检查**在派发任何请求之前做，任何一项不过都回 401，响应体是 `{ error: 'unauthorized', message }`，`message` 写明哪一项没过、token 去哪取：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="308-317" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="305-314" */}
 
 {/* ref file="../plugins/mcp/src/auth.ts" lines="182-204" */}
 
@@ -43,7 +43,7 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 只绑 127.0.0.1：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="354-367" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="351-364" */}
 
 **runtime.json 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始：
 
@@ -100,7 +100,7 @@ MCP 客户端保证：
 
 ## 测试
 
-`plugins/mcp/tests/server.test.ts` 用内存传输连一对真的 server/client 按协议往返，钉住工具只有三个；`auth.test.ts` 钉住三项检查与换发 token；`runtime.test.ts` 钉住只改 `mcp` 项；`endpoint.test.ts` 钉住 `mcp.info` 的片段带 `Authorization` 请求头、与 `mcp.token` 的片段逐字一致：
+`plugins/mcp/tests/server.test.ts` 用内存传输连一对真的 server/client 按协议往返，确认工具只有三个；`auth.test.ts` 覆盖三项检查与换发 token；`runtime.test.ts` 确认只改 `mcp` 项；`endpoint.test.ts` 确认 `mcp.info` 的片段带 `Authorization` 请求头、与 `mcp.token` 的片段逐字一致：
 
 {/* has file="../plugins/mcp/tests/server.test.ts" text="tools/list 恰好是 index / search / run 三个,没有第四个" */}
 
@@ -110,4 +110,4 @@ MCP 客户端保证：
 
 {/* has file="../plugins/mcp/tests/endpoint.test.ts" text="片段与 mcp.token 给的那份逐字一致" */}
 
-HTTP 服务本身（端口绑定、401 响应、default 端口被占时不开）与命令行客户端没有单元测试，只能在隔离 home 里实机验证。
+HTTP 服务本身（端口绑定、401 响应、default 端口被占时不开）与命令行客户端没有单元测试，只能在隔离 home 里实际运行验证。
