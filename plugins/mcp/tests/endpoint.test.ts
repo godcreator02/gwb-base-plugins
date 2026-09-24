@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_HOME_PORT,
   choosePort,
+  connectionInfo,
   defaultPort,
   endpointUrl,
   homeNameOf,
@@ -89,17 +90,40 @@ describe('endpointUrl', () => {
 })
 
 describe('mcpServers', () => {
-  it('形状照 .mcp.json 标准,键是 gwb,无 headers——0.4 起无鉴权', () => {
-    expect(mcpServers(endpointUrl(2870))).toEqual({
+  it('形状照 .mcp.json 标准,键是 gwb,带 Authorization 请求头', () => {
+    expect(mcpServers(endpointUrl(2870), 'tok-abc')).toEqual({
       gwb: {
         type: 'http',
         url: 'http://127.0.0.1:2870/mcp',
+        headers: { Authorization: 'Bearer tok-abc' },
       },
     })
   })
 
   it('url 原样搬进片段——报的口与片段里的口不许各是各的', () => {
-    const entry = mcpServers(endpointUrl(51234)).gwb as McpServerEntry
+    const entry = mcpServers(endpointUrl(51234), 'tok-abc').gwb as McpServerEntry
     expect(entry.url).toBe(endpointUrl(51234))
+  })
+})
+
+describe('connectionInfo：mcp.info 的回执', () => {
+  it('片段里带 Authorization: Bearer <当前 token>,贴进客户端就能连', () => {
+    const info = connectionInfo(2870, 'tok-abc', '/h/mcp/secret.json')
+    expect(info.url).toBe('http://127.0.0.1:2870/mcp')
+    expect(info.port).toBe(2870)
+    expect(info.mcpServers).toEqual({
+      gwb: { type: 'http', url: 'http://127.0.0.1:2870/mcp', headers: { Authorization: 'Bearer tok-abc' } },
+    })
+  })
+
+  it('片段与 mcp.token 给的那份逐字一致——两条命令不许各拼各的', () => {
+    expect(connectionInfo(51234, 'tok-abc', '/h/mcp/secret.json').mcpServers).toEqual(mcpServers(endpointUrl(51234), 'tok-abc'))
+  })
+
+  it('auth 指出凭据文件在哪、怎么换,但不重复 token 本体', () => {
+    const info = connectionInfo(2870, 'tok-abc', '/h/mcp/secret.json')
+    expect(info.auth).toContain('/h/mcp/secret.json')
+    expect(info.auth).toContain('mcp.token {"rotate":true}')
+    expect(info.auth).not.toContain('tok-abc')
   })
 })

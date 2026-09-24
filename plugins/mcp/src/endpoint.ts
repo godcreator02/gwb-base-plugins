@@ -1,3 +1,5 @@
+import { TOKEN_SCHEME } from './auth.js'
+
 /**
  * 这道口开在哪、怎么把它写给客户端。纯函数，从接线里抽出来于是可测。
  *
@@ -75,22 +77,33 @@ export function endpointUrl(port: number): string {
 export interface McpServerEntry {
   type: 'http'
   url: string
-  /** 只在片段里带真 token 时出现。不给 token 拼片段就不带这格 */
-  headers?: Record<string, string>
+  headers: { Authorization: string }
 }
 
 /**
- * 客户端配置里的标准片段：照抄进自己的 `.mcp.json` 就能连。
- *
- * 报这个而不是只报 url，是因为**拼装那一步是每个客户端各拼一遍的**，
- * 拼错了症状是连不上而看不出为什么。片段的形状照 Claude Code 的 `.mcp.json`。
- *
- * **`token` 给了才写 `headers`**：0.10 起这道门要 `Authorization`，而拼错的症状是
- * 「403/401 而看不出为什么」——跟 url 拼错是同一类坏法，所以一并拼好。不给 token 的
- * 那条路（`mcp.info`）只报 `url`：那段回执会进会话记录，凭据不该跟着进去。
+ * 客户端配置里的标准片段：照抄进自己的 `.mcp.json` 就能连。形状照 Claude Code 的 `.mcp.json`。
+ * url 与 `Authorization` 请求头一起拼好：客户端自己拼错的症状是连不上或 401，看不出原因。
  */
-export function mcpServers(url: string, token?: string): Record<string, McpServerEntry> {
-  const entry: McpServerEntry = { type: 'http', url }
-  if (token !== undefined) entry.headers = { Authorization: `Bearer ${token}` }
-  return { [SERVER_KEY]: entry }
+export function mcpServers(url: string, token: string): Record<string, McpServerEntry> {
+  return { [SERVER_KEY]: { type: 'http', url, headers: { Authorization: `${TOKEN_SCHEME} ${token}` } } }
+}
+
+/** `mcp.info` 回执里 `data` 的形状 */
+export interface ConnectionInfo {
+  url: string
+  port: number
+  mcpServers: Record<string, McpServerEntry>
+  /** 给人读的一句：片段里带的是哪个 token、存在哪、怎么换 */
+  auth: string
+}
+
+/** `mcp.info` 的回执：连接地址加可照抄的片段，片段里带当前 token */
+export function connectionInfo(port: number, token: string, secretFile: string): ConnectionInfo {
+  const url = endpointUrl(port)
+  return {
+    url,
+    port,
+    mcpServers: mcpServers(url, token),
+    auth: `片段里已带 Authorization: ${TOKEN_SCHEME} <当前 token>；token 存在 ${secretFile}，换一份用 mcp.token {"rotate":true}`,
+  }
 }

@@ -39,7 +39,7 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 **端口**：设置项 `port`（在 MCP 插件自己的设置分区里），缺省按 home 名给——home 名是 `gwbKernel.dataDir` 的最后一段。`default` 固定 2870，被占就不开 MCP 入口；其余 home 缺省用系统随机端口，设置里显式给了端口、被占时改用随机端口：
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-67" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="56-69" */}
 
 只绑 127.0.0.1：
 
@@ -49,7 +49,9 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 {/* ref file="../plugins/mcp/src/runtime.ts" lines="38-47" */}
 
-**两条命令**：`mcp.info` 回 `{ url, port, mcpServers, auth }`，`mcpServers` 片段里不带 token；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，片段里带 `Authorization` 头，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。MCP 入口没在监听时两条都回 `ok: false` 并写明原因：
+**两条命令**：两条回执里的 `mcpServers` 是同一个形状的片段，键是 `gwb`，值是 `{ type: 'http', url, headers: { Authorization: 'Bearer <token>' } }`，照抄进客户端配置就能连。`mcp.info` 回 `{ url, port, mcpServers, auth }`，片段里是当前 token，只读不换；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。两条的回执都带明文 token，会进调用方的会话记录。MCP 入口没在监听、或凭据文件取不出来时，两条都回 `ok: false` 并写明原因：
+
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="76-109" */}
 
 {/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'" */}
 
@@ -98,12 +100,14 @@ MCP 客户端保证：
 
 ## 测试
 
-`plugins/mcp/tests/server.test.ts` 用内存传输连一对真的 server/client 按协议往返，钉住工具只有三个；`auth.test.ts` 钉住三项检查与换发 token；`runtime.test.ts` 钉住只改 `mcp` 项：
+`plugins/mcp/tests/server.test.ts` 用内存传输连一对真的 server/client 按协议往返，钉住工具只有三个；`auth.test.ts` 钉住三项检查与换发 token；`runtime.test.ts` 钉住只改 `mcp` 项；`endpoint.test.ts` 钉住 `mcp.info` 的片段带 `Authorization` 请求头、与 `mcp.token` 的片段逐字一致：
 
 {/* has file="../plugins/mcp/tests/server.test.ts" text="tools/list 恰好是 index / search / run 三个,没有第四个" */}
 
 {/* has file="../plugins/mcp/tests/auth.test.ts" text="rotate 之后旧 token 立刻不认、新的立刻认" */}
 
 {/* has file="../plugins/mcp/tests/runtime.test.ts" text="内核那几格原样留着,自己那格补上去" */}
+
+{/* has file="../plugins/mcp/tests/endpoint.test.ts" text="片段与 mcp.token 给的那份逐字一致" */}
 
 HTTP 服务本身（端口绑定、401 响应、default 端口被占时不开）与命令行客户端没有单元测试，只能在隔离 home 里实机验证。

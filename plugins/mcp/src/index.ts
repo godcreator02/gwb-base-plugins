@@ -14,8 +14,8 @@ import type {} from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-skills'
 // 只为激活 node-cli 件的 `declare module 'cordis'`——下面局部注入要用 gwbNodeCli 这个名字
 import type {} from '@godcreator/gwb-node-cli'
-import { DEFAULT_HOME, choosePort, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
-import { gateRequest, loadOrCreateToken, rotateToken, TOKEN_SCHEME, type GateVerdict } from './auth.js'
+import { DEFAULT_HOME, choosePort, connectionInfo, defaultPort, endpointUrl, homeNameOf, mcpServers } from './endpoint.js'
+import { gateRequest, loadOrCreateToken, rotateToken, type GateVerdict } from './auth.js'
 import {
   buildIndex,
   buildSearch,
@@ -54,7 +54,7 @@ import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type 
  *   127.0.0.1，而这道门后面是完整命令注册表。判据与「为什么不用 SDK 那三个开关」都在
  *   `auth.ts` 的头注里。**token 每 home 一份、落盘、重启不换**——0.4 摘它的理由是
  *   「跟着重启换新，逼人反复翻日志捞」，那条债由「持久」解开，不是由「取消鉴权」解开
- * - **取 token 的两条路**：`mcp.token` 命令回 { token, 片段 }；命令行脸直接读凭据文件，
+ * - **取 token 的两条路**：`mcp.info`（只读）与 `mcp.token`（可换发）的回执片段里带着 token；命令行脸直接读凭据文件，
  *   不用手抄（`node bin/client.mjs index` 开箱即用）
  * - **绑成之后把这道口落进 home 的 `runtime.json`**（见 `runtime.ts`）：这个数运行时才定，
  *   而下游要的是「说出 home 名就连得上它」。只补自己那格，内核那几格原样保留
@@ -412,51 +412,38 @@ export function apply(ctx: GwbContext): void {
     },
   )
 
+  /** 等监听有了结果：绑定成功回端口，没开成回 null。问早了不等的话拿到的是 0 */
+  const listeningPortOrNull = (): Promise<number | null> =>
+    ready.then(
+      (p) => p,
+      () => null,
+    )
+  const notListeningError = (): string => `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}`
+  const secretMissingError = (): string =>
+    `凭据文件取不出来（${home} home），这道口现在一律 401。先解决磁盘/权限问题再重启这个 home`
+
+  /**
+   * `mcp.info` 与 `mcp.token` 的回执都带明文 token，会进调用方的会话记录——写进两条的 usage，
+   * 让调用方自己选时机。
+   */
   ctx.effect(() =>
     cli.register(
       {
         name: 'mcp.info',
-        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段，片段里带 Authorization 头）',
+        description: 'MCP 门的连接信息（url 与可照抄的 mcpServers 片段，片段里带 Authorization 请求头与当前 token）',
         usage:
-          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段贴进客户端配置即可连（auth 说 token 从哪来）；门没开时回 ok:false 说原因',
+          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段里带 Authorization: Bearer <当前 token>，贴进客户端配置即可连；只读当前 token、不换（换用 mcp.token {"rotate":true}）。**回执里有明文凭据，会进你的会话记录**。门没开或凭据文件取不出来时回 ok:false 说原因',
         plugin: '@godcreator/gwb-mcp',
       },
       async () => {
-        /**
-         * **端口先答**：这道门没开时报个能看的原因，比报一个连不上的 url 强——
-         * default home 被别人占着口就是这一支。顺带等监听就绪，问早了拿到的是 0
-         */
-        const live = await ready.then(
-          (p) => p,
-          () => null,
-        )
-        if (live === null) {
-          return { ok: false, error: `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
-        }
-        const url = endpointUrl(live)
-        // mcpServers 是给客户端照抄的那份，拼装那一步不留给每个客户端各拼一遍。
-        // **片段里只放环境变量引用，不放 token 本体**：这段回执会进会话记录，而凭据
-        // 进记录等于这次加鉴权白加。要真值走 mcp.token。
-        return {
-          ok: true,
-          data: {
-            url,
-            port: live,
-            mcpServers: mcpServers(url),
-            auth: `Authorization: ${TOKEN_SCHEME} <token>。token 取法：mcp.token 命令，或读 ${secret?.file ?? '凭据文件'}`,
-          },
-        }
+        const live = await listeningPortOrNull()
+        if (live === null) return { ok: false, error: notListeningError() }
+        if (secret === undefined) return { ok: false, error: secretMissingError() }
+        return { ok: true, data: connectionInfo(live, secret.token, secret.file) }
       },
     ),
   )
 
-  /**
-   * token 的取用与换发。
-   *
-   * **`mcp.token` 是唯一会把 token 本体写进回执的地方**（`mcp.info` 只放环境变量引用）。
-   * 那次回执会进调用方的会话记录——这是取 token 必须付的代价，写进 usage 让调用方自己选
-   * 时机：机器上还有别人看得到你的会话记录时，别当众调它。
-   */
   ctx.effect(() =>
     cli.register(
       {
@@ -467,17 +454,10 @@ export function apply(ctx: GwbContext): void {
         plugin: '@godcreator/gwb-mcp',
       },
       async (raw: unknown) => {
-        if (secret === undefined) {
-          return { ok: false, error: `凭据文件取不出来（${home} home），这道口现在一律 401。先解决磁盘/权限问题再重启这个 home` }
-        }
+        if (secret === undefined) return { ok: false, error: secretMissingError() }
         const want = raw !== null && typeof raw === 'object' && (raw as { rotate?: unknown }).rotate === true
-        const live = await ready.then(
-          (p) => p,
-          () => null,
-        )
-        if (live === null) {
-          return { ok: false, error: `MCP 门没在监听（${home} home 要的是 ${choice.port} 口）：${listenError ?? '原因未记下'}` }
-        }
+        const live = await listeningPortOrNull()
+        if (live === null) return { ok: false, error: notListeningError() }
         let token = secret.token
         let rotated = false
         if (want) {

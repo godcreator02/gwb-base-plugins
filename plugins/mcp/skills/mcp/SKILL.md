@@ -15,10 +15,11 @@ default home 认死 `http://127.0.0.1:2870/mcp`；别的 home 端口是系统随
 `<home>/runtime.json` 的 `mcp` 格查（记录会陈旧：进程退了不删、端口会被下一个进程占走
 ——**对 home 干活只报名字**，devkit 那几条命令自己查口、自己核对）。
 
-**token 从哪来**：命令 `mcp.token` 回 `{ token, file, mcpServers }`（`mcpServers` 里已经
-带好 `headers`，照抄即连）；凭据落在 `<home 数据目录>/mcp/secret.json`；环境变量叫
-`GWB_MCP_TOKEN`。注意 `mcp.token` 的回执**含明文凭据、会进你的会话记录**——机器上还有别人
-看得到记录时别当众调它；`mcp.info` 只回 token 的取法、不回本体，可以随便调。
+**token 从哪来**：命令 `mcp.info` 回 `{ url, port, mcpServers, auth }`，`mcpServers` 里已经
+带好 `headers: { Authorization: 'Bearer <当前 token>' }`，照抄即连，只读不换；要换一份新的用
+`mcp.token {"rotate":true}`，它回 `{ token, file, rotated, mcpServers }`，片段形状相同。凭据存在
+`<home 数据目录>/mcp/secret.json`；环境变量叫 `GWB_MCP_TOKEN`。两条命令的回执都**含明文凭据、
+会进你的会话记录**——机器上还有别人看得到记录时别当众调它们。
 
 连不上就是四件事之一：**台没起**（开始菜单「gwb-kernel」，或跑
 `%LOCALAPPDATA%\Programs\gwb-kernel\gwb-kernel.exe`；从内核源码起的看 gwb-kernel 仓 AGENTS「怎么跑」；起完要重连一次
