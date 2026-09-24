@@ -151,9 +151,9 @@ error TS1127: Invalid character.
 
 ### 函数声明拿不到外层 `const` 的类型收窄
 
-`const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`：
+`const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件现在用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="234-246" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="205-228" */}
 
 ### 客户端把 `args` 转成字符串：无参数的命令正常，带参数的全部失败
 
@@ -161,7 +161,7 @@ error TS1127: Invalid character.
 
 在 MCP 入口修，不指望客户端改：`run` 收到的 `args` 是字符串时先 `JSON.parse`，解析成功就用结果，失败就原样交给命令。JSON 字面量来回转换不丢信息，真要传字符串参数的命令不受影响。
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="23-55" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="16-36" */}
 
 ### `Accept` 少一个值就是 406
 

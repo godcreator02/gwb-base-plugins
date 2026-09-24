@@ -25,33 +25,37 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 **三个工具**，写死在 `registerTools` 里，没有运行时名单：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="118-163" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="83-123" */}
 
 **HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamableHTTP transport，随响应关闭；别的路径回 404，别的方法回 405（`allow: POST`）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="327-349" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="230-252" */}
 
 **三项检查**在派发任何请求之前做，任何一项不过都回 401，响应体是 `{ error: 'unauthorized', message }`，`message` 写明哪一项没过、token 去哪取：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="305-314" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="254-266" */}
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="182-204" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="136-162" */}
 
 - token：请求头 `Authorization: Bearer <token>`，也认只写 token 本身
 - Host：只认 `127.0.0.1:<端口>` 与 `localhost:<端口>`，端口是实际绑定的那个
 - Origin：不带就放行（命令行工具、脚本、MCP 客户端都不带）；带了只认 `http://127.0.0.1:<端口>` 与 `http://localhost:<端口>`，`null` 不认
 
+三项各防一件事。token 防的是本机上的不同主体：只绑回环地址分得开本机与外部网络，分不开浏览器里的页面、别的 home 的客户端配置、随手写的脚本，它们都能访问 127.0.0.1，而入口后面是完整的命令表；token 写在磁盘上、重启不换，客户端配置一次就不用再改。Host 防 DNS 重绑定：浏览器把攻击者的域名解析到 127.0.0.1，请求就从浏览器发出来了。Origin 防跨源页面直接 POST：预检挡得住大多数，但不该是唯一一道。
+
+Host 与 Origin 自己判断，不用 SDK 的 `enableDnsRebindingProtection` / `allowedHosts` / `allowedOrigins`：锁定的 SDK 版本（`^1.30.0`）里这三个都标着 deprecated，而且 `allowedHosts` 不配时 Host 检查整段跳过，只配 Origin 等于没防住重绑定；自己写十来行，还能把拒绝的原因写进日志。
+
 **凭据文件与常量**：token 存在 `<home>/mcp/secret.json`（`{ "token": "…" }`，32 字节随机、base64url），第一次启动时生成，之后重启不换；文件坏了先改名成 `.broken-<时间戳>` 再生成新的：
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="26-39" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="8-20" */}
 
 **端口**：设置项 `port`（在 MCP 插件自己的设置分区里），缺省按 home 名给——home 名是 `gwbKernel.dataDir` 的最后一段。`default` 固定 2870，被占就不开 MCP 入口；其余 home 缺省用系统随机端口，设置里显式给了端口、被占时改用随机端口：
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="56-69" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="34-47" */}
 
 只绑 127.0.0.1：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="351-364" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="276-289" */}
 
 **runtime.json 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始：
 
@@ -59,7 +63,7 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 **两条命令**：两条回执里的 `mcpServers` 是同一个形状的片段，键是 `gwb`，值是 `{ type: 'http', url, headers: { Authorization: 'Bearer <token>' } }`，照抄进客户端配置就能连。`mcp.info` 回 `{ url, port, mcpServers, auth }`，片段里是当前 token，只读不换；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。两条的回执都带明文 token，会进调用方的会话记录。MCP 入口没在监听、或凭据文件取不出来时，两条都回 `ok: false` 并写明原因：
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="76-109" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-83" */}
 
 {/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'" */}
 
@@ -83,7 +87,7 @@ MCP 插件保证：
 - 凭据文件取不出来（磁盘满、目录不可写）时照样开端口，但所有请求一律 401，不退回成不检查
 - token 每个 home 一份、重启不换；`mcp.token {"rotate":true}` 之后旧 token 立刻失效、新 token 立刻可用
 - default home 只用设置里的端口（缺省 2870），被占就不开 MCP 入口、写一条 error，不改用别的端口
-- 只在绑定成功之后写 `runtime.json` 的 `mcp` 项，写失败只写一条 warn、MCP 入口照常服务；进程退出时不删
+- 只在绑定成功之后写 `runtime.json` 的 `mcp` 项，写失败只写一条 warn、MCP 入口照常服务；只改自己那一项，整份覆盖会抹掉内核写的、下游定位这个 home 要用的那几项；进程退出时不删：崩溃与被结束时本来就走不到清理，留着的记录是「上一次它在哪」的线索，代价是记录可能过时，由读的一方核对
 - 不发清单变更通知：连接是无状态的，工具清单也不会变
 - 命令执行失败（命令不存在、参数不对）在 `run` 的结果里带 `isError`，不是协议错误，连接不断
 
@@ -118,4 +122,8 @@ MCP 客户端保证：
 
 {/* has file="../plugins/mcp/tests/endpoint.test.ts" text="片段与 mcp.token 给的那份逐字一致" */}
 
-HTTP 服务本身（端口绑定、401 响应、default 端口被占时不开）与命令行客户端没有单元测试，只能在隔离 home 里实际运行验证。
+HTTP 服务本身（端口绑定、三种 401、404 与 405、换发 token 后立刻生效、`runtime.json`、default 端口被占时不开）由 `apply.test.ts` 用真的 HTTP 请求与 SDK 客户端测，命令总线与设置用替身：
+
+{/* has file="../plugins/mcp/tests/apply.test.ts" text="mcp.token 不带参数回当前 token；rotate 之后旧 token 立刻 401、新 token 立刻能用" */}
+
+命令行客户端没有单元测试，只能在隔离 home 里实际运行验证。

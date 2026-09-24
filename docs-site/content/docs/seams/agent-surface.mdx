@@ -23,29 +23,31 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 **MCP 插件用到的形状**在 `inventory.ts` 里本地声明，不 import 说明书插件的类型；赋值处由类型检查对着命令插件、说明书插件导出的类型核对：
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="39-58" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="18-37" */}
 
 说明书插件在或不在，由局部注入时的 effect 维护：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="224-231" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="181-190" */}
 
 **`index` 与 `search` 每次调用都重新读取**命令表和说明书清单，运行中新登记的命令下一次调用就在：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="257-278" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="205-221" */}
 
-- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示
+- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示。description 不取「第一句」：那会把触发条件砍残；写成一句话是登记方的责任，截断只防失控的长文把清单撑爆
 - `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，这时说明书只回名字与包名；`q` 在名字、description、usage 里找子串；命中的命令行总带 `usage`；不带参数返回全部
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
 **`run`**：先把参数处理一次（有的客户端把对象参数序列化成字符串发来，能解析成 JSON 就用解析结果），再交给 `gwbCommands.run`，每次调用都写一条日志，最后按回执的形状翻译：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="239-255" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="222-226" */}
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="192-203" */}
 
 **回执的三种形状**靠键名区分：
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="41-61" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="26-36" */}
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="63-98" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="38-65" */}
 
 | 形状 | 怎么认出来 | 翻译成 |
 | --- | --- | --- |
@@ -57,7 +59,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 **命令表和说明书表靠 `plugin` 对上**：命令的 `plugin` 是登记方自己写的包名，说明书的 `plugin` 是说明书插件从调用方条目上取的包名（见[说明书](/docs/seams/skills)）；`search {plugin}` 同时筛两张表，要求两边写的是同一个包名。
 
-**instructions 里按名字提到的命令**：`instructions.md` 在 `initialize` 时发给客户端，`index` 的返回再带一份。它和 `index` 末尾的提示按名字提到别的插件的命令：
+**instructions 里按名字提到的命令**：`instructions.md` 在 `initialize` 时发给客户端，`index` 的返回再带一份：有的客户端（zcode）不把 `initialize` 里的 instructions 交给模型，`index` 里这一份是它们唯一拿到的地方。它和 `index` 末尾的提示按名字提到别的插件的命令：
 
 {/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
 
@@ -106,4 +108,4 @@ MCP 插件保证：
 
 {/* has file="../plugins/mcp/tests/inventory.test.ts" text="skills 插件不在（undefined）时说明书清单是空表——MCP 入口照常可用" */}
 
-MCP 插件拿到的是运行中真的命令表与说明书清单，这一段调用只能在隔离 home 里实际运行验证。
+三个工具经真的 HTTP 调到命令总线（替身）、`run` 写日志、`index` 按插件分组，由 `apply.test.ts` 测；MCP 插件拿到的是运行中真的命令表与说明书清单，这一段只能在隔离 home 里实际运行验证。

@@ -5,7 +5,7 @@ description: gwb-mcp 把命令总线开给外部 agent：一个只绑 127.0.0.1�
 
 **本页回答**：MCP 插件有哪些功能；agent、客户端配置和别的程序经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归命令总线或别的插件。包名 `@godcreator/gwb-mcp`，源码目录 `plugins/mcp/src`，入口文件 `index.ts`。
 
-MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一种。它不提供服务，自己启动 `node:http`。
+MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一种。它不提供服务，自己启动 `node:http`：页面走内核的 IPC，要真的 HTTP 的只有外部 agent，这个 HTTP 服务只有它一个使用方；出现第二个要开 HTTP 端口的插件时，再把它拆出去。
 
 ## 功能
 
@@ -61,7 +61,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（在名字、一句话介绍、用法里找子串，不分大小写） | 匹配的命令，每条带 `usage`；匹配的说明书；只给 `prefix` 时说明书只回名字与插件；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | `run` | `command`、`args?` | 命令的回执转成文本；命令失败（不存在、参数不对）回 `isError` 的文本，不是协议错误 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="107-163" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="68-123" */}
 
 三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。测试用内存传输连一对真的 server 与 client，`tools/list` 必须恰好是这三个。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
 
@@ -71,7 +71,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - 回执除了 `ok`、`data`、`error` 还有别的字段（处理函数自己返回的带 `ok` 的对象），原样转成 JSON 文本
 - 命令行运行插件的回执只留 `ok`、`exitCode`、`timedOut`、`durationMs`、`stdout`、`stderr` 六项
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="23-55" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="16-36" */}
 
 ### 命令
 
@@ -92,7 +92,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | `<home>/mcp/secret.json` | `{ "token": "<32 字节随机数的 base64url>" }`；没有就生成；内容认不出时先改名成 `secret.json.broken-<时间戳>` 留着，再生成新的；取不出来时入口照开，所有请求一律 401 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| `<home>/runtime.json` 的 `mcp` 项 | `{ port, url }`；绑定成功后读出整份、改自己这一项、写回，内核写的其他项原样保留；没绑定成功不写，写失败只记 warn，进程退出不删 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| `<home>/runtime.json` 的 `mcp` 项 | `{ port, url }`；绑定成功后读出整份、改自己这一项、写回，内核写的其他项原样保留；没绑定成功不写，写失败只记 warn，进程退出不删；不做原子写：读的一方本来就把读不出当成没有，内核下次启动会整份重写，为一份辅助记录不值得 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 设置 `port`（数字） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效，入口在加载时打开 | [5 设置](/docs/seams/settings) |
 | 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
@@ -102,7 +102,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 **default 的端口被占时不换端口**：连着 default 的 agent 会话把 `http://127.0.0.1:2870/mcp` 写进了自己的配置。一个测试 home 先启动占住 2870、default 换到别的端口的话，会话连上的是那个测试 home，命令、数据、说明书全是另一套，两边都不报错；不开入口的话，马上能看出来。其他 home 设置里显式给了端口、端口被占时，换成系统分配的端口并写一条 warn。
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="56-69" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="34-47" */}
 
 ## 依赖
 
