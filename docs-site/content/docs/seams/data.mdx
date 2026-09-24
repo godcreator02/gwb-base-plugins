@@ -20,29 +20,29 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 **服务**：
 
-{/* ref file="../plugins/data/src/index.ts" lines="26-38" */}
+{/* ref file="../plugins/data/src/index.ts" lines="16-28" */}
 
 `owners()` 与 `transferOwner()` 只给插件管理用，见[数据归属](/docs/seams/owners)。
 
 **目录**：`<home>/data/<条目 id 的末段>/`。同一个包加了两条条目，就是两个目录：
 
-{/* ref file="../plugins/data/src/paths.ts" lines="66-85" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="52-59" */}
 
 `dir`、`readDoc`、`writeDoc` 每次都先按调用方条目算出目录并核对归属；读 `dir` 时目录不在就建出来：
 
-{/* ref file="../plugins/data/src/index.ts" lines="76-94" */}
+{/* ref file="../plugins/data/src/index.ts" lines="58-76" */}
 
 **文档名**：kebab-case，一份文档存成 `<目录>/<文档名>.json`；不合规当场抛错：
 
-{/* ref file="../plugins/data/src/paths.ts" lines="26-33" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="18-24" */}
 
 **读**：文件不在回 `undefined`；解析不了也回 `undefined`，并写一条 warn：
 
-{/* ref file="../plugins/data/src/store.ts" lines="6-25" */}
+{/* ref file="../plugins/data/src/store.ts" lines="4-19" */}
 
 **写**：整份替换。先序列化，再写同目录的临时文件、改名覆盖；改名失败时删掉临时文件：
 
-{/* ref file="../plugins/data/src/store.ts" lines="27-46" */}
+{/* ref file="../plugins/data/src/store.ts" lines="21-35" */}
 
 ## 约定
 

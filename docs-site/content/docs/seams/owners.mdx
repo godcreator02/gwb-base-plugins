@@ -25,7 +25,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 **两个服务上的同名方法**：
 
-{/* ref file="../plugins/data/src/index.ts" lines="96-106" */}
+{/* ref file="../plugins/data/src/index.ts" lines="78-88" */}
 
 {/* ref file="../plugins/settings/src/index.ts" lines="187-196" */}
 
@@ -34,9 +34,9 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 **数据插件的归属文件**：`<home>/data/<id>/.owner.json`，内容 `{ "pkg": "<包名>" }`。第一次访问时没有就写上，是别的包的就抛错，文件坏了也抛错：
 
-{/* ref file="../plugins/data/src/owner.ts" lines="5-14" */}
+{/* ref file="../plugins/data/src/owner.ts" lines="5-6" */}
 
-{/* ref file="../plugins/data/src/owner.ts" lines="44-58" */}
+{/* ref file="../plugins/data/src/owner.ts" lines="44-57" */}
 
 **设置插件的归属表**：`settings.json` 顶层的 `$owners`，和各分区在同一个文件里、同一次原子写入。`define` 时核对：
 

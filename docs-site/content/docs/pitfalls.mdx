@@ -82,7 +82,7 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 `ctx.gwbData` 给出的目录要自动属于取用它的那条条目：插件不报名字，也就没法用别人的名字读别人的数据。cordis 有两种写法能让服务知道调用方是谁，实测后只有一种可用：
 
-{/* ref file="../plugins/data/src/index.ts" lines="61-78" */}
+{/* ref file="../plugins/data/src/index.ts" lines="46-60" */}
 
 - **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` 确实是调用方的上下文，但 `inject` 不认它：插件写 `inject: ['那个名字']` 会一直等待，不执行 `apply`，也不报任何错
 - **`Service` 基类**：`inject` 认它，方法里的 `this.ctx` 就是调用方的上下文；两个插件各自取同一个服务，拿到的身份互不相同
@@ -105,7 +105,7 @@ cordis 的条目模型里 `id` 才是身份，`name` 只说明装的是哪个包
 
 所以只取末段：没有冒号，也不依赖内核的常量。代价是多段 id 会重名（`home:a:hello` 与 `home:b:hello` 末段一样），所以超过两段直接抛错；真要用嵌套分组时，算法要和这条检查一起重新设计。id 要用作目录名与分区名，每一段都按 kebab-case 校验，字符集里没有点号，`.` 与 `..` 进不来。
 
-{/* ref file="../plugins/data/src/paths.ts" lines="35-64" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="26-50" */}
 
 两个插件的这段算法必须给出同一个答案，而它们是两份副本（数据插件的 `entryDirName`、设置插件的 `entrySection`）。十几行纯逻辑，为它新建一个共享包不值得；两边的注释互相提到对方，改一处就要改另一处。
 
