@@ -75,6 +75,13 @@ describe('writeDoc', () => {
     expect(fs.readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([])
   })
 
+  it('同一份文档同时写好几次:都写成功,最后发起的那次留在文件里,不留临时文件', async () => {
+    const values = Array.from({ length: 20 }, (_, index) => ({ round: index }))
+    await Promise.all(values.map((value) => writeDoc(dir, 'layout', value)))
+    expect(await readDoc(dir, 'layout', warn)).toEqual(values.at(-1))
+    expect(fs.readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([])
+  })
+
   it('坏文档名进不来', async () => {
     await expect(writeDoc(dir, '../escape', { x: 1 })).rejects.toThrow()
   })

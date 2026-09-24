@@ -38,11 +38,11 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 **读**：文件不在回 `undefined`；解析不了也回 `undefined`，并写一条 warn：
 
-{/* ref file="../plugins/data/src/store.ts" lines="4-19" */}
+{/* ref file="../plugins/data/src/store.ts" lines="6-21" */}
 
-**写**：整份替换。先序列化，再写同目录的临时文件、改名覆盖；改名失败时删掉临时文件：
+**写**：整份替换。先序列化，再写同目录的临时文件（文件名带随机后缀）、改名覆盖；改名失败时删掉临时文件。同一份文档的写入按发起顺序排队，一次一个，后发起的那次最后落盘：
 
-{/* ref file="../plugins/data/src/store.ts" lines="21-35" */}
+{/* ref file="../plugins/data/src/store.ts" lines="23-63" */}
 
 ## 约定
 
@@ -52,6 +52,7 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 - `readDoc` 从不因为文件不在或内容坏了而抛错：一律回 `undefined`，坏了多写一条 warn
 - `writeDoc` 整份替换，写到一半崩溃也不会留下半个文件、不会毁掉原来那份；写失败先写一条 error，再把异常抛给调用方
 - 序列化失败（比如循环引用）在建目录之前抛出
+- 同一份文档同时写好几次，都按发起顺序写完，后发起的那次留在文件里
 - 条目没手写 id（8 位十六进制的随机 id）时写一条 warn，每条条目只说一次
 
 用它的插件保证：
@@ -64,9 +65,9 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 ## 不负责的事
 
 - 数据插件不合并写入：`writeDoc` 是整份替换，要改一个字段由调用方读出、改好、整份写回
-- 数据插件不做并发控制：同一份文档同时写两次，后完成的覆盖先完成的
+- 数据插件不做读改写的并发控制：两方各自读出、改好、写回，后发起写入的一方覆盖前一方的改动
 - 数据插件不校验文档内容，不做版本迁移
-- 数据插件不是安全边界：kebab-case 校验只防手滑写出意外的嵌套目录，插件本来就能直接写任何文件
+- 数据插件不是安全边界：kebab-case 校验只防误写出意外的嵌套目录，插件本来就能直接写任何文件
 - 数据插件不删数据：条目删了，目录留在磁盘上
 - 数据插件不管 `settings.json`：设置由设置插件存在 home 根下（见[设置](/docs/seams/settings)）
 
@@ -77,6 +78,8 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 {/* has file="../plugins/data/tests/store.test.ts" text="覆盖失败不会毁掉原来那份——原子落盘的意义就在这" */}
 
 {/* has file="../plugins/data/tests/store.test.ts" text="坏了:回 undefined 但**要 warn**" */}
+
+{/* has file="../plugins/data/tests/store.test.ts" text="同一份文档同时写好几次:都写成功,最后发起的那次留在文件里,不留临时文件" */}
 
 {/* has file="../plugins/data/tests/paths.test.ts" text="同一个包的两条条目各是各的目录——按包名切的话它们会互相覆盖" */}
 

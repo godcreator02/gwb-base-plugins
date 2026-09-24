@@ -89,7 +89,7 @@ async function caller(
 const HELLO = { id: 'home:hello', pkg: '@t/gwb-hello' }
 const readFileJson = (): Record<string, unknown> => JSON.parse(fs.readFileSync(settingsFile, 'utf8')) as Record<string, unknown>
 const textsOf = (logs: Message[], type: string): string[] => logs.filter((m) => m.type === type).map((m) => m.args.map(String).join(' '))
-/** define 之后有一次合并写盘排在定时器上；等 settings.json 出现（那次写完）再往下，免得两次写同时改名到同一个文件 */
+/** define 之后有一次合并写盘排在定时器上；后面没有别的写入时，等 settings.json 出现（那次写完）再往下，免得测试结束删目录时它还在写 */
 async function scheduledWriteDone(): Promise<void> {
   for (let attempt = 0; attempt < 400 && !fs.existsSync(settingsFile); attempt++) await new Promise((resolve) => setTimeout(resolve, 5))
 }
@@ -109,7 +109,6 @@ describe('GwbSettings 服务', () => {
   it('没设过值时 get 回 default；set 写进 settings.json，归属表在最前', async () => {
     const { root } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string', default: 'info' }))
-    await scheduledWriteDone()
     expect(settings.get('level')).toBe('info')
     await settings.set('level', 'warn')
     expect(settings.get('level')).toBe('warn')
@@ -128,10 +127,21 @@ describe('GwbSettings 服务', () => {
     expect(readFileJson()).toMatchObject({ hello: { a: { title: '甲' }, b: { title: '乙' } } })
   })
 
+  it('define 之后马上 set：写盘不报错，文件里是 set 之后的整张表', async () => {
+    const { root, logs } = await bootSettings()
+    let setDone: Promise<void> | undefined
+    await caller(root, HELLO, (s) => {
+      s.define({ key: 'level', title: '级别', type: 'string', default: 'info' })
+      setDone = s.set('level', 'warn')
+    })
+    await setDone
+    expect(readFileJson()).toMatchObject({ $owners: { hello: '@t/gwb-hello' }, hello: { level: { value: 'warn', title: '级别' } } })
+    expect(textsOf(logs, 'warn')).toEqual([])
+  })
+
   it('delete 抹掉值、定义还在，get 回到 default', async () => {
     const { root, logs } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string', default: 'info' }))
-    await scheduledWriteDone()
     await settings.set('level', 'warn')
     await settings.delete('level')
     expect(settings.get('level')).toBe('info')
@@ -165,7 +175,6 @@ describe('GwbSettings 服务', () => {
   it('owners() 回一份副本；transferOwner 写盘并写 info', async () => {
     const { root, logs } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string' }))
-    await scheduledWriteDone()
     const owners = settings.owners()
     owners['hello'] = '@changed/x'
     expect(settings.owners()).toEqual({ hello: '@t/gwb-hello' })
@@ -186,7 +195,6 @@ describe('GwbSettings 服务', () => {
     fs.mkdirSync(settingsFile)
     const { root, logs } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string' }))
-    await scheduledWriteDone()
     await expect(settings.set('level', 'x')).rejects.toThrow()
     expect(textsOf(logs, 'warn').some((t) => t.startsWith('设置落盘失败'))).toBe(true)
   })
@@ -214,7 +222,6 @@ describe('四条命令', () => {
   it('按位置读写删：settings.get 对 secret 项也回明文，settings.all 不回', async () => {
     const { root, runCommand } = await bootSettings()
     const { settings } = await caller(root, HELLO, (s) => s.define({ key: 'token', title: '令牌', type: 'secret' }))
-    await scheduledWriteDone()
     expect(await runCommand('settings.set', { section: 'hello', key: 'token', value: 'abc' })).toEqual({ ok: true })
     expect(settings.get('token')).toBe('abc')
     expect(runCommand('settings.get', { section: 'hello', key: 'token' })).toBe('abc')

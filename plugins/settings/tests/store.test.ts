@@ -42,3 +42,13 @@ describe('一份文件两半', () => {
     expect(readSettings(path.join(dir, 'nope.json'), warn)).toEqual({ sections: {}, owners: {} })
   })
 })
+
+describe('同一个文件同时写好几次', () => {
+  it('都写成功，最后发起的那次留在文件里，不留临时文件', async () => {
+    const file = path.join(dir, 'settings.json')
+    const homes = Array.from({ length: 20 }, (_, index) => ({ sections: { alice: { round: { value: index } } }, owners: {} }))
+    await Promise.all(homes.map((home) => writeSettings(file, home)))
+    expect(readSettings(file, warn)).toEqual(homes.at(-1))
+    expect(fs.readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([])
+  })
+})

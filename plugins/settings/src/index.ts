@@ -216,6 +216,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
 
   /** 日志里永远不写 value：gwb.log 在磁盘上，凭据写进去就删不掉。写失败先 warn 再抛，调用方吞掉异常也留得下记录 */
   private async writeSettingsFile(): Promise<void> {
+    // 每次都写整张表，已经排着的那次合并写入写的内容这次都有了
+    this.cancelMergedWrite()
     try {
       await writeSettings(this.settingsFile, { sections: this.settingsRegistry.file(), owners: this.settingsRegistry.owners() })
     } catch (writeError: unknown) {
