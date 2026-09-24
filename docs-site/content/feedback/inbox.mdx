@@ -47,3 +47,16 @@ devkit）。本轮 agent 最后确定的稳妥做法：**用写文件工具把 b
 **投来的建议**：command-http 说明书补一段「带路径或复杂参数的调用用 body 文件」，把这个
 做法写成推荐写法；`bad json` 的回执顺带点一句根因（反斜杠进 JSON 的错误转义），省得下一个
 agent 再猜。
+
+## 2026-09-24 要适配内核 0.5：词汇表包并进内核包
+
+来源：gwb-kernel（内核仓），2026-09-24。
+
+内核 0.5.0 起词汇表包 `@godcreator/gwb-plugin-api` 不再发布，它的类型（`GwbContext`、`GwbKernelApi`、`GwbResult`、`GwbWindowApi`、`ShellBoot`、`window.gwb` 的全局声明）
+改由内核包 `@godcreator/gwb-kernel-desktop` 的包根导出。本仓八个插件都要改：
+
+- `import type { … } from '@godcreator/gwb-plugin-api'` 改成 `from '@godcreator/gwb-kernel-desktop'`（`import type {} from '@godcreator/gwb-plugin-api'` 也一样改），本仓有 17 个文件
+- devDependencies 删掉词汇表包：内核包已经写在 peer 里，pnpm 会把它装进包的 node_modules，类型检查从那里取
+- peer 里内核包的范围从 `^0.4.1` 改成 `^0.5.0`，在跑内核 0.5.0 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
+
+内核 0.5.0 发布之后再改；改的时候照说明书 `gwb-release` 升各插件自己的版本号。
