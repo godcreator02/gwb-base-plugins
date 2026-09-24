@@ -22,8 +22,8 @@
 
 ## 检查
 
-提交前 `pnpm check`（类型检查 + oxlint + vitest，含构建产物检查与 self-report 检查）。self-report 检查要求
-源码 `inject` 的每个服务名都出现在文档站现状区，改了依赖就同一个提交改插件页。文档检查单独运行 `pnpm doc`，
+提交前 `pnpm check`（类型检查 + oxlint + vitest，含构建产物检查）。`gwb.provides` 与源码对不对得上由 devkit 的
+`devkit.audit-structure` 与 `devkit.release` 检查，不在 `pnpm check` 里。文档检查单独运行 `pnpm doc`，
 报红时这个提交不许推送；改了被文档引用的源码，先 commit，再 `pnpm doc:confirm <自己改的页…>`。
 
 ## 旧插件仓只作参考，不是模板

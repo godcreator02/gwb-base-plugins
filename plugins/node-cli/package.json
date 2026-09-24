@@ -33,7 +33,6 @@
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "^0.2.7",
-    "@godcreator/gwb-repo-kit": "0.3.0",
     "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.9",

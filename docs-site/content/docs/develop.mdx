@@ -1,6 +1,6 @@
 ---
 title: 开发
-description: 改这个仓的插件时怎么准备、怎么构建、提交前跑哪些检查（pnpm check 里的三类测试）、怎么在隔离 home 里改一版看一版（devkit.dev）、怎么发版（devkit.release、gwb-release 说明书、gwb.testedKernel 检查）、文档站怎么检查与生成仓根文件
+description: 改这个仓的插件时怎么准备、怎么构建、提交前跑哪些检查（pnpm check 里的两类测试）、怎么在隔离 home 里改一版看一版（devkit.dev）、怎么发版（devkit.release、gwb-release 说明书、gwb.testedKernel 检查）、文档站怎么检查与生成仓根文件
 ---
 
 **本页回答**：什么时候进这个仓；第一次怎么准备、怎么构建；提交前跑哪些检查、各查什么；怎么在隔离 home 里验证改动；发版按什么顺序做、版本号升哪一位、`gwb.testedKernel` 什么时候改；文档怎么检查、仓根的 `AGENTS.md` 与 `README.md` 怎么生成。
@@ -28,13 +28,12 @@ pnpm build
 pnpm check
 ```
 
-依次是类型检查（仓根 `tsc --noEmit`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。测试有三类：
+依次是类型检查（仓根 `tsc --noEmit`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。测试有两类：
 
 - **单元测试**：纯逻辑，比如命令表、路径与名字规则、MCP 的 `index`/`search` 返回、设置的解析顺序
 - **构建产物检查**（`tests/artifact.test.ts`）：相对 import 带 `.js`、包名 import 只有名单里的。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了
-- **self-report 检查**（`tests/self-report.test.ts`，检查逻辑在 `@godcreator/gwb-repo-kit`）：`package.json` 的 `description` 写齐服务名、说明书份数、命令条数；`gwb.provides` 与源码提供的服务一一对应；源码 `inject` 的每个服务名都出现在这个站的现状区。改了插件的服务、依赖或说明书，同一个提交里改插件页
 
-MCP 插件没有 self-report 检查。
+`gwb.provides` 与源码提供的服务对不对得上不在 `pnpm check` 里：devkit 的 `devkit.audit-structure {"dir":"<仓根>"}` 随时可查，`devkit.release` 发版前也查。
 
 ## 在隔离 home 里验证
 

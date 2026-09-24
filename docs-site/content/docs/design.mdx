@@ -97,13 +97,12 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 内核改了接缝上已有的东西就升 x，所有插件都会被标成没在这个内核上测过；在新内核上测过之后，改这个字段再发版。
 
-## 包清单的自我描述由测试检查
+## 包清单的自我描述
 
-每个插件的 `package.json` 里有两处给人和 agent 读的描述，`pnpm check` 里各插件的 self-report 测试（检查逻辑在 `@godcreator/gwb-repo-kit`）检查它们和代码一致：
+每个插件的 `package.json` 里有两处给人和 agent 读的描述：
 
-- **`description`** 以「服务 …；skill N 份；命令 N 条。」结尾；源码里提供的服务名必须写在里面，`skills/` 下的说明书份数要对得上
-- **`gwb.provides`** 为每个提供的服务写一句 `summary` 与 `usage`，devkit 的 `devkit.services` 把它们带进回执；服务与声明必须一一对应
-- **源码里 `inject` 的每个服务名都要出现在这个站的现状区**，各插件页的「依赖」一节写着它们
+- **`description`** 一句话说这个插件做什么
+- **`gwb.provides`** 为每个提供的服务写一句 `summary` 与 `usage`，devkit 的 `devkit.services` 把它们带进回执。源码提供的每个服务都要有一条、`summary` 与 `usage` 不空，由 devkit 的 `devkit.release` 在发版前检查、`devkit.audit-structure` 报告，本仓的 `pnpm check` 不查
 
 ## 刻意不做的事
 
