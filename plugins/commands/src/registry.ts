@@ -24,62 +24,81 @@ export interface RegistryLog {
   warn: (message: string) => void
 }
 
-/**
- * 命令表本身，不依赖 ctx；注销跟着调用方走由服务类 `GwbCommandBus` 负责。
- *
- * **每次登记与执行都写日志**：执行时的异常会转成失败回执交给调用方，不写日志的话，
- * 日志里查不到谁在什么时候调了哪条命令、结果如何。
- */
+type CommandHandler = (args?: unknown) => unknown
+
+interface CommandRegistration {
+  def: Required<GwbCommandDef>
+  handler: CommandHandler
+}
+
+function withEmptyTextFilledIn(def: GwbCommandDef): Required<GwbCommandDef> {
+  return { name: def.name, description: def.description ?? '', usage: def.usage ?? '', plugin: def.plugin }
+}
+
+function warnWhenPluginIsNotPackageName(log: RegistryLog, def: GwbCommandDef): void {
+  if (!def.plugin.startsWith('@')) {
+    log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @godcreator/gwb-xxx），收到的是「${def.plugin}」`)
+  }
+}
+
+function logRegistrationOrOverride(log: RegistryLog, incoming: Required<GwbCommandDef>, previous: CommandRegistration | undefined): void {
+  if (previous !== undefined) {
+    log.warn(`命令 ${incoming.name} 被重复登记，后登记的生效：${previous.def.plugin} → ${incoming.plugin}`)
+  } else {
+    log.info(`命令 ${incoming.name} 已登记（${incoming.plugin}）`)
+  }
+}
+
+function isReceiptShaped(handlerResult: unknown): handlerResult is GwbResult {
+  return handlerResult !== null && typeof handlerResult === 'object' && 'ok' in handlerResult
+}
+
+function logReceiptOutcome(log: RegistryLog, name: string, receipt: GwbResult): void {
+  if (receipt.ok) log.info(`命令 ${name} 执行完成`)
+  else log.warn(`命令 ${name} 返回失败：${receipt.error ?? '没有给出原因'}`)
+}
+
+/** 处理函数自己返回了带 ok 的对象就原样交回，其余一律包成 `{ ok: true, data }` */
+function receiptFromHandlerResult(log: RegistryLog, name: string, handlerResult: unknown): GwbResult {
+  if (isReceiptShaped(handlerResult)) {
+    logReceiptOutcome(log, name, handlerResult)
+    return handlerResult
+  }
+  log.info(`命令 ${name} 执行完成`)
+  return { ok: true, data: handlerResult }
+}
+
+/** 命令表本身，不依赖 ctx；注销跟着调用方走由服务类 `GwbCommandBus` 负责 */
 export function createRegistry(log: RegistryLog): GwbCommands {
-  const byName = new Map<string, { def: Required<GwbCommandDef>; handler: (args?: unknown) => unknown }>()
+  const registrationsByName = new Map<string, CommandRegistration>()
 
   return {
     register(def, handler) {
-      const entry = { name: def.name, description: def.description ?? '', usage: def.usage ?? '', plugin: def.plugin }
-      // plugin 写包名：agent 按包名装卸、升级插件，按包名筛选命令。写成短名的只告警，照常登记
-      if (!def.plugin.startsWith('@')) {
-        log.warn(`命令 ${def.name} 的 plugin 该写包名（如 @godcreator/gwb-xxx），收到的是「${def.plugin}」`)
-      }
-      const record = { def: entry, handler }
-      const prev = byName.get(def.name)
-      // 同名时后登记的生效，但要告警：不告警的话调用方从此调到另一个插件上，两边都不报错
-      if (prev !== undefined) {
-        log.warn(`命令 ${def.name} 被重复登记，后登记的生效：${prev.def.plugin} → ${entry.plugin}`)
-      } else {
-        log.info(`命令 ${def.name} 已登记（${entry.plugin}）`)
-      }
-      byName.set(def.name, record)
-      // 只删自己这条：同名命令被替换后，先登记的一方注销时不能删掉接手的那条
+      warnWhenPluginIsNotPackageName(log, def)
+      const registration: CommandRegistration = { def: withEmptyTextFilledIn(def), handler }
+      logRegistrationOrOverride(log, registration.def, registrationsByName.get(def.name))
+      registrationsByName.set(def.name, registration)
+      // 只删自己这条：同名命令被后来者替换后，先登记的一方注销时不能删掉接手的那条
       return () => {
-        if (byName.get(def.name) === record) byName.delete(def.name)
+        if (registrationsByName.get(def.name) === registration) registrationsByName.delete(def.name)
       }
     },
 
     list() {
-      return [...byName.values()].map((r) => r.def)
+      return [...registrationsByName.values()].map((registration) => registration.def)
     },
 
     async run(name, args) {
-      const found = byName.get(name)
-      if (found === undefined) {
+      const registration = registrationsByName.get(name)
+      if (registration === undefined) {
         log.warn(`调用了不存在的命令：${name}`)
         return { ok: false, error: `没有这条命令：${name}` }
       }
       try {
-        const result = await found.handler(args)
-        // 处理函数返回了带 ok 的对象就原样返回，其余一律算成功
-        if (result !== null && typeof result === 'object' && 'ok' in result) {
-          const typed = result as GwbResult
-          if (typed.ok) log.info(`命令 ${name} 执行完成`)
-          else log.warn(`命令 ${name} 返回失败：${typed.error ?? '没有给出原因'}`)
-          return typed
-        }
-        log.info(`命令 ${name} 执行完成`)
-        return { ok: true, data: result }
-      } catch (err) {
-        // 不把异常抛给调用方：调用方可能是页面上的一次点击
-        log.warn(`命令 ${name} 抛出异常，已转成失败回执：${String(err)}`)
-        return { ok: false, error: String(err) }
+        return receiptFromHandlerResult(log, name, await registration.handler(args))
+      } catch (thrown) {
+        log.warn(`命令 ${name} 抛出异常，已转成失败回执：${String(thrown)}`)
+        return { ok: false, error: String(thrown) }
       }
     },
   }

@@ -5,61 +5,52 @@ import { createRegistry, type GwbCommandDef, type GwbCommands } from './registry
 
 export type { GwbCommands, GwbCommandDef } from './registry.js'
 
-/**
- * 只用到说明书服务的 `register(dir)`，按形状声明、不 import `@godcreator/gwb-skills`：说明书插件依赖本插件
- * （inject 命令总线、引用本包的类型），本插件反过来不依赖它，包之间没有依赖环
- */
-interface SkillMount {
+/** 说明书服务里本插件用到的那一个方法。按形状声明：说明书插件依赖本插件，反过来 import 它会成环 */
+interface SkillDirectoryRegistrar {
   register(dir: URL): () => void
 }
 
-/**
- * 命令总线：插件把能力登记成命令，所有调用方用同一张命令表。
- *
- * 它不运行命令行程序：处理函数是普通 JS 函数，在主进程里执行。启动子进程的是 `gwb-node-cli` /
- * `gwb-py-cli`，它们的命令也登记在这张表上。
- */
-
 const PLUGIN_NAME = 'gwb-commands'
 
+/** 构建产物在 dist/ 下，包根的 skills/ 就是 '../skills/'；这个目录要列进 package.json 的 files */
+const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)
+
 export default class GwbCommandBus extends Service implements GwbCommands {
-  /**
-   * 命令表本身。用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生一份 `Object.create(this)`，
-   * `#` 私有字段的内部槽不在原型链上，派生对象上一读就抛错
-   */
-  private readonly registry: GwbCommands
+  /** 用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错 */
+  private readonly commandTable: GwbCommands
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbCommands')
-    // 构造时 this.ctx 是本插件自己的上下文，logger 绑的是本插件
-    this.registry = createRegistry(ctx.logger(PLUGIN_NAME))
+    // 构造时 this.ctx 是本插件自己的上下文，logger 记在本插件名下
+    this.commandTable = createRegistry(ctx.logger(PLUGIN_NAME))
   }
 
   [Service.init](): void {
     this.ctx.logger(PLUGIN_NAME).info('命令总线就绪（ctx.gwbCommands）')
-    // 说明书用局部注入，不写进 static inject：没装说明书插件时命令总线也要能加载。
-    // 构建产物在 dist/ 下，所以包根的 skills/ 是 '../skills/'，这个目录必须列进 package.json 的 files
-    this.ctx.inject(['gwbSkills'], (scoped) => {
-      const mount = scoped as typeof scoped & { gwbSkills: SkillMount }
-      mount.effect(() => mount.gwbSkills.register(new URL('../skills/', import.meta.url)))
+    this.registerOwnSkillsWheneverSkillsPluginIsLoaded()
+  }
+
+  private registerOwnSkillsWheneverSkillsPluginIsLoaded(): void {
+    this.ctx.inject(['gwbSkills'], (contextWithSkills) => {
+      const { gwbSkills } = contextWithSkills as typeof contextWithSkills & { gwbSkills: SkillDirectoryRegistrar }
+      contextWithSkills.effect(() => gwbSkills.register(OWN_SKILLS_DIR))
     })
   }
 
   /**
-   * 方法里的 `this.ctx` 是调用方的上下文：注销登记在调用方的 effect 上，调用方卸载时自动注销。
-   * 返回的是 cordis 的 effect 注销函数：手动调用会同时从调用方的 effect 列表里移除，调第二次什么也不做；
-   * 调用方自己又包了一层 `ctx.effect` 时，这层 effect 成为外层的子项，卸载时只执行一次
+   * `this.ctx` 是调用方的上下文，注销登记在调用方的 effect 上、随它卸载。
+   * 返回 cordis 的 effect 注销函数：重复调用、或被调用方外层的 `ctx.effect` 包住，都只执行一次
    */
   register(def: GwbCommandDef, handler: (args?: unknown) => unknown): () => void {
-    return this.ctx.effect(() => this.registry.register(def, handler), `命令 ${def.name}`)
+    return this.ctx.effect(() => this.commandTable.register(def, handler), `命令 ${def.name}`)
   }
 
   list(): Required<GwbCommandDef>[] {
-    return this.registry.list()
+    return this.commandTable.list()
   }
 
   run(name: string, args?: unknown): Promise<GwbResult> {
-    return this.registry.run(name, args)
+    return this.commandTable.run(name, args)
   }
 }
 
