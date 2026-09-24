@@ -33,11 +33,11 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 **登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文，注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销；返回的注销函数调第二次什么也不做：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
 
 同名时后登记的生效并告警；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
@@ -49,7 +49,9 @@ description: 连接命令插件与所有登记、调用命令的插件；接口�
 
 **执行**：`run(name, args)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值一律包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
 
 **列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，没给的 `description`、`usage` 补成空串。
 

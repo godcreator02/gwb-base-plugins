@@ -48,17 +48,21 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 ### 同名命令后登记的生效，但要告警
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="43-55" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="44-50" */}
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
 
 插件之间平等，换掉一条命令是允许的。但不告警的话，调用方从此调到另一个插件的处理函数上，两边都不报错，所以同名时写一条告警，写明原来是哪个插件、现在是哪个。
 
 ### 注销只删自己那条
 
-同一段里的 `if (byName.get(def.name) === record)`：同名命令被替换后，先卸载的插件不能把接手的那条一起删掉。少了这个比较，卸载一个插件会让另一个插件登记的命令跟着消失。两个命令行运行插件、设置插件的声明表用的是同一个写法。
+上面第二段里的 `if (registrationsByName.get(def.name) === registration)`：同名命令被替换后，先卸载的插件不能把接手的那条一起删掉。少了这个比较，卸载一个插件会让另一个插件登记的命令跟着消失。两个命令行运行插件、设置插件的声明表用的是同一个写法。
 
 ### 处理函数抛错不抛给调用方
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
 
 调用方可能是页面上的一次点击。处理函数自己返回了带 `ok` 的对象就原样返回，其余一律算成功。
 
@@ -68,7 +72,7 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 所以命令总线继承 cordis 的 `Service`：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在调用方的 `effect` 上，登记方不包 `ctx.effect` 也会在卸载时注销；已经包了的登记方不受影响，卸载时只注销一次。经命令行运行插件登记的命令同样由运行插件把注销登记在调用方的 `effect` 上：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
 
 对 agent 尤其不好：它看到的命令表里有一部分已经失效，照着调只会拿到一句无关的报错。
 

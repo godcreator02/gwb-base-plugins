@@ -27,7 +27,7 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 带说明书的插件在包根放一个 `skills/` 目录，从构建产物所在的 `dist/` 往上一级找到它：
 
-{/* has file="../plugins/commands/src/index.ts" text="mount.gwbSkills.register(new URL('../skills/', import.meta.url))" */}
+{/* has file="../plugins/commands/src/index.ts" text="const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)" */}
 
 这个目录要列进包的 `files`，否则发布出去的包里没有它：
 

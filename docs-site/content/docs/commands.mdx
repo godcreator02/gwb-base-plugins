@@ -75,9 +75,9 @@ export function apply(ctx: GwbContext) {
 - **同名命令，后登记的生效，并告警**：插件之间平等，换掉一条命令是允许的，但不告警的话调用方从此调到另一个插件上，两边都不报错
 - **注销只删自己那条**：注销函数先确认表里还是自己登记的那条记录才删除，同名命令被替换后，先登记的插件卸载不影响接手的那条
 
-{/* ref file="../plugins/commands/src/index.ts" lines="48-55" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-46" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="76-85" */}
 
 ### 执行的规则与回执 `GwbResult`
 
@@ -95,7 +95,9 @@ export function apply(ctx: GwbContext) {
 - 参数由处理函数自己校验，校验不过就抛错，命令插件把它转成失败回执
 - 成功写 info 日志，失败与找不到命令写 warn：异常都转成了回执，不写日志的话查不到谁在什么时候调了哪条命令、结果如何
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="62-84" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="91-103" */}
+
+{/* ref file="../plugins/commands/src/registry.ts" lines="61-69" */}
 
 这几条规则各自遇到过的问题见[遇到过的问题](/docs/pitfalls)。
 
@@ -103,7 +105,7 @@ export function apply(ctx: GwbContext) {
 
 放在包根的 `skills/gwb-commands/`，装了说明书插件就交给它登记，agent 经 MCP 入口的 `run` 调 `skill.read` 读。
 
-{/* has file="../plugins/commands/src/index.ts" text="mount.gwbSkills.register(new URL('../skills/', import.meta.url))" */}
+{/* has file="../plugins/commands/src/index.ts" text="contextWithSkills.effect(() => gwbSkills.register(OWN_SKILLS_DIR))" */}
 
 ## 依赖
 
@@ -115,7 +117,7 @@ export function apply(ctx: GwbContext) {
 
 说明书插件不写进服务类的 `static inject`，用 `ctx.inject(['gwbSkills'], …)` 局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出。
 
-{/* has file="../plugins/commands/src/index.ts" text="interface SkillMount {" */}
+{/* has file="../plugins/commands/src/index.ts" text="interface SkillDirectoryRegistrar {" */}
 
 ## 不做的事
 
