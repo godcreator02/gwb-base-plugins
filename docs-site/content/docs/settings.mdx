@@ -23,7 +23,7 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 - **页面与 agent 用命令读写**：四条命令按「分区 + 键」定位，不认调用方身份
 - **列出全部设置时不给 secret 项的值**：`settings.all` 里 secret 项只说设没设过；要值按位置用 `settings.get` 取，回明文
 - **分区记着归哪个包**：文件顶层的 `$owners` 记每个分区归哪个包，包名对不上的声明直接抛错；插件管理经 `owners`、`transferOwner` 列出和改写归属
-- **写入是原子的**：先写同目录的临时文件再改名，临时文件名带随机后缀；同一个文件的多次写入按发起顺序一次一个，后发起的那次最后写进文件；写失败写一条 warn、异常照抛
+- **写入是原子的**：先写同目录的临时文件再改名，临时文件名带随机后缀；同一个文件的多次写入按发起顺序一次一个，后发起的那次最后写进文件；写失败写一条 warn、异常照样抛给调用方
 - **声明写进文件**：`title`、`type`、`description` 写进 `settings.json`，插件停用后界面上仍看得到这一项；插件加载着时以代码里的声明为准。同一轮里的多次 `define` 合并成一次写文件，否则每个插件加载时各写一次，一次启动要写好几遍；合并写入还没开始时有别的写入（如 `define` 之后马上 `set`），那次合并写入取消，因为每次写的都是整张表
 - **条目没写 id 时提醒**：声明时发现条目 id 是 loader 生成的随机串，写一条 warn
 - **带一份说明书 `gwb-settings`**：给 agent 讲四条命令的参数、分区是什么、secret 项怎么取值
@@ -88,11 +88,12 @@ export function apply(ctx: GwbContext) {
 | 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 | 命令插件的服务 `gwbCommands`（局部注入，[gwb-commands](/docs/commands)） | 登记四条命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
 | 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 在调用方上下文上加的 `fiber.entry`（`id`、`options.name`） | 认出调用方的条目 id 与包名 | 不是经 `cordis.yml` 加载的插件调用时抛错「取不到调用方的身份」 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext` 的类型 | 只在编译时用 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
 
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 devDependencies 里：代码只 `import type {}` 它们；命令对设置插件是可有可无的，写成 peer 会强制把命令插件装进 home。
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 devDependencies 里：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们；这两个插件对设置插件都是可有可无的，只局部注入。
 
 设置插件和[数据插件](/docs/data)用同一个办法从条目 id 算名字：两边各有一份十几行的算法（`entrySection` 与 `entryDirName`），必须给出同一个答案，改一处就要改另一处。
 

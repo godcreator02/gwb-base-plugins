@@ -9,23 +9,25 @@ description: 这个仓的插件代码为什么写成现在这样——构建与�
 
 ### 相对 import 必须带 `.js`，少了它不报错
 
-构建产物由 node 直接加载，不经打包器，ESM 不补扩展名。少了 `.js` 时插件加载失败，内核日志里是一行带路径的 `ERR_MODULE_NOT_FOUND`，页面上看不出来。
+除 MCP 插件外，构建产物由 `tsc` 直接输出、node 直接加载，不经打包器，ESM 不补扩展名。少了 `.js` 时插件加载失败，内核日志里是一行带路径的 `ERR_MODULE_NOT_FOUND`，页面上看不出来。
 
 TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名，但 cordis 自己的 `.d.ts` 不兼容它：那边写的是 `export * from './context'`，不带扩展名。用 nodenext 时 `Context` 的类型解析成空，`ctx.logger`、`effect`、`provide` 全报「不存在」。所以只能用 `bundler`：
 
 {/* ref file="../tsconfig.base.json" lines="4-6" */}
 
-这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件，名单里写死允许 `cordis`，数据、设置还允许词汇表包）。没构建时整组跳过，`pnpm check` 不依赖构建：
+这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件，名单里写死允许 `cordis`）。没构建时整组跳过，`pnpm check` 不依赖构建：
 
 {/* ref file="../plugins/commands/tests/artifact.test.ts" lines="23-45" */}
 
-### 词汇表包写 peer，不写 dev
+### 词汇表包只写 dev，用到别人类型的插件自己在 dev 里列全
 
-{/* has file="../plugins/commands/package.json" text="peerDependencies" */}
+{/* ref file="../plugins/commands/package.json" lines="52-56" */}
 
-`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，用这个插件的插件装上它之后必须解析得到。写成 devDependency 的话，发布出去的包不带它，用它的插件那边全部解析不到。所以词汇表包在各插件里既写 peer（给使用方）又写 dev（给自己构建）。
+peer 的意思是「运行时要从 home 里解析到这个包」，所以只写 home 根上的 `cordis` 与内核包。词汇表包只有类型，运行时不存在，写 dev。
 
-命令、数据、设置、日志这些插件继承 cordis 的 `Service`，运行时真的 import `cordis`，所以 `cordis` 也写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。
+代价在类型上：`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，而发布出去的命令插件不带词汇表包。用命令插件类型的插件要自己在 dev 里列词汇表包；少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」。`devkit.release` 发版前就在包目录关掉 `skipLibCheck` 做一次类型检查，所以本仓每个插件都在 dev 里列全了类型用到的包，包括 `@types/node`。
+
+继承 cordis `Service` 的七个插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 
 ### cordis 不给服务做版本校验
 
@@ -89,7 +91,7 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 身份从 `this.ctx.fiber.entry` 上取：`entry.id` 决定数据存在哪，`entry.options.name` 是包名。`entry` 是 loader 加上的属性，不是 cordis 本身的接口，所以代码按运行时的形状取、不改全局类型声明；根上下文上没有它。
 
-插件在 `ctx.inject([...], cb)` 的回调里、或 `ctx.plugin(子插件)` 装的子插件里调服务，`this.ctx.fiber` 是那个子 fiber，上面照样有同一个 `entry`：loader 在每个新 fiber 创建时检查父上下文上有没有条目记号，条目的上下文是插件上下文的原型，子 fiber 的父上下文顺着原型链能读到它，于是挂上同一个条目。所以取身份只读 `this.ctx.fiber.entry`，不用沿 `fiber.parent` 往上找；命令总线的测试用真 loader 验证了这一点。
+插件在 `ctx.inject([...], cb)` 的回调里、或 `ctx.plugin(子插件)` 装的子插件里调服务，`this.ctx.fiber` 是那个子 fiber，上面照样有同一个 `entry`：loader 在每个新 fiber 创建时检查父上下文上有没有条目记号，条目的上下文是插件上下文的原型，子 fiber 的父上下文顺着原型链能读到它，于是关联到同一个条目。所以取身份只读 `this.ctx.fiber.entry`，不用沿 `fiber.parent` 往上找；命令总线的测试用真 loader 验证了这一点。
 
 继承 `Service` 的插件，私有字段用 TypeScript 的 `private`，不用 `#`：cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。
 
@@ -170,6 +172,10 @@ error TS1127: Invalid character.
 在 MCP 入口修，不指望客户端改：`run` 收到的 `args` 是字符串时先 `JSON.parse`，解析成功就用结果，失败就原样交给命令。JSON 字面量来回转换不丢信息，真要传字符串参数的命令不受影响。
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="16-36" */}
+
+### MCP SDK 的类型声明要 DOM 类型
+
+关掉 `skipLibCheck` 做类型检查时，SDK 的 `shared/transport.d.ts` 用到 `HeadersInit`，插件的 tsconfig 只带 `ES2023` 库，报 `Cannot find name 'HeadersInit'`。现在能通过，是因为词汇表包在自己的类型声明里写了 `/// <reference lib="dom" />`，MCP 插件 import 了它，DOM 类型就进了同一次检查。词汇表包哪天去掉这一行，MCP 插件的发版前类型检查会先红。
 
 ### `Accept` 少一个值就是 406
 

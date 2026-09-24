@@ -19,7 +19,7 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 
 - **把三个来源的日志收到一处**：插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志），都经 cordis 的日志流来，插件注册一个 exporter 就全部收到
 - **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader` 的算内核，其余算插件；cordis 的 `success` 级别算 `info`
-- **保留最近两千条**：够翻回开机那一段，又不至于占太多内存；插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来；每条带递增的序号
+- **保留最近两千条**：足够查看启动以来的日志，又不至于占太多内存；插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来；每条带递增的序号
 - **实时推给页面**：每收到一条，经内核的事件通道推给页面
 - **两条命令**：`logger.backlog` 取最近两千条，`logger.where` 报 home 目录与日志文件的路径
 - **提供一个没有方法的服务 `gwbLogger`**：日志窗格按服务名等它出现，服务上刻意不放任何方法
@@ -58,8 +58,9 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 | 命令插件的服务 `gwbCommands`（写在 `export const inject` 里，[gwb-commands](/docs/commands)） | 登记两条命令 | 插件一直等待、不加载 |
 | 内核服务 `gwbKernel` 的 `emit`、`dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 推事件给页面；算 `logger.where` 返回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
 | cordis 的日志流：`ctx.logger.exporter`、`ctx.logger.buffer` | 收全部日志；补插件加载之前的历史 | 由内核提供，不会缺；`buffer` 不在时不补历史 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
-| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
 
 `@godcreator/gwb-commands` 写在 devDependencies 里：代码只 `import type {}` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。
 

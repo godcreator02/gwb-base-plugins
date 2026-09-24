@@ -6,7 +6,7 @@ description: 仓根 README.md 由这一页生成——改这里，运行 docfirs
 # gwb-base-plugins
 
 gwb 的**无界面基础插件仓**：八个插件，全部只依赖词汇表包 `@godcreator/gwb-plugin-api` 的类型，不依赖任何界面包。
-界面插件（shell / theme / baseui；react 与令牌表随 shell 包发布）在界面插件仓 gwb-ui-plugins；
+界面插件（shell / theme / baseui；令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins；
 插件管理（plugin-manager，含找插件、配包源）在 devkit 仓 gwb-devkit，和 devkit 一起开发；内核在 gwb-kernel。
 
 | 插件 | 包名 | 服务 |
@@ -20,7 +20,7 @@ gwb 的**无界面基础插件仓**：八个插件，全部只依赖词汇表包
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli`（运行 node 命令行工具） |
 | py-cli | `@godcreator/gwb-py-cli` | `ctx.gwbPyCli`（运行 python 命令行工具） |
 
-每个插件在 `package.json` 的 `gwb.testedKernel` 里写明在哪个内核版本上测过。
+每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围，声明兼容哪些内核。
 
 ## 运行
 

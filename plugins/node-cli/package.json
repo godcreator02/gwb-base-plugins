@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "跑 node 写的 CLI：件把自己编出来的 cli.js 登记进来，起进程、收输出、按时限收尾都归它；登记的命令自动镜像成总线命令。服务 gwbNodeCli；skill 1 份；命令 1 条。",
+  "description": "运行 node 写的命令行工具：插件把自己构建出来的 cli.js 登记进来，由它启动进程、收集输出、到时限结束进程；登记的命令自动转登记成总线命令。服务 gwbNodeCli；skill 1 份；命令 1 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,27 +23,27 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包、命令插件、说明书插件只取类型，写在 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "^4.0.0-rc.9"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
-    "cordis": "4.0.0-rc.9",
+    "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
   },
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbNodeCli": {
-        "summary": "登记随包发的 node 命令行工具，起进程、收输出、按时限收尾；登记的命令自动镜像成总线命令",
-        "usage": "register({ name, description?, usage?, entry: <要跑的 js 绝对路径，件自己从 import.meta.url 算>, args?, cwd?, env?, timeoutMs? })——不用包 ctx.effect（自动摘）；run(name, extraArgs?, { cwd? })；回执带 stdout/stderr/退出码/超时/spillPath；inject ['gwbNodeCli']"
+        "summary": "登记随包发的 node 命令行工具，启动进程、收集输出、到时限结束进程；登记的命令自动转登记成总线命令",
+        "usage": "register({ name, description?, usage?, entry: <要运行的 js 绝对路径，插件自己从 import.meta.url 算>, args?, cwd?, env?, timeoutMs? })——不用包 ctx.effect（调用方卸载时自动注销）；run(name, extraArgs?, { cwd? })；回执带 stdout/stderr/退出码/超时/spillPath；inject ['gwbNodeCli']"
       }
     }
   },

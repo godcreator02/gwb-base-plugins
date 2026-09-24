@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "跑 python 写的 CLI：在消费方件的包根下用 uv 建 venv、spawn 里面的可执行文件（件本身不带 python 项目）。服务 gwbPyCli；skill 1 份；命令 1 条。",
+  "description": "运行 python 写的命令行工具：在调用方插件的包根下用 uv 建 venv、启动里面的可执行文件（本插件自己不带 python 项目）。服务 gwbPyCli；skill 1 份；命令 1 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,27 +23,27 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包、命令插件、说明书插件只取类型，写在 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "^4.0.0-rc.9"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
-    "cordis": "4.0.0-rc.9",
+    "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
   },
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbPyCli": {
-        "summary": "登记随包发的 python 命令行工具，uv venv 守卫自愈（没了当场重建）",
-        "usage": "register({ name, description?, usage?, packageRoot, distName, version, command?|module?, args?, cwd?, env?, timeoutMs? })；ensureReady({ packageRoot, distName, version }) 幂等自检；run 与 node 那半同构；inject ['gwbPyCli']"
+        "summary": "登记随包发的 python 命令行工具，venv 不在时当场用 uv 重建",
+        "usage": "register({ name, description?, usage?, packageRoot, distName, version, command?|module?, args?, cwd?, env?, timeoutMs? })；ensureReady({ packageRoot, distName, version }) 检查并补齐 venv，重复调用结果相同；run 与 gwbNodeCli 的 run 形状相同；inject ['gwbPyCli']"
       }
     }
   },

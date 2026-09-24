@@ -1,6 +1,6 @@
 ---
 title: 关键设计
-description: 基础插件仓为什么这么切——只放无界面的插件、插件只依赖词汇表包的类型、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 gwb.testedKernel 声明；各自推出了什么、放弃了什么
+description: 基础插件仓为什么这么切——只放无界面的插件、插件只依赖词汇表包的类型、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
 ---
 
 **本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的细节在各自的页，插件之间约定了什么在各接缝页。
@@ -24,7 +24,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 - **内核**在内核仓 gwb-kernel，只放内核应用、词汇表包和安装包，一个插件也不带
 - **插件管理** `@godcreator/gwb-plugin-manager` 在 devkit 仓 gwb-devkit，和 devkit 一起开发；装插件、找插件（`plugin-manager.search`）、配包源（`plugin-manager.source.add` / `list` / `remove`）都是它的命令
-- **有界面的插件**（外壳 shell、主题 theme、基础窗格 baseui，react 与令牌表随 shell 包发布）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
+- **有界面的插件**（外壳 shell、主题 theme、基础窗格 baseui，令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
 
 这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
 
@@ -34,14 +34,19 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
-构建用 `tsc`，不打包，构建产物由 node 直接加载。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是名单里的**，大多数插件只允许 node 内置模块，继承 cordis `Service` 的插件多允许 `cordis`，MCP 插件多允许 MCP SDK 与 zod。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
+构建产物由 node 直接加载：七个插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的七个插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
 
-依赖写法：
+{/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
 
-- **词汇表包**：范围 `^0.2.7`。它的类型出现在插件导出的类型里时，peer 与 dev 都写，使用方必须解析得到；不导出类型的插件只写 dev
-- **cordis**：继承 `Service` 的插件写 peer（运行时必须和内核是同一份），只用它类型的插件写 dev
-- **本仓别的插件**：只写 devDependencies（`workspace:*`），只 `import type`
-- **生态外的运行时依赖**：只有 MCP 插件有（MCP SDK、zod），写 dependencies，跟着它装进 home
+依赖写法按「运行时由谁提供」决定：
+
+- **peer 只写 home 根上的两个包**：内核包 `@godcreator/gwb-kernel-desktop`，每个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，构建产物里按值 import 了它的插件写，也就是继承 `Service` 的七个，运行时必须和内核用同一份
+- **词汇表包**：只有类型，写 dev，范围 `^0.4.1`。命令插件导出的类型里有它的 `GwbResult`，用命令插件类型的插件自己在 dev 里列词汇表包
+- **本仓别的插件**：只写 dev（`workspace:*`），只 `import type`
+- **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
+- **类型引用到的包都在各插件的 dev 里列全**（包括 `@types/node`）：`devkit.release` 发版前在包目录关掉 `skipLibCheck` 做一次类型检查，少列一个就不发
+
+{/* ref file="../plugins/commands/package.json" lines="52-56" */}
 
 版本号与依赖范围怎么写，正本是 devkit 的说明书 `gwb-release`；包名以 `@godcreator/gwb-` 开头、服务名以 `gwb` 开头的命名规矩，正本在 devkit 的说明书 `gwb-devkit`。
 
@@ -85,17 +90,17 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 - **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`
 - **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
 
-## 插件用 `gwb.testedKernel` 声明兼容哪个内核
+## 插件在 peer 里写内核包
 
-内核和插件各自发版。每个插件在 `package.json` 的 `gwb.testedKernel` 里写它在哪个内核版本上测过，这个仓八个插件都写 `"0.2.7"`：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核，这个仓八个插件都写 `^0.4.1`：
 
-{/* has file="../plugins/commands/package.json" text="testedKernel" */}
+{/* ref file="../plugins/data/package.json" lines="28-32" */}
 
-- **插件管理的 `plugin-manager.list`** 拿它和运行中内核的版本比：在同一条版本线上就算测过（主版本号是 0 时前两位相同，否则主版本号相同）；没写、写的不是合法版本号、不在同一条线上的，在回执里标出来。只标出来，不拦加载
-- **devkit 的 `devkit.release`** 发插件之前检查它：没写、不合法、和 devkit 所在 home 的内核不在同一条线上，一个包都不发
-- **内核不读这个字段**
+- **范围怎么算**：主版本号是 0 时次版本号相同，否则主版本号相同，并且不低于下限；预发布段不看
+- **插件管理的 `plugin-manager.list`** 按包报出范围不包含 home 里内核的插件。只报出来，不拦加载
+- **devkit 的 `devkit.release`** 发插件之前检查它：没写、写法不是 `^x.y.z`、范围不包含 devkit 所在 home 运行的内核，一个包都不发
 
-内核改了接缝上已有的东西就升 x，所有插件都会被标成没在这个内核上测过；在新内核上测过之后，改这个字段再发版。
+内核改了接缝上已有的东西就升 x，范围不再包含新内核；在新内核上验证过之后，把范围改成 `^<新内核的版本号>` 再发版。
 
 ## 包清单的自我描述
 
@@ -106,7 +111,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 刻意不做的事
 
-- **不打包**：`tsc` 直接输出，构建产物由 node 加载
+- **只有 MCP 插件打包**：其余七个用 `tsc` 直接输出，构建产物由 node 加载；MCP 插件打包只为把生态外的两个库带进构建产物
 - **不带界面**：界面在界面插件仓 gwb-ui-plugins
 - **不管插件的安装与条目**：在插件管理，devkit 仓 gwb-devkit
 - **不给命令分权限、不做沙箱**：插件和内核在同一个进程里，装插件就是授权；MCP 入口只绑 127.0.0.1、要 token

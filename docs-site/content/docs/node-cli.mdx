@@ -72,11 +72,12 @@ export function apply(ctx: GwbContext) {
 | --- | --- | --- |
 | 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `node-cli.list` | 服务 `gwbNodeCli` 不提供，插件一直等待 |
 | 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
 | `process.execPath`（工作台进程的 electron.exe）与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js | 不带这个环境变量的话 electron 会开一个窗口，而不是运行 js |
 | Windows 的 `taskkill` | 超时时结束整个进程树 | `taskkill` 启动不了或退出码不是 0 时，改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程，孙进程可能留下 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext` 的类型 | 只在编译时用 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
 
 `@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 devDependencies 里：代码只 `import type {}` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件内容一样，改一处就要改另一处。
 
@@ -87,5 +88,5 @@ export function apply(ctx: GwbContext) {
 - **不经过 shell**：参数不转义，也不支持管道、重定向
 - **没有自检命令**：它只是运行器，工具对不对由登记它的插件验收
 - **不分权限、不限调用方**：登记出来的命令和别的命令一样，谁都能调
-- **不保存运行记录**：回执给了就完，只有超长输出的全量文件留在临时目录
+- **不保存运行记录**：回执返回之后不留记录，只有超长输出的全量文件留在临时目录
 - **不管调用方的超时**：MCP 客户端、HTTP 客户端的超时在调用方配，要比这里的时限长

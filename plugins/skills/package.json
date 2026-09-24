@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-skills",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "author": {
     "name": "godcreator"
   },
-  "description": "说明书：谁有说明书谁自己挂上来，按名收集与查询；说明书是全局单一命名空间，撞名的那份不挂。服务 gwbSkills；skill 0 份；命令 2 条。",
+  "description": "说明书：有说明书的插件自己登记进来，按名收集与查询；说明书名全局唯一，重名的那份不登记。服务 gwbSkills；skill 0 份；命令 2 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,22 +24,23 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包与命令插件只取类型，写在 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "^4.0.0-rc.9"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "4.0.0-rc.9",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
   },
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbSkills": {
-        "summary": "挂随包发的说明书（给 agent 读的流程文档），全局单一命名空间",
-        "usage": "register(dir: string | URL)——目录下每个子目录一份 SKILL.md，回注销函数（自动摘，不用包 effect）；目录必须进 package.json 的 files 白名单，漏了装上才炸；局部 ctx.inject 即可，缺了主件照挂"
+        "summary": "登记随包发的说明书（给 agent 读的流程文档），说明书名全局唯一",
+        "usage": "register(dir: string | URL)——目录下每个子目录一份 SKILL.md，返回注销函数（调用方卸载时自动注销，不用包 effect）；目录必须列进 package.json 的 files，漏了要到装上之后才报错；局部 ctx.inject 即可，说明书插件没装时主插件照常加载"
       }
     }
   },

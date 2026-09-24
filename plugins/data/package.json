@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-data",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "author": {
     "name": "godcreator"
   },
-  "description": "件的数据：把自己的东西落到 <home>/data/<条目 id>/ 下，一份文档一个 JSON、原子落盘。服务 gwbData；skill 0 份；命令 0 条。",
+  "description": "插件的数据：每个插件的文档存放在 <home>/data/<条目 id>/ 下，一份文档一个 JSON 文件，原子写入。服务 gwbData；skill 0 份；命令 0 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,24 +22,25 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
+  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包只取类型，写在 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "^4.0.0-rc.9"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "4.0.0-rc.9",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
   },
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbData": {
-        "summary": "件的落盘状态：<home>/data/<条目末段>/，一份文档一个 JSON",
-        "usage": "readDoc(doc)（没有/坏了回 undefined，首次要自己分支）· writeDoc(doc, value)（整份替换、原子）· dir（存非 JSON 用它，别自己拼路径）· owners()/transferOwner(id, pkg)（包改名接旧数据）；inject ['gwbData']"
+        "summary": "插件写进文件的状态：<home>/data/<条目末段>/，一份文档一个 JSON",
+        "usage": "readDoc(doc)（不存在或读坏了返回 undefined，第一次读要自己处理这种情况）· writeDoc(doc, value)（整份替换、原子写入）· dir（存非 JSON 文件用它，别自己拼路径）· owners()/transferOwner(id, pkg)（包改名后接上旧数据）；inject ['gwbData']"
       }
     }
   },

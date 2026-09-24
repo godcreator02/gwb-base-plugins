@@ -8,11 +8,12 @@ description: 仓根 AGENTS.md 由这一页生成——每次会话都要知道�
 **gwb 的无界面基础插件仓**：八个插件 commands、mcp、skills、settings、data、logger、node-cli、py-cli，
 全部只依赖词汇表包（`@godcreator/gwb-plugin-api`）的类型。插件管理（plugin-manager，含找插件、配包源）在 devkit 仓 gwb-devkit，
 界面插件（shell、theme、baseui）在 gwb-ui-plugins，内核与词汇表包在 gwb-kernel，改它们去那些仓。
-**这个仓的插件不依赖任何界面包**：peer 里不写，构建产物检查只放行名单里的包名。
+**这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。
 
-每个插件在 `package.json` 的 `gwb.testedKernel` 里写明在哪个内核版本上测过：插件管理据此报告哪些插件没在
-当前内核上测过，`devkit.release` 发版前检查它。在新的内核版本上测过之后更新这个字段。
+peer 只写 home 根上的两个包：内核包 `@godcreator/gwb-kernel-desktop`（每个插件都写，`^x.y.z` 范围就是兼容哪些内核）与 `cordis`（构建产物里按值 import 了它才写）。
+词汇表包、本仓别的插件、MCP SDK 与 zod 写 dev（SDK 与 zod 由 MCP 插件的 `build.ts` 打包进构建产物）。
+内核升 x 后，在新内核上验证过，再把内核包的范围改成 `^<新内核的版本号>`。
 
 ## 动手之前
 
@@ -22,7 +23,8 @@ description: 仓根 AGENTS.md 由这一页生成——每次会话都要知道�
 
 ## 构建产物的规矩
 
-- 相对 import 必须带 `.js`；构建产物里的包名 import 只能是各插件测试名单里的——两条都有测试检查
+- 相对 import 必须带 `.js`；构建产物里的包名 import 只能是 node 内置模块与 `cordis`——两条都有测试检查
+- 类型用到的包都在各插件的 dev 里列全：`devkit.release` 发版前在包目录运行 `pnpm exec tsc --noEmit -p tsconfig.json --skipLibCheck false`
 - 命名（包名前缀、服务名以 `gwb` 开头）与依赖写法的正本在 devkit 的说明书 `gwb-devkit`、`gwb-release`
 
 ## 检查

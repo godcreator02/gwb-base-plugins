@@ -1,9 +1,9 @@
 ---
 title: 开发
-description: 改这个仓的插件时怎么准备、怎么构建、提交前跑哪些检查（pnpm check 里的两类测试）、怎么在隔离 home 里改一版看一版（devkit.dev）、怎么发版（devkit.release、gwb-release 说明书、gwb.testedKernel 检查）、文档站怎么检查与生成仓根文件
+description: 改这个仓的插件时怎么准备、怎么构建、提交前跑哪些检查（pnpm check 里的两类测试）、怎么在隔离 home 里改一版看一版（devkit.dev）、怎么发版（devkit.release、gwb-release 说明书、发版前检查）、文档站怎么检查与生成仓根文件
 ---
 
-**本页回答**：什么时候进这个仓；第一次怎么准备、怎么构建；提交前跑哪些检查、各查什么；怎么在隔离 home 里验证改动；发版按什么顺序做、版本号升哪一位、`gwb.testedKernel` 什么时候改；文档怎么检查、仓根的 `AGENTS.md` 与 `README.md` 怎么生成。
+**本页回答**：什么时候进这个仓；第一次怎么准备、怎么构建；提交前跑哪些检查、各查什么；怎么在隔离 home 里验证改动；发版按什么顺序做、版本号升哪一位、peer 里内核包的范围什么时候改；文档怎么检查、仓根的 `AGENTS.md` 与 `README.md` 怎么生成。
 
 ## 什么时候进这个仓
 
@@ -18,7 +18,7 @@ pnpm install
 pnpm build
 ```
 
-`pnpm build` 是 `pnpm -r build`，每个插件用 `tsc -p tsconfig.json` 输出到自己的 `dist/`。pnpm 工作区是 `plugins/*`、`packages/*` 与 `docs-site`；`packages/` 下的 `shared-react`、`tokens` 只剩旧的构建产物、没有 `package.json`，不是在用的包。
+`pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`：七个插件用 `tsc -p tsconfig.json`，MCP 插件先用 `build.ts`（esbuild）打包出 `dist/index.js`，再用 `tsc --emitDeclarationOnly` 输出类型声明。pnpm 工作区是 `plugins/*`、`packages/*` 与 `docs-site`；`packages/` 下的 `shared-react`、`tokens` 只剩旧的构建产物、没有 `package.json`，不是在用的包。
 
 {/* ref file="../package.json" lines="5-13" */}
 
@@ -31,7 +31,7 @@ pnpm check
 依次是类型检查（仓根 `tsc --noEmit`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。测试有两类：
 
 - **单元测试**：纯逻辑，比如命令表、路径与名字规则、MCP 的 `index`/`search` 返回、设置的解析顺序
-- **构建产物检查**（`tests/artifact.test.ts`）：相对 import 带 `.js`、包名 import 只有名单里的。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了
+- **构建产物检查**（`tests/artifact.test.ts`）：相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了
 
 `gwb.provides` 与源码提供的服务对不对得上不在 `pnpm check` 里：devkit 的 `devkit.audit-structure {"dir":"<仓根>"}` 随时可查，`devkit.release` 发版前也查。
 
@@ -39,7 +39,7 @@ pnpm check
 
 改动只在隔离 home 里实际运行验证，不碰日常用的 `default`。都是 devkit 的命令，经 MCP 入口的 `run` 调：
 
-1. **建一个隔离 home**：`devkit.home.new {"short":"<这次验什么>"}`，用安装版内核打开，装好一套基础插件，调试端口自动选
+1. **建一个隔离 home**：`devkit.home.new {"short":"<这次验什么>"}`，装进内核包（运行这条命令的内核那个版本）、`cordis` 与一套基础插件，调试端口自动选
 2. **改一版看一版**：`devkit.dev {"home":"<home 名>","dir":"<仓根绝对路径>","packages":["plugins/<插件目录>"]}`。它在仓根构建、发一个开发版（标 `dev`，不动 `latest`）、在那个 home 里装上、用 `plugin-manager.remount` 重新加载条目、刷新页面，并确认装上的是这一版、条目是 ACTIVE、日志里没有新的 error
 3. **在页面上操作、调命令、截图**：`devkit.cdp {"args":["<home 名>","cmd","<命令名>"]}`
 4. **看结果**：那个 home 里的 `gwb.log`；各插件启动与调用都会写日志
@@ -54,15 +54,16 @@ pnpm check
 
 1. **隔离 home 里验证通过**，`pnpm check`、`pnpm doc` 都通过
 2. **升版本号并提交**：插件都在 0.x。**改了契约才升 x**：服务名、命令名、说明书名改名或删除，服务方法、命令参数、回执、事件的形状变了，写进磁盘的数据格式（数据文档、设置的键与值、`settings.json`、`runtime.json` 里自己那一项）变了，调用方依赖的语义变了。加功能、加命令、加可选参数、回执加字段、修 bug、改说明书、改内部实现，都升 y
-3. **确认 `gwb.testedKernel`**：写的是在哪个内核版本上测过。换了内核之后，在新内核上验证过，再改成新内核的版本号
-4. **发到团队包源**：
+3. **确认 peer 里内核包的范围**：`"@godcreator/gwb-kernel-desktop": "^x.y.z"` 要包含验证时那个内核。内核升了 x 之后，在新内核上验证过，再改成 `^<新内核的版本号>`
+4. **自查发版前检查**：`devkit.release` 没有只检查不发布的模式，发之前自己对一遍——`devkit.audit-deps` 的回执里本仓没有 `dead-pin`、`out-of-range`、`loose-dev-pin`、`peer-not-cordis`；每个包目录 `pnpm exec tsc --noEmit -p tsconfig.json --skipLibCheck false` 通过
+5. **发到团队包源**：
 
    ```
    devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills"]}
    ```
 
-   `packages` 相对仓根、被依赖的在前。它先检查 git 工作区干净，在仓根构建，按 `files` 白名单检查产物，检查同号没发过、依赖范围写法对，再检查每个插件的 `gwb.testedKernel`：没写、不是合法版本号、和运行 devkit 的那个 home 的内核不在同一条版本线上，一个包都不发。工作区里的 `workspace:*` 依赖在发出去的包里写成 `^<版本号>`
-5. **升级 default**：`plugin-manager.update-all` 一次升级全部插件，不重启；新插件第一次装用 `plugin-manager.install {"pkg":"<包名>"}`。升级到 MCP 插件自己时，这次调用的返回会丢、连接中途断开，重连后用 `plugin-manager.list` 核对
+   `packages` 相对仓根、被依赖的在前。它先检查 git 工作区干净，在仓根构建，按 `files` 白名单检查产物，检查同号没发过、`@godcreator` 的 dev 范围包含源上的 latest、包目录关掉 `skipLibCheck` 的类型检查通过、构建产物里的包名 import 只有 node 内置模块与 `cordis`，再检查每个插件的 peer：只有 `cordis` 与内核包，按值 import 了 `cordis` 就必须写 peer `cordis`，内核包的范围包含运行 devkit 的那个 home 的内核。有一条没过，一个包都不发。工作区里的 `workspace:*` 依赖在发出去的包里写成 `^<版本号>`
+6. **升级 default**：`plugin-manager.update-all` 一次升级全部插件，不重启；新插件第一次装用 `plugin-manager.install {"pkg":"<包名>"}`。升级到 MCP 插件自己时，这次调用的返回会丢、连接中途断开，重连后用 `plugin-manager.list` 核对
 
 发破坏性版本（升 x）之前，照 `gwb-release` 先用 `devkit.audit-deps` 找出受影响的下游，往各自仓站的 feedback 区投一条。
 

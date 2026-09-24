@@ -4,55 +4,27 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 产物守卫：相对 import 必须带扩展名；裸名只许钉死的那几个。
- * 缺产物时整组跳过——门禁不依赖 build。
- *
- * 这个件的裸名比别人多，因为它**真有运行时依赖**：MCP SDK 与 zod 跟着它一起装进
- * home（走 dependencies），词汇表包的 requireKernel / isRecord 也是真函数。名单钉死，
- * 多一个就得有人解释为什么——尤其别让 cli / data 两件混进来：那两个只 import type，
- * 一旦在产物里现身，就是哪里不小心引了它们的值。
+ * 构建产物的检查：dist/ 下只有打包出来的 index.js 一个 .js，里面的包名 import 只有 node 内置模块。
+ * MCP SDK 与 zod 打包进了产物；本插件对 cordis 与别的插件只 import 类型，产物里出现它们就是哪里引了值。
+ * 没构建时整组跳过，这组检查不依赖构建。
  */
 
 const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const built = fs.existsSync(distDir)
 
-if (!built) console.warn('[gwb-mcp] dist/ 还没造出来，产物组跳过（pnpm build 之后再跑）')
+if (!built) console.warn('[gwb-mcp] dist/ 还没构建，构建产物这组检查跳过（pnpm build 之后再运行）')
 
-/** 精确匹配的那两个 */
-const ALLOWED_BARE = new Set(['@godcreator/gwb-plugin-api', 'zod'])
-/** SDK 走子路径导入（`server/mcp.js` 之类），按前缀放行 */
-const ALLOWED_PREFIX = '@modelcontextprotocol/sdk/'
-
-function allowed(spec: string): boolean {
-  return spec.startsWith('node:') || ALLOWED_BARE.has(spec) || spec.startsWith(ALLOWED_PREFIX)
-}
-
-describe.skipIf(!built)('产物', () => {
+describe.skipIf(!built)('构建产物', () => {
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
 
-  it('有产物可查', () => {
-    expect(files.length).toBeGreaterThan(0)
+  it('只有打包出来的 index.js', () => {
+    expect(files).toEqual(['index.js'])
   })
 
-  it('相对 import 一律带扩展名——产物给 node 直接加载,ESM 不做补全', () => {
-    const bad: string[] = []
-    for (const file of files) {
-      const text = fs.readFileSync(path.join(distDir, file), 'utf8')
-      for (const m of text.matchAll(/(?:from|import)\s*['"](\.[^'"]*)['"]/g)) {
-        if (!m[1]!.endsWith('.js')) bad.push(`${file}: ${m[1]!}`)
-      }
-    }
-    expect(bad).toEqual([])
-  })
-
-  it('裸名只有钉死的那几个', () => {
-    const bare = new Set<string>()
-    for (const file of files) {
-      const text = fs.readFileSync(path.join(distDir, file), 'utf8')
-      for (const m of text.matchAll(/(?:from|import)\s*['"]([^'".][^'"]*)['"]/g)) {
-        bare.add(m[1]!)
-      }
-    }
-    expect([...bare].filter((s) => !allowed(s))).toEqual([])
+  it('除了 node 内置模块，一个包名 import 都没有，也没有相对 import', () => {
+    const text = fs.readFileSync(path.join(distDir, 'index.js'), 'utf8')
+    const imports = [...text.matchAll(/^(?:import|export)\s*(?:[\w$*{}\s,]*?\s*from\s*)?['"]([^'"\n]+)['"]/gm)].map((m) => m[1]!)
+    expect(imports.length).toBeGreaterThan(0)
+    expect(imports.filter((spec) => !spec.startsWith('node:'))).toEqual([])
   })
 })

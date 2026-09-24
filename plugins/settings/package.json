@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-settings",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": {
     "name": "godcreator"
   },
-  "description": "设置：件声明自己有哪些设置项，值落 <home>/settings.json；shared 项落公共区；secret 项在 settings.all 的回执里只回是否已设置、不回值（盘上仍明文，真值按位走 settings.get）。服务 gwbSettings；skill 1 份；命令 4 条。",
+  "description": "设置：插件声明自己有哪些设置项，值写进 <home>/settings.json；shared 项写进公共区；secret 项在 settings.all 的回执里只回是否已设置、不回值（文件里仍是明文，要取值按位置调 settings.get）。服务 gwbSettings；skill 1 份；命令 4 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,27 +23,28 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次。pnpm check 只跑 typecheck/lint/test **不构建**,少了这条就会把上一版的 dist 原样发出去——而且是静默的",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
-  "//commands": "commands 件是 **dev**,跟 gwb-shell 那边不一样。两条理由:一、它在这儿是空 `import type {}`（只为激活对方的 declare module），实测产物的 .js 与 .d.ts 里一处都没有它,不占导出面;二、这个件对命令总线是**可选**的——嵌套注入,没有它服务面照样完整。写 peer 会把它强制装进 home,那跟「可选」自相矛盾",
+  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包只取类型，写在 dev",
   "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7",
-    "cordis": "^4.0.0-rc.9"
+    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "cordis": "^4.0.0-rc.10"
   },
+  "//devDependencies": "命令插件与说明书插件写 dev：代码只 import type {} 它们（为了让 ctx 上的服务有类型），构建产物里没有它们；设置插件对这两个插件是可选的（嵌套注入），没装时服务照样完整",
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@godcreator/gwb-skills": "workspace:*",
-    "cordis": "4.0.0-rc.9",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
   },
   "gwb": {
-    "testedKernel": "0.2.7",
     "provides": {
       "gwbSettings": {
-        "summary": "件的可配项——define 后界面免费长设置 UI；值跟条目走，shared 才落公共区",
-        "usage": "define({ key, title, type: 'string'|'number'|'boolean'|'secret'|'string-list', shared?, description?, default? }) → get（同步）/ set / delete；先 define 再动，没声明的 key 写会抛；配置一律走 define，别写 cordis.yml 的 config；inject ['gwbSettings']"
+        "summary": "插件的设置项——define 之后界面自动出现这一项；值按条目存放，shared 项存进公共区",
+        "usage": "define({ key, title, type: 'string'|'number'|'boolean'|'secret'|'string-list', shared?, description?, default? }) → get（同步）/ set / delete；先 define 再读写，没声明的 key 写入会抛错；配置一律用 define，别写 cordis.yml 的 config；inject ['gwbSettings']"
       }
     }
   },

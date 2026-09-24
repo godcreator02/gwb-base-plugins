@@ -1,0 +1,46 @@
+---
+title: 依赖改成内核 0.4 的写法：peer 只写内核包与 cordis，删 gwb.testedKernel，MCP 插件把 SDK 与 zod 打包进构建产物
+born-at: 2026-09-24T18:40
+type: choice
+parent: [2026-09-24-commands-back-to-base]
+label: peer 写内核包
+domain: 插件
+---
+
+## 背景
+
+内核装进了每个 home（内核包 `@godcreator/gwb-kernel-desktop` 与 `cordis` 列在 home 的清单里），内核与词汇表包一起升到 0.4.1，cordis 换到 4.0.0-rc.10 一组。
+devkit 的发版前检查随之改成：插件包的 peer 只许 `cordis` 与内核包；内核包必须写 `^x.y.z` 且包含运行中的内核；node 侧构建产物的包名 import 只许 node 内置模块、`electron`、`cordis`；
+`@godcreator` 的 dev 范围要包含源上的 latest；包目录关掉 `skipLibCheck` 做一次类型检查。`gwb.testedKernel` 不再是兼容性的依据。
+
+这个仓八个插件原来都在 peer 写词汇表包 `^0.2.7`，dev 的词汇表包 `^0.2.7` 已出范围；`gwb.testedKernel` 都写 `"0.2.7"`；MCP 插件把 MCP SDK 与 zod 写在 dependencies，构建产物里留着它们的包名 import。
+关掉 `skipLibCheck` 时八个包都报词汇表包 0.2.7 的 `HTMLElement` 找不到，MCP 插件另报 SDK 的 `HeadersInit` 找不到。
+
+pivots-from:: [2026-09-24-commands-back-to-base](2026-09-24-commands-back-to-base.md)
+
+## 结论与边界
+
+- peer：八个插件都写 `"@godcreator/gwb-kernel-desktop": "^0.4.1"`；继承 `Service` 的七个再写 `"cordis": "^4.0.0-rc.10"`；MCP 插件只 import cordis 的类型，不写 peer `cordis`
+- 词汇表包从 peer 挪到 dev，抬到 `^0.4.1`；cordis 的 dev 换成 4.0.0-rc.10，命令插件测试用的 loader 跟着换成 1.0.0-rc.7；每个插件的 dev 补上 `@types/node`（tsconfig 写了 `types: ["node"]`，以前靠仓根的依赖解析到）
+- 删掉八个插件的 `gwb.testedKernel`
+- 词汇表包 0.2.7 到 0.4.1 的类型形状没变，只多了一行 `/// <reference lib="dom" preserve="true" />`，插件代码一行没改；它补上的 DOM 类型同时让 MCP SDK 的 `HeadersInit` 有了定义
+- **MCP 插件改成打包**：`build.ts` 用 esbuild 把 `src/index.ts` 连同 SDK 与 zod 打成一个 `dist/index.js`，`external` 只留 `cordis`；类型声明由 `tsc --emitDeclarationOnly` 输出。SDK 与 zod 挪到 dev
+- 版本：已提交未发的命令 0.5.0、node-cli 0.4.7、py-cli 0.3.7 不再升；数据 0.1.7、日志 0.4.5、MCP 0.10.5、设置 0.3.3、说明书 0.4.5，都按依赖写法与内部实现的改动升 y。对外的服务、命令、回执、写进磁盘的格式都没变
+
+## 否掉的候选
+
+- **MCP 的 SDK 与 zod 留在 dependencies**：发版前检查按构建产物判，不看清单里写在哪一栏，node 侧产物里留着它们的包名 import 就拒发
+- **MCP 插件打包时加一段 `createRequire` 的 banner**：先加上了，试过不加也能加载，打包结果里没有对 node 内置模块的动态 `require`，删掉了
+- **词汇表包继续写 peer 给使用方解析类型**：peer 只留给 home 根上的两个包；命令插件导出的 `GwbResult` 的类型由使用方自己在 dev 里列词汇表包
+
+## 代价与遗留
+
+- MCP 插件的 `dist/index.js` 约 1.4MB（原来装进 home 的 SDK 连同依赖解包约 4.3MB）；出问题时栈里是打包后的行号
+- MCP 插件能通过关掉 `skipLibCheck` 的类型检查，依赖词汇表包声明里的 DOM 类型；词汇表包去掉那一行，MCP 插件的发版前检查会先红
+- 用命令插件类型的下游插件（别的仓）要在 dev 里列词汇表包，否则它们关掉 `skipLibCheck` 时报找不到模块
+- 这一组都没发版：命令 0.5.0 要等下游都跟上之后由主会话统一发
+
+## 依据
+
+- 迁移前在各包目录运行 `pnpm exec tsc --noEmit -p tsconfig.json --skipLibCheck false`：八个包都报 `gwb-plugin-api@0.2.7/.../index.d.ts(52,32): error TS2304: Cannot find name 'HTMLElement'`，MCP 插件另报 `sdk/dist/esm/shared/transport.d.ts(7,51): error TS2304: Cannot find name 'HeadersInit'`；迁移后八个包都退出码 0
+- 迁移后仓根 `pnpm check` 38 个测试文件、445 个用例全绿；MCP 插件打包结果里的包名 import 只有 `node:` 开头的内置模块

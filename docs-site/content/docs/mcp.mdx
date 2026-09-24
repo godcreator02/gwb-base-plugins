@@ -1,6 +1,6 @@
 ---
 title: gwb-mcp · MCP 入口
-description: gwb-mcp 把命令总线开给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、三条命令、写进 home 的文件、端口设置）、依赖，以及哪些事不归它做
+description: gwb-mcp 把命令总线提供给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、三条命令、写进 home 的文件、端口设置）、依赖，以及哪些事不归它做
 ---
 
 **本页回答**：MCP 插件有哪些功能；agent、客户端配置和别的程序经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归命令总线或别的插件。包名 `@godcreator/gwb-mcp`，源码目录 `plugins/mcp/src`，入口文件 `index.ts`。
@@ -9,7 +9,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 ## 功能
 
-- **开一个 MCP 入口**：`http://127.0.0.1:<端口>/mcp`，只收 POST，无状态：每个请求新建一个 MCP server 和一条 transport，响应结束就关
+- **开一个 MCP 入口**：`http://127.0.0.1:<端口>/mcp`，只收 POST，无状态：每个请求新建一个 MCP server 和一条 transport，响应结束就关闭
 - **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令；新装的插件不会多出新工具，它的命令经 `run` 调
 - **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
 - **要 token**：每个 home 一份，写在磁盘上、重启不换；另外检查 `Host` 与 `Origin`，三项都在处理请求之前检查，不通过就回 401 并写明原因
@@ -113,10 +113,13 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | `index`、`search` 里的说明书；登记自带的说明书 `mcp` | 入口照常开，`index` 与 `search` 里没有说明书 |
 | node 命令行运行插件的服务 `gwbNodeCli`（局部注入，[gwb-node-cli](/docs/node-cli)） | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` 这条命令 |
 | 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | home 名（目录的最后一段）、token 文件、`runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
-| `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`），写在 dependencies | MCP 协议、工具参数的 schema | 无法加载；SDK 连同它的依赖解包约 4.3MB，跟着这个插件装进 home |
-| 词汇表包 `@godcreator/gwb-plugin-api`（peer） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
+| `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`），写在 dev，构建时打包进 `dist/index.js` | MCP 协议、工具参数的 schema | 打包在构建产物里，装进 home 时不另装它们 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
 
-`gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 devDependencies 里：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 写在 dependencies 而不是 peer：这个插件不导出任何类型，没有「使用方必须解析得到」的问题。
+`gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 devDependencies 里：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块：`devkit.release` 的发版前检查不许 node 侧产物留下别的包名 import。类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里只有内核包：
+
+{/* ref file="../plugins/mcp/package.json" lines="31-34" */}
 
 ## 不做的事
 

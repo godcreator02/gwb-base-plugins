@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.10.4",
+  "version": "0.10.5",
   "author": {
     "name": "godcreator"
   },
-  "description": "MCP 入口：把命令总线开给 agent——工具只有 index / search / run 三个（加一个工具是 major 变更），无状态 streamableHTTP、要 Authorization token（每个 home 一份、写在磁盘上、重启不换），default 固定用 2870 端口；index 只列说明书与命令名，装了哪些插件问 plugin-manager.list。另带一个零依赖的命令行客户端（mcp.client），给没有 MCP 客户端的环境用。服务无；skill 1 份；命令 3 条。",
+  "description": "MCP 入口：把命令总线提供给 agent——工具只有 index / search / run 三个（加一个工具是 major 变更），无状态 streamableHTTP、要 Authorization token（每个 home 一份、写在磁盘上、重启不换），default 固定用 2870 端口；index 只列说明书与命令名，装了哪些插件问 plugin-manager.list。另带一个零依赖的命令行客户端（mcp.client），给没有 MCP 客户端的环境用。服务无；skill 1 份；命令 3 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,26 +23,28 @@
     "skills"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node build.ts && tsc -p tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
-  "//dependencies": "**这两条是 dependencies 不是 peer**：运行时真的 import，而这个插件不导出任何东西（不提供服务、没人 import 它的类型），所以没有「使用方必须解析得到」的问题——它们是本插件私有的实现依赖，跟着它一起装进 home。代价是 SDK 的传递依赖（express/hono/cors/jose/ajv…）解包约 4.3MB",
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^4.5.4"
+  "//peerDependencies": "peer 只写内核包，^ 范围就是兼容哪个内核。构建产物里没有 cordis（代码只 import type），不写 peer cordis",
+  "peerDependencies": {
+    "@godcreator/gwb-kernel-desktop": "^0.4.1"
   },
+  "//devDependencies": "MCP SDK 与 zod 由 build.ts 打包进 dist/index.js，构建产物里不留它们的包名 import，所以写 dev。命令、设置、说明书、node-cli 四个插件与词汇表包只取类型",
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-node-cli": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.2.7",
+    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@godcreator/gwb-settings": "workspace:*",
     "@godcreator/gwb-skills": "workspace:*",
-    "cordis": "4.0.0-rc.9",
-    "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "testedKernel": "0.2.7"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.10",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "zod": "^4.5.4"
   },
   "repository": {
     "type": "git",
@@ -51,8 +53,5 @@
   "keywords": [
     "gwb",
     "gwb-plugin"
-  ],
-  "peerDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.2.7"
-  }
+  ]
 }
