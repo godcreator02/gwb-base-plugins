@@ -37,15 +37,15 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 {/* ref file="../plugins/skills/src/collect.ts" lines="6-13" */}
 
-只收文本，因为 agent 读二进制文件只会得到乱码；单个文件 512KB，再大的一份 agent 读一遍就占满上下文；往下三层、最多 64 个文件，防止手滑把一整棵目录树交进来。超限、读不出、缺 SKILL.md 的都写 warn 写明是哪一份，不静默丢掉。
+只收文本，因为 agent 读二进制文件只会得到乱码；单个文件 512KB，再大的一份 agent 读一遍就占满上下文；往下三层、最多 64 个文件，防止误把一整棵目录树交进来。超限、读不出、缺 SKILL.md 的都写 warn 写明是哪一份，不静默丢掉。
 
-**登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删自己登记的那几份，并登记到调用方的 effect 里：
+**登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删表里仍是自己那条记录的说明书，并登记到调用方的 effect 里。插件先注销、同名说明书随后被别的插件登记，前一个插件卸载时再调用一次注销函数，删不到后来那份：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="94-125" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="94-132" */}
 
 **读**：`read(name, file)` 只读登记时扫到的文件清单里的路径，不做路径拼接；读不到回 `undefined`：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="131-142" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="138-149" */}
 
 **两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」，分开报等于告诉外面哪些名字存在：
 
@@ -59,7 +59,7 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 - `files` 里 `SKILL.md` 总在第一位，路径是相对路径、用 `/` 分隔；交出去的 `GwbSkill` 里不带本机路径
 - 正文每次都从磁盘读：改了 SKILL.md 正文立刻生效；增删文件、改 frontmatter 要重新加载那个插件
 - 只读登记过的文件，参数里带 `../` 也读不到目录外的东西
-- 插件卸载时它登记的说明书自动注销
+- 插件卸载时它登记的说明书自动注销；注销只删表里仍是自己那条记录的，不删别的插件后来登记的同名说明书
 
 带说明书的插件保证：
 - 把 `skills/` 目录列进 `package.json` 的 `files`
@@ -85,8 +85,10 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 {/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}
 
-服务这一层（身份取自调用方条目、同名时先登记的保留、注销与调用方卸载时自动注销、两条命令的回执）由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
+服务这一层（身份取自调用方条目、同名时先登记的保留、注销与调用方卸载时自动注销、注销不删别人后来登记的同名说明书、两条命令的回执）由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
 
 {/* has file="../plugins/skills/tests/service.test.ts" text="同名说明书先到先得：后来的那份不收并写 warn" */}
+
+{/* has file="../plugins/skills/tests/service.test.ts" text="注销函数不删别人后来登记的同名说明书" */}
 
 loader 真的把调用方的包名放在 fiber 上，只能在隔离 home 里实际运行验证。

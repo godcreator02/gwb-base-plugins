@@ -91,9 +91,9 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     return name
   }
 
-  /** 同名的先到先得：已被别的包占住的那份不收、写 warn。回收下的名字 */
-  private addSkillsKeepingFirstComer(log: Logger, pkg: string, collectedSkills: CollectedSkill[]): string[] {
-    const addedSkillNames: string[] = []
+  /** 同名的先到先得：已被别的包占住的那份不收、写 warn。回收下的那几份 */
+  private addSkillsKeepingFirstComer(log: Logger, pkg: string, collectedSkills: CollectedSkill[]): CollectedSkill[] {
+    const addedSkills: CollectedSkill[] = []
     for (const collected of collectedSkills) {
       const holder = this.skillsByName.get(collected.skill.name)
       if (holder !== undefined) {
@@ -101,9 +101,16 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
         continue
       }
       this.skillsByName.set(collected.skill.name, collected)
-      addedSkillNames.push(collected.skill.name)
+      addedSkills.push(collected)
     }
-    return addedSkillNames
+    return addedSkills
+  }
+
+  /** 只删表里仍是自己那条记录的：先注销再被别人登记的同名说明书，不随这次注销一起删 */
+  private removeSkillsStillHeldBy(addedSkills: CollectedSkill[]): void {
+    for (const added of addedSkills) {
+      if (this.skillsByName.get(added.skill.name) === added) this.skillsByName.delete(added.skill.name)
+    }
   }
 
   register(dir: string | URL): () => void {
@@ -113,12 +120,12 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
     const { skills, problems } = collectSkills(skillsDir, pkg)
     logCollectProblems(log, pkg, problems)
 
-    const addedSkillNames = this.addSkillsKeepingFirstComer(log, pkg, skills)
-    if (addedSkillNames.length > 0) log.info(`[${pkg}] 登记了 ${addedSkillNames.length} 份 skill：${addedSkillNames.join('、')}`)
-
-    const unregisterAddedSkills = (): void => {
-      for (const skillName of addedSkillNames) this.skillsByName.delete(skillName)
+    const addedSkills = this.addSkillsKeepingFirstComer(log, pkg, skills)
+    if (addedSkills.length > 0) {
+      log.info(`[${pkg}] 登记了 ${addedSkills.length} 份 skill：${addedSkills.map((added) => added.skill.name).join('、')}`)
     }
+
+    const unregisterAddedSkills = (): void => this.removeSkillsStillHeldBy(addedSkills)
     // this.ctx 是调用方的上下文，调用方卸载时自动注销
     this.ctx.effect(() => unregisterAddedSkills)
     return unregisterAddedSkills

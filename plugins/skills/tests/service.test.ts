@@ -164,6 +164,18 @@ describe('GwbSkills 服务', () => {
     expect(first.list().map((s) => s.name)).toEqual(['beta'])
   })
 
+  it('注销函数不删别人后来登记的同名说明书', async () => {
+    const { root } = await bootSkills()
+    const { skills: first, fiber: firstFiber } = await caller(root, '@t/gwb-a')
+    const offFirst = first.register(writeSkillsDir('a', ALPHA))
+    offFirst()
+    const { skills: second } = await caller(root, '@t/gwb-b')
+    second.register(writeSkillsDir('b', { 'alpha/SKILL.md': '---\nname: alpha\ndescription: 接手\n---\n' }))
+    offFirst()
+    await firstFiber.dispose()
+    expect(second.list()).toEqual([expect.objectContaining({ name: 'alpha', plugin: '@t/gwb-b' })])
+  })
+
   it('取不到调用方身份时 register 抛错', async () => {
     const { root } = await bootSkills()
     const { skills } = await caller(root, null)
