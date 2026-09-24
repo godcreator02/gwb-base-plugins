@@ -39,7 +39,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 | venv 目录 `<包根>/py/.venv` 与其中的 `.gwb-built-for` | venv 建成后把包根写进 `.gwb-built-for`；记号缺失或指着别的包根，就当 venv 不是这里的、重建 | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-py-cli` | 包根 `skills/gwb-py-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="15-43" */}
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="9-35" */}
 
 {/* has file="../plugins/py-cli/src/index.ts" text="export const LIST_COMMAND = 'py-cli.list'" */}
 
@@ -58,8 +58,10 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 
 ### 检查 venv 的规则
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="82-92" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="61-72" */}
 
+- **只看目录名、不启动 python**：每次运行前都要检查，付不起启动解释器的开销
+- **出身记号放在 venv 里面**：跟 venv 一起创建、一起删除；放在外面的话，venv 被删了记号还在，就会出现「记号说建好了、其实没有」的状态。记号防的是 venv 跟着包目录被整个搬走：venv 里的可编辑安装记着建它那次的包根，搬到别处照样能启动、却指向原来的目录，home 被整体复制或改名时就会这样
 - **失败不抛错**：uv 不在 PATH、`uv sync` 退出码不是 0 或超过 300 秒，都收成 `{ ready: false, reason }`，原因写成人读得懂的一句；插件本身照常加载，只是这些工具运行不了
 - **`uv sync` 带 `--inexact`**：开发时 `py/.venv` 也是项目自己的开发环境，不删里面多装的包
 - **记号最后写**：`uv sync` 成功后才写 `.gwb-built-for`，写完再检查一遍，版本仍不对就算失败
@@ -70,7 +72,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 | --- | --- | --- |
 | 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `py-cli.list` | 服务 `gwbPyCli` 不提供，插件一直等待 |
 | 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不起来，回执原因是「拉不起 uv（PATH 上没有？）」，装上 uv 后重新加载插件 |
+| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不起来，回执原因是「拉不起 uv（PATH 上没有？）」；装上 uv 后再调用一次就行，每次运行前都会重新检查 venv，不用重新加载插件 |
 | Windows 的 venv 布局（`Scripts/*.exe`、`Lib/site-packages`） | 找要运行的程序、读装了哪个版本 | 别的系统上找不到程序；工作台只支持 Windows |
 | cordis 的 `Service`（peer，`^4.0.0-rc.9`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |

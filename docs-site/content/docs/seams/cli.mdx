@@ -38,9 +38,9 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 **gwb-py-cli 的服务与登记参数**：`command`（`[project.scripts]` 里的入口点名）与 `module`（`python -m` 的模块名）二选一；多一个 `ensureReady`：
 
-{/* ref file="../plugins/py-cli/src/index.ts" lines="61-85" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" */}
 
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="14-43" */}
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="9-35" */}
 
 **总线参数**：登记的命令经总线调用时，参数给一个字符串数组就是追加参数，给 `{ args?, cwd? }` 也认，别的当成没有参数：
 
@@ -56,11 +56,11 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 **怎么启动 python 子进程**：每次运行前先检查 venv，venv 在 `<packageRoot>/py/.venv`；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="40-50" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="23-33" */}
 
 venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `uv sync`。uv 从 PATH 找，找不到就回 `{ ready: false, reason }`：
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="127-150" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="107-125" */}
 
 **回执**：退出码 0 且没超时才算 `ok`；输出只在内存里留最后 64,000 字节，超过时全量写进系统临时目录的文件，路径放在 `spillPath`；全量留着是因为出错原因常常在被截掉的那头：
 
@@ -129,4 +129,8 @@ gwb-py-cli 另外保证：
 
 {/* has file="../plugins/node-cli/tests/service.test.ts" text="cwd 优先级：按次给的 > 登记时给的 > entry 所在目录" */}
 
-`uv sync` 建 venv 只能在隔离 home 里实际运行验证。
+py-cli 的副本由它自己的 `run.test.ts` 测；py-cli 的服务这一层由它的 `service.test.ts` 测，venv 按已就绪的样子摆好，入口程序是当前 node 的一份拷贝：
+
+{/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 没就绪、也建不起来时 run 抛错，并写 warn" */}
+
+`uv sync` 真的建出 venv 只能在隔离 home 里实际运行验证。
