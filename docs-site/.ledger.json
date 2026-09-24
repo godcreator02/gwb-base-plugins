@@ -779,22 +779,12 @@
     "../plugins/settings/src/index.ts:142-155": {
       "kind": "git",
       "blob": "04f5129dd69ef97beaa1e4988c98c268108d27de",
-      "commit": "cb7092b25f3e7c4c0b8dea63bc90a822f05258f9",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
       "lines": [
         142,
         155
       ],
       "hash": "68c20220610a404e36b8e326e34d8553b6741b0516d9026078045ea69ce721c8"
-    },
-    "../plugins/skills/src/index.ts:105-116": {
-      "kind": "git",
-      "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "cb7092b25f3e7c4c0b8dea63bc90a822f05258f9",
-      "lines": [
-        105,
-        116
-      ],
-      "hash": "e0446b0875372d49ee16441f321cf06b8470a4f37ba4e990dec1e0c411e575b5"
     },
     "has ../plugins/node-cli/src/index.ts \"ctx.gwbNodeCli 只能在经 cordis.yml 挂上的件里用\"": {
       "kind": "has"
@@ -805,7 +795,7 @@
     "../plugins/settings/src/paths.ts:60-92": {
       "kind": "git",
       "blob": "419e7f6de1bf16680aa946b121f3e8951ac6de2e",
-      "commit": "cb7092b25f3e7c4c0b8dea63bc90a822f05258f9",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
       "lines": [
         60,
         92
@@ -830,7 +820,7 @@
     "../plugins/data/src/index.ts:46-56": {
       "kind": "git",
       "blob": "f975e53986b1cdd2bd2d2c96ccf9bbb8ba84e902",
-      "commit": "cb7092b25f3e7c4c0b8dea63bc90a822f05258f9",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
       "lines": [
         46,
         56
@@ -840,12 +830,22 @@
     "../plugins/data/src/paths.ts:26-50": {
       "kind": "git",
       "blob": "56e99a1ab1a41a045741c9ee3c61575dd1db9dd2",
-      "commit": "cb7092b25f3e7c4c0b8dea63bc90a822f05258f9",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
       "lines": [
         26,
         50
       ],
       "hash": "a5e0849ae957c02549afc2c8a9640a76e2d19fd0bd9bb646fdd8031915b7e2af"
+    },
+    "../plugins/skills/src/index.ts:84-92": {
+      "kind": "git",
+      "blob": "70376b6a264203122499f742b1999b1e3edb99dd",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        84,
+        92
+      ],
+      "hash": "96714ed3245cc9cc703fd49b75accd4f5244e1fd8f1052b28918c9d75ab7abc4"
     }
   },
   "content/docs/seams/log.mdx": {
@@ -1228,65 +1228,15 @@
     }
   },
   "content/docs/seams/skills.mdx": {
-    "../plugins/skills/src/index.ts:39-51": {
-      "kind": "git",
-      "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
-      "lines": [
-        39,
-        51
-      ],
-      "hash": "ea51c073f6fd77699f855354a3365f7f0e3f2ca45b14a63756a7196d8f5efee8"
-    },
     "../plugins/commands/package.json:18-22": {
       "kind": "git",
       "blob": "ece78e4bcf278c1853b33375e8d68348b940dac2",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
       "lines": [
         18,
         22
       ],
       "hash": "17cd10117409f14876b1154001d11f9a433fd8152e1a120dd2c0e43b218526ae"
-    },
-    "../plugins/skills/src/collect.ts:12-23": {
-      "kind": "git",
-      "blob": "c80548b31aca80ba32f3c39e60f2a8eebabe0e53",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
-      "lines": [
-        12,
-        23
-      ],
-      "hash": "3680abe90391bf3aa6126fde019be20ced88dff734d9c2b2f09f57d104b5e316"
-    },
-    "../plugins/skills/src/index.ts:118-145": {
-      "kind": "git",
-      "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
-      "lines": [
-        118,
-        145
-      ],
-      "hash": "565f33feb6b4e0e82f5ddc2ab819a15e7ef907a970ba0350f95f6a0e9ba401d7"
-    },
-    "../plugins/skills/src/index.ts:151-162": {
-      "kind": "git",
-      "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
-      "lines": [
-        151,
-        162
-      ],
-      "hash": "50b565258cb855cb8778a66febac3b5e0a05cf3a925b5a4122e8b5927f995e43"
-    },
-    "../plugins/skills/src/index.ts:72-103": {
-      "kind": "git",
-      "blob": "1b88e8d5d117462cf4c90d8d97725f1f1540897a",
-      "commit": "e515f8de5be2aa6d7ea03582b8f6e71ef3d7eb76",
-      "lines": [
-        72,
-        103
-      ],
-      "hash": "2b0564eb493a7df922c9fe1a6204b3af45c9bbcc4280b2448082dfd1b45843c2"
     },
     "has ../plugins/skills/tests/collect.test.ts \"装 skill 的目录只看一层——再深的 SKILL.md 不算一个 skill\"": {
       "kind": "has"
@@ -1298,6 +1248,59 @@
       "kind": "has"
     },
     "has ../plugins/commands/src/index.ts \"const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)\"": {
+      "kind": "has"
+    },
+    "../plugins/skills/src/index.ts:19-30": {
+      "kind": "git",
+      "blob": "70376b6a264203122499f742b1999b1e3edb99dd",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        19,
+        30
+      ],
+      "hash": "fbe58477d291ed07e79f01d0e840f8310b25a74389982870cc139262155a7629"
+    },
+    "../plugins/skills/src/collect.ts:6-13": {
+      "kind": "git",
+      "blob": "daf4753faac44568ef7795407a562d04b328c1ae",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        6,
+        13
+      ],
+      "hash": "9a8e2a4a2b31c2da228597b0632a756d36238f6993bcbb9fd4b7e8670e3ede36"
+    },
+    "../plugins/skills/src/index.ts:94-125": {
+      "kind": "git",
+      "blob": "70376b6a264203122499f742b1999b1e3edb99dd",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        94,
+        125
+      ],
+      "hash": "636844a1883305517a07df8786993af33868a835dc5078cb63f7569745820a19"
+    },
+    "../plugins/skills/src/index.ts:131-142": {
+      "kind": "git",
+      "blob": "70376b6a264203122499f742b1999b1e3edb99dd",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        131,
+        142
+      ],
+      "hash": "204f00be4947654c063eaabce883eb295249cf3a4b703e2200a76100962a40f4"
+    },
+    "../plugins/skills/src/index.ts:56-82": {
+      "kind": "git",
+      "blob": "70376b6a264203122499f742b1999b1e3edb99dd",
+      "commit": "f7017c3824aab0b592e02266ce7670ce02f75414",
+      "lines": [
+        56,
+        82
+      ],
+      "hash": "cd1c4a0f1fca2d1556b7bd00265b20ffa79b89cfa8a00363e1a801fb1b269d71"
+    },
+    "has ../plugins/skills/tests/service.test.ts \"同名说明书先到先得：后来的那份不收并写 warn\"": {
       "kind": "has"
     }
   }
