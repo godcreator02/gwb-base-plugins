@@ -59,7 +59,7 @@ Host 与 Origin 自己判断，不用 SDK 的 `enableDnsRebindingProtection` / `
 
 **runtime.json 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始：
 
-{/* ref file="../plugins/mcp/src/runtime.ts" lines="38-47" */}
+{/* ref file="../plugins/mcp/src/runtime.ts" lines="17-26" */}
 
 **两条命令**：两条回执里的 `mcpServers` 是同一个形状的片段，键是 `gwb`，值是 `{ type: 'http', url, headers: { Authorization: 'Bearer <token>' } }`，照抄进客户端配置就能连。`mcp.info` 回 `{ url, port, mcpServers, auth }`，片段里是当前 token，只读不换；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。两条的回执都带明文 token，会进调用方的会话记录。MCP 入口没在监听、或凭据文件取不出来时，两条都回 `ok: false` 并写明原因：
 
