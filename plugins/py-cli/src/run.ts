@@ -8,8 +8,6 @@ import path from 'node:path'
 
 /** 内存里留多少尾部。超过这个数就开始把全量写进临时文件 */
 export const COLLECT_MAX_BYTES = 64_000
-/** SIGTERM 到强制结束之间给多久 */
-export const GRACE_MS = 3_000
 
 export interface CliStream {
   /** 尾部文本。`truncated` 为真时前面被截过 */
