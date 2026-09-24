@@ -24,7 +24,7 @@
     "../plugins/mcp/src/index.ts:68-123": {
       "kind": "git",
       "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         68,
         123
@@ -34,7 +34,7 @@
     "../plugins/mcp/src/tools.ts:16-36": {
       "kind": "git",
       "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         16,
         36
@@ -44,12 +44,22 @@
     "../plugins/mcp/src/endpoint.ts:34-47": {
       "kind": "git",
       "blob": "65e4dd6cd78c7be59e516eaa2bcf7c9cd435f6e9",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         34,
         47
       ],
       "hash": "fd688901c8afe62ab6ea5ab7d780f8b0067c3ec2d58bfa3c5cc4891ab559b4f1"
+    },
+    "../plugins/mcp/package.json:31-34": {
+      "kind": "git",
+      "blob": "1883c7210be7068d566e9c34e9ff9eb8bfb98bc0",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "lines": [
+        31,
+        34
+      ],
+      "hash": "bf83d41d4dfb71c11445a8bcedb928767954d2fcbd665c36b048d74ef5e93a4b"
     }
   },
   "content/docs/skills.mdx": {
@@ -270,8 +280,35 @@
     "has ../plugins/data/src/vocab.ts \"export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {\"": {
       "kind": "has"
     },
-    "has ../plugins/commands/package.json \"testedKernel\"": {
-      "kind": "has"
+    "../plugins/mcp/build.ts:16-28": {
+      "kind": "git",
+      "blob": "d1c03d3af923e1676ca0d6c381a91fdd3edd5d2e",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "lines": [
+        16,
+        28
+      ],
+      "hash": "604c7d9dd80000421f3f52b15eb14859317777cb4561c37d4b55ccdf77736605"
+    },
+    "../plugins/commands/package.json:52-56": {
+      "kind": "git",
+      "blob": "3f536d98f484d597b3db5a348a2557352cdac60d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "lines": [
+        52,
+        56
+      ],
+      "hash": "06fb2a1f7e4106442808157f80525107422e7f3f0cd1378254eee14b0e3d8831"
+    },
+    "../plugins/data/package.json:28-32": {
+      "kind": "git",
+      "blob": "37017ae358f8a4ee5ef84bf5389ee8d7b491b8a7",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "lines": [
+        28,
+        32
+      ],
+      "hash": "d30d272a8a368acbfcf745e34defcd8fcb8b2ad4f7a8caae634eed1993360261"
     }
   },
   "content/docs/develop.mdx": {
@@ -290,20 +327,17 @@
     "../tsconfig.base.json:4-6": {
       "kind": "git",
       "blob": "23ff4d59b9d16c3de59e5a4118dd445446a6e837",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         4,
         6
       ],
       "hash": "c23b82c3d70bd698be232a377d527c1b45cbc6c24daeb87a7069dee02a27f031"
     },
-    "has ../plugins/commands/package.json \"peerDependencies\"": {
-      "kind": "has"
-    },
     "../plugins/commands/tests/artifact.test.ts:23-45": {
       "kind": "git",
       "blob": "ac7ca04cf91b5003264a4f2e77df00d8488017f0",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         23,
         45
@@ -313,7 +347,7 @@
     "../plugins/data/src/index.ts:46-60": {
       "kind": "git",
       "blob": "9a6f5666e5e3cd81b9dfe3a965af0cbc916d37ce",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         46,
         60
@@ -323,7 +357,7 @@
     "../plugins/data/src/paths.ts:26-50": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         26,
         50
@@ -333,7 +367,7 @@
     "../plugins/settings/src/paths.ts:42-66": {
       "kind": "git",
       "blob": "fa8c33f0a6bdcdaeed6c530677160fe1efd85778",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         42,
         66
@@ -343,7 +377,7 @@
     "../plugins/mcp/src/index.ts:205-228": {
       "kind": "git",
       "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         205,
         228
@@ -353,7 +387,7 @@
     "../plugins/mcp/src/tools.ts:16-36": {
       "kind": "git",
       "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         16,
         36
@@ -363,7 +397,7 @@
     "../plugins/commands/src/registry.ts:78-84": {
       "kind": "git",
       "blob": "85b942b5a326c2d1cb453ca400134ef08d08fcb2",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         78,
         84
@@ -373,7 +407,7 @@
     "../plugins/commands/src/registry.ts:109-118": {
       "kind": "git",
       "blob": "85b942b5a326c2d1cb453ca400134ef08d08fcb2",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         109,
         118
@@ -383,7 +417,7 @@
     "../plugins/commands/src/registry.ts:124-136": {
       "kind": "git",
       "blob": "85b942b5a326c2d1cb453ca400134ef08d08fcb2",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         124,
         136
@@ -393,7 +427,7 @@
     "../plugins/commands/src/registry.ts:95-103": {
       "kind": "git",
       "blob": "85b942b5a326c2d1cb453ca400134ef08d08fcb2",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         95,
         103
@@ -403,7 +437,7 @@
     "../plugins/commands/src/index.ts:58-65": {
       "kind": "git",
       "blob": "7f5b2b63dda935c4aa0520d7bcbc56a9a456db12",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         58,
         65
@@ -413,12 +447,22 @@
     "../plugins/node-cli/src/index.ts:110-123": {
       "kind": "git",
       "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         110,
         123
       ],
       "hash": "4d427abcc5d4e3a788a66fb958e9f8ddf841222f97738befee2fd059cc00b0f8"
+    },
+    "../plugins/commands/package.json:52-56": {
+      "kind": "git",
+      "blob": "3f536d98f484d597b3db5a348a2557352cdac60d",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "lines": [
+        52,
+        56
+      ],
+      "hash": "06fb2a1f7e4106442808157f80525107422e7f3f0cd1378254eee14b0e3d8831"
     }
   },
   "content/docs/seams/agent-surface.mdx": {
@@ -926,16 +970,13 @@
     }
   },
   "content/docs/seams/log.mdx": {
-    "has ../plugins/logger/tests/artifact.test.ts \"裸名只许词汇表包与 cordis\"": {
-      "kind": "has"
-    },
     "has ../plugins/logger/tests/source.test.ts \"kernel 与 loader 是内核\"": {
       "kind": "has"
     },
     "../plugins/logger/src/index.ts:10-15": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         10,
         15
@@ -945,7 +986,7 @@
     "../plugins/logger/src/index.ts:29-39": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         29,
         39
@@ -955,7 +996,7 @@
     "../plugins/logger/src/index.ts:49-55": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         49,
         55
@@ -965,7 +1006,7 @@
     "../plugins/logger/src/index.ts:111-119": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         111,
         119
@@ -975,7 +1016,7 @@
     "../plugins/logger/src/index.ts:121-123": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         121,
         123
@@ -985,7 +1026,7 @@
     "../plugins/logger/src/index.ts:127-137": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         127,
         137
@@ -995,7 +1036,7 @@
     "../plugins/logger/src/index.ts:20-21": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
       "lines": [
         20,
         21
@@ -1003,6 +1044,9 @@
       "hash": "221aa90329fc3b62e5c0936b1764f422c0a820348e257af92dedbd69c40e6b13"
     },
     "has ../plugins/logger/tests/apply.test.ts \"装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/tests/artifact.test.ts \"除了 node 内置模块与 cordis，一个包名 import 都没有\"": {
       "kind": "has"
     }
   },
