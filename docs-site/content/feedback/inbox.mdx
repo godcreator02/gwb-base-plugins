@@ -60,3 +60,10 @@ agent 再猜。
 - peer 里内核包的范围从 `^0.4.1` 改成 `^0.5.0`，在跑内核 0.5.0 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
 
 内核 0.5.0 发布之后再改；改的时候照说明书 `gwb-release` 升各插件自己的版本号。
+
+## 2026-09-25 gwb.provides 不用写了：logger 等清单字段与文档段落可以删
+
+来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同批发）。
+
+devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成从 home 里各包的 `.d.ts` 现读：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
+`plugins/logger/package.json`（以及别的插件如果有）的 `gwb.provides`，AGENTS 正本、develop 页、design 页里讲 `gwb.provides` 与 `devkit.services` 旧用法的段落，下次改到时删掉或改成现状。
