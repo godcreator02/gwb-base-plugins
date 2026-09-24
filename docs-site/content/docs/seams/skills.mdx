@@ -13,6 +13,14 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 ## 接口
 
+<Diagram name="skills-flow" title="插件登记说明书、agent 读正文、插件卸载时撤掉（分步）">
+- 带说明书的插件在包根放 `skills/` 目录，每个带 `SKILL.md` 的子目录一份；`apply` 里局部注入 `gwbSkills`，调 `register(new URL('../skills/', import.meta.url))`
+- 说明书插件扫描目录，登记表里每份记名字、描述、包名（取自调用方条目）、文件清单
+- 另一个插件带来同名说明书时，先登记的保留，后来的不登记、写 warn
+- agent 经 MCP 入口的 `run` 调 `skill.list`、`skill.read { name, file? }`；`skill.read` 只读清单里的文件，每次从磁盘读
+- 插件卸载时，它登记的说明书从表里撤掉
+</Diagram>
+
 **服务**：
 
 {/* ref file="../plugins/skills/src/index.ts" lines="39-51" */}
@@ -69,7 +77,7 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 ## 测试
 
-扫描与 frontmatter 解析由 `plugins/skills/tests/collect.test.ts` 用真实的临时目录保护，其中这三条钉住目录形状的约定：
+扫描与 frontmatter 解析由 `plugins/skills/tests/collect.test.ts` 用真实的临时目录保护，其中这三条检查目录形状的约定：
 
 {/* has file="../plugins/skills/tests/collect.test.ts" text="装 skill 的目录只看一层——再深的 SKILL.md 不算一个 skill" */}
 
@@ -77,4 +85,4 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 {/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}
 
-身份取自调用方条目、同名时先登记的保留、插件卸载时自动注销，只能在隔离 home 里实机验证。
+身份取自调用方条目、同名时先登记的保留、插件卸载时自动注销，只能在隔离 home 里实际运行验证。

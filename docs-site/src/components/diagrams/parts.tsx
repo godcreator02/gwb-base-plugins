@@ -48,8 +48,8 @@ export function Box({ x, y, w, h, lines, tone, dashed, mono, dim }: { x: number;
   )
 }
 
-/** 带箭头的直线；label 写在线的中点旁边 */
-export function Arrow({ from, to, label, dashed, tone, labelAt = 'above' }: { from: [number, number]; to: [number, number]; label?: string; dashed?: boolean; tone?: Tone; labelAt?: 'above' | 'below' }) {
+/** 带箭头的直线；label 写在线的中点旁边；flow 让线上的虚线沿箭头方向移动（global.css 的 .diagram-flow，减少动态效果时停住） */
+export function Arrow({ from, to, label, dashed, tone, flow, labelAt = 'above' }: { from: [number, number]; to: [number, number]; label?: string; dashed?: boolean; tone?: Tone; flow?: boolean; labelAt?: 'above' | 'below' }) {
   const [x1, y1] = from
   const [x2, y2] = to
   const angle = Math.atan2(y2 - y1, x2 - x1)
@@ -60,7 +60,7 @@ export function Arrow({ from, to, label, dashed, tone, labelAt = 'above' }: { fr
   const vertical = Math.abs(x2 - x1) < Math.abs(y2 - y1)
   return (
     <g style={{ transition: FADE }}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={1.2} strokeDasharray={dashed ? '4 4' : undefined} />
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={flow ? 1.6 : 1.2} strokeDasharray={dashed ? '4 4' : undefined} className={flow ? 'diagram-flow' : undefined} />
       <polygon points={`${x2},${y2} ${left[0]},${left[1]} ${right[0]},${right[1]}`} fill={color} />
       {label !== undefined && (
         <text
@@ -98,14 +98,26 @@ export function SeamLine({ x1, y1, x2, y2, label, labelX, labelY, anchor = 'end'
   )
 }
 
-/** 分步动画的说明：第几步、这一步做什么 */
-export function StepCaption({ x, y, w, title, detail }: { x: number; y: number; w: number; title: string; detail: string }) {
+/** 外框：圈住同一个进程、插件或文件里的几样东西，左上角写名字；lit 时框线换成强调色 */
+export function Frame({ x, y, w, h, label, lit }: { x: number; y: number; w: number; h: number; label: string; lit?: boolean }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={10} fill="none" stroke={lit ? 'var(--diagram-a)' : BORDER} strokeWidth={lit ? 1.4 : 1} style={{ transition: FADE }} />
+      <text x={x + 10} y={y + 17} fontSize={12} fontWeight={600} fill={FG}>
+        {label}
+      </text>
+    </g>
+  )
+}
+
+/** 分步动画的说明：第几步、这一步做什么；detail 超过两行时加大 h */
+export function StepCaption({ x, y, w, title, detail, h = 48 }: { x: number; y: number; w: number; title: string; detail: string; h?: number }) {
   return (
     <g>
       <text x={x} y={y} fontSize={13} fontWeight={600} fill={FG}>
         {title}
       </text>
-      <foreignObject x={x} y={y + 8} width={w} height={48}>
+      <foreignObject x={x} y={y + 8} width={w} height={h}>
         <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--color-fd-muted-foreground)' }}>{detail}</div>
       </foreignObject>
     </g>

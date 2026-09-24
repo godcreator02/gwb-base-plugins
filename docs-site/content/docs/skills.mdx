@@ -7,6 +7,14 @@ description: gwb-skills 收集插件自带的说明书（给 agent 读的 SKILL.
 
 说明书是给 agent 读的文档：一个目录，里面必有 `SKILL.md`，可以带 `references/` 之类的附件，形状照 Anthropic Agent Skills。agent 经 MCP 入口只拿得到命令名与用法，多步流程、调用顺序、遇到过的问题写在说明书里。
 
+<Diagram name="skills-flow" title="插件登记说明书、agent 读正文、插件卸载时撤掉（分步）">
+- 带说明书的插件在包根放 `skills/` 目录，每个带 `SKILL.md` 的子目录一份；`apply` 里局部注入 `gwbSkills`，调 `register(new URL('../skills/', import.meta.url))`
+- 说明书插件扫描目录，登记表里每份记名字、描述、包名（取自调用方条目）、文件清单
+- 另一个插件带来同名说明书时，先登记的保留，后来的不登记、写 warn
+- agent 经 MCP 入口的 `run` 调 `skill.list`、`skill.read { name, file? }`；`skill.read` 只读清单里的文件，每次从磁盘读
+- 插件卸载时，它登记的说明书从表里撤掉
+</Diagram>
+
 ## 功能
 
 - **插件自己登记说明书**：插件在 `apply` 里把一个目录交给说明书插件，目录下每个带 `SKILL.md` 的子目录是一份说明书；插件卸载时它的说明书跟着撤掉

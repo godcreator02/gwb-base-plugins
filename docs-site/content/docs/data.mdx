@@ -7,6 +7,12 @@ description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目�
 
 插件要在磁盘上存自己的东西（JSON 文档、图片、日志），把 `gwbData` 写进 `inject`，拿到一个只属于自己那条条目的目录，不用自己拼路径、不用自己写原子写入。数据插件没有命令、没有说明书。
 
+<Diagram name="data-layout" title="数据插件按条目 id 给每条条目一个数据目录">
+- 同一个包 `@scope/gwb-notes` 在 `cordis.yml` 里有两条条目 `home:notes` 与 `home:notes-work`，各得一个目录 `<home>/data/notes/`、`<home>/data/notes-work/`
+- 插件经服务 `ctx.gwbData` 的 `dir`、`readDoc(doc)`、`writeDoc(doc, value)` 读写；数据插件从调用方条目算出目录，先核对 `.owner.json` 里记的包名再读写
+- 每份文档是目录里的 `<文档名>.json`；`writeDoc` 先写同目录的临时文件再改名覆盖，`readDoc` 没有这份或解析不了都回 `undefined`
+</Diagram>
+
 ## 功能
 
 - **每条条目一个数据目录**：`<home>/data/<条目 id 的末段>/`；同一个包在 `cordis.yml` 里配两条条目，各有一个目录

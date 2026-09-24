@@ -15,6 +15,21 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 ## 接口
 
+<Diagram name="cli-run" title="node 命令行工具的登记、调用与回执（分步）">
+- 登记方插件调 `ctx.gwbNodeCli.register({ name, entry, … })`，`entry` 是它随包发布的 js 的绝对路径；gwbNodeCli 同时用同一个名字调 `gwbCommands.register`，登记成总线命令
+- 页面、agent、别的插件经 `gwbCommands.run(name, args)` 调它；按次给的 `cwd` 不合规就不启动进程
+- gwbNodeCli 用 `process.execPath` 加 `ELECTRON_RUN_AS_NODE=1` 启动子进程，argv 是 `[entry, ...固定参数, ...追加参数]`，不经 shell
+- 缺省 60 秒时限，到时限用 `taskkill /T /F` 结束整个进程树；输出只留尾部 64,000 字节，超出时全量写进系统临时目录
+- 回执 `CliRunResult` 带 `ok`，命令总线原样返回给调用方
+</Diagram>
+
+<Diagram name="py-cli-run" title="python 命令行工具多出来的 venv 检查（分步）">
+- 登记方插件调 `ctx.gwbPyCli.register({ name, packageRoot, distName, version, command 或 module })`，同名登记成总线命令，顺带发起一次 venv 检查、不等它完成
+- 每次运行前检查三样：`<包根>/py/.venv` 在；`.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`。都对就跳过
+- 不对就运行 `uv sync --frozen --no-dev --inexact --project <包根>/py` 重建；uv 不在 PATH、失败或超过 300 秒时 venv 没就绪，运行抛错，经命令总线调用时变成失败回执
+- 就绪后运行 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，加 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`，回执形状和 node 命令行工具一样
+</Diagram>
+
 **gwb-node-cli 的服务与登记参数**：
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="57-74" */}

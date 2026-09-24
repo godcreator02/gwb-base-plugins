@@ -11,7 +11,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 - **开一个 MCP 入口**：`http://127.0.0.1:<端口>/mcp`，只收 POST，无状态：每个请求新建一个 MCP server 和一条 transport，响应结束就关
 - **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令；新装的插件不会多出新工具，它的命令经 `run` 调
-- **每次调用都现取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
+- **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
 - **要 token**：每个 home 一份，写在磁盘上、重启不换；另外检查 `Host` 与 `Origin`，三项都在处理请求之前检查，不通过就回 401 并写明原因
 - **default 固定用 2870 端口**：端口被占就不开入口，不换端口；其他 home 缺省用系统分配的端口
 - **把端口写进 home 的 `runtime.json`**：绑定成功后补上 `mcp` 一项，别的程序说出 home 名就能找到入口
@@ -24,6 +24,14 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 每条接缝上交换什么、各方保证什么，写在接缝页；本节只列 MCP 插件提供了哪些接口、定义在哪里。
 
 ### MCP 入口
+
+<Diagram name="mcp-request" title="MCP 客户端连 MCP 入口的一次请求（分步）">
+- 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
+- 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
+- token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
+- 通过的请求新建一个 McpServer 和一条 transport，登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
+- `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 交给命令总线的 `run()`；响应结束时 server 与 transport 一起关闭
+</Diagram>
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
@@ -39,6 +47,13 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 `instructions.md` 是每个会话的固定开销，测试检查它不超过 2000 字符、41 行（Claude Code 超过 2048 字符会不提示地截断），并且还写着「只有三个工具」与「不带参数就返回全部」这两句。
 
 ### 三个工具
+
+<Diagram name="mcp-tools" title="三个工具的内容从哪来、run 的回执怎么翻译（分步）">
+- `index`（无参数）：每次重新读取 `gwbCommands.list()`、`gwbSkills.list()` 与 `instructions.md`，返回说明书清单和按包名分组的命令名
+- `search`（`plugin?`、`prefix?`、`q?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage`
+- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`
+- `run` 的回执分三种形状：同时有 `stdout` 与 `exitCode` 的命令行工具回执只留六项；有 `ok`、`data`、`error` 以外的键的原样转成文本；标准回执失败时回「执行失败：…」并带 `isError`
+</Diagram>
 
 | 工具 | 参数 | 返回 | 接缝 |
 | --- | --- | --- | --- |

@@ -7,6 +7,14 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 插件要运行一个命令行工具时，启动进程、时限、结束整个进程树、截断输出、编码这几样最容易写错，而且写错了不当场报错。这个插件把它们收在一处；它自己不带要运行的工具，工具是登记它的插件自己编译出来、随包发布的 js。
 
+<Diagram name="cli-run" title="node 命令行工具的登记、调用与回执（分步）">
+- 登记方插件调 `ctx.gwbNodeCli.register({ name, entry, … })`，`entry` 是它随包发布的 js 的绝对路径；gwbNodeCli 同时用同一个名字调 `gwbCommands.register`，登记成总线命令
+- 页面、agent、别的插件经 `gwbCommands.run(name, args)` 调它；按次给的 `cwd` 不合规就不启动进程
+- gwbNodeCli 用 `process.execPath` 加 `ELECTRON_RUN_AS_NODE=1` 启动子进程，argv 是 `[entry, ...固定参数, ...追加参数]`，不经 shell
+- 缺省 60 秒时限，到时限用 `taskkill /T /F` 结束整个进程树；输出只留尾部 64,000 字节，超出时全量写进系统临时目录
+- 回执 `CliRunResult` 带 `ok`，命令总线原样返回给调用方
+</Diagram>
+
 ## 功能
 
 - **登记命令行工具**：插件给一个名字和要运行的 js 的绝对路径，拿回注销函数；插件卸载时自动注销，不用自己包 `ctx.effect`

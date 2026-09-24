@@ -61,6 +61,14 @@ export function apply(ctx: GwbContext) {
 
 ### 登记与注销的规则
 
+<Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
+- 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
+- 第 1 步：A 调 `ctx.gwbCommands.register`，表里 `mine.hello` 指向 A 的处理函数，写 info
+- 第 2 步：B 登记同名命令，后登记的生效，写 warn「后登记的生效：@scope/a → @scope/b」
+- 第 3 步：A 卸载，A 的 effect 执行注销函数；表里已经是 B 的记录，什么也不删
+- 第 4 步：B 卸载，B 的注销函数删掉这条命令
+</Diagram>
+
 - **注销跟着登记方走**：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在登记方的 `effect` 上，登记方卸载时命令自动注销，不用自己包 `ctx.effect`。返回的注销函数给要提前注销的场景用，调第二次什么也不做；登记方自己又包了一层 `ctx.effect` 也没关系，卸载时只注销一次
 - **`plugin` 写包名**（`@godcreator/gwb-xxx`），由登记方自己写，不从 `ctx.name` 读（那是 cordis 的追踪属性，没写 `inject` 时读它会抛错）。agent 按包名装卸、升级插件，MCP 入口的 `search {plugin}` 按它筛选命令。写成短名只告警，照常登记
 - **`description` 与 `usage` 分开写**：`description` 是一句话介绍，出现在 MCP 入口 `index` 返回的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的命令写「无参数」。都写进 `description` 的话，`index` 返回的清单会变得很长
@@ -72,6 +80,13 @@ export function apply(ctx: GwbContext) {
 {/* ref file="../plugins/commands/src/registry.ts" lines="37-56" */}
 
 ### 执行的规则与回执 `GwbResult`
+
+<Diagram name="command-run" title="一条命令从调用方到处理函数、回执原路返回（分步）">
+- 三类调用方：页面调 `window.gwb.command`，内核收下后原样交给 `run`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run`；别的插件直接调 `ctx.gwbCommands.run`
+- 命令总线按命令名查内存里的命令表，找不到回 `{ ok: false, error: '没有这条命令：<命令名>' }`
+- 找到就把参数原样交给登记方的处理函数：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
+- 回执沿原路回到调用方；成功写 info，失败写 warn
+</Diagram>
 
 - 回执只有两种形状：`{ ok: true, data }` 与 `{ ok: false, error }`
 - 处理函数自己返回了带 `ok` 的对象，原样返回，别的字段和 `ok` 在同一层（命令行运行插件的回执带 `stdout`、`exitCode` 等字段）；返回别的值，一律包成 `{ ok: true, data: 值 }`

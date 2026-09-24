@@ -7,6 +7,13 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 
 它和 [gwb-node-cli](/docs/node-cli) 是同一套运行办法（参数、工作目录、时限、输出截断、回执形状都一样），多出来的是 venv：检查 venv 在不在、对不对，不对就用 uv 重建。它自己不带 python 项目，python 项目在登记它的插件的包根下。
 
+<Diagram name="py-cli-run" title="python 命令行工具的 venv 检查、重建与运行（分步）">
+- 登记方插件调 `ctx.gwbPyCli.register({ name, packageRoot, distName, version, command 或 module })`，同名登记成总线命令，顺带发起一次 venv 检查、不等它完成
+- 每次运行前检查三样：`<包根>/py/.venv` 在；`.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`。都对就跳过
+- 不对就运行 `uv sync --frozen --no-dev --inexact --project <包根>/py` 重建；uv 不在 PATH、失败或超过 300 秒时 venv 没就绪，运行抛错，经命令总线调用时变成失败回执
+- 就绪后运行 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，加 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`，回执形状和 node 命令行工具一样
+</Diagram>
+
 ## 功能
 
 - **登记 python 命令行工具**：插件给名字、自己的包根、python 项目的名字与版本，以及要运行的入口点（`command`）或模块（`module`），二选一；插件卸载时自动注销

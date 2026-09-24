@@ -14,6 +14,13 @@ description: 连接数据、设置、说明书、node-cli、py-cli 五个插件�
 
 ## 接口
 
+<Diagram name="entry-identity" title="条目 id 与包名从 cordis.yml 经 loader 到五个插件">
+- `cordis.yml` 里一条条目写着 `id: hello` 与包名 `@scope/gwb-hello`；loader 加载它时，在这个插件的 `ctx.fiber.entry` 上放 `id: 'home:hello'` 与 `options.name: '@scope/gwb-hello'`
+- 数据插件用 `entryDirName` 把条目 id 算成目录 `<home>/data/hello/`，设置插件用 `entrySection` 算成分区 `hello`：只取末段，超过两段或有段不是 kebab-case 就抛错，两份算法靠约定一致
+- 说明书插件与 node、python 命令行工具插件只取包名，写进说明书与命令的 `plugin`；数据插件与设置插件也取包名记归属
+- 身份一律从调用方的 fiber 上取，取不到就抛错
+</Diagram>
+
 **身份从哪取**：这五个插件都是 cordis 的 `Service`。`Service` 的方法里 `this.ctx` 是调用方的上下文，`this.ctx.fiber.entry` 就是调用方在 `cordis.yml` 里的那条条目。`entry` 是 loader 放上去的，不在 cordis 的类型里，所以按运行时的形状取：
 
 {/* ref file="../plugins/data/src/index.ts" lines="61-74" */}
@@ -85,4 +92,4 @@ loader 与内核保证（内核仓的约定）：
 
 {/* has file="../plugins/settings/tests/paths.test.ts" text="超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区" */}
 
-从调用方 fiber 上取到的确实是调用方自己那条条目，只能在隔离 home 里实机验证（探针插件调用服务，看写出来的目录与分区是不是探针那条条目的）。
+从调用方 fiber 上取到的确实是调用方自己那条条目，只能在隔离 home 里实际运行验证（探针插件调用服务，看写出来的目录与分区是不是探针那条条目的）。

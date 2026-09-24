@@ -15,6 +15,14 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 ## 接口
 
+<Diagram name="owner-transfer" title="包名改了之后，归属怎么拒绝、怎么转移（分步）">
+- 两处归属记录：数据目录里的 `.owner.json`（`{ "pkg": "<包名>" }`）、`settings.json` 顶层 `$owners` 里的一项，键都是条目 id 的末段
+- 第 1 步：`@old/gwb-foo` 的条目 `home:foo` 第一次取数据目录、第一次 `define` 时，两处都记成 `@old/gwb-foo`
+- 第 2 步：同一个插件改名成 `@new/gwb-foo`，条目 id 还是 `foo`；数据插件与设置插件都抛错、不动数据，报错指向 `plugin-manager.transfer-owner`
+- 第 3 步：插件管理（devkit 仓）确认是同一个插件后，调两边的 `transferOwner('foo', '@new/gwb-foo')`，立刻写盘
+- 第 4 步：之后新包名放行、旧包名被拒；`owners()` 列出 `foo → @new/gwb-foo`
+</Diagram>
+
 **两个服务上的同名方法**：
 
 {/* ref file="../plugins/data/src/index.ts" lines="96-106" */}
@@ -86,4 +94,4 @@ interface OwnerBook {
 
 {/* has file="../plugins/settings/tests/registry.test.ts" text="过户之后新包名放行、旧包名拒" */}
 
-插件管理读归属、分配 id 的行为由 devkit 仓的测试保护；两边一起转移归属只能在隔离 home 里实机验证。
+插件管理读归属、分配 id 的行为由 devkit 仓的测试保护；两边一起转移归属只能在隔离 home 里实际运行验证。

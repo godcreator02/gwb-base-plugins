@@ -7,6 +7,13 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 
 插件声明「我有一项叫 `level` 的设置，标题是这个、类型是那个」，值写到哪由设置插件决定。一个 home 的全部设置在 `<home>/settings.json` 一份文件里，和 `cordis.yml` 在同一个目录；没有跨 home 的设置，要共享就复制文件。
 
+<Diagram name="settings-layout" title="settings.json 按条目分区，服务与命令各读写哪一块">
+- 右边是 `<home>/settings.json` 的顶层：`$owners`（分区名 → 包名）、每条条目一个分区（条目 `home:mcp` 的分区叫 `mcp`）、公共区 `*`
+- 插件经服务 `ctx.gwbSettings` 的 `define` / `get` / `set` / `delete` 只给 `key`，分区由设置插件从调用方条目算出
+- 别的插件 `get` 一项自己没声明的设置时读公共区，`shared: true` 的项在那里
+- 页面与 agent 经 `settings.all` / `get` / `set` / `delete` 四条命令按 `{ section, key }` 读写任意分区；`settings.all` 里 secret 项只给 `isSet` 与掩码，`settings.get` 回明文
+</Diagram>
+
 ## 功能
 
 - **插件声明设置项**：给 `key`（kebab-case）、`title`、`type`，可选 `shared`、`description`、`default`；插件卸载时声明自动撤销

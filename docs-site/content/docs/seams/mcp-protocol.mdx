@@ -15,6 +15,14 @@ MCP 插件的端口来自设置插件（`inject` 里有 `gwbSettings`，见[设�
 
 ## 接口
 
+<Diagram name="mcp-request" title="MCP 客户端连 MCP 入口的一次请求（分步）">
+- 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
+- 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
+- token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
+- 通过的请求新建一个 McpServer 和一条 transport，登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
+- `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 交给命令总线的 `run()`；响应结束时 server 与 transport 一起关闭
+</Diagram>
+
 **三个工具**，写死在 `registerTools` 里，没有运行时名单：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="118-163" */}
@@ -82,7 +90,7 @@ MCP 插件保证：
 MCP 客户端保证：
 - 每个请求带 `Authorization: Bearer <token>`，发到 `127.0.0.1` 或 `localhost` 加实际端口
 - 非 default home 的端口从 `runtime.json` 的 `mcp` 项或 `mcp.info` 取，读 `runtime.json` 时自己核对记录是否还有效（pid 是否还在）
-- 工作台重启、MCP 插件升级之后重连一次：MCP 连接不会自动接上中途才启动的服务
+- 工作台重启、MCP 插件升级之后重连一次：MCP 连接不会自动连上中途才启动的服务
 - `run` 结果带 `isError` 时照常读正文里的原因
 
 命令行客户端保证：

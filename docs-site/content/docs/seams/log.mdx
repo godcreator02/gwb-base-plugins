@@ -13,6 +13,14 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 ## 接口
 
+<Diagram name="log-flow" title="日志从三个来源到日志插件、页面与日志窗格（分步）">
+- 插件（`ctx.logger('<名字>')`）、内核（`kernel`、`loader`）、页面 console（内核转成 `renderer`）的日志都经 cordis 的 `ctx.logger` 汇成一条流
+- 流上有三个接收方：内核的 exporter 写 stderr 与 `<home>/gwb.log`；cordis 自带的缓冲 `ctx.logger.buffer` 留 info 及以上；日志插件的 exporter 收全部（debug 也收）
+- 日志插件加载时先从 `ctx.logger.buffer` 补历史，再注册自己的 exporter
+- 每条新日志编 `seq`、分来源，存进 2000 条的缓冲，经 `gwbKernel.emit` 推 `{ t: 'gwb-logger', line }` 给页面
+- 界面插件仓的日志窗格先用 `window.gwb.on` 订阅，再调 `logger.backlog` 取历史，两段按 `seq` 合并
+</Diagram>
+
 **事件记号与两条命令的名字**：
 
 {/* ref file="../plugins/logger/src/index.ts" lines="21-27" */}
@@ -89,4 +97,4 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 {/* has file="../plugins/logger/tests/source.test.ts" text="kernel 与 loader 是内核" */}
 
-窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。补读缓冲、推到页面、`logger.backlog` 与窗格按 `seq` 接上，只能在隔离 home 里实际运行验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。
+窗格那边认条目形状的规则由界面插件仓 baseui 的 `entries.test.ts` 保护。补读缓冲、推到页面、`logger.backlog` 与窗格按 `seq` 拼接，只能在隔离 home 里实际运行验证：日志插件加载后自己写的那条 info 日志出现在窗格里，来源是插件、名字是 `gwb-logger`。

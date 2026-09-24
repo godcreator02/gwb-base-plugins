@@ -7,10 +7,34 @@
  * 这套组件复制自内核仓文档站，各站各有一份。
  */
 import type { ReactNode } from 'react'
+import { CliRun } from './diagrams/cli-run'
+import { CommandRun } from './diagrams/command-run'
+import { CommandUnregister } from './diagrams/command-unregister'
+import { DataLayout } from './diagrams/data-layout'
+import { EntryIdentity } from './diagrams/entry-identity'
+import { LogFlow } from './diagrams/log-flow'
+import { McpRequest } from './diagrams/mcp-request'
+import { McpTools } from './diagrams/mcp-tools'
+import { OwnerTransfer } from './diagrams/owner-transfer'
+import { PyCliRun } from './diagrams/py-cli-run'
 import { SeamMap } from './diagrams/seam-map'
+import { SettingsLayout } from './diagrams/settings-layout'
+import { SkillsFlow } from './diagrams/skills-flow'
 
 const drawings: Record<string, () => ReactNode> = {
   'seam-map': () => <SeamMap />,
+  'command-run': () => <CommandRun />,
+  'command-unregister': () => <CommandUnregister />,
+  'mcp-request': () => <McpRequest />,
+  'mcp-tools': () => <McpTools />,
+  'skills-flow': () => <SkillsFlow />,
+  'settings-layout': () => <SettingsLayout />,
+  'data-layout': () => <DataLayout />,
+  'owner-transfer': () => <OwnerTransfer />,
+  'entry-identity': () => <EntryIdentity />,
+  'log-flow': () => <LogFlow />,
+  'cli-run': () => <CliRun />,
+  'py-cli-run': () => <PyCliRun />,
 }
 
 export function Diagram({ name, title, children }: { name: string; title?: string; children?: ReactNode }) {

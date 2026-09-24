@@ -77,3 +77,18 @@ html {
   border-color: var(--diagram-a);
   color: var(--diagram-a);
 }
+/* 分步动画里这一步正在走的连线：虚线沿箭头方向移动 */
+.diagram-flow {
+  stroke-dasharray: 6 4;
+  animation: diagram-flow 0.9s linear infinite;
+}
+@keyframes diagram-flow {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .diagram-flow {
+    animation: none;
+  }
+}
