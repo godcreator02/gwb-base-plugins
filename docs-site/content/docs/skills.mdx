@@ -1,82 +1,123 @@
 ---
 title: gwb-skills · 说明书
-description: gwb-skills 收集插件自带的说明书（给 agent 读的 SKILL.md），提供服务 ctx.gwbSkills 与命令 skill.list、skill.read；本页讲它的功能、接口与所属接缝、依赖，以及哪些事不归它做
+description: 说明书插件收集插件自带的说明书（给 agent 读的 SKILL.md 目录）：插件把 skills/ 目录交给它登记，名字全局唯一、先登记的保留，正文每次从磁盘读、只读登记时扫出的文件；登记 skill.list、skill.read 两条命令。本页是它的模块页：七段固定块
 ---
 
-**本页回答**：说明书插件有哪些功能；插件和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归 MCP 入口或登记说明书的插件。包名 `@godcreator/gwb-skills`，源码目录 `plugins/skills/src`，入口文件 `index.ts`。
+**本页回答**：说明书插件 `@godcreator/gwb-skills` 管什么、刻意不知道什么；一份说明书在它的表里是什么形状；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。带说明书的插件要遵守什么写在接缝页[说明书](/docs/seams/skills)。
 
-说明书是给 agent 读的文档：一个目录，里面必有 `SKILL.md`，可以带 `references/` 之类的附件，形状照 Anthropic Agent Skills。agent 经 MCP 入口只拿得到命令名与用法，多步流程、调用顺序、遇到过的问题写在说明书里。
+## 管什么
 
-<Diagram name="skills-flow" title="插件登记说明书、agent 读正文、插件卸载时撤掉（分步）">
-- 带说明书的插件在包根放 `skills/` 目录，每个带 `SKILL.md` 的子目录一份；`apply` 里局部注入 `gwbSkills`，调 `register(new URL('../skills/', import.meta.url))`
-- 说明书插件扫描目录，登记表里每份记名字、描述、包名（取自调用方条目）、文件清单
-- 另一个插件带来同名说明书时，先登记的保留，后来的不登记、写 warn
-- agent 经 MCP 入口的 `run` 调 `skill.list`、`skill.read { name, file? }`；`skill.read` 只读清单里的文件，每次从磁盘读
-- 插件卸载时，它登记的说明书从表里撤掉
-</Diagram>
+说明书是给 agent 读的文档：一个目录，里面必有 `SKILL.md`，可以带附件。agent 经 MCP 入口只拿得到命令名与用法，多步流程、调用顺序、遇到过的问题写在说明书里。说明书插件管的是**一张按说明书名索引的登记表**，外加读正文的那条路。
 
-## 功能
+**插件自己把目录交进来。** 带说明书的插件在 `apply` 里调 `ctx.gwbSkills.register(dir)`，`dir` 下每个有 `SKILL.md` 的子目录是一份。服务从调用方条目认出包名，扫目录，把扫到的逐份放进表；注销登记在调用方的 `effect` 上，调用方卸载时它的说明书跟着撤掉：
 
-- **插件自己登记说明书**：插件在 `apply` 里把一个目录交给说明书插件，目录下每个带 `SKILL.md` 的子目录是一份说明书；插件卸载时它的说明书跟着撤掉，撤的时候只删表里仍是它登记的那条，别的插件后来登记的同名说明书不受影响
-- **列表里只有正在运行的插件的说明书**：不扫 `node_modules`、不看条目启用停用，不会出现「说明书在、它讲的命令不在」
-- **说明书名全局唯一**：同名的第二份不登记，写一条 warn 说明名字被哪个插件占着
-- **正文每次都从磁盘读**：改了 `SKILL.md` 的正文立刻生效；加删文件、改 frontmatter 要重新加载那个插件，文件清单在登记那一刻就定了
-- **只读登记过的文件**：`skill.read` 按名字查表，文件名必须在登记时扫出的清单里，带 `../` 的参数读不到插件目录以外的文件；「没有这份说明书」与「没有这个文件」回同一句话
-- **扫描有上限、超出就报**：只收 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个文件 512KB，往下三层目录，一份说明书最多 64 个文件；超出的、读不了的逐条写 warn，不悄悄丢掉
-- **frontmatter 取不到 `description` 也报**：只认单行的 `key: value`，折叠写法（`>-`、`|`）取不到值；没有描述照样登记，同时写一条 warn
+{/* ref file="../plugins/skills/src/index.ts" lines="116-132" */}
 
-## 接口
+**名字全局唯一，先登记的保留。** 同名的第二份不登记，写一条 warn 说明名字被哪个包占着；撤的时候只删表里仍是自己那条记录的，别的插件后来登记的同名说明书不受影响：
 
-每条接缝上交换什么、各方保证什么，写在接缝页；本节只列说明书插件提供了哪些接口、定义在哪里。
+{/* ref file="../plugins/skills/src/index.ts" lines="94-114" */}
 
-| 接口 | 做什么 | 接缝 |
+这一点和命令总线的「后登记的生效」相反：说明书被静默换掉的话，agent 照着另一个插件的说明书做，症状只是做错了，查不到原因。
+
+**扫描有上限、超出就报。** 只收 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个文件 512KB，往下三层，一份最多 64 个文件；超限的、读不了的、缺 `SKILL.md` 的都记成问题，由服务按调用方包名逐条写 warn，不悄悄丢掉：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="6-13" */}
+
+**frontmatter 手写逐行解析。** 只认单行 `key: value`，在第一个冒号处切开；折叠块（`>-`、`|`）取不到值。`name` 缺了用目录名，`description` 缺了照样收、同时报一条问题——没有描述的说明书 agent 不会去读，比整份不收好查：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="53-75" */}
+
+**正文每次从磁盘读，只读登记过的文件。** `read(name, file)` 先按名字查表，再看文件名在不在登记时扫出的清单里，不做路径拼接，所以参数里带 `../` 读不到目录以外的东西。改了 `SKILL.md` 正文立刻生效；增删文件、改 frontmatter 要重新加载那个插件，文件清单在登记那一刻就定了：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="138-149" */}
+
+**两条命令**：`skill.list`、`skill.read`，在 `Service.init` 里登记到命令总线；`skill.read` 读不到时不区分「没这份说明书」与「没这个文件」，分开报等于告诉外面哪些名字存在：
+
+{/* ref file="../plugins/skills/src/index.ts" lines="56-82" */}
+
+## 不知道什么
+
+**不认识 MCP。** 说明书清单怎么进 MCP 入口 `index` 的返回、附件清单给不给 agent，都是 [MCP 入口](/docs/mcp)决定的；它局部注入 `gwbSkills`、只调 `list()`。
+
+**不扫 `node_modules`、不看条目树。** 表里只有插件主动交来的目录，所以只有正在运行的插件的说明书，不会出现「说明书在、它讲的命令不在」。
+
+**不检查正文。** 正文写什么、提到的命令存不存在、附件在正文里提没提到，由写说明书的插件负责。
+
+**扫描那一层不知道 cordis。** `collect.ts` 不碰上下文、不写日志，扫到的问题放进返回值交给服务写：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="4-4" */}
+
+**自己没有说明书。** 包根没有 `skills/`，`package.json` 的 `files` 里也没有它：
+
+{/* ref file="../plugins/skills/package.json" lines="18-21" */}
+
+## 数据结构
+
+交给外面的一份说明书：名字、描述、包名、文件清单，不带本机路径；`SKILL.md` 恒在清单第一位，路径是相对路径、用 `/` 分隔：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="15-25" */}
+
+表里存的是它加上说明书目录的绝对路径，绝对路径只留在本插件里，`read` 用它拼出文件位置：
+
+{/* ref file="../plugins/skills/src/collect.ts" lines="34-38" */}
+
+表是 `Map<说明书名, CollectedSkill>`，只在内存里，插件重新加载时各插件重新登记。
+
+## 提供的接口
+
+| 接口 | 做什么 | 契约在 |
 | --- | --- | --- |
-| 服务 `ctx.gwbSkills` 的 `register(dir)` | 登记一个装说明书的目录（字符串路径或 `URL`），返回注销函数；注销也自动登记在调用方的 `ctx.effect` 上，不用自己包 | [4 说明书](/docs/seams/skills) |
-| 服务 `ctx.gwbSkills` 的 `list()`、`read(name, file?)` | 列出全部说明书；读某份说明书里的一个文件，缺省 `SKILL.md`，读不到回 `undefined`；类型 `GwbSkillsApi`、`GwbSkill` 由本包导出 | [4 说明书](/docs/seams/skills) |
-| 命令 `skill.list` | 无参数，返回 `{ count, skills }`，每份带名字、描述、所属插件的包名、文件清单 | [1 命令总线](/docs/seams/bus) |
-| 命令 `skill.read` | 参数 `{ name, file? }`，返回 `{ name, file, text }`；agent 经 MCP 入口的 `run` 调它读正文 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 服务 `ctx.gwbSkills` 的 `register(dir)` | 登记一个装说明书的目录（字符串路径或 `URL`），返回注销函数；调用方卸载时自动注销 | [4 说明书](/docs/seams/skills) |
+| 服务 `ctx.gwbSkills` 的 `list()`、`read(name, file?)` | 列出全部说明书；读某份里的一个文件，缺省 `SKILL.md`，读不到回 `undefined` | [4 说明书](/docs/seams/skills) |
+| 命令 `skill.list` | 无参数，返回 `{ count, skills }` | [4 说明书](/docs/seams/skills) |
+| 命令 `skill.read` | `{ name, file? }`，返回 `{ name, file, text }`；agent 经 MCP 入口的 `run` 调它读正文 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 导出的类型 `GwbSkillsApi`、`GwbSkill`，常量 `SKILL_ENTRY`、`SKILL_LIST_COMMAND`、`SKILL_READ_COMMAND` | `import type {} from '@godcreator/gwb-skills'` 让 `ctx.gwbSkills` 有类型 | [4 说明书](/docs/seams/skills) |
 
-{/* has file="../plugins/skills/src/index.ts" text="export interface GwbSkillsApi {" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="19-30" */}
 
-{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_LIST_COMMAND = 'skill.list'" */}
+## 依赖的接口
 
-{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_READ_COMMAND = 'skill.read'" */}
+| 接口 | 用来做什么 | 生产实现 | 测试实现 |
+| --- | --- | --- | --- |
+| 命令总线服务 `gwbCommands` 的 `register`（服务类上的 `static inject`） | 登记 `skill.list`、`skill.read`；缺了服务 `gwbSkills` 不提供，插件一直等待 | [gwb-commands](/docs/commands) | 只记登记与注销的替身，按名字取出处理函数直接调 |
+| cordis 的 `Service`、`effect`、`logger` | 提供服务；方法里的 `this.ctx` 是调用方的上下文；注销登记在调用方的 `effect` 上 | 内核带的 cordis（peer `^4.0.0-rc.10`） | dev 里的 `cordis` 4.0.0-rc.10 |
+| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名，写进每份说明书的 `plugin`；取不到时 `register` 抛错 | 内核带的 cordis loader | 调用方插件在 `apply` 里自己往 fiber 上放一个 `entry` |
+| 文件系统 | 登记时同步扫目录，读正文时异步读文件 | `node:fs` | 临时目录里的真文件 |
+| 词汇表包的 `GwbContext`、`GwbResult` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | 同一份 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
 
-{/* has file="../plugins/skills/src/index.ts" text="if (!found.skill.files.includes(file)) return undefined" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="36-44" */}
 
-插件登记说明书的写法，用局部注入，没装说明书插件的 home 里这个插件照常加载：
+`@godcreator/gwb-commands` 写在 dev 里（`workspace:*`），代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。
 
-```ts
-ctx.inject(['gwbSkills'], (scoped) => {
-  scoped.effect(() => scoped.gwbSkills.register(new URL('../skills/', import.meta.url)))
-})
-```
+## 怎么单独测
 
-写 `'../skills/'` 是因为构建产物在 `dist/` 下，而说明书目录在包根。**这个目录要列进 `package.json` 的 `files`**，漏了包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」。
+三个测试文件，都在 `plugins/skills/tests/`：
 
-{/* has file="../plugins/node-cli/package.json" text="skills" */}
+**`collect.test.ts` 测扫描与 frontmatter**：在系统临时目录里造一棵真的目录树再扫，扫描本身就是这个文件的全部工作，拿替身测等于没测。证明的是：frontmatter 只在第一个冒号切开、成对引号剥掉、折叠块取不到值；`SKILL.md` 恒在第一位；非文本不收；缺 `SKILL.md` 的目录不算一份并报一句；缺 `description` 照收并报一句；只看一层子目录。
 
-**登记方的身份不用自己报**：`register` 没有「你是谁」这个参数，服务从调用方上下文的 `fiber.entry.options.name` 认出包名，插件没法用别人的包名登记说明书。
+{/* ref file="../plugins/skills/tests/collect.test.ts" lines="7-11" */}
 
-**说明书名**：frontmatter 写了 `name` 就用它，没写用目录名。
+**`service.test.ts` 测服务这一层**：真 cordis 上下文，命令总线用只记登记的替身；调用方插件在 `apply` 里往自己的 fiber 上放一个 `entry`，模拟 loader：
 
-## 依赖
+{/* ref file="../plugins/skills/tests/service.test.ts" lines="62-75" */}
 
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 登记 `skill.list`、`skill.read` | 服务 `gwbSkills` 不提供，插件一直等待 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
-| loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
-| 文件系统 | 登记时扫目录，读正文 | 目录读不了时写 warn、这个目录一份都不登记；正文读不了回 `undefined` 并写 warn |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
+证明的是：两条命令登记在本包包名下、说明书插件卸载时注销；`plugin` 取自调用方条目，字符串路径与 `file:` URL 都认；正文每次现读；清单外的文件与带 `..` 的路径读不到；同名先到先得并写 warn；注销函数不删别人后来登记的同名说明书；取不到调用方身份时 `register` 抛错；两条命令的回执形状。
 
-`@godcreator/gwb-commands` 写在 devDependencies 里：代码只 `import type {}` 它，为的是让 `ctx.gwbCommands` 有类型。frontmatter 是手写的逐行解析，没有 YAML 库。
+**`artifact.test.ts` 查构建产物**，相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`，没构建时整组跳过。
 
-## 不做的事
+loader 真的把调用方的包名放在 fiber 上，只能在隔离 home 里验证。
 
-- **不认识 MCP**：说明书清单进 MCP 入口 `index` 的返回、附件清单不给 agent，都是 [MCP 入口](/docs/mcp)的决定；它局部注入 `gwbSkills` 取 `list()`
-- **不扫 `node_modules`、不找没登记的说明书**：列表里只有插件主动登记的
-- **不检查正文**：正文写什么、附件在正文里提没提到，由写说明书的插件负责
-- **不支持多行 frontmatter**：`description` 要写成一行
-- **没有别的出口**：服务的 `read` 之外，agent 读正文只经 `skill.read`
+## 代码地图
+
+**在哪**：`plugins/skills/`。
+
+{/* tree dir="../plugins/skills/src" depth="1" */}
+
+{/* tree dir="../plugins/skills/tests" depth="1" */}
+
+**先读** `src/collect.ts` 顶上的常量与 `GwbSkill`：一份说明书收什么、交出去是什么形状都在那里。
+
+**读序**：`collect.ts` → `index.ts`。`index.ts` 调 `collectSkills` 拿到扫描结果与问题清单，再做登记表、身份、命令、读正文；`collect.ts` 不依赖 `index.ts`。
+
+**可跳过**：`dist/`（构建产物）。

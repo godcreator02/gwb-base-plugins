@@ -1,132 +1,161 @@
 ---
 title: gwb-mcp · MCP 入口
-description: gwb-mcp 把命令总线提供给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、三条命令、写进 home 的文件、端口设置）、依赖，以及哪些事不归它做
+description: MCP 插件是工作台唯一的对外入口：自己在 127.0.0.1 上开一个无状态 streamable HTTP 端点，工具固定为 index、search、run，每个请求先过 token、Host、Origin 三项检查；default home 固定 2870 端口、被占就不开。它不提供服务，命令表与说明书清单每次调用时现取。本页是它的模块页：七段固定块
 ---
 
-**本页回答**：MCP 插件有哪些功能；agent、客户端配置和别的程序经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归命令总线或别的插件。包名 `@godcreator/gwb-mcp`，源码目录 `plugins/mcp/src`，入口文件 `index.ts`。
+**本页回答**：MCP 插件 `@godcreator/gwb-mcp` 管什么、刻意不知道什么；它在内存和磁盘上各记着什么；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。HTTP 与鉴权的约定写在接缝页[MCP 协议](/docs/seams/mcp-protocol)，三个工具的内容从哪来、回执怎么翻译写在[命令表开给 agent](/docs/seams/agent-surface)。
 
-MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一种。它不提供服务，自己启动 `node:http`：页面走内核的 IPC，要真的 HTTP 的只有外部 agent，这个 HTTP 服务只有它一个使用方；出现第二个要开 HTTP 端口的插件时，再把它拆出去。
+## 管什么
 
-## 功能
+**一个只给外部 agent 用的 HTTP 端点。** 页面走内核的 IPC，要真的 HTTP 的只有外部 agent，所以这个插件不提供服务，在 `apply` 里自己用 `node:http` 开端点。`apply` 就是整个插件的装配顺序：取 home 名与端口、取 token、跟踪说明书插件、生成三个工具的处理函数、开 HTTP 服务、登记三条命令、卸载时关服务：
 
-- **开一个 MCP 入口**：`http://127.0.0.1:<端口>/mcp`，只收 POST，无状态：每个请求新建一个 MCP server 和一条 transport，响应结束就关闭
-- **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令；新装的插件不会多出新工具，它的命令经 `run` 调
-- **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
-- **要 token**：每个 home 一份，写在磁盘上、重启不换；另外检查 `Host` 与 `Origin`，三项都在处理请求之前检查，不通过就回 401 并写明原因
-- **default 固定用 2870 端口**：端口被占就不开入口，不换端口；其他 home 缺省用系统分配的端口
-- **把端口写进 home 的 `runtime.json`**：绑定成功后补上 `mcp` 一项，别的程序说出 home 名就能找到入口
-- **每次 agent 调命令都写一行日志**：成功写 info，失败写 warn 并带原因
-- **连接信息与 token 用命令取**：`mcp.info`、`mcp.token`；另带一个零依赖的命令行客户端，没有 MCP 客户端的环境也能调
-- **带一份说明书 `mcp`**：连接配置、为什么只有三个工具、工作台没启动时怎么办
+{/* ref file="../plugins/mcp/src/index.ts" lines="421-452" */}
 
-## 接口
+**三个工具，写死在 `registerTools` 里。** `index` 给全部说明书与按包名分组的命令名，`search` 按条件给命令用法，`run` 按名字调任何命令。MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里，所以工具以后也不增加（轨迹卡[三个工具](/trajectory/2026-09-14-three-tool-face)、[MCP 复位](/trajectory/2026-09-14-mcp-returns)）。处理函数每次调用都从命令总线与说明书插件现取清单：
 
-每条接缝上交换什么、各方保证什么，写在接缝页；本节只列 MCP 插件提供了哪些接口、定义在哪里。
+{/* ref file="../plugins/mcp/src/index.ts" lines="205-228" */}
 
-### MCP 入口
+`run` 的回执要翻译成 MCP 工具结果：命令失败回带 `isError` 的文本，不是协议错误；命令行工具的回执与处理函数自己返回的带 `ok` 的对象原样转成文本。翻译规则在 `src/tools.ts`，逐条写在[命令表开给 agent](/docs/seams/agent-surface)。
 
-<Diagram name="mcp-request" title="MCP 客户端连 MCP 入口的一次请求（分步）">
-- 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
-- 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
-- token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
-- 通过的请求新建一个 McpServer 和一条 transport，登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
-- `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 交给命令总线的 `run()`；响应结束时 server 与 transport 一起关闭
-</Diagram>
+**每个请求新建一个 server 与一条 transport，随响应关闭。** 无状态：没有会话，也就发不出清单变更通知。构造 server 时声明 `tools.listChanged: false`，SDK 的 `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`，实际从不发通知：
 
-| 接口 | 做什么 | 接缝 |
+{/* ref file="../plugins/mcp/src/index.ts" lines="125-135" */}
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="230-252" */}
+
+**请求在派发之前过三项检查**：token、Host、Origin，任何一项不过回 401 并写一条 warn。token 每个 home 一份，存在 `<home>/mcp/secret.json`，重启不换；凭据文件取不出来时入口照开、所有请求一律 401，不退回成不检查：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="254-274" */}
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="162-179" */}
+
+**端口按 home 名定。** 端口是本插件自己声明的设置项 `port`，缺省按 home 名给：default 固定 2870，被占就不开入口、不换端口；其他 home 缺省由系统分配，显式给了端口而被占时改用系统分配的端口：
+
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" */}
+
+default 被占时不换端口，是因为连着 default 的 agent 会话把 `http://127.0.0.1:2870/mcp` 写进了自己的配置：一个测试 home 先启动占住 2870、default 换到别的端口的话，会话连上的是那个测试 home，命令、数据、说明书全是另一套，两边都不报错；不开入口的话马上能看出来。
+
+**绑定成功后把端口写进 home 的 `runtime.json`**：读出整份、只改 `mcp` 一项、写回，内核写的其余字段原样保留；写失败只记 warn，入口照常服务：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="304-315" */}
+
+**三条命令**：`mcp.info` 回连接信息与可以照抄进客户端配置的片段，`mcp.token` 取当前 token 或换一份新的，`mcp.client` 是包里 `bin/client.mjs` 经 node 命令行运行插件登记成的命令。两条凭据命令的回执带明文 token，会进调用方的会话记录，这一点写在 `usage` 里。
+
+**每次 agent 调命令都写一行日志**：命令总线的日志里看不出是 agent 调的，这里补一行，成功写 info，失败写 warn 并带原因：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="192-203" */}
+
+**initialize 的 `instructions` 是包根 `instructions.md` 的全文**，模块加载时读一次；`index` 的返回里再带一份，给不把 initialize 里的 instructions 交给模型的客户端。它是每个会话的固定开销，测试检查它不超过 2000 字符、41 行（Claude Code 超过 2048 字符会不提示地截断），并且「只有三个工具」「不带参数就返回全部」两句还在：
+
+{/* ref file="../plugins/mcp/tests/server.test.ts" lines="86-93" */}
+
+**带一份说明书 `mcp`**，放在包根 `skills/mcp/`，说明书插件在时交给它登记。
+
+## 不知道什么
+
+**不 import 别的插件的运行时代码。** 命令总线、设置、说明书、node 命令行运行插件都只 `import type {}`，为的是让 `ctx` 上的服务有类型；构建产物是一个打包好的 `dist/index.js`，里面的包名 import 只有 node 内置模块：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="11-15" */}
+
+**不认识命令行运行插件的回执类型。** 它按键名认出这种回执，只声明用得到的字段，不依赖 node-cli、py-cli 两个包；那边改了键名，这边的类型检查发现不了（写在[命令表开给 agent](/docs/seams/agent-surface)的「靠约定」里）：
+
+{/* ref file="../plugins/mcp/src/tools.ts" lines="38-53" */}
+
+**不知道谁在调、不分命令权限。** 本机拿到 token 的进程能调全部命令，包括往 home 里装插件；装插件等于授权，插件在主进程里没有沙箱。「哪些事先问人」只写进 `instructions.md`，不做成机制。
+
+**不知道装了哪些插件。** `index` 里只有说明书与命令；装了哪些插件（包括没有命令的界面插件）由插件管理的 `plugin-manager.list` 回答。
+
+**不替客户端写配置、不管客户端的超时。** `mcp.info`、`mcp.token` 只给片段；`run` 一直等到命令返回，超时在客户端配（`mcp.client` 用 `--timeout`）。
+
+**不对本机以外开放。** 只绑 127.0.0.1，不提供 HTTPS：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="276-289" */}
+
+## 数据结构
+
+`apply` 里各部分共用、会变的四样：当前 token 与凭据文件位置（`mcp.token` 换了新 token 要写回这里，下一个请求就按新的检查）、实际监听的端口、说明书服务、监听失败的原因：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="137-147" */}
+
+端口的决定结果是「端口 + 被占时能不能换」两项：
+
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="14-19" */}
+
+`index` 的返回：home 名、本插件版本、`instructions.md` 全文、说明书清单、按包名分组的命令名、一句下一步去哪查的提示：
+
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="47-60" */}
+
+磁盘上两份文件：`<home>/mcp/secret.json` 是 `{ "token": "…" }`，32 字节随机数的 base64url，两格缩进、末尾一个换行；`<home>/runtime.json` 里本插件那一项是 `{ port, url }`：
+
+{/* ref file="../plugins/mcp/src/runtime.ts" lines="10-14" */}
+
+客户端配置片段的形状照 Claude Code 的 `.mcp.json`，键是 `gwb`：
+
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-64" */}
+
+## 提供的接口
+
+| 接口 | 做什么 | 契约在 |
 | --- | --- | --- |
-| 端点 `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP；别的路径回 404，非 POST 回 405；构造 server 时声明 `tools.listChanged: false`，但 SDK 的 `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`，实际从不发清单变更通知 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| 请求头 `Authorization: Bearer <token>` | 也认只写 token 本身的写法；缺了或对不上回 401 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| 请求头 `Host`、`Origin` | `Host` 必须是 `127.0.0.1:<端口>` 或 `localhost:<端口>`；带了 `Origin` 就必须是这两个地址的 `http://` 形式，`null` 不认；不带 `Origin` 的非浏览器客户端照常放行 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| initialize 返回的 `instructions` | 包根 `instructions.md` 的全文，加载时读一次 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 端点 `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP；请求头 `Authorization: Bearer <token>`，Host、Origin 只认本机回环地址；别的路径 404，非 POST 405 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| initialize 返回的 `instructions` | 包根 `instructions.md` 全文 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 工具 `index`、`search`、`run` | 说明书与命令名清单；按 `plugin`、`prefix`、`q` 筛选、带用法；按名字调命令 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 命令 `mcp.info`、`mcp.token` | 连接信息与配置片段；取当前 token 或 `{"rotate":true}` 换一份 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.client` | `bin/client.mjs` 登记成的 node 命令行工具，参数 `{"args":[…]}` | [9 命令行工具](/docs/seams/cli) |
+| 文件 `<home>/mcp/secret.json`、`<home>/runtime.json` 的 `mcp` 项 | token；实际端口与地址，别的程序说出 home 名就能找到入口 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 设置项 `port`（本插件自己的设置分区） | 缺省 default 2870、其他 home 0；改了要重启这个 home 才生效 | [5 设置](/docs/seams/settings) |
+| 说明书 `mcp` | 包根 `skills/mcp/`：连接配置、为什么只有三个工具、工作台没启动时怎么办 | [4 说明书](/docs/seams/skills) |
 
-{/* has file="../plugins/mcp/src/index.ts" text="const transport = new StreamableHTTPServerTransport({})" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="83-123" */}
 
-{/* has file="../plugins/mcp/src/auth.ts" text="export function gateRequest(input: {" */}
+## 依赖的接口
 
-`instructions.md` 是每个会话的固定开销，测试检查它不超过 2000 字符、41 行（Claude Code 超过 2048 字符会不提示地截断），并且还写着「只有三个工具」与「不带参数就返回全部」这两句。
-
-### 三个工具
-
-<Diagram name="mcp-tools" title="三个工具的内容从哪来、run 的回执怎么翻译（分步）">
-- `index`（无参数）：每次重新读取 `gwbCommands.list()`、`gwbSkills.list()` 与 `instructions.md`，返回说明书清单和按包名分组的命令名
-- `search`（`plugin?`、`prefix?`、`q?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage`
-- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`，带上 `{ via: 'mcp' }`
-- `run` 的回执分三种形状：同时有 `stdout` 与 `exitCode` 的命令行工具回执只留六项；有 `ok`、`data`、`error` 以外的键的原样转成文本；标准回执失败时回「执行失败：…」并带 `isError`
-</Diagram>
-
-| 工具 | 参数 | 返回 | 接缝 |
+| 接口 | 用来做什么 | 生产实现 | 测试实现 |
 | --- | --- | --- | --- |
-| `index` | 无 | `home`（home 名）、`version`（本插件的版本）、`instructions`、`skills`（每份说明书的名字、所属插件、描述，描述超过 200 字才截断）、`commands`（按插件包名分组、只有命令名）、`hint`（下一步去哪查） | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（在名字、一句话介绍、用法里找子串，不分大小写） | 匹配的命令，每条带 `usage`；匹配的说明书；只给 `prefix` 时说明书只回名字与插件；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| `run` | `command`、`args?` | 命令的回执转成文本；命令失败（不存在、参数不对）回 `isError` 的文本，不是协议错误 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-
-{/* ref file="../plugins/mcp/src/index.ts" lines="68-123" */}
-
-三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。测试用内存传输连一对真的 server 与 client，`tools/list` 必须恰好是这三个。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
-
-`run` 的参数形状不在工具的 schema 里（`args` 是 `z.unknown()`），在那条命令的 `usage` 里，命令自己校验。有的客户端把对象参数序列化成 JSON 字符串再发，`run` 收到字符串先试着 `JSON.parse`，解析成功用结果，失败原样交给命令。回执的转换：
-
-- 普通回执 `{ ok, data }` 转成 JSON 文本；`ok` 为 `false` 时回 `isError` 的文本 `执行失败：<原因>`
-- 回执除了 `ok`、`data`、`error` 还有别的字段（处理函数自己返回的带 `ok` 的对象），原样转成 JSON 文本
-- 命令行运行插件的回执只留 `ok`、`exitCode`、`timedOut`、`durationMs`、`stdout`、`stderr` 六项
-
-{/* ref file="../plugins/mcp/src/tools.ts" lines="16-36" */}
-
-### 命令
-
-| 命令 | 做什么 | 接缝 |
-| --- | --- | --- |
-| `mcp.info` | 无参数，返回 `{ url, port, mcpServers, auth }`：`mcpServers` 是可以照抄进客户端配置的片段，含 `type`、`url` 与请求头 `headers: { Authorization: 'Bearer <token>' }`，token 是当前那份，与 `mcp.token` 取的是同一个，只读不换；`auth` 写明 token 存在哪个文件、怎么换。入口没开或凭据文件取不出来时回失败并写明原因。**回执里是明文 token，会进调用方的会话记录** | [1 命令总线](/docs/seams/bus) |
-| `mcp.token` | 不给参数返回当前 token；`{"rotate":true}` 换一份新的，新 token 立即生效，旧客户端从此 401。返回 `{ token, file, rotated, mcpServers }`，`mcpServers` 与 `mcp.info` 的片段形状相同。**回执里是明文 token，会进调用方的会话记录** | [1 命令总线](/docs/seams/bus) |
-| `mcp.client` | 包里 `bin/client.mjs` 登记成的 node 命令行工具：`{"args":["index"]}`、`["search", "<JSON 条件>"]`、`["run", "<命令名>", "<JSON 参数>"]`。地址取 `--url`、环境变量 `GWB_MCP_URL`，缺省 default 的 2870；token 取 `--token`、环境变量 `GWB_MCP_TOKEN`，缺省读 default home 的 token 文件；失败时退出码 1 | [9 命令行工具](/docs/seams/cli) |
-
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'," */}
-
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.token'," */}
-
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.client'," */}
-
-### 写进 home 的文件与设置
-
-| 接口 | 做什么 | 接缝 |
-| --- | --- | --- |
-| `<home>/mcp/secret.json` | `{ "token": "<32 字节随机数的 base64url>" }`；没有就生成；内容认不出时先改名成 `secret.json.broken-<时间戳>` 留着，再生成新的；取不出来时入口照开，所有请求一律 401 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| `<home>/runtime.json` 的 `mcp` 项 | `{ port, url }`；绑定成功后读出整份、改自己这一项、写回，内核写的其他项原样保留；没绑定成功不写，写失败只记 warn，进程退出不删；不做原子写：读的一方本来就把读不出当成没有，内核下次启动会整份重写，为一份辅助记录不值得 | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| 设置 `port`（数字） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效，入口在加载时打开 | [5 设置](/docs/seams/settings) |
-| 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
-
-{/* has file="../plugins/mcp/src/auth.ts" text="export const SECRET_FILE = 'secret.json'" */}
-
-{/* has file="../plugins/mcp/src/runtime.ts" text="export const RUNTIME_FILE = 'runtime.json'" */}
-
-**default 的端口被占时不换端口**：连着 default 的 agent 会话把 `http://127.0.0.1:2870/mcp` 写进了自己的配置。一个测试 home 先启动占住 2870、default 换到别的端口的话，会话连上的是那个测试 home，命令、数据、说明书全是另一套，两边都不报错；不开入口的话，马上能看出来。其他 home 设置里显式给了端口、端口被占时，换成系统分配的端口并写一条 warn。
-
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="34-47" */}
-
-## 依赖
-
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 命令插件的服务 `gwbCommands`（写在 `export const inject` 里，[gwb-commands](/docs/commands)） | `list()` 给 `index`、`search`；`run()` 给 `run`；登记 `mcp.info`、`mcp.token` | 插件一直等待、不加载，没有入口 |
-| 设置插件的服务 `gwbSettings`（写在 `export const inject` 里，[gwb-settings](/docs/settings)） | 声明并读取 `port` 设置 | 插件一直等待、不加载，没有入口 |
-| 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | `index`、`search` 里的说明书；登记自带的说明书 `mcp` | 入口照常开，`index` 与 `search` 里没有说明书 |
-| node 命令行运行插件的服务 `gwbNodeCli`（局部注入，[gwb-node-cli](/docs/node-cli)） | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` 这条命令 |
-| 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | home 名（目录的最后一段）、token 文件、`runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
-| `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`），写在 dev，构建时打包进 `dist/index.js` | MCP 协议、工具参数的 schema | 打包在构建产物里，装进 home 时不另装它们 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | — | — |
-
-`gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 devDependencies 里：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块：`devkit.release` 的发版前检查不许 node 侧产物留下别的包名 import。类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里只有内核包：
+| 命令总线服务 `gwbCommands` 的 `list`、`run`、`register`（写在 `export const inject` 里） | `index`、`search` 的命令清单；`run` 转交；登记 `mcp.info`、`mcp.token`；缺了插件一直等待、不开入口 | [gwb-commands](/docs/commands) | 按真总线规矩执行的替身（来源缺省 `plugin`、带 `ok` 的原样回） |
+| 设置服务 `gwbSettings` 的 `define`、`get`（写在 `export const inject` 里） | 声明并读 `port`；缺了插件一直等待 | [gwb-settings](/docs/settings) | 记下声明、按表回值的替身 |
+| 说明书服务 `gwbSkills` 的 `list`、`register`（局部注入） | `index`、`search` 里的说明书；登记自带的说明书；缺了入口照开，说明书清单是空表 | [gwb-skills](/docs/skills) | 不提供，或提供一个只记登记目录的替身 |
+| node 命令行运行插件服务 `gwbNodeCli` 的 `register`（局部注入） | 把 `bin/client.mjs` 登记成 `mcp.client`；缺了入口照开，没有这条命令 | [gwb-node-cli](/docs/node-cli) | 不提供，或提供一个只记登记参数的替身 |
+| 内核服务 `gwbKernel` 的 `dataDir`（经 `src/vocab.ts` 的 `requireKernel` 取，不写进 `inject`） | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置；缺了加载时抛错 | 内核应用 | `{ dataDir: <临时目录下的 home> }` |
+| `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`） | MCP 协议、工具参数的 schema；写在 dev，由 `build.ts` 打包进 `dist/index.js` | 打包进构建产物的那一份 | 同一份，测试里另用 SDK 的 `Client` 连真的 HTTP 端点或内存传输 |
+| `node:http`、`node:fs`、`node:crypto` | HTTP 服务；读写凭据文件与 `runtime.json`；生成与比较 token | Node 内置 | 真端口、真临时目录 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.7.0` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
 
 {/* ref file="../plugins/mcp/package.json" lines="31-37" */}
 
-## 不做的事
+peer 里只有内核包：这个插件对 `cordis` 只 import 类型，构建产物里没有它。`publishConfig.registry` 指向团队源，`devkit.release` 按它决定发到哪。四个插件与词汇表包（`^0.4.1`）写在 dev，只取类型。
 
-- **不加第四个工具**：命令的变化全在 `run` 的参数里；MCP 的工具清单是连接时的快照，插件在运行中重新加载时快照就过时了
-- **不分命令权限**：本机拿到 token 的进程能调全部命令，包括往 home 里装插件；装插件等于授权，插件在主进程里没有沙箱。「先问人」只写进 `instructions.md`，不做成机制
-- **不对本机以外开放**：只绑 127.0.0.1
-- **不推送通知**：无状态，没有会话；三个工具不会变，客户端不需要清单变更通知
-- **不列装了哪些插件**：`index` 里只有说明书与命令；装了哪些插件（包括没有命令的界面插件）问插件管理的 `plugin-manager.list`
-- **不校验命令参数**：命令自己校验
-- **不负责客户端的超时**：`run` 一直等到命令返回；客户端自己的超时在客户端配，`mcp.client` 用 `--timeout`
+## 怎么单独测
+
+八个测试文件，都在 `plugins/mcp/tests/`，前六个是纯函数：
+
+- `auth.test.ts`：凭据文件生成、坏文件改名另存、换发；`Bearer` 前缀的解析；三项检查各自的放行与拒绝，token 长度不同也不抛；换发之后旧 token 立刻不认
+- `endpoint.test.ts`：home 名取末段、端口的决定（default 被占不换、配置写坏当没给、数字串也认）、`mcp.info` 的片段与 `mcp.token` 的逐字一致
+- `inventory.test.ts`：`index` 与 `search` 的生成规则，描述超过 200 字才截，`index` 的返回同样输入逐字节一致、现实规模下不超过 18KB
+- `tools.test.ts`：参数字符串的解析、三种回执形状的翻译
+- `runtime.test.ts`：只改 `mcp` 项、别的字段原样留着、文件坏了从空对象起
+- `server.test.ts`：用 SDK 的内存传输连一对真的 server 与 client，`tools/list` 恰好是三个；`instructions.md` 的长度与两句话
+
+**`apply.test.ts` 装上整个插件测**：真 cordis 上下文，内核、命令总线、设置用替身，home 是系统临时目录下的一个目录，用真端口、真 HTTP 请求与 SDK 的客户端：
+
+{/* ref file="../plugins/mcp/tests/apply.test.ts" lines="72-87" */}
+
+证明的是：声明 `port` 设置、登记两条命令；第一次装上生成 token；`runtime.json` 只补 `mcp` 项；三种 401、404、405；经 MCP 协议调 `run` 带着 `{ via: 'mcp' }` 到达命令总线并写日志；换 token 立刻生效；有说明书插件与 node 命令行运行插件时各登记一样；非 default home 的端口被占时换端口；default 的 2870 被占时不开入口、两条命令回失败；卸载时关掉 HTTP 服务。
+
+**`artifact.test.ts` 查构建产物**：只有打包出来的 `index.js`，没有相对 import，包名 import 只有 node 内置模块。
+
+`bin/client.mjs` 没有单元测试；MCP 入口拿到的是运行中真的命令表与说明书清单，这一段只能在隔离 home 里验证。
+
+## 代码地图
+
+**在哪**：`plugins/mcp/`。包根另有 `bin/client.mjs`（零依赖的命令行客户端，能单独复制出去用）、`instructions.md`、`build.ts`（esbuild 打包）。
+
+{/* tree dir="../plugins/mcp/src" depth="1" */}
+
+{/* tree dir="../plugins/mcp/tests" depth="1" */}
+
+**先读** `src/index.ts` 末尾的 `apply`：装配顺序一眼看完，再按需要跳到各部分。
+
+**读序**：`vocab.ts`（取内核服务、判断是不是普通对象）→ `auth.ts`、`runtime.ts`（凭据文件与请求检查、`runtime.json` 的读改写，都用 `vocab.ts`）→ `endpoint.ts`（端口与配置片段，从 `auth.ts` 取请求头前缀一个常量）→ `inventory.ts`、`tools.ts`（`index` 与 `search` 的返回、回执翻译，不依赖别的文件）→ `index.ts` 把它们装起来。
+
+**可跳过**：`dist/`（构建产物）；`skills/mcp/SKILL.md` 是给 agent 读的操作说明。
