@@ -3,7 +3,7 @@
     "../plugins/mcp/src/index.ts:205-228": {
       "kind": "git",
       "blob": "f90affb0820351a91851fe829724c08315d686d9",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         205,
         228
@@ -13,7 +13,7 @@
     "../plugins/mcp/src/endpoint.ts:39-47": {
       "kind": "git",
       "blob": "65e4dd6cd78c7be59e516eaa2bcf7c9cd435f6e9",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         39,
         47
@@ -23,7 +23,7 @@
     "../plugins/mcp/src/index.ts:83-123": {
       "kind": "git",
       "blob": "f90affb0820351a91851fe829724c08315d686d9",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         83,
         123
@@ -32,16 +32,6 @@
     },
     "has ../plugins/mcp/tests/server.test.ts \"expect(text.length).toBeLessThanOrEqual(2_000)\"": {
       "kind": "has"
-    },
-    "../plugins/mcp/package.json:30-47": {
-      "kind": "git",
-      "blob": "dd4adb2b0013c3db4577f5631f7cba2837daf999",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
-      "lines": [
-        30,
-        47
-      ],
-      "hash": "808720b9beb8d73e746bdab3325e045827b7e7c10105c549c96acf0fb1e68b5d"
     }
   },
   "content/docs/skills.mdx": {
@@ -253,27 +243,17 @@
     "../plugins/commands/src/index.ts:67-74": {
       "kind": "git",
       "blob": "96670ce8f9261b556ee6d6f90fcb0fab9fa1be8a",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         67,
         74
       ],
       "hash": "23e8550c79b85667e56748f93520150ccf7c358f144d48bc7b284a475a98eedf"
     },
-    "../plugins/commands/src/index.ts:22-25": {
-      "kind": "git",
-      "blob": "96670ce8f9261b556ee6d6f90fcb0fab9fa1be8a",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
-      "lines": [
-        22,
-        25
-      ],
-      "hash": "da7d2cce4ead3a500c2005b397b637ca3ed959ee69ec05807a07d5eff529b056"
-    },
     "../plugins/commands/src/registry.ts:3-37": {
       "kind": "git",
       "blob": "dea959b3ac845aa788d4d1f880578e72fdcf6f2f",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         3,
         37
@@ -282,23 +262,13 @@
     },
     "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
       "kind": "has"
-    },
-    "../plugins/commands/package.json:42-45": {
-      "kind": "git",
-      "blob": "82d61898c29ee5e25229184645eb7550f8752162",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
-      "lines": [
-        42,
-        45
-      ],
-      "hash": "16e3335f7262108a2ce93cf1a97d285b16e9cbb12895f27017ac8cc11cf0d910"
     }
   },
   "content/docs/data.mdx": {
     "../plugins/data/src/store.ts:56-62": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         56,
         62
@@ -308,7 +278,7 @@
     "../plugins/data/src/index.ts:16-28": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         16,
         28
@@ -318,22 +288,12 @@
     "../plugins/data/src/index.ts:58-76": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
       "lines": [
         58,
         76
       ],
       "hash": "48eff9e90087e2b6a98e132d047867b0f2a373449e420b6aab84233b63f4e34a"
-    },
-    "../plugins/data/package.json:27-38": {
-      "kind": "git",
-      "blob": "c98f6894fab811061007e29ae0a55c463f9994a0",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
-      "lines": [
-        27,
-        38
-      ],
-      "hash": "595a5bb6a19e25d719138e9513573e63b4f3e9bb8875a088093474ac0ca1926f"
     }
   },
   "content/docs/design.mdx": {
@@ -1413,6 +1373,293 @@
         "settings/",
         "skills/"
       ]
+    }
+  },
+  "content/docs/wiring.mdx": {
+    "has ../plugins/data/src/vocab.ts \"export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/package.json \"\\\"@godcreator/gwb-kernel-desktop\\\": \\\"^0.7.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"super(ctx, 'gwbCommands')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"this.ctx.inject(['gwbSkills'], (contextWithSkills) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"interface SkillDirectoryRegistrar {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/registry.ts \"run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/registry.ts \"export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/commands/src/index.ts \"const packageName = fiber.entry?.options?.name\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/index.ts \"super(ctx, 'gwbData')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/index.ts \"this.homeDir = requireKernel(ctx).dataDir\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/index.ts \"entry?: { id?: unknown; options?: { name?: unknown } }\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/paths.ts \"return path.join(dataDir, 'data')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/paths.ts \"与 gwb-settings 的 `entrySection` 是同一套算法的两份\"": {
+      "kind": "has"
+    },
+    "has ../plugins/data/src/owner.ts \"export const OWNER_FILE = '.owner.json'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"new GwbLogger(ctx, 'gwbLogger')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"export const EVENT = 'gwb-logger'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"export const BACKLOG_COMMAND = 'logger.backlog'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"export const WHERE_COMMAND = 'logger.where'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"export const inject = ['gwbCommands']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/package.json \"\\\"@godcreator/gwb-commands\\\": \\\"workspace:^\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"const kernel = requireKernel(ctx)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"loggerFactory.exporter(forwardingExporter)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"for (const message of loggerFactory.buffer ?? [])\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"kernel.emit({ t: EVENT, line: entry })\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"logFile: path.join(kernel.dataDir, 'gwb.log')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"const KERNEL_LOGGER_NAMES = new Set(['kernel', 'loader'])\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"if (loggerName === 'renderer') return 'renderer'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"server.listen(port, '127.0.0.1', () => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"name: 'mcp.info',\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"name: 'mcp.token',\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"name: 'mcp.client',\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"const PORT_KEY = 'port'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"export const inject = ['gwbCommands', 'gwbSettings']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"ctx.inject(['gwbSkills'], (contextWithSkills) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"ctx.inject(['gwbNodeCli'], (contextWithNodeCli: Context) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"ctx.gwbSettings.define({\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"const home = homeNameOf(requireKernel(ctx).dataDir)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/package.json \"\\\"@godcreator/gwb-settings\\\": \\\"workspace:^\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/package.json \"\\\"@godcreator/gwb-node-cli\\\": {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"读说明书就是用 run 调 skill.read\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"plugin-manager.update\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"再调 shell.reload\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/inventory.ts \"装了哪些插件问 plugin-manager.list\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/tools.ts \"'stdout' in value && 'exitCode' in value\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/runtime.ts \"export const RUNTIME_FILE = 'runtime.json'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/index.ts \"writeRuntimeMcp(requireKernel(ctx).dataDir, { port, url: endpointUrl(port) })\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/auth.ts \"export const SECRET_DIR = 'mcp'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/src/auth.ts \"export const SECRET_FILE = 'secret.json'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/bin/client.mjs \"path.join(roaming, 'gwb-kernel', 'homes', home, 'mcp', 'secret.json')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/bin/client.mjs \"let url = process.env.GWB_MCP_URL ?? DEFAULT_URL\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/bin/client.mjs \"process.env.GWB_MCP_TOKEN !== undefined\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"super(ctx, 'gwbNodeCli')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"export const LIST_COMMAND = 'node-cli.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"static inject = ['gwbCommands']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/package.json \"\\\"@godcreator/gwb-skills\\\": {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"const commandBusSeenByCaller = this.ctx.get('gwbCommands')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"const ELECTRON_AS_NODE = { ELECTRON_RUN_AS_NODE: '1' }\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/index.ts \"command: process.execPath,\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/run.ts \"spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/node-cli/src/run.ts \"path.join(os.tmpdir(), `gwb-cli-\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"super(ctx, 'gwbPyCli')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"export const LIST_COMMAND = 'py-cli.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"static inject = ['gwbCommands']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/package.json \"\\\"@godcreator/gwb-skills\\\": {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"const commandBusSeenByCaller = this.ctx.get('gwbCommands')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/bootstrap.ts \"const projectDir = path.join(packageRoot, 'py')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/bootstrap.ts \"const venvDir = path.join(projectDir, '.venv')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/bootstrap.ts \"export const STAMP_NAME = '.gwb-built-for'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/bootstrap.ts \"args: ['sync', '--frozen', '--no-dev', '--inexact', '--project', paths.projectDir],\"": {
+      "kind": "has"
+    },
+    "has ../plugins/py-cli/src/index.ts \"const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"super(ctx, 'gwbSettings')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"export const ALL_COMMAND = 'settings.all'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"export const GET_COMMAND = 'settings.get'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"export const SET_COMMAND = 'settings.set'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"export const DELETE_COMMAND = 'settings.delete'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"this.ctx.inject(['gwbCommands'], (contextWithCommands) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"this.ctx.inject(['gwbSkills'], (contextWithSkills) => {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/package.json \"\\\"@godcreator/gwb-commands\\\": {\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"this.settingsFile = homeFile(requireKernel(ctx).dataDir)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"命令按位置定位，不看调用方身份：页面不是插件，没有身份可取\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/index.ts \"entry?: { id?: unknown; options?: { name?: unknown } }\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/paths.ts \"const HOME_FILE = 'settings.json'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/paths.ts \"export const SHARED_SECTION = '*'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/settings/src/paths.ts \"export const OWNERS_KEY = '$owners'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/index.ts \"super(ctx, 'gwbSkills')\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/index.ts \"export const SKILL_LIST_COMMAND = 'skill.list'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/index.ts \"export const SKILL_READ_COMMAND = 'skill.read'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/index.ts \"static inject = ['gwbCommands']\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/package.json \"\\\"@godcreator/gwb-commands\\\": \\\"workspace:^\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/index.ts \"const name = fiber?.entry?.options?.name\"": {
+      "kind": "has"
+    },
+    "has ../plugins/skills/src/collect.ts \"export const SKILL_ENTRY = 'SKILL.md'\"": {
+      "kind": "has"
     }
   }
 }
