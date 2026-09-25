@@ -23,15 +23,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包只取类型，写在 dev",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.4.1",
     "cordis": "^4.0.0-rc.10"
   },
-  "//devDependencies": "命令插件与说明书插件写 dev：代码只 import type {} 它们（为了让 ctx 上的服务有类型），构建产物里没有它们；设置插件对这两个插件是可选的（嵌套注入），没装时服务照样完整",
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-plugin-api": "^0.4.1",

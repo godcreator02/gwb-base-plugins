@@ -46,7 +46,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到的包都在各插件的 dev 里列全**（包括 `@types/node`）
 
-{/* ref file="../plugins/commands/package.json" lines="52-56" */}
+{/* ref file="../plugins/commands/package.json" lines="51-54" */}
 
 ## 插件之间只经服务和命令
 
@@ -93,9 +93,9 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻 MCP 插件写的是 `^0.7.0`，其余七个写的是 `^0.4.1`：
 
-{/* ref file="../plugins/mcp/package.json" lines="32-34" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-32" */}
 
-{/* ref file="../plugins/data/package.json" lines="29-32" */}
+{/* ref file="../plugins/data/package.json" lines="27-30" */}
 
 ## 刻意不做的事
 

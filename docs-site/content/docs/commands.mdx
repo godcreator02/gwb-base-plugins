@@ -63,7 +63,7 @@ export function apply(ctx: GwbContext) {
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
 | 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核，代码里不用它 | — |
 
-{/* ref file="../plugins/commands/package.json" lines="52-56" */}
+{/* ref file="../plugins/commands/package.json" lines="51-54" */}
 
 说明书插件不写进服务类的 `static inject`，局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）：
 

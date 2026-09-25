@@ -25,7 +25,7 @@ peer 写的是运行时要从 home 里解析到的包。词汇表包只有类型
 
 代价在类型上：`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，而发布出去的命令插件不带词汇表包。用命令插件类型的插件要自己在 dev 里列词汇表包；少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」。所以本仓每个插件都在 dev 里列全了类型用到的包，包括 `@types/node`；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
 
-{/* ref file="../plugins/logger/package.json" lines="42-48" */}
+{/* ref file="../plugins/logger/package.json" lines="39-45" */}
 
 继承 cordis `Service` 的七个插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 

@@ -65,6 +65,6 @@ devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plu
 
 **各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里内核包的范围包含运行中的内核。此刻只有 MCP 插件写了 `publishConfig.registry`、peer 里内核包是 `^0.7.0`；其余七个没写 `publishConfig`，peer 里内核包还是 `^0.4.1`：
 
-{/* ref file="../plugins/mcp/package.json" lines="32-37" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-35" */}
 
-{/* ref file="../plugins/settings/package.json" lines="30-33" */}
+{/* ref file="../plugins/settings/package.json" lines="28-31" */}

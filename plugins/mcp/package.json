@@ -25,17 +25,14 @@
   "scripts": {
     "build": "node build.ts && tsc -p tsconfig.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
-  "//peerDependencies": "peer 只写内核包，^ 范围就是兼容哪个内核。构建产物里没有 cordis（代码只 import type），不写 peer cordis",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.7.0"
   },
   "publishConfig": {
     "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   },
-  "//devDependencies": "MCP SDK 与 zod 由 build.ts 打包进 dist/index.js，构建产物里不留它们的包名 import，所以写 dev。命令、设置、说明书、node-cli 四个插件与词汇表包只取类型",
   "devDependencies": {
     "@godcreator/gwb-commands": "workspace:*",
     "@godcreator/gwb-node-cli": "workspace:*",

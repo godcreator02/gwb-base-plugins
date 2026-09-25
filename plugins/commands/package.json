@@ -23,7 +23,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "//prepublishOnly": "发版前强制构建一次：pnpm check 只跑类型检查、lint 和测试，不构建，少了这条会把上一版的 dist 原样发出去，而且不报错",
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
@@ -49,7 +48,6 @@
     "gwb",
     "gwb-plugin"
   ],
-  "//peerDependencies": "peer 只写 home 根上的两个包：构建产物按值 import 了 cordis（继承 Service）；内核包的 ^ 范围就是兼容哪个内核。词汇表包只取类型，写在 dev；导出的类型里有它的 GwbResult，用本包类型的插件自己在 dev 里列词汇表包",
   "peerDependencies": {
     "@godcreator/gwb-kernel-desktop": "^0.4.1",
     "cordis": "^4.0.0-rc.10"

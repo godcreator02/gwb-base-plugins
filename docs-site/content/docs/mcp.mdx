@@ -74,7 +74,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 `gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 dev 里（`workspace:*`）：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块；类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里只有内核包；`publishConfig.registry` 指向团队源：
 
-{/* ref file="../plugins/mcp/package.json" lines="31-37" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-35" */}
 
 ## 不做的事
 
