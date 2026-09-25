@@ -1,92 +1,140 @@
 ---
 title: gwb-node-cli · node 命令行工具
-description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件登记自己编译出的 js，启动进程、收输出、按时限结束都归它，登记的工具同时成为命令总线上的命令；本页讲它的功能、接口与所属接缝、依赖，以及哪些事不归它做
+description: node 命令行运行插件运行别的插件随包带的 node 命令行工具：登记方给名字与 js 的绝对路径，它用运行工作台的那个 node 启动子进程、收输出、按时限结束整个进程树，并把每个工具同时登记成命令总线上的命令。本页是它的模块页：七段固定块
 ---
 
-**本页回答**：node 命令行运行插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-node-cli`，源码目录 `plugins/node-cli/src`，入口文件 `index.ts`。
+**本页回答**：node 命令行运行插件 `@godcreator/gwb-node-cli` 管什么、刻意不知道什么；登记表与回执是什么形状；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。登记方、子进程各保证什么写在接缝页[命令行工具](/docs/seams/cli)。
 
-插件要运行一个命令行工具时，启动进程、时限、结束整个进程树、截断输出、编码这几样最容易写错，而且写错了不当场报错。这个插件把它们收在一处；它自己不带要运行的工具，工具是登记它的插件自己编译出来、随包发布的 js。
+## 管什么
 
-<Diagram name="cli-run" title="node 命令行工具的登记、调用与回执（分步）">
-- 登记方插件调 `ctx.gwbNodeCli.register({ name, entry, … })`，`entry` 是它随包发布的 js 的绝对路径；gwbNodeCli 同时用同一个名字调 `gwbCommands.register`，登记成总线命令
-- 页面、agent、别的插件经 `gwbCommands.run(name, args)` 调它；按次给的 `cwd` 不合规就不启动进程
-- gwbNodeCli 用 `process.execPath` 加 `ELECTRON_RUN_AS_NODE=1` 启动子进程，argv 是 `[entry, ...固定参数, ...追加参数]`，不经 shell
-- 缺省 60 秒时限，到时限用 `taskkill /T /F` 结束整个进程树；输出只留尾部 64,000 字节，超出时全量写进系统临时目录
-- 回执 `CliRunResult` 带 `ok`，命令总线原样返回给调用方
-</Diagram>
+插件要运行一个命令行工具时，启动进程、时限、结束整个进程树、截断输出、编码这几样最容易写错，而且写错了不当场报错。这个插件把它们收在一处；它自己不带要运行的工具，工具是登记方自己编译出来、随包发布的 js。
 
-## 功能
+**分为四个文件。** `registry.ts` 是登记表与登记时的校验；`invoke.ts` 解析总线参数、校验按次给的工作目录；`run.ts` 启动一次子进程、收输出、按时限结束；`index.ts` 是继承 cordis `Service` 的服务，认出登记方、转登记成总线命令、把三者接起来。`run.ts` 与 `invoke.ts` 在 [gwb-py-cli](/docs/py-cli) 里各有一份一字不差的副本。
 
-- **登记命令行工具**：插件给一个名字和要运行的 js 的绝对路径，拿回注销函数；插件卸载时自动注销，不用自己包 `ctx.effect`
-- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面、agent、别的插件照调命令的办法调它；`usage` 没给时补上参数形状那一句
-- **用运行工作台的那个 node 启动**：程序是 `process.execPath`，带上 `ELECTRON_RUN_AS_NODE=1`；不查 PATH、不读 `bin` 字段、不经过 shell，参数全程是数组，引号、空格、中文原样到达
-- **工作目录**：按次给的优先，其次登记时给的，都没给就是那个 js 所在的目录；不用工作台进程自己的工作目录
-- **时限**：缺省 60 秒，登记时可以给到 2,147,483,647 毫秒（Node 定时器的上限）；到时限结束整个进程树（Windows 上 `taskkill /T /F`）
-- **输出只留尾部 64,000 字节**：超出时把全量写进系统临时目录的一个文件，回执里给路径
-- **登记时就校验**：名字为空或带空白、js 路径不是绝对路径、时限不是正数或超上限，登记时就抛错
-- **同名后登记的生效**：写一条告警；先登记的注销时不删接手的那条
-- **启动与结束都写日志**：成功写 info，启动失败写 error，超时或非零退出写 warn 并带上 stderr 的尾部
-- **带一份说明书 `gwb-node-cli`**：给 agent 讲怎么传参数、回执怎么读、长输出去哪找
+**登记时就校验，同时登记成总线命令。** 名字为空或带空白、js 路径不是绝对路径、时限不是正数或超过 Node 定时器上限，登记时就抛错——拖到运行时才发现的话，报错的地方已经离登记的地方很远：
 
-## 接口
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="89-105" */}
 
-每条接缝上交换什么、各方保证什么，写在接缝页；本节只列 node 命令行运行插件提供了哪些接口、定义在哪里。
+进表之后用同一个名字登记到命令总线；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉表里那条，把总线的错抛给调用方。注销登记在调用方的 `effect` 上，调用方卸载时表里那条与总线命令一起注销：
 
-| 接口 | 做什么 | 接缝 |
-| --- | --- | --- |
-| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | `spec`：`name`、`entry`（js 的绝对路径）、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`args?`（固定参数）、`cwd?`、`env?`、`timeoutMs?`、`plugin?`（登记到命令总线时写的包名，缺省是调用方的包名，给了也必须是调用方的包名）；类型 `NodeCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
-| 服务 `ctx.gwbNodeCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，`extraArgs` 追加在固定参数后面；名字不存在时抛错 | [9 命令行工具](/docs/seams/cli) |
-| 回执 `CliRunResult` | `ok`（退出码 0 且没超时）、`exitCode`、`signal`、`timedOut`、`timeoutMs`、`stdout` 与 `stderr`（各是 `{ text, truncated, spillPath? }`）、`durationMs`；按次给的 `cwd` 不合规时不启动进程，回 `{ ok: false, error }` | [9 命令行工具](/docs/seams/cli) |
-| 登记出来的命令 | 参数给一个数组就是追加参数，给 `{ args?, cwd? }` 也认；回执带 `ok`，命令总线原样返回 | [1 命令总线](/docs/seams/bus) |
-| 命令 `node-cli.list` | 无参数，返回已登记的工具 | [1 命令总线](/docs/seams/bus) |
-| 输出全量文件 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`，路径在回执的 `spillPath`；写不了时照样给尾部，只是没有 `spillPath` | [9 命令行工具](/docs/seams/cli) |
-| 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+{/* ref file="../plugins/node-cli/src/index.ts" lines="125-147" */}
+
+**总线要经调用方的上下文取。** 命令总线从取它的那个上下文认登记方；经运行插件自己的上下文取的话，总线认出的登记方是运行插件，与写进去的调用方包名对不上，登记被拒。调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛错；`ctx.get` 不查 `inject`：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
+
+**用运行工作台的那个 node 启动。** 程序是 `process.execPath`（工作台进程的 electron.exe），带上 `ELECTRON_RUN_AS_NODE=1` 让它以 node 模式运行；argv 是 `[entry, ...固定参数, ...追加参数]`，不查 PATH、不经 shell，引号、空格、中文原样到达；工作目录依次取按次给的、登记时给的、js 所在目录，不用工作台进程自己的：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" */}
+
+**按次给的工作目录先校验**：必须是存在的目录的绝对路径；不是字符串、是相对路径、目录不存在，三种各回一句说明要什么的 `{ ok: false, error }`，不启动进程、不抛错。经服务的 `run` 与经命令总线调用走的是同一段：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="157-167" */}
+
+**时限与输出**：缺省 60 秒，登记时可以给到 2,147,483,647 毫秒（轨迹卡[显式超时](/trajectory/2026-09-21-explicit-cli-timeout)）；到时限在 Windows 上用 `taskkill /T /F` 结束整个进程树。stdout、stderr 各只在内存里留最后 64,000 字节，超出时把全量写进系统临时目录的文件、回执里给路径——出错原因常常在被截掉的那头。
+
+**启动与结束都写日志**：成功写 info，启动失败写 error，超时或非零退出写 warn 并带上 stderr 的尾部：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="183-194" */}
+
+**一条自己的命令 `node-cli.list`**，列出已登记的工具，登记在运行插件自己的上下文上。**带一份说明书 `gwb-node-cli`**，放在包根 `skills/gwb-node-cli/`，讲怎么传参数、回执怎么读、长输出去哪找。
+
+## 不知道什么
+
+**不找程序。** 不读 `bin` 字段、不认 `node_modules/.bin`、不查 PATH；js 的路径由登记方自己从 `import.meta.url` 算好。第三方 npm 包的 `bin` 不运行。
+
+**不经过 shell。** 参数不转义，也不支持管道、重定向；子进程的 stdin 是空的，不支持要交互输入的工具。
+
+**不解释输出。** `stdout` 原样放进回执，结构化内容由调用方自己解析；子进程不知道自己是被总线、MCP 入口还是别的插件调用的。
+
+**不带任何被运行的东西、没有自检命令。** 它只是运行器，工具对不对由登记它的插件验收；包里只有 `dist`、`skills`、`src`，测试检查这一点：
+
+{/* ref file="../plugins/node-cli/tests/artifact.test.ts" lines="54-62" */}
+
+**不分权限、不保存运行记录。** 登记出来的命令和别的命令一样谁都能调；回执返回之后不留记录，只有超长输出的全量文件留在临时目录。
+
+**不管调用方的超时。** MCP 客户端、HTTP 客户端的超时在调用方配，要比这里的时限长。
+
+## 数据结构
+
+登记方给的：
 
 {/* ref file="../plugins/node-cli/src/registry.ts" lines="9-35" */}
 
-{/* ref file="../plugins/node-cli/src/run.ts" lines="12-30" */}
+表里存的：该补的都补上（描述空串、固定参数空表、时限缺省值），加上登记方的包名：
 
-{/* has file="../plugins/node-cli/src/index.ts" text="export const LIST_COMMAND = 'node-cli.list'" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="37-48" */}
 
-{/* has file="../plugins/node-cli/src/registry.ts" text="MAX_TIMEOUT_MS" */}
+一次运行的回执：`ok` 是退出码 0 且没超时；启动失败时 `exitCode` 为 `null`、原因写进 `stderr`：
 
-插件自己算出 js 的绝对路径再登记：
+{/* ref file="../plugins/node-cli/src/run.ts" lines="9-30" */}
 
-```ts
-export const inject = ['gwbNodeCli']
+按次给的工作目录不合规时，`run` 回的是另一种形状：
 
-const CLI_ENTRY = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), 'dist', 'cli.js')
+{/* ref file="../plugins/node-cli/src/index.ts" lines="33-40" */}
 
-export function apply(ctx: GwbContext) {
-  ctx.gwbNodeCli.register({ name: 'mine.build', description: '运行我的构建工具', entry: CLI_ENTRY, args: ['--json'] })
-}
-```
+超长输出的全量文件在系统临时目录下，名字是 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`；写不了时照样给尾部，只是没有 `spillPath`。
 
-按次给的 `cwd` 必须是存在的目录的绝对路径：不是字符串、是相对路径、目录不存在，三种各回一句说明要什么的错误，不抛错。经服务的 `run` 与经命令总线调用走的是同一段检查：
+## 提供的接口
 
-{/* ref file="../plugins/node-cli/src/invoke.ts" lines="26-41" */}
-
-## 依赖
-
-| 依赖 | 用来做什么 | 缺了会怎样 |
+| 接口 | 做什么 | 契约在 |
 | --- | --- | --- |
-| 命令插件的服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `node-cli.list` | 服务 `gwbNodeCli` 不提供，插件一直等待 |
-| 说明书插件的服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
-| loader 在调用方上下文上加的 `fiber.entry.options.name` | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
-| `process.execPath`（工作台进程的 electron.exe）与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js | 不带这个环境变量的话 electron 会开一个窗口，而不是运行 js |
-| Windows 的 `taskkill` | 超时时结束整个进程树 | `taskkill` 启动不了或退出码不是 0 时，改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程，孙进程可能留下 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
+| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | 登记一个工具，同时登记成总线命令，返回注销函数；调用方卸载时自动注销 | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbNodeCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，名字不存在时抛错 | [9 命令行工具](/docs/seams/cli) |
+| 登记出来的总线命令 | 参数给一个字符串数组就是追加参数，给 `{ args?, cwd? }` 也认；回执带 `ok`，命令总线原样返回 | [1 命令总线](/docs/seams/bus) |
+| 命令 `node-cli.list` | 无参数，返回已登记的工具 | [1 命令总线](/docs/seams/bus) |
+| 导出的类型 `NodeCliSpec`、`RegisteredNodeCli`、`CliRunResult`、`CliStream`、`CwdCheck`、`Invocation`，函数 `checkCwd`、`parseInvocation`，常量 `DEFAULT_TIMEOUT_MS`、`MAX_TIMEOUT_MS`、`LIST_COMMAND` | `import type {} from '@godcreator/gwb-node-cli'` 让 `ctx.gwbNodeCli` 有类型 | [9 命令行工具](/docs/seams/cli) |
+| 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/` | [4 说明书](/docs/seams/skills) |
 
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 devDependencies 里：代码只 `import type {}` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件内容一样，改一处就要改另一处。
+{/* ref file="../plugins/node-cli/src/index.ts" lines="42-53" */}
 
-## 不做的事
+## 依赖的接口
 
-- **不找程序**：不读 `bin` 字段、不认 `node_modules/.bin`、不查 PATH；js 的路径由登记方自己算好
-- **不运行第三方 npm 包的 `bin`**：只运行登记方随包带的 js
-- **不经过 shell**：参数不转义，也不支持管道、重定向
-- **没有自检命令**：它只是运行器，工具对不对由登记它的插件验收
-- **不分权限、不限调用方**：登记出来的命令和别的命令一样，谁都能调
-- **不保存运行记录**：回执返回之后不留记录，只有超长输出的全量文件留在临时目录
-- **不管调用方的超时**：MCP 客户端、HTTP 客户端的超时在调用方配，要比这里的时限长
+| 接口 | 用来做什么 | 生产实现 | 测试实现 |
+| --- | --- | --- | --- |
+| 命令总线服务 `gwbCommands` 的 `register`（服务类上的 `static inject`） | 把登记的工具登记成命令；登记 `node-cli.list`；缺了服务 `gwbNodeCli` 不提供 | [gwb-commands](/docs/commands) | 只记登记的替身；另一组用按 `Service` 写的替身记下它认出的登记方，还有一个拒收的替身 |
+| 说明书服务 `gwbSkills` 的 `register`（局部注入） | 登记自带的说明书；缺了不登记 | [gwb-skills](/docs/skills) | 不提供 |
+| cordis 的 `Service`、`effect`、`get`、`logger` | 提供服务；方法里的 `this.ctx` 是调用方的上下文；经它取总线、登记注销 | 内核带的 cordis（peer `^4.0.0-rc.10`） | dev 里的 `cordis` 4.0.0-rc.10 |
+| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名；取不到时 `register` 抛错 | 内核带的 cordis loader | 调用方插件在 `apply` 里自己往 fiber 上放一个 `entry` |
+| `process.execPath` 与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js；不带这个环境变量 electron 会开一个应用，而不是运行 js | 工作台进程的 electron.exe | 跑测试的那个 node（它忽略这个变量） |
+| Windows 的 `taskkill` | 超时时结束整个进程树；启动不了或退出码不是 0 时改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程 | 系统自带 | 真的 `taskkill` |
+| 词汇表包的 `GwbContext` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | 同一份 |
+| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
+
+{/* ref file="../plugins/node-cli/src/run.ts" lines="107-130" */}
+
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`），代码只 `import type` 它们。
+
+## 怎么单独测
+
+六个测试文件，都在 `plugins/node-cli/tests/`：
+
+- `registry.test.ts`：登记时补缺省值、固定参数拷一份、名字与 `entry` 与时限的拒绝条件、同名后登记的生效并告警、注销只删自己那条
+- `invoke.test.ts`：总线参数的两种写法、`cwd` 原样带出不收窄、`checkCwd` 的三种拒绝（磁盘检查可以传入替身，也有一条真的查磁盘）
+- `run.test.ts`：跑真的 node 子进程——退出码、参数不经 shell、`cwd` 与 `env`、超时结束进程、可执行文件不在时的回执、超长输出写临时文件
+- `service.test.ts`：见下
+- `artifact.test.ts`：相对 import 带 `.js`，包名 import 只有 `cordis`；包里只有 `dist`、`skills`、`src`
+
+**`service.test.ts` 测服务这一层**：真 cordis 上下文，命令总线用替身；被运行的 js 是临时目录里一个把自己看到的 argv、工作目录、环境变量写到 stdout 的脚本：
+
+{/* ref file="../plugins/node-cli/tests/service.test.ts" lines="12-20" */}
+
+证明的是：`node-cli.list` 登记与注销；登记成总线命令时 `plugin` 与 `usage` 的缺省值；argv 顺序、`ELECTRON_RUN_AS_NODE`、`cwd` 的优先级；不合规的 `cwd` 不启动进程；总线参数两种写法；进程失败照回回执、跑不存在的工具抛错；注销同时撤掉两处；取不到调用方身份时抛错。另一组用按 `Service` 写的总线替身证明总线看到的登记方是调用方，用一个拒收的替身证明拒收时表里那条被撤掉：
+
+{/* ref file="../plugins/node-cli/tests/service.test.ts" lines="174-200" */}
+
+用 electron.exe 当 node 运行、`taskkill` 结束孙进程，只能在隔离 home 里验证。
+
+## 代码地图
+
+**在哪**：`plugins/node-cli/`。
+
+{/* tree dir="../plugins/node-cli/src" depth="1" */}
+
+{/* tree dir="../plugins/node-cli/tests" depth="1" */}
+
+**先读** `src/registry.ts` 的 `NodeCliSpec`：登记方能给什么、各项缺省是什么都在那里；再读 `src/index.ts` 的 `register` 与 `runRegistered`。
+
+**读序**：`registry.ts`、`invoke.ts`、`run.ts`（互不依赖，都不碰上下文）→ `index.ts`。
+
+**可跳过**：`dist/`（构建产物）；`skills/gwb-node-cli/SKILL.md` 是给 agent 读的操作说明。
