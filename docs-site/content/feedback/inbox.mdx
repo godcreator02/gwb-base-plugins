@@ -102,3 +102,21 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - 几乎每个插件都会在 peer 里写命令总线，所以命令总线热升级时 home 里大部分插件会被一起重新加载，这是交接页定下的代价
 
 随适配内核 0.6 那一轮一起改、一起发，版本号照说明书 `gwb-release` 升。规矩正本是 devkit 文档站的规则页「用到的插件写 peer」与说明书 `gwb-release`（`run skill.read {"name":"gwb-release"}`）。
+
+## 2026-09-25 插件管理 0.12：plugin-manager.update-all 改名为 plugin-manager.update，升级全部要明确传 {"all":true}
+
+来源：总控台会话（devkit 仓 e6cf2b2，插件管理 0.12.0，破坏性改动）。
+
+MCP 入口的 instructions 里写着「发完新版本调 plugin-manager.update-all 一次升级全部插件」，插件管理升到 0.12 之后，agent 照着调会得到「没有这条命令」。
+
+新命令的参数三种写法，必须恰好给一种：`{"all":true}` 把所有过期的包升到 latest；`{"only":["<包名>"]}` 只升这几个包；`{"specs":{…}}` 按给定的版本写法安装。不给参数直接报错。`all` 与 `only` 的行为和回执与原来的 `update-all` 相同。
+
+要改的地方：
+
+- `plugins/mcp/instructions.md`（MCP 入口 instructions 的正文）：改成 `plugin-manager.update {"all":true}`
+- `plugins/mcp/skills/mcp/SKILL.md`（`docfirst.config.mjs` 的 outputs 里没有它的 mdx 正本，直接改这份）
+- `docs-site/content/docs/seams/agent-surface.mdx`、`docs-site/content/docs/develop.mdx`
+- `docs-site/content/outputs/readme.mdx`（仓根 README.md 的正本，改完 render）
+- `docs-site/content/future/roadmap.mdx` 里也提到了 `update-all`，顺带看一下要不要改
+
+现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
