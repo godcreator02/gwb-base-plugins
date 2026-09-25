@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "author": {
     "name": "godcreator"
   },
@@ -21,7 +21,7 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
@@ -36,7 +36,6 @@
     "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
   },
   "keywords": [
-    "gwb",
     "gwb-plugin"
   ],
   "peerDependencies": {

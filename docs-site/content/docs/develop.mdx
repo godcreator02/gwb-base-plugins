@@ -14,7 +14,7 @@ pnpm install
 pnpm build
 ```
 
-`pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`：七个插件用 `tsc -p tsconfig.json`，MCP 插件先用 `build.ts`（esbuild）打包出 `dist/index.js`，再用 `tsc --emitDeclarationOnly` 输出类型声明。每个包的 `prepublishOnly` 都是 `pnpm build`：`pnpm check` 不构建，少了这一步会把上一版的 `dist` 原样发出去。
+`pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`，构建前先清空它：`files` 白名单整个带上 `dist/`，删掉或改了名的源文件，上一次构建留下的产物不清掉就跟着发出去。七个插件先用 `node -e` 删掉 `dist/`、再用 `tsc -p tsconfig.json`，MCP 插件的 `build.ts` 先删掉 `dist/`、再用 esbuild 打包出 `dist/index.js`，之后用 `tsc --emitDeclarationOnly` 输出类型声明。每个包的 `prepublishOnly` 都是 `pnpm build`：`pnpm check` 不构建，少了这一步会把上一版的 `dist` 原样发出去。
 
 {/* ref file="../package.json" lines="5-13" */}
 
@@ -26,7 +26,7 @@ pnpm 工作区是 `plugins/*` 与 `docs-site`。仓根 `packages/` 下如果还�
 pnpm check
 ```
 
-依次是类型检查（仓根 `tsc --noEmit` 收各插件的 `tests/` 与 `build.ts`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。
+依次是类型检查（仓根 `tsc --noEmit` 检查各插件的 `tests/` 与 `build.ts`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。
 
 各插件的**构建产物检查**（`tests/artifact.test.ts`）查相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块，且只有一个打包好的 `index.js`）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了。
 
