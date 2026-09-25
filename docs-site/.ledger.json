@@ -494,7 +494,7 @@
     "../plugins/mcp/src/inventory.ts:18-37": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         18,
         37
@@ -503,8 +503,8 @@
     },
     "../plugins/mcp/src/index.ts:181-190": {
       "kind": "git",
-      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "f90affb0820351a91851fe829724c08315d686d9",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         181,
         190
@@ -513,8 +513,8 @@
     },
     "../plugins/mcp/src/index.ts:205-221": {
       "kind": "git",
-      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "f90affb0820351a91851fe829724c08315d686d9",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         205,
         221
@@ -523,8 +523,8 @@
     },
     "../plugins/mcp/src/index.ts:222-226": {
       "kind": "git",
-      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "f90affb0820351a91851fe829724c08315d686d9",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         222,
         226
@@ -533,16 +533,13 @@
     },
     "../plugins/mcp/src/tools.ts:26-36": {
       "kind": "git",
-      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "3106d95461cd3e78298353399e894df3e8bbe523",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         26,
         36
       ],
       "hash": "64e103aee77e9b319dd3b95eeea7c8ec8aad328b6a50c0faed4b15a769c58771"
-    },
-    "has ../plugins/mcp/instructions.md \"调 unit-folder.list 查\"": {
-      "kind": "has"
     },
     "has ../plugins/mcp/instructions.md \"plugin-manager.update\"": {
       "kind": "has"
@@ -553,7 +550,7 @@
     "../plugins/mcp/src/inventory.ts:135-155": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         135,
         155
@@ -562,8 +559,8 @@
     },
     "../plugins/mcp/src/tools.ts:16-24": {
       "kind": "git",
-      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "3106d95461cd3e78298353399e894df3e8bbe523",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         16,
         24
@@ -572,8 +569,8 @@
     },
     "../plugins/mcp/src/tools.ts:50-65": {
       "kind": "git",
-      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "blob": "3106d95461cd3e78298353399e894df3e8bbe523",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         50,
         65
@@ -583,7 +580,7 @@
     "../plugins/mcp/src/inventory.ts:14-16": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "commit": "6245fd4eba9d77b0f3bca9a9b8d1981c1f13cbfd",
       "lines": [
         14,
         16
