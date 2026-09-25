@@ -23,7 +23,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 不在这个仓的：
 
 - **内核**在内核仓 gwb-kernel：内核应用、词汇表包和安装包，一个插件也不带
-- **插件管理** `@godcreator/gwb-plugin-manager` 在 devkit 仓 gwb-devkit：装插件、找插件、配包源都是它的命令
+- **插件管理** `@godcreator/gwb-plugin-manager` 在生命周期插件仓 gwb-lifecycle-plugins：装插件、找插件、配包源都是它的命令
 - **有界面的插件**（外壳、主题、基础窗格）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
 
 这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
@@ -86,7 +86,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 - **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，设置在 `settings.json` 的 `hello` 分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
 - **调用方不自己报身份**：数据、设置、说明书、命令总线、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
-- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`（轨迹卡[户主章](/trajectory/2026-09-19-owner-stamp)）
+- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)）
 - **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
 
 ## 插件在 peer 里写内核包
@@ -101,7 +101,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 - **只有 MCP 插件打包**：其余七个用 `tsc` 直接输出，构建产物由 node 加载；MCP 插件打包只为把生态外的两个库带进构建产物
 - **不带界面**：界面在界面插件仓 gwb-ui-plugins
-- **不管插件的安装与条目**：在插件管理，devkit 仓 gwb-devkit
+- **不管插件的安装与条目**：在插件管理，生命周期插件仓 gwb-lifecycle-plugins
 - **不给命令分权限、不做沙箱**：插件和内核在同一个进程里，装插件就是授权；MCP 入口只绑 127.0.0.1、要 token
 - **不为十几行的重复逻辑开共享包**：见上面「插件之间只经服务和命令」
 - **旧插件仓不是模板**：旧插件仓 gwb-plugins（已删除）的结构、分层、包划分一概不照搬

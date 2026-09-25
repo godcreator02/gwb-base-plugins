@@ -57,13 +57,13 @@ agent 再猜。
 
 - `import type { … } from '@godcreator/gwb-plugin-api'` 改成 `from '@godcreator/gwb-kernel-desktop'`（`import type {} from '@godcreator/gwb-plugin-api'` 也一样改），本仓有 17 个文件
 - devDependencies 删掉词汇表包：内核包已经写在 peer 里，pnpm 会把它装进包的 node_modules，类型检查从那里取
-- peer 里内核包的范围从 `^0.4.1` 改成 `^0.5.0`，在跑内核 0.5.0 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
+- peer 里内核包的范围从 `^0.4.1` 改成 `^0.5.0`，在运行内核 0.5.0 的隔离 home 里验过再发布；devkit 的发版检查要求这个范围包含正在运行的内核
 
 内核 0.5.0 发布之后再改；改的时候照说明书 `gwb-release` 升各插件自己的版本号。
 
 ## 2026-09-25 gwb.provides 不用写了：logger 等清单字段与文档段落可以删
 
-来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同批发）。
+来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同一批发布）。
 
 devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成每次调用时从 home 里各包的 `.d.ts` 读取：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
 `plugins/logger/package.json`（以及别的插件如果有）的 `gwb.provides`，AGENTS 正本、develop 页、design 页里讲 `gwb.provides` 与 `devkit.services` 旧用法的段落，下次改到时删掉或改成现状。
@@ -75,14 +75,14 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 上一条「要适配内核 0.5」照做，但版本改成跟 0.6：内核 0.6.0 把页面的 importmap 写死在页面入口里，只有 `react`、`react/jsx-runtime`、
 `react-dom`、`react-dom/client` 四个包名；内核包清单的 `gwb.shared` 字段和 `./react*` 出口都删了。所以：
 
-- peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在跑内核 0.6.0 的隔离 home 里验过再发
+- peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在运行内核 0.6.0 的隔离 home 里验过再发
 - 浏览器端构建（`build.ts` 或 `tools/build-plugin.ts`）里从内核包清单读 `gwb.shared` 的那段删掉，`external` 直接写上面四个名字；
   产物测试里读 `gwb.shared` 的名单一样写死。没有浏览器端产物的包只改 peer
 - 等 devkit 发了认 0.6 的新版再发：devkit 现在的发版检查还读内核包的 `gwb.shared`，装上 0.6 会被拒（已投 devkit 收件页）
 
 ## 2026-09-25 用到的插件写 peer：从 dev 挪到 peer，gwb.requires 已删
 
-来源：gwb-devkit（devkit 仓交接页「插件之间的运行时要求写 peer」，总控台会话），2026-09-25。插件管理 0.9.0、devkit 0.18.15 起生效，源上现在是插件管理 0.11.0、devkit 0.19.1。
+来源：gwb-lifecycle-plugins（devkit 所在仓的交接页「插件之间的运行时要求写 peer」，总控台会话），2026-09-25。插件管理 0.9.0、devkit 0.18.15 起生效，源上现在是插件管理 0.11.0、devkit 0.19.1。
 
 插件运行时用到的别的插件，从 devDependencies 挪到 peerDependencies，范围写 `^x.y.z`，下限写开发、验证时用的那一版；同一个仓里的插件写 `workspace:^`，发版时换成 `^<版本号>`。「用到」指：经 `ctx.inject` 用它的服务、经命令总线 `@godcreator/gwb-commands` 登记命令、用外壳 `@godcreator/gwb-shell` 注册窗格或样式令牌、import 它的类型。只用 `ctx.inject([...], fn)` 局部注入、缺了只少一部分功能的，在 `peerDependenciesMeta` 里标 `optional: true`；只按命令名调它的命令的不用写。写进 peer 的插件不再另写 dev：插件仓里 pnpm 会把 peer 装进 `node_modules`，类型从那里取。
 
@@ -129,27 +129,27 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 要做的：
 
 1. 内核 0.7.0 发布后，在装了 0.7.0 的隔离 home 里把八个插件验一遍，再把 peer 里内核包的范围改成 `^0.7.0`，版本号照说明书 `gwb-release` 升，然后发版。上面「内核直接跟 0.6」那条还没做的，peer 直接写 `^0.7.0`，不用先改到 0.6；那条里别的改动照做
-2. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒发。运行时照常
+2. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒绝发布。运行时照常
 
 ## 2026-09-25 要跟 devkit 0.21：packages 必给，要发的包写 publishConfig.registry
 
-来源：gwb-devkit（devkit 仓 `D:\unitfolders\s28bv-gwbbase\gwb-devkit`），提交 `9caafe0`，2026-09-25；总控台会话代为投递。
+来源：gwb-lifecycle-plugins（devkit 所在的仓 `D:\unitfolders\igldu-gwbkernel\gwb-lifecycle-plugins`），提交 `9caafe0`，2026-09-25；总控台会话代为投递。
 
 `@godcreator/gwb-devkit` 0.21.0 已发到团队源。这是破坏性版本，删掉了两个只为旧仓留着的缺省值（devkit 仓轨迹卡 `2026-09-25-drop-legacy-defaults`）：
 
 1. **`devkit.dev` 与 `devkit.release` 的 `packages` 必给**：非空数组，每一项是相对仓根的包目录，如 `["plugins/<短名>"]`；`devkit.release` 的按依赖顺序排，被依赖的排前面。不给或写错直接拒。这两条命令不再把仓根当成插件包：仓根本身就是插件包的仓（仓根 `package.json` 就是插件，`pnpm-workspace.yaml` 里没有 `plugins/*`）要先改成 workspace 布局才能用——插件放在 `plugins/<短名>/`，仓根是 `"private": true` 的 `package.json`，照 devkit 仓或 `devkit.scaffold` 新建的仓的样子。devkit 不替仓改布局
-2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒发。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（devkit 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
+2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒绝发布。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（devkit 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
 
-同一天还发了插件管理 0.12.1，修了发出去的包里带着过时文件的问题，用它的插件不用改。另外有一项早就可以做的清理：命令总线 `@godcreator/gwb-commands` 0.4.6 起（源上现在是 0.5.0），`gwbCommands.register` 自己把注销挂在调用方的上下文上，调用方卸载时命令自动注销，登记命令不用再在外面包一层 `ctx.effect(() => ….register(…))`。包着也只注销一次、照样能用，删不删随意；登记说明书的 `gwbSkills.register` 不是命令总线的方法，外面那层 `effect` 要留着。
+同一天还发了插件管理 0.12.1，修了发出去的包里带着过时文件的问题，用它的插件不用改。另外有一项早就可以做的清理：命令总线 `@godcreator/gwb-commands` 0.4.6 起（源上现在是 0.5.0），`gwbCommands.register` 自己把注销登记在调用方的上下文上，调用方卸载时命令自动注销，登记命令不用再在外面包一层 `ctx.effect(() => ….register(…))`。包着也只注销一次、照样能用，删不删随意；登记说明书的 `gwbSkills.register` 不是命令总线的方法，外面那层 `effect` 要留着。
 
 本仓的情况：
 
 - 布局：workspace 仓（`pnpm-workspace.yaml` 里有 `plugins/*`），不用改。`README.md` 第 33 行、`docs-site/content/docs/develop.mdx` 第 43、62 行的调用写法已经带了 `packages`
 - 没写 `publishConfig.registry` 的包：八个都没写——`plugins/commands`、`plugins/data`、`plugins/logger`、`plugins/mcp`、`plugins/node-cli`、`plugins/py-cli`、`plugins/settings`、`plugins/skills` 各自的 `package.json`（`@godcreator/gwb-commands`、`gwb-data`、`gwb-logger`、`gwb-mcp`、`gwb-node-cli`、`gwb-py-cli`、`gwb-settings`、`gwb-skills`）
-- 外面包着 `effect` 的命令登记（可选清理）：`plugins/logger/src/index.ts` 第 128、131 行；`plugins/mcp/src/index.ts` 第 349、369 行；`plugins/settings/src/index.ts` 第 111、117、122、129 行；`plugins/skills/src/index.ts` 第 57、63 行。另外两处形式一样但先看清再删：`plugins/node-cli/src/index.ts` 第 87 行、`plugins/py-cli/src/index.ts` 第 113 行是替别的插件转登记命令，外层 `effect` 挂在提供方的上下文上，和总线拒收时撤掉表里那条的逻辑连着。`plugins/commands/src/index.ts` 第 73 行是命令总线自己的实现，不算。各插件登记说明书的 `gwbSkills.register` 留着
+- 外面包着 `effect` 的命令登记（可选清理）：`plugins/logger/src/index.ts` 第 128、131 行；`plugins/mcp/src/index.ts` 第 349、369 行；`plugins/settings/src/index.ts` 第 111、117、122、129 行；`plugins/skills/src/index.ts` 第 57、63 行。另外两处形式一样但先看清再删：`plugins/node-cli/src/index.ts` 第 87 行、`plugins/py-cli/src/index.ts` 第 113 行是替别的插件转登记命令，外层 `effect` 登记在提供方的上下文上，和总线拒收时撤掉表里那条的逻辑连着。`plugins/commands/src/index.ts` 第 73 行是命令总线自己的实现，不算。各插件登记说明书的 `gwbSkills.register` 留着
 
 要做的：
 
-1. 八个包的 `package.json` 写上团队源的 `publishConfig.registry`，下次发版前做完，不写 `devkit.release` 拒发
+1. 八个包的 `package.json` 写上团队源的 `publishConfig.registry`，下次发版前做完，不写 `devkit.release` 拒绝发布
 2. 以后调 `devkit.dev`、`devkit.release` 都带 `packages`
 3. 可选清理随下次改到那几个文件时做
