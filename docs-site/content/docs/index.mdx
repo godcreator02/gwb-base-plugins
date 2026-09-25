@@ -22,7 +22,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 - **想知道这个仓为什么这么切**：[关键设计](/docs/design)
 - **在本仓动手**（构建、检查、测试、发版时包的顺序）：[开发](/docs/develop)；写这些插件时遇到过的、不报错的问题见[遇到过的问题](/docs/pitfalls)；硬约束在仓根 AGENTS
 - **写一个用命令总线的插件**：[命令总线](/docs/seams/bus)、[说明书](/docs/seams/skills)
-- **插件要存设置或数据**：[设置](/docs/seams/settings)、[数据](/docs/seams/data)、[条目身份](/docs/seams/entry-identity)；包改了名要接着用旧数据：[数据归属](/docs/seams/owners)
+- **插件要存设置或数据**：[设置](/docs/seams/settings)、[数据](/docs/seams/data)、[条目身份](/docs/seams/entry-identity)；包名对不上、要接着用旧数据：[数据归属](/docs/seams/owners)
 - **给 agent 提供能力、排查 MCP**：[MCP 协议](/docs/seams/mcp-protocol)、[命令表开给 agent](/docs/seams/agent-surface)
 - **把一个命令行工具接进工作台**：[命令行工具](/docs/seams/cli)
 - **在界面上看日志、排查故障**：[日志](/docs/seams/log)
@@ -31,7 +31,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 
 <Diagram name="seam-map" title="虚线框是本仓，连线是接缝，编号对应下面的表">
 - 本仓八个插件：MCP 入口 `gwb-mcp`、日志 `gwb-logger`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`
-- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；插件管理（`gwb-lifecycle-plugins` 仓）；cordis loader；子进程（Electron 以 node 模式运行、uv）
+- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；照报错手工处理归属记录的人（接缝 7）；cordis loader；子进程（Electron 以 node 模式运行、uv）
 - 各插件都经接缝 1 登记自己的命令；图上只画命令总线到别的插件那一条
 - 实线接缝有代码接口；点线接缝 8 只靠约定
 </Diagram>
@@ -46,7 +46,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 4 | 说明书 | 说明书 ↔ 带说明书的插件 | `gwbSkills.register(dir)`、`SKILL.md` 的目录形状、`skill.list` / `skill.read` | [说明书](/docs/seams/skills) |
 | 5 | 设置 | 设置 ↔ 各插件与界面 | `gwbSettings` 的方法、公共区 `*`、`settings.*` 四条命令、`settings.json` | [设置](/docs/seams/settings) |
 | 6 | 数据 | 数据 ↔ 各插件 | `gwbData` 的 `dir`、`readDoc`、`writeDoc` | [数据](/docs/seams/data) |
-| 7 | 数据归属 | 数据、设置 ↔ 插件管理 | `owners()`、`transferOwner(id, pkg)`；`.owner.json` 与 `$owners` | [数据归属](/docs/seams/owners) |
+| 7 | 数据归属 | 数据、设置 ↔ 手工处理归属的人 | `.owner.json` 与 `$owners`、拒绝时的报错；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方（插件管理 0.14 起不再调用） | [数据归属](/docs/seams/owners) |
 | 8 | 条目身份（约定） | 数据、设置、说明书、命令、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id 与包名；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 登记工具的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run`；回执 `CliRunResult`；python 的 venv | [命令行工具](/docs/seams/cli) |
 | 10 | 日志 | 日志 ↔ 内核日志流、日志窗格 | cordis 日志的 exporter 与缓冲、推给页面的事件、`logger.backlog` / `logger.where` | [日志](/docs/seams/log) |

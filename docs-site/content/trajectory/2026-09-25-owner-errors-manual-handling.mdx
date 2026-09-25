@@ -1,0 +1,27 @@
+---
+title: 归属对不上时由人手工处理：报错不再指向 plugin-manager.transfer-owner，owners 与 transferOwner 留到下次升 x 再删
+born-at: 2026-09-25T18:10
+type: choice
+parent: [2026-09-19-owner-stamp]
+label: 归属改手工处理
+domain: 插件
+---
+
+## 背景
+
+插件管理 0.14.0 删掉了命令 `plugin-manager.transfer-owner`，选条目 id 时也不再读数据插件与设置插件的归属记录，不再注入 `gwbData` / `gwbSettings`（生命周期插件仓的轨迹卡 `2026-09-25-plugin-manager-drops-unused-commands`）。数据插件与设置插件拒绝时的报错、设置插件的说明书、文档站的现状页却还在教人「调 `plugin-manager.transfer-owner` 改归属」，照着做只会得到「没有这条命令」。两个服务上的 `owners()`、`transferOwner()` 从此没有调用方。
+
+## 结论与边界
+
+**采纳**：报错改成照实说——归属记录属于别的包时，这个 id 的数据或设置不能给当前包用；要接着用，由人手工处理。数据那边写出目录的完整路径，可以把目录改名或删掉，确认是同一个插件改了包名就改 `.owner.json` 里的 `pkg`；设置那边写出 `<home>/settings.json`，要求先关掉工作台（设置插件每次写文件都用内存里的整张表替换整份文件，开着时手改会被覆盖），再把分区改名或删掉并删掉 `$owners` 里那一项，或只改 `$owners` 里的包名。也可以给条目换个 id。
+
+**不采纳：这次就删掉 `owners()` 与 `transferOwner()`**。删服务方法是改名字，要升 x；两个插件升 x 后所有在 peer 里写了它们的下游都出范围、要跟着改一批仓，只为删两个没人调的方法不值。方法留着、注释写明插件管理 0.14 起不再调用，等这两个插件下次本来就要升 x 时一起删。
+
+版本各升 y（data 0.1.9、settings 0.3.5）：只改报错文字、注释与说明书，服务签名、命令、磁盘格式都不变。
+
+## 代价与遗留
+
+- 改了包名的插件要接着用旧数据与设置，得由人去磁盘上改两处，设置那处还得先关掉工作台
+- `owners()`、`transferOwner()` 在两个服务上多留一段时间，文档里标着「此刻没有调用方」
+
+pivots-from:: [2026-09-19-owner-stamp](2026-09-19-owner-stamp.md)

@@ -93,11 +93,12 @@ describe('GwbData 按调用方条目给目录', () => {
     expect(textsOf(logs, 'error').some((t) => t.includes('写 home:hello/loop 失败'))).toBe(true)
   })
 
-  it('目录归别的包时 dir、readDoc、writeDoc 都抛错，报错指向 plugin-manager.transfer-owner', async () => {
+  it('目录归别的包时 dir、readDoc、writeDoc 都抛错，报错写明由人手工处理哪个目录', async () => {
     const { root } = await bootData()
     await callerData(root, { id: 'home:foo', pkg: '@a/gwb-foo' }).then((d) => d.dir)
     const other = await callerData(root, { id: 'home:foo', pkg: '@b/foo' })
-    expect(() => other.dir).toThrow('plugin-manager.transfer-owner')
+    expect(() => other.dir).toThrow(`数据目录 ${path.join(home, 'data', 'foo')} 归 @a/gwb-foo，不能给 @b/foo 用`)
+    expect(() => other.dir).toThrow('由人手工处理')
     await expect(other.readDoc('x')).rejects.toThrow('归 @a/gwb-foo')
     await expect(other.writeDoc('x', 1)).rejects.toThrow('归 @a/gwb-foo')
   })

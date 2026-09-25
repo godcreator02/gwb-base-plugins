@@ -85,7 +85,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 - **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，设置在 `settings.json` 的 `hello` 分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
 - **调用方不自己报身份**：数据、设置、说明书、命令总线、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
-- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)）
+- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝，报错写明磁盘上哪个目录或文件，由人手工改名、删掉或改归属记录里的包名；工作台上没有转移归属的命令（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)、[归属对不上时由人手工处理](/trajectory/2026-09-25-owner-errors-manual-handling)）
 - **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
 
 ## 插件在 peer 里写内核包

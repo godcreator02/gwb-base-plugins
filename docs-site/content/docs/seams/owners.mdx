@@ -1,29 +1,30 @@
 ---
 title: 7 数据归属 owners
-description: 连接数据插件、设置插件与生命周期插件仓 gwb-lifecycle-plugins 的插件管理；交换的是两个服务都有的 owners() / transferOwner(id, pkg)，归属在磁盘上记成数据目录里的 .owner.json 和 settings.json 顶层的 $owners。数据插件与设置插件保证包名对不上就拒绝、报错指向 plugin-manager.transfer-owner；插件管理保证只经这两个方法读写归属、两边一起转移
+description: 数据插件与设置插件记下每个数据目录、每个设置分区归哪个包，记在数据目录里的 .owner.json 和 settings.json 顶层的 $owners；包名对不上就拒绝，报错写明归属于谁、由人在磁盘上的哪个目录或文件手工处理。两个服务上的 owners() / transferOwner(id, pkg) 还在，插件管理 0.14 起不再调用，此刻没有调用方
 ---
 
-**本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么；插件管理怎么读归属、怎么转移归属；这几方各保证什么。
+**本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么、人怎么手工处理；两个服务上的 `owners()` / `transferOwner()` 此刻是什么状态；各方保证什么。
 
 ## 连接的模块
 
 - [数据插件](/docs/data)：每个数据目录里一个 `.owner.json`
 - [设置插件](/docs/settings)：`settings.json` 顶层一张 `$owners`
-- 插件管理 `@godcreator/gwb-plugin-manager`（生命周期插件仓 `gwb-lifecycle-plugins`）：给新条目分配 id 时读两边的归属，命令 `plugin-manager.transfer-owner` 同时转移两边的归属
+- 照报错手工处理归属的人：改名或删掉旧的数据目录与设置分区，或改归属记录里的包名
+- 两个服务上的 `owners()`、`transferOwner()` 此刻没有调用方：插件管理 `@godcreator/gwb-plugin-manager`（生命周期插件仓 `gwb-lifecycle-plugins`）0.14 起选条目 id 时不读归属，也没有转移归属的命令
 
-为什么要记归属：数据目录名与设置分区名都是条目 id 的末段（见[条目身份](/docs/seams/entry-identity)），而不同 scope 的同名包会算出同一个条目 id（`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`）；条目删了数据与设置留在磁盘上，下一个拿到这个 id 的包就会读到前一个包的东西（轨迹卡[户主章](/trajectory/2026-09-19-owner-stamp)）。
+为什么要记归属：数据目录名与设置分区名都是条目 id 的末段（见[条目身份](/docs/seams/entry-identity)），而不同 scope 的同名包会算出同一个条目 id（`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`）；条目删了数据与设置留在磁盘上，下一个拿到这个 id 的包就会读到前一个包的东西（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)）。
 
 ## 接口
 
-<Diagram name="owner-transfer" title="包名改了之后，归属怎么拒绝、怎么转移（分步）">
+<Diagram name="owner-transfer" title="包名对不上时，归属怎么拒绝、人怎么手工处理（分步）">
 - 两处归属记录：数据目录里的 `.owner.json`（`{ "pkg": "<包名>" }`）、`settings.json` 顶层 `$owners` 里的一项，键都是条目 id 的末段
 - 第 1 步：`@old/gwb-foo` 的条目 `home:foo` 第一次取数据目录、第一次 `define` 时，两处都记成 `@old/gwb-foo`
-- 第 2 步：同一个插件改名成 `@new/gwb-foo`，条目 id 还是 `foo`；数据插件与设置插件都抛错、不动数据，报错指向 `plugin-manager.transfer-owner`
-- 第 3 步：插件管理（`gwb-lifecycle-plugins` 仓）确认是同一个插件后，调两边的 `transferOwner('foo', '@new/gwb-foo')`，立刻写盘
-- 第 4 步：之后新包名放行、旧包名被拒；`owners()` 列出 `foo → @new/gwb-foo`
+- 第 2 步：同一个插件改名成 `@new/gwb-foo`，条目 id 还是 `foo`；数据插件与设置插件都抛错、不动数据，报错写明归属于谁、磁盘上哪个目录或文件要手工处理
+- 第 3 步：人确认是同一个插件后手工改归属记录：`<home>/data/foo/.owner.json` 的 `pkg` 改成 `@new/gwb-foo`；关掉工作台，把 `settings.json` 里 `$owners` 的 `foo` 改成 `@new/gwb-foo`。不是同一个插件时改名或删掉旧的目录与分区
+- 第 4 步：之后新包名放行、旧包名被拒
 </Diagram>
 
-**两个服务上的同名方法**：
+**两个服务上的同名方法**：插件管理 0.14 起不再调用，此刻没有调用方，留到这两个插件下次本来就要升 x 时删（轨迹卡[归属对不上时由人手工处理](/trajectory/2026-09-25-owner-errors-manual-handling)）。
 
 {/* ref file="../plugins/data/src/index.ts" lines="78-88" */}
 
@@ -42,42 +43,41 @@ description: 连接数据插件、设置插件与生命周期插件仓 gwb-lifec
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="188-197" */}
 
-**插件管理那一端**：插件管理在 `gwb-lifecycle-plugins` 仓里自己声明一个只含这两个方法的接口，把 `ctx.gwbData`、`ctx.gwbSettings` 直接赋给它。两个服务改了这两个方法的签名，`gwb-lifecycle-plugins` 仓升级开发依赖之后的类型检查会报错；没升级之前发现不了。
+**报错里写的手工处理办法**：两边拒绝时都写明归属于谁、由人在磁盘上哪里处理。数据那边给出目录的完整路径与 `.owner.json`；设置那边给出 `<home>/settings.json` 里的分区名与 `$owners` 那一项，并要求先关掉工作台——设置插件每次写文件都用内存里的整张表替换整份文件，工作台开着时手改的内容会被下一次写入覆盖：
 
-**报错里的命令名**：两边拒绝时的报错按名字指向插件管理的命令：
+{/* has file="../plugins/data/src/owner.ts" text="由人手工处理：把这个目录改名或删掉" */}
 
-{/* has file="../plugins/data/src/owner.ts" text="就调 plugin-manager.transfer-owner 改归属" */}
-
-{/* has file="../plugins/settings/src/registry.ts" text="就调 plugin-manager.transfer-owner 改归属" */}
-
-这个命令名**靠约定**：它在 `gwb-lifecycle-plugins` 仓的插件管理里登记，名字写在那里和本仓这两条报错里。插件管理改了命令名，这两条报错会指向一条不存在的命令。
+{/* has file="../plugins/settings/src/registry.ts" text="由人手工处理，先关掉工作台" */}
 
 ## 约定
 
 **数据插件与设置插件**保证：
 
 - 目录或分区第一次被访问（数据）或 `define`（设置）时，没有归属就记成调用方的包名
-- 调用方的包名和记下的不同就抛错、不动任何数据，报错写明归属于谁、该怎么处理
+- 调用方的包名和记下的不同就抛错、不动任何数据，报错写明归属于谁、由人在磁盘上哪个目录或文件处理
 - 数据插件的归属文件坏了当场抛错，不当成没有归属（当成没有等于谁都能认领）；设置插件的 `$owners` 里坏掉的那一项丢掉并写 warn，那个分区回到「谁先声明归谁」
 - `transferOwner` 立刻写入磁盘，之后新包名放行、旧包名被拒
 - `owners()` 只列出有归属记录的目录或分区；数据插件列的时候遇到坏的归属文件写 warn、不列它
 
-**插件管理**保证：
+**手工处理归属的人**保证：
 
-- 给新条目分配 id 时读两边的 `owners()`，不把属于别的包的 id 分给新包
-- 只在确认是同一个插件改了包名时才调 `transferOwner`，并且两边一起转移：数据插件或设置插件有一个没装就报错，哪一份都不转移
-- 不直接读写 `.owner.json` 与 `$owners`：只经这两个方法
+- 只在确认是同一个插件改了包名时才把归属记录里的包名改成新包名；不是同一个插件时改名或删掉旧的目录与分区，否则新包会读到别的包留下的数据
+- 改 `settings.json` 之前关掉工作台
+- 设置分区改名或删掉时，同时删掉 `$owners` 里那一项，不然新包 `define` 时还按旧记录拒绝
 
 ## 不负责的事
 
-- 数据插件与设置插件不判断「是不是同一个插件改了名」：包名对不上一律拒绝，由人或插件管理决定是否转移
+- 数据插件与设置插件不判断「是不是同一个插件改了名」：包名对不上一律拒绝，由人决定怎么处理
 - 数据插件与设置插件不删除旧包留下的数据与设置
+- 工作台上没有转移归属的命令，本仓的两个插件也不登记这样的命令
 - 这套归属不是安全边界：插件在同一个进程里，能直接改这两个文件；它防的是同名 id 误读别人的数据
 
 ## 测试
 
-数据插件的归属由 `plugins/data/tests/owner.test.ts` 与 `service.test.ts` 测，设置插件的归属由 `plugins/settings/tests/registry.test.ts` 测；插件管理那一端由 `gwb-lifecycle-plugins` 仓的测试保护，两边一起转移只能在隔离 home 里验证。
+数据插件的归属由 `plugins/data/tests/owner.test.ts` 与 `service.test.ts` 测（包括报错写明由人处理哪个目录、`transferOwner` 改写归属），设置插件的归属由 `plugins/settings/tests/registry.test.ts` 与 `service.test.ts` 测。
 
 {/* has file="../plugins/data/tests/owner.test.ts" text="scope 不同、短名相同的包拿不到别人的目录——这就是要挡的事故" */}
 
 {/* has file="../plugins/settings/tests/registry.test.ts" text="分区名相同、包名不同：拒，而且不动表" */}
+
+{/* has file="../plugins/data/tests/service.test.ts" text="目录归别的包时 dir、readDoc、writeDoc 都抛错，报错写明由人手工处理哪个目录" */}

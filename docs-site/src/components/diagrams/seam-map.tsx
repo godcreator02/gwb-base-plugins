@@ -72,7 +72,7 @@ export function SeamMap() {
 
       <Box x={205} y={470} w={150} h={44} lines={['子进程', 'Electron 的 node · uv']} />
       <Box x={370} y={470} w={150} h={44} lines={['cordis loader', '条目 id']} />
-      <Box x={580} y={470} w={160} h={44} lines={['插件管理', 'gwb-lifecycle-plugins 仓']} />
+      <Box x={580} y={470} w={160} h={44} lines={['人', '手工处理归属记录']} />
 
       <Badge x={550} y={152} n={1} />
       <Badge x={95} y={100} n={2} />

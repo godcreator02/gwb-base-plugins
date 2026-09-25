@@ -51,7 +51,7 @@ description: 读设置、改设置、查凭据配没配、在插件里声明设�
    - `shared: true` 的项写进公共区 `*`，别的插件不用声明就能用 `get` 读到（跨插件共享凭据用这个）
 3. 读写：`ctx.gwbSettings.get(key)` 同步返回，没有值时回 `default`；自己没声明过的 `key` 去公共区 `*` 找。`set(key, value)`、`delete(key)` 只能动自己声明过的项。读到的值自己校验类型。
 4. 给 `cordis.yml` 里本插件那条条目写固定的 `id`：分区名取条目 id 的末段（`home:logger` 的分区是 `logger`），没写 `id` 时 id 每次启动都变，设置就对不上了。
-5. `define` 抛错「设置分区 X 归 Y」：两个包算出了同一个条目 id，给本插件的条目换一个 `id`；确认是同一个插件改了包名，调 `plugin-manager.transfer-owner` 把分区改归新包名。
+5. `define` 抛错「设置分区 X 归 Y」：两个包算出了同一个条目 id，这个分区的设置不能给本插件用。给本插件的条目换一个 `id`；或者由人手工处理：先关掉工作台（它开着时会用内存里的内容覆盖手改的文件），在 `<home>/settings.json` 里把分区 X 改名或删掉，同时删掉顶层 `$owners` 里的 X 一项；确认是同一个插件改了包名、要接着用这些设置，就只把 `$owners` 里的 X 改成新包名。工作台上没有转移归属的命令。
 
 完成的判据：`settings.all` 里有一行 `section` 是本条目 id 的末段（`shared` 项是 `*`）、`key` 是这一项，`live` 为 `true`。
 

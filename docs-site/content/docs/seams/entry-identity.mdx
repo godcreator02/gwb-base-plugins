@@ -54,7 +54,7 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="42-66" */}
 
-这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则相同，两处注释互相指着对方。十几行纯逻辑不值得为它开一个共享包；代价是改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，插件管理按 id 查两边归属时也对不上（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
+这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则相同，两处注释互相指着对方。十几行纯逻辑不值得为它开一个共享包；代价是改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，两边的归属记录也记在不同的名字下（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
 
 **随机 id**：条目没在 `cordis.yml` 里写 `id` 时，loader 给一个 8 位十六进制的随机 id，每次启动都变。两个插件各有一份相同的 `looksRandom`，认出来只写 warn——条目本来能正常运行，不抛错；手写一个正好 8 位十六进制的 id 会多一条 warn：
 

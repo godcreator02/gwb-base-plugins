@@ -190,7 +190,7 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     const holder = ownerBySection[ownSection]
     if (holder !== undefined && holder !== owner.pkg) {
       throw new Error(
-        `设置分区 ${ownSection} 归 ${holder}，${owner.pkg} 用不了。多半是两个包名不同的插件算出了同一个条目 id——给这条条目换个 id；确认是同一个插件改了包名，就调 plugin-manager.transfer-owner 改归属`,
+        `设置分区 ${ownSection} 归 ${holder}，不能给 ${owner.pkg} 用。多半是两个包名不同的插件算出了同一个条目 id。要让 ${owner.pkg} 用这个 id，由人手工处理，先关掉工作台（它开着时会用内存里的内容覆盖手改的文件），再改 <home>/settings.json：把分区 ${ownSection} 改名或删掉，同时删掉顶层 ${OWNERS_KEY} 里的 ${ownSection} 一项；确认是同一个插件改了包名、要接着用这些设置，就只把 ${OWNERS_KEY} 里的 ${ownSection} 改成 ${owner.pkg}。也可以给这条条目换个 id`,
       )
     }
     ownerBySection[ownSection] = owner.pkg

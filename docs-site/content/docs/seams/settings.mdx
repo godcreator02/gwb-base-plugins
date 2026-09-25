@@ -10,7 +10,6 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 - [设置插件](/docs/settings) `@godcreator/gwb-settings`：提供服务 `ctx.gwbSettings`；有命令总线时登记四条 `settings.*` 命令（局部注入，没有命令总线时服务照样完整）
 - 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件用它存地址、凭据等配置
 - 按位置读写的一方：编辑设置的界面、经 MCP 入口的 agent、要读另一个插件分区里凭据的插件
-- 插件管理（生命周期插件仓 `gwb-lifecycle-plugins`）：用 `owners()` / `transferOwner()`，见[数据归属](/docs/seams/owners)
 
 ## 接口
 
@@ -24,6 +23,8 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 **服务**：
 
 {/* ref file="../plugins/settings/src/index.ts" lines="41-55" */}
+
+`owners()` 与 `transferOwner()` 此刻没有调用方（插件管理 0.14 起不再调用），见[数据归属](/docs/seams/owners)。
 
 **一项设置的声明**：
 

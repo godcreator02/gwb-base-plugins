@@ -48,9 +48,9 @@ export interface GwbSettingsApi {
   set(key: string, value: unknown): Promise<void>
   /** 抹掉值，定义还在。get 因此回落到 default */
   delete(key: string): Promise<void>
-  /** 各分区归哪个包：分区名（条目 id 最后一段）→ 包名。还没被 define 过的分区不列 */
+  /** 各分区归哪个包：分区名（条目 id 最后一段）→ 包名。还没被 define 过的分区不列。插件管理 0.14 起不再调用，留待本插件下次本来就要升 x 时删 */
   owners(): SettingsOwners
-  /** 把一个分区改归 `pkg`，写进文件。`id` 认完整 entryId 也认不带前缀的 id。包改了名、要接着用旧设置时用它 */
+  /** 把一个分区改归 `pkg`，写进文件。`id` 认完整 entryId 也认不带前缀的 id。插件管理 0.14 起不再调用，留待本插件下次本来就要升 x 时删 */
   transferOwner(id: string, pkg: string): Promise<void>
 }
 
