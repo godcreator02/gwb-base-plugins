@@ -21,8 +21,7 @@ MCP SDK 与 zod 写 dev，由 MCP 插件的 `build.ts` 打包进构建产物。
 
 ## 旧插件仓只作参考，不是模板
 
-废弃插件仓 `26090623hyz/gwb-plugins`：查它遇到过的问题有用，结构、分层、包划分一概不照搬。有一个仍然存在的
-问题要避开：接口包声明成 `peerDependencies` 时 tsdown 会把它外置成包名 import——接口包要么声明进
+旧插件仓 gwb-plugins 已删除，它的结构、分层、包划分一概不照搬。它遇到过、现在仍会出现的一个问题要避开：接口包声明成 `peerDependencies` 时 tsdown 会把它外置成包名 import——接口包要么声明进
 importmap、要么强制打包进来，并配上构建产物检查。
 
 ## 文档地图
