@@ -53,22 +53,11 @@ export function apply(ctx: GwbContext) {
 
 `description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。
 
+`GwbResult` 出现在本包导出的类型里，它来自内核包；内核包是每个插件的 peer，用命令总线类型的插件那里总解析得到，见[遇到过的问题](/docs/pitfalls)。
+
 ## 依赖
 
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 内核带的 cordis：`Service`、`effect`、`inject`、`logger`（peer，`^4.0.0-rc.10`） | 提供服务、把注销登记在登记方的 `effect` 上、局部注入说明书插件、写日志 | 由内核提供，不会缺；构建产物按值 import 了 `cordis`，必须和内核用同一份，所以写 peer |
-| loader 放在调用方 fiber 上的条目 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 不是经 `cordis.yml` 加载的插件登记命令时，`register` 抛错 |
-| 说明书插件服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbResult` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
-
-{/* ref file="../plugins/commands/package.json" lines="42-45" */}
-
-说明书插件不写进服务类的 `static inject`，局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）：
-
-{/* ref file="../plugins/commands/src/index.ts" lines="22-25" */}
-
-`GwbResult` 出现在本包导出的类型里，它来自内核包；内核包是每个插件的 peer，用命令总线类型的插件那里总解析得到，见[遇到过的问题](/docs/pitfalls)。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及内核怎样按服务名直接调它、用了哪些约定通道，见[插件之间怎么连](/docs/wiring#godcreatorgwb-commands)。
 
 ## 不做的事
 

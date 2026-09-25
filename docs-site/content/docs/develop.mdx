@@ -18,7 +18,7 @@ pnpm build
 
 {/* ref file="../package.json" lines="5-13" */}
 
-pnpm 工作区是 `plugins/*`、`packages/*` 与 `docs-site`；`packages/` 下的 `shared-react`、`tokens` 只剩旧构建留下的未跟踪文件、没有 `package.json`，不是在用的包。
+pnpm 工作区是 `plugins/*` 与 `docs-site`。仓根 `packages/` 下如果还有 `shared-react`、`tokens`，是旧构建留下的未跟踪文件、没有 `package.json`，不在工作区里。
 
 ## 提交前的检查
 
@@ -47,7 +47,7 @@ pnpm check
 | data | `paths.test.ts`、`store.test.ts`、`owner.test.ts`、`service.test.ts` | 名字与目录；读的三种结果、原子写、同时写好几次；归属文件；服务按调用方条目给目录、归属不符时抛错 |
 | logger | `source.test.ts`、`apply.test.ts` | 来源分类；补读 cordis 缓冲、推给页面、两千条上限、两条命令 |
 | node-cli | `registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | 登记校验；总线参数与 `cwd` 校验；真 node 子进程的退出码、参数不经 shell、超时、长输出写临时文件；服务登记成总线命令、经调用方上下文取总线、总线拒收时撤掉表里那条 |
-| py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务把 venv 摆成已就绪的样子、用当前 node 的拷贝当入口程序，不启动 uv |
+| py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务测试预先建好已就绪的 venv 目录、记号与 dist-info，用当前 node 的拷贝当入口程序，不启动 uv |
 
 {/* has file="../plugins/commands/tests/service.test.ts" text="一个 home 的最小复刻：真 cordis 加真 loader，插件按包名建成条目加载，fiber 上有 loader 放的条目" */}
 
@@ -57,7 +57,7 @@ pnpm check
 
 ## 发版
 
-**包的顺序**：`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、日志、两个命令行运行插件用命令总线，设置与两个命令行运行插件用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件。八个一起发时这样给：
+**包的顺序**：`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、日志、两个命令行运行插件用命令总线，设置与两个命令行运行插件用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件（逐条见[插件之间怎么连](/docs/wiring)）。八个一起发时这样给：
 
 ```
 devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills","plugins/settings","plugins/data","plugins/logger","plugins/node-cli","plugins/py-cli","plugins/mcp"]}

@@ -52,19 +52,7 @@ await ctx.gwbData.writeDoc('layout', layout ?? { panes: [] })
 
 ## 依赖
 
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis，两份的 `instanceof` 对不上 |
-| loader 放在调用方 fiber 上的 `entry`（`id`、`options.name`，[8 条目身份](/docs/seams/entry-identity)） | 认出调用方的条目 id 与包名 | 不是经 `cordis.yml` 加载的插件调用时抛错「取不到调用方的身份」 |
-| 文件系统 | 建目录、读写文档与 `.owner.json` | 读失败当作没有这份文档；写失败把异常抛给调用方 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbKernelApi` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
-
-依赖里没有别的插件：
-
-{/* ref file="../plugins/data/package.json" lines="27-38" */}
-
-数据插件和[设置插件](/docs/settings)用同一个办法从条目 id 算名字：两边各有一份十几行的算法（`entryDirName` 与 `entrySection`），必须给出同一个答案，改一处就要改另一处（见[条目身份](/docs/seams/entry-identity)）。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（loader 放在 fiber 上的条目、磁盘上的目录与 `.owner.json`、和设置插件各存一份的条目 id 算法），见[插件之间怎么连](/docs/wiring#godcreatorgwb-data)。
 
 ## 不做的事
 

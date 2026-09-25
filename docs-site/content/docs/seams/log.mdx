@@ -1,6 +1,6 @@
 ---
 title: 10 日志 gwbLogger
-description: 连接日志插件与内核的日志流、以及界面插件仓里的日志窗格；日志插件在 cordis 的 logger 上注册第二个 exporter、先补读 cordis 自带的缓冲，按 logger 名字把来源分成 plugin / kernel / renderer（靠约定），每条经 gwbKernel.emit 作为 t 为 gwb-logger 的事件推给页面，历史走 logger.backlog；空服务 gwbLogger 只表示「日志插件已加载」，LogEntry 的形状在窗格那边另写一份
+description: 连接日志插件与内核的日志流、以及界面插件仓里的日志窗格；日志插件在 cordis 的 logger 上注册第三个 exporter（前两个是 cordis 自带的缓冲与内核的 exporter）、先补读 cordis 自带的缓冲，按 logger 名字把来源分成 plugin / kernel / renderer（靠约定），每条经 gwbKernel.emit 作为 t 为 gwb-logger 的事件推给页面，历史走 logger.backlog；空服务 gwbLogger 只表示「日志插件已加载」，LogEntry 的形状在窗格那边另写一份
 ---
 
 **本页回答**：日志插件从哪收日志、怎么判断一条日志的来源；页面上的日志窗格怎么拿到历史与实时日志；一条日志的形状；日志插件、内核、日志窗格、写日志的插件各保证什么；哪些地方靠约定。日志怎么写进 `gwb.log` 由内核负责，见内核仓文档站的「日志」接缝。
@@ -8,7 +8,7 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 ## 连接的模块
 
 - [日志插件](/docs/logger) `@godcreator/gwb-logger`：`inject` 里有 `gwbCommands`；提供空服务 `gwbLogger`，登记命令 `logger.backlog`、`logger.where`
-- 内核的日志流：内核、插件、页面 console 三个来源都经 cordis 的 `ctx.logger` 汇成一条流；内核给它注册了第一个 exporter 写 stderr 与 `gwb.log`，页面 console 被内核转成名字为 `renderer` 的日志
+- 内核的日志流：内核、插件、页面 console 三个来源都经 cordis 的 `ctx.logger` 汇成一条流；cordis 创建日志服务时自己注册了第一个 exporter（缓冲 `ctx.logger.buffer`），内核注册了第二个、写 stderr 与 `gwb.log`，页面 console 被内核转成名字为 `renderer` 的日志
 - 日志窗格：界面插件仓里的一个窗格，经 `window.gwb.on` 收实时日志、经 `logger.backlog` 取历史
 
 ## 接口
@@ -40,7 +40,7 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 这张名单**靠约定**：`kernel` 与 `renderer` 两个名字由内核定，`loader` 是 cordis loader 自己的 logger 名；日志插件在 `KERNEL_LOGGER_NAMES` 里另写一份。内核改名或新增名字，这边会把它算成插件，不报错。
 
-**第二个 exporter**：级别设为 3（`debug` 也收），每收到一条就存进 2000 条的缓冲、再经 `gwbKernel.emit` 推给页面；注册之前的日志从 cordis 自带的缓冲 `ctx.logger.buffer`（info 及以上）补进来，先补再注册，两段不重叠：
+**日志插件的 exporter 是第三个**：级别设为 3（`debug` 也收），每收到一条就存进 2000 条的缓冲、再经 `gwbKernel.emit` 推给页面；注册之前的日志从 cordis 自带的缓冲 `ctx.logger.buffer`（info 及以上）补进来，先补再注册，两段不重叠：
 
 {/* ref file="../plugins/logger/src/index.ts" lines="111-124" */}
 

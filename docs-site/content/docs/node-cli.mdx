@@ -10,7 +10,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 ## 功能
 
 - **登记命令行工具**：插件给一个名字和要运行的 js 的绝对路径，拿回注销函数；插件卸载时自动注销，不用自己包 `ctx.effect`
-- **登记时就校验**：名字为空或带空白、js 路径不是绝对路径、时限不是正数或超上限，登记时就抛错——拖到运行时才发现的话，报错的地方已经离登记的地方很远
+- **登记时就校验**：名字为空或带空白、js 路径不是绝对路径、时限不是正数或超上限，登记时就抛错——等到运行时才发现的话，报错的地方已经离登记的地方很远
 - **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面、agent、别的插件照调命令的办法调它；`usage` 没给时补上参数形状那一句。总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉表里那条，把错抛给调用方
 - **用运行工作台的那个 node 启动**：程序是 `process.execPath`（工作台进程的 electron.exe），带上 `ELECTRON_RUN_AS_NODE=1`；不查 PATH、不读 `bin` 字段、不经过 shell，参数全程是数组，引号、空格、中文原样到达
 - **工作目录**：按次给的优先，其次登记时给的，都没给就是那个 js 所在的目录；不用工作台进程自己的工作目录。按次给的必须是存在的目录的绝对路径，不合规时不启动进程，回一句说明要什么的 `{ ok: false, error }`
@@ -66,17 +66,7 @@ export function apply(ctx: GwbContext) {
 
 ## 依赖
 
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 命令插件服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `node-cli.list` | 服务 `gwbNodeCli` 不提供，插件一直等待 |
-| 说明书插件服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
-| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
-| `process.execPath`（工作台进程的 electron.exe）与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js | 不带这个环境变量的话 electron 会开一个应用，而不是运行 js |
-| Windows 的 `taskkill` | 超时时结束整个进程树 | 启动不了或退出码不是 0 时，改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程，孙进程可能留下 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
-
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`；说明书只局部注入，标 `optional`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件除开头一行注释外逐字相同，本包这份是正本，改一处就要改另一处（见[命令行工具](/docs/seams/cli)）。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（从调用方上下文取命令总线、electron.exe 以 node 模式运行、`taskkill`、临时目录里的全量输出、和 gwb-py-cli 逐字相同的 `run.ts` 与 `invoke.ts`），见[插件之间怎么连](/docs/wiring#godcreatorgwb-node-cli)。
 
 ## 不做的事
 

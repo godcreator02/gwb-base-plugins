@@ -12,7 +12,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 - **登记 python 命令行工具**：插件给名字、自己的包根、python 项目的名字与版本，以及要运行的入口点（`command`）或模块（`module`），二选一；插件卸载时自动注销
 - **venv 建在登记方的包根下**：`<包根>/py/.venv`；插件装在 `node_modules` 里，venv 也就在 `node_modules` 里
 - **每次运行前检查 venv**：三样都对就跳过——venv 目录在；venv 里的包根记号 `.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`（项目名按 PyPA 的规则归一化后比较）。只看目录名、不启动 python：每次运行前都要检查，承担不起启动解释器的开销。pnpm 重新安装时整个包目录被替换、venv 随之消失，下一次运行自己重建
-- **包根记号防搬家**：venv 里的可编辑安装记着建它那次的包根，整个包目录被搬走（home 被复制或改名）后照样能启动、却指向原来的目录。记号放在 venv 里面，跟 venv 一起创建、一起删除；放在外面的话 venv 被删了记号还在
+- **包根记号认出包目录被移动过**：venv 里的可编辑安装记着建它那次的包根，整个包目录被搬走（home 被复制或改名）后照样能启动、却指向原来的目录。记号放在 venv 里面，跟 venv 一起创建、一起删除；放在外面的话 venv 被删了记号还在
 - **不对就用 uv 重建**：运行 `uv sync --frozen --no-dev --inexact`，`--inexact` 是因为开发时 `py/.venv` 也是项目自己的开发环境，不删里面多装的包；时限 300 秒，第一次可能要下载 python 解释器。记号最后写，写完再检查一遍，版本仍不对就算失败
 - **检查失败不抛错**：uv 不在 PATH、`uv sync` 失败或超时，都收成 `{ ready: false, reason }`，原因写成人读得懂的一句；插件本身照常加载，只是这些工具运行不了
 - **登记时顺带检查一次**：不等它完成，不阻塞登记方的 `apply`
@@ -64,17 +64,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 
 ## 依赖
 
-| 依赖 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- |
-| 命令插件服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `py-cli.list` | 服务 `gwbPyCli` 不提供，插件一直等待 |
-| 说明书插件服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
-| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不成，原因是「启动不了 uv（PATH 上没有？）」；装上 uv 后再调用一次就行，每次运行前都会重新检查 venv，不用重新加载插件 |
-| Windows 的 venv 布局（`Scripts/*.exe`、`Lib/site-packages`） | 找要运行的程序、读装了哪个版本 | 别的系统上找不到程序；工作台只支持 Windows |
-| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
-| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
-
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`；说明书只局部注入，标 `optional`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 是 [gwb-node-cli](/docs/node-cli) 里同名文件的副本，除开头一行注释外逐字相同，改那边就要改这边。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（登记方包目录下的 `py/.venv`、PATH 上的 `uv`、venv 里的程序与两个编码环境变量、从 gwb-node-cli 复制来的 `run.ts` 与 `invoke.ts`），见[插件之间怎么连](/docs/wiring#godcreatorgwb-py-cli)。uv 不在 PATH 时 venv 建不成，报错原因是「启动不了 uv（PATH 上没有？）」，装上 uv 后再调用一次就行，不用重新加载插件。
 
 ## 不做的事
 

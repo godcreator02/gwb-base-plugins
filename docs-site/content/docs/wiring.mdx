@@ -1,0 +1,440 @@
+---
+title: 插件之间怎么连
+description: 本仓八个插件各提供哪些服务、命令与事件；各注入了哪些服务、是必需还是局部注入、peer 怎么写、缺了会怎样；按名字调用了别的插件哪些命令，用了哪些约定通道（内核事件、cordis 日志、磁盘文件、环境变量、HTTP、子进程、loader 放在 fiber 上的条目）
+---
+
+**本页回答**：本仓插件提供哪些服务、命令与事件；注入了哪些服务、是必需还是局部注入、peer 怎么写；按名字调用了别家哪些命令、用了哪些约定通道。
+
+每个插件一节，三张表：**提供**（别人能用它什么）、**注入**（它用 cordis 注入了谁的服务）、**按名字调用与约定通道**（没有类型检查连起来、只靠两边写同一个名字或同一个形状的连接）。第三张表里的连接没有类型检查，一边改了名字或形状，另一边多半要到运行时才出错，改之前先查这里。
+
+几件八个插件共同的事，不在各节重复：
+
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（`^0.7.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`、`GwbResult`；继承 cordis `Service` 的七个插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
+- **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；另外四个插件不用它
+- **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
+- **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
+
+{/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
+
+{/* has file="../plugins/data/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.7.0&quot;" */}
+
+## @godcreator/gwb-commands
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbCommands` | `register(def, handler)` 登记一条命令、回注销函数；`list()` 回全部命令的 `{ name, description, usage, plugin }`；`run(name, args?, context?)` 按名字执行、回 `GwbResult`、不抛错。类型 `GwbCommands` 由本包导出 |
+| 命令 | 无 | 表里每一条都是别的插件登记的 |
+| 说明书 | `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 |
+| 事件 | 无 | |
+
+{/* has file="../plugins/commands/src/index.ts" text="super(ctx, 'gwbCommands')" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入（`Service.init` 里 `ctx.inject(['gwbSkills'], …)`） | **不写 peer**，也不 import 它的类型：本地按形状声明只含 `register(dir)` 的 `SkillDirectoryRegistrar` | 登记自带的说明书 | 不登记说明书，命令总线照常提供 |
+
+说明书插件反过来依赖命令插件，这边再写 peer，工作区里就有了依赖环，pnpm 12 的 `pnpm -r` 遇到依赖环直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）。代价是 `register` 的签名两边各写一份，说明书插件改了签名，这边的类型检查发现不了。
+
+{/* has file="../plugins/commands/src/index.ts" text="this.ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+
+{/* has file="../plugins/commands/src/index.ts" text="interface SkillDirectoryRegistrar {" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 取登记方的包名，记成命令的 `plugin`；取不到时 `register` 抛错 |
+| 服务名（反方向：内核直接读） | 内核 gwb-kernel | `ctx.gwbCommands` 的 `run(command, args, { via: 'ui' })` | 页面经 `window.gwb.command` 发来的命令由内核交给它执行 |
+
+**内核那一条没有类型检查连起来**：内核不 import 本包，它在自己的 `apps/desktop/src/main.ts` 里私下给 `ctx.gwbCommands` 声明了一份只含 `run` 的类型，按服务名直接读。本包改了服务名 `gwbCommands`、`run` 的参数顺序或请求来源 `via` 的取值，内核照样编译通过，页面调命令时才出错。本仓这一侧的签名与来源取值：
+
+{/* has file="../plugins/commands/src/registry.ts" text="run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>" */}
+
+{/* has file="../plugins/commands/src/registry.ts" text="export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'" */}
+
+{/* has file="../plugins/commands/src/index.ts" text="const packageName = fiber.entry?.options?.name" */}
+
+## @godcreator/gwb-data
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbData` | `dir`（调用方条目的数据目录）、`readDoc(doc)`、`writeDoc(doc, value)`；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方。类型 `GwbDataApi` 由本包导出 |
+| 命令 | 无 | |
+| 事件 | 无 | |
+| 磁盘目录 | `<home>/data/<条目 id 末段>/` | 每条条目一个；文档是其中的 `<文档名>.json`，归属记在 `.owner.json` |
+
+{/* has file="../plugins/data/src/index.ts" text="super(ctx, 'gwbData')" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.7.0` | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+
+{/* has file="../plugins/data/src/index.ts" text="this.homeDir = requireKernel(ctx).dataDir" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| loader 的 `fiber.entry` | cordis loader | `entry.id`、`entry.options.name` | 条目 id 定数据目录，包名记归属、写进报错；取不到抛错「取不到调用方的身份」 |
+| 磁盘目录 | 用它的插件 | `<home>/data/<条目 id 末段>/` | 插件拿到 `dir` 后可以自己往里写图片、日志等非 JSON 文件 |
+| 磁盘文件 | 手工处理归属的人 | `.owner.json`（`{ "pkg": "<包名>" }`） | 包名对不上时报错写明目录，由人改名、删掉或改里面的包名 |
+| 同一套算法的另一份 | gwb-settings 的 `entrySection` | `entryDirName` | 条目 id 转目录名；两份必须给出同一个答案，改一处要改另一处 |
+
+{/* has file="../plugins/data/src/index.ts" text="entry?: { id?: unknown; options?: { name?: unknown } }" */}
+
+{/* has file="../plugins/data/src/paths.ts" text="return path.join(dataDir, 'data')" */}
+
+{/* has file="../plugins/data/src/paths.ts" text="与 gwb-settings 的 `entrySection` 是同一套算法的两份" */}
+
+{/* has file="../plugins/data/src/owner.ts" text="export const OWNER_FILE = '.owner.json'" */}
+
+## @godcreator/gwb-logger
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbLogger` | 没有方法；日志窗格按服务名等它出现，出现就说明日志插件已加载 |
+| 命令 | `logger.backlog`、`logger.where` | 最近两千条日志；`{ home, logFile }` |
+| 内核事件 | `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出；`line` 的形状是本包导出的 `LogEntry` |
+
+{/* has file="../plugins/logger/src/index.ts" text="new GwbLogger(ctx, 'gwbLogger')" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="export const EVENT = 'gwb-logger'" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="export const BACKLOG_COMMAND = 'logger.backlog'" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="export const WHERE_COMMAND = 'logger.where'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | 登记两条命令 | 插件一直等待、不加载 |
+| `gwbKernel` 的 `emit`、`dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.7.0` | 推事件给页面；算 `logger.where` 回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
+
+{/* has file="../plugins/logger/src/index.ts" text="export const inject = ['gwbCommands']" */}
+
+{/* has file="../plugins/logger/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;workspace:^&quot;" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="const kernel = requireKernel(ctx)" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| cordis 日志 | 内核的 cordis 实例 | `ctx.logger.exporter(…)`、`ctx.logger.buffer` | 注册日志流上的第三个 exporter（第一个是 cordis 自带的缓冲，第二个是内核写 stderr 与 `gwb.log` 的那个），加载时先从缓冲补读历史 |
+| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 界面插件仓 gwb-ui-plugins 的日志窗格（gwb-baseui） | `{ t: 'gwb-logger', line }` | 实时推送；窗格那边另写一份 `LogEntry` 的形状与 `'gwb-logger'` 这个字符串 |
+| 命令总线（被调） | 日志窗格 | `logger.backlog` | 窗格取历史，与实时事件按 `seq` 合并 |
+| 约定的文件名 | 内核 | `gwb.log` | `logger.where` 回的 `<home>/gwb.log` 是写死的名字，文件由内核写；内核改了文件名，这里回的路径指向不存在的文件、不报错 |
+| 约定的日志来源名 | 内核、cordis loader | `kernel`、`loader`、`renderer` | 按 logger 名分来源：`renderer` 算页面，`kernel`、`loader` 算内核；内核改名或新增名字，这边把它算成插件、不报错 |
+
+{/* has file="../plugins/logger/src/index.ts" text="loggerFactory.exporter(forwardingExporter)" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="for (const message of loggerFactory.buffer ?? [])" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="kernel.emit({ t: EVENT, line: entry })" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="logFile: path.join(kernel.dataDir, 'gwb.log')" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="const KERNEL_LOGGER_NAMES = new Set(['kernel', 'loader'])" */}
+
+{/* has file="../plugins/logger/src/index.ts" text="if (loggerName === 'renderer') return 'renderer'" */}
+
+## @godcreator/gwb-mcp
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | 无 | 在 `apply` 里自己启动 `node:http` |
+| HTTP 端点 | `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP，要 `Authorization: Bearer <token>`；default 固定 2870 端口 |
+| MCP 工具 | `index`、`search`、`run` | 只有这三个，加一个是 major 级协议变更 |
+| 命令 | `mcp.info`、`mcp.token`、`mcp.client` | 连接信息；取或换 token；`mcp.client` 经 `gwbNodeCli` 登记，node 命令行运行插件不在时没有这条 |
+| 设置项 | `port` | 在本插件自己的设置分区里 |
+| 说明书 | `mcp` | 包根 `skills/mcp/` |
+| 事件 | 无 | |
+
+{/* has file="../plugins/mcp/src/index.ts" text="server.listen(port, '127.0.0.1', () => {" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'," */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.token'," */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.client'," */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="const PORT_KEY = 'port'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | `list()` 给 `index`、`search`；`run()` 给 `run`；登记 `mcp.info`、`mcp.token` | 插件一直等待、不加载，没有入口 |
+| `gwbSettings` | `@godcreator/gwb-settings` | 必需（`export const inject`） | `workspace:^` | 声明并读取 `port` | 插件一直等待、不加载，没有入口 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | `index`、`search` 里的说明书清单；登记自带的说明书 | 入口照常开，说明书清单是空表 |
+| `gwbNodeCli` | `@godcreator/gwb-node-cli` | 局部注入 | `workspace:^`，标 `optional` | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.7.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
+
+{/* has file="../plugins/mcp/src/index.ts" text="export const inject = ['gwbCommands', 'gwbSettings']" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="ctx.inject(['gwbNodeCli'], (contextWithNodeCli: Context) => {" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="ctx.gwbSettings.define({" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="const home = homeNameOf(requireKernel(ctx).dataDir)" */}
+
+{/* has file="../plugins/mcp/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;workspace:^&quot;" */}
+
+{/* has file="../plugins/mcp/package.json" text="&quot;@godcreator/gwb-node-cli&quot;: {" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 命令总线（按名字调） | 登记了命令的任何插件 | agent 给的任意命令名，带 `{ via: 'mcp' }` | `run` 工具原样转发；MCP 插件不认识任何命令名 |
+| 说明文字里点名的命令 | 说明书插件、插件管理（gwb-lifecycle-plugins）、外壳（gwb-ui-plugins）、devkit | `skill.read`、`plugin-manager.list`、`plugin-manager.update`、`shell.reload`、`devkit.home.list` | 写在 `instructions.md`、`index` 末尾的提示、`mcp.client` 的用法与 `bin/client.mjs` 的帮助里，教 agent 下一步调什么；对方改名这里不报错，agent 照着调会收到「没有这条命令」 |
+| 回执形状 | gwb-node-cli、gwb-py-cli | 同时有 `stdout` 与 `exitCode` 的 `CliRunResult` | 认出命令行工具的回执、不按标准回执拆；形状在 `tools.ts` 里另写一份 `CliRunResultView`，那两个包改了键名这边发现不了 |
+| HTTP | MCP 客户端（agent、`bin/client.mjs`） | `127.0.0.1:<端口>/mcp`，只认本机回环地址的 `Host`、`Origin` | 唯一的对外入口 |
+| 磁盘文件（与内核共写） | 内核、读它的程序 | `<home>/runtime.json` 的 `mcp` 项 `{ port, url }` | 内核启动时整份写入 `pid`、`startedAt` 等；本插件绑定端口成功后读出整份、只改 `mcp` 一项再写回，不是原子写 |
+| 磁盘文件 | MCP 客户端、`bin/client.mjs` | `<home>/mcp/secret.json` | 存 token，每个 home 一份、重启不换 |
+| 照内核规则另写的 home 路径 | 内核 | `bin/client.mjs` 里的 `<APPDATA>/gwb-kernel/homes/<home>` | 命令行客户端缺省去读 default home 的凭据文件，路径照内核的规则另写一份；内核改了规则，这里读不到 token、请求收到 401 |
+| 环境变量 | `mcp.client` 的调用方 | `GWB_MCP_URL`、`GWB_MCP_TOKEN` | 命令行客户端的入口地址与 token，优先级低于 `--url`、`--token` |
+
+{/* has file="../plugins/mcp/src/index.ts" text="const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })" */}
+
+{/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
+
+{/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update" */}
+
+{/* has file="../plugins/mcp/instructions.md" text="再调 shell.reload" */}
+
+{/* has file="../plugins/mcp/src/inventory.ts" text="装了哪些插件问 plugin-manager.list" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段" */}
+
+{/* has file="../plugins/mcp/src/tools.ts" text="'stdout' in value && 'exitCode' in value" */}
+
+{/* has file="../plugins/mcp/src/runtime.ts" text="export const RUNTIME_FILE = 'runtime.json'" */}
+
+{/* has file="../plugins/mcp/src/index.ts" text="writeRuntimeMcp(requireKernel(ctx).dataDir, { port, url: endpointUrl(port) })" */}
+
+{/* has file="../plugins/mcp/src/auth.ts" text="export const SECRET_DIR = 'mcp'" */}
+
+{/* has file="../plugins/mcp/src/auth.ts" text="export const SECRET_FILE = 'secret.json'" */}
+
+{/* has file="../plugins/mcp/bin/client.mjs" text="path.join(roaming, 'gwb-kernel', 'homes', home, 'mcp', 'secret.json')" */}
+
+{/* has file="../plugins/mcp/bin/client.mjs" text="let url = process.env.GWB_MCP_URL ?? DEFAULT_URL" */}
+
+{/* has file="../plugins/mcp/bin/client.mjs" text="process.env.GWB_MCP_TOKEN !== undefined" */}
+
+## @godcreator/gwb-node-cli
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbNodeCli` | `register(spec)`、`list()`、`run(name, extraArgs?, { cwd? })`；类型 `NodeCliSpec`、`CliRunResult` 由本包导出 |
+| 命令 | `node-cli.list` | 列出已登记的工具 |
+| 命令（替登记方登记） | 每个登记的工具同名一条 | 登记在登记方的包名下，不在本插件名下 |
+| 回执形状 | `CliRunResult` | 带 `ok`，命令总线原样交回；MCP 入口靠 `stdout` 与 `exitCode` 认出它 |
+| 说明书 | `gwb-node-cli` | 包根 `skills/gwb-node-cli/` |
+| 事件 | 无 | |
+
+{/* has file="../plugins/node-cli/src/index.ts" text="super(ctx, 'gwbNodeCli')" */}
+
+{/* has file="../plugins/node-cli/src/index.ts" text="export const LIST_COMMAND = 'node-cli.list'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `node-cli.list`；把登记的工具替登记方登记成命令 | 服务 `gwbNodeCli` 不提供，插件一直等待 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
+
+{/* has file="../plugins/node-cli/src/index.ts" text="static inject = ['gwbCommands']" */}
+
+{/* has file="../plugins/node-cli/src/index.ts" text="this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {" */}
+
+{/* has file="../plugins/node-cli/package.json" text="&quot;@godcreator/gwb-skills&quot;: {" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 命令总线（在调用方上下文上取） | gwb-commands | `this.ctx.get('gwbCommands')` 的 `register` | 替登记方登记工具命令时，从登记方的上下文取总线，命令总线认出的登记方才是登记方；用本插件自己的上下文取，命令会记在本插件名下、与 `plugin` 对不上而被拒 |
+| loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 认出登记方的包名；取不到时 `register` 抛错「取不到调用方的身份」 |
+| 子进程 | 工作台进程自己的 electron.exe | `process.execPath`，环境变量 `ELECTRON_RUN_AS_NODE=1` | 当作 node 运行登记方给的 js；不带这个变量会开一个 Electron 应用 |
+| 子进程 | Windows 的 `taskkill` | `taskkill /PID <pid> /T /F` | 超时时结束整个进程树；启动不了或失败时退回只结束直接子进程 |
+| 磁盘文件 | 调用方 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log` | 输出超过 64,000 字节时写全量，路径在回执的 `spillPath` |
+| 同一份代码的副本 | gwb-py-cli | `src/run.ts`、`src/invoke.ts` | 两边除开头一行注释外逐字相同，本包这份是正本 |
+
+{/* has file="../plugins/node-cli/src/index.ts" text="const commandBusSeenByCaller = this.ctx.get('gwbCommands')" */}
+
+{/* has file="../plugins/node-cli/src/index.ts" text="const ELECTRON_AS_NODE = { ELECTRON_RUN_AS_NODE: '1' }" */}
+
+{/* has file="../plugins/node-cli/src/index.ts" text="command: process.execPath," */}
+
+{/* has file="../plugins/node-cli/src/run.ts" text="spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {" */}
+
+{/* has file="../plugins/node-cli/src/run.ts" text="path.join(os.tmpdir(), `gwb-cli-" */}
+
+## @godcreator/gwb-py-cli
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbPyCli` | `ensureReady({ packageRoot, distName, version })`、`register(spec)`、`list()`、`run(name, extraArgs?, { cwd? })`；类型 `PyCliSpec` 由本包导出 |
+| 命令 | `py-cli.list` | 列出已登记的工具 |
+| 命令（替登记方登记） | 每个登记的工具同名一条 | `plugin` 固定是登记方的包名 |
+| 回执形状 | `CliRunResult` | 与 node 命令行运行插件相同 |
+| 说明书 | `gwb-py-cli` | 包根 `skills/gwb-py-cli/` |
+| 事件 | 无 | |
+
+{/* has file="../plugins/py-cli/src/index.ts" text="super(ctx, 'gwbPyCli')" */}
+
+{/* has file="../plugins/py-cli/src/index.ts" text="export const LIST_COMMAND = 'py-cli.list'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `py-cli.list`；把登记的工具替登记方登记成命令 | 服务 `gwbPyCli` 不提供，插件一直等待 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
+
+{/* has file="../plugins/py-cli/src/index.ts" text="static inject = ['gwbCommands']" */}
+
+{/* has file="../plugins/py-cli/src/index.ts" text="this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {" */}
+
+{/* has file="../plugins/py-cli/package.json" text="&quot;@godcreator/gwb-skills&quot;: {" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| 命令总线（在调用方上下文上取） | gwb-commands | `this.ctx.get('gwbCommands')` 的 `register` | 同 node 命令行运行插件：从登记方的上下文取总线 |
+| loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 认出登记方的包名 |
+| 登记方插件的包目录 | 登记方插件 | `<packageRoot>/py/`（python 项目）、`<packageRoot>/py/.venv`、venv 里的 `.gwb-built-for` | venv 建在登记方的包目录下，不在本插件目录下；`packageRoot` 由登记方自己算好传进来 |
+| 子进程 | PATH 上的 `uv` | `uv sync --frozen --no-dev --inexact --project <包根>/py` | 建 venv、装依赖；uv 由机器自己装 |
+| 子进程 | venv 里的程序 | `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，环境变量 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8` | 运行登记的工具，中文输出不乱码 |
+| 子进程、磁盘文件 | Windows 的 `taskkill`、系统临时目录 | 与 node 命令行运行插件相同 | `src/run.ts` 是那边的副本 |
+
+{/* has file="../plugins/py-cli/src/index.ts" text="const commandBusSeenByCaller = this.ctx.get('gwbCommands')" */}
+
+{/* has file="../plugins/py-cli/src/bootstrap.ts" text="const projectDir = path.join(packageRoot, 'py')" */}
+
+{/* has file="../plugins/py-cli/src/bootstrap.ts" text="const venvDir = path.join(projectDir, '.venv')" */}
+
+{/* has file="../plugins/py-cli/src/bootstrap.ts" text="export const STAMP_NAME = '.gwb-built-for'" */}
+
+{/* has file="../plugins/py-cli/src/bootstrap.ts" text="args: ['sync', '--frozen', '--no-dev', '--inexact', '--project', paths.projectDir]," */}
+
+{/* has file="../plugins/py-cli/src/index.ts" text="const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }" */}
+
+## @godcreator/gwb-settings
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbSettings` | `define(def)`、`get(key)`、`set(key, value)`、`delete(key)`；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方。类型 `GwbSettingsApi`、`SettingDef` 由本包导出 |
+| 命令 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 按 `{ section, key }` 读写 |
+| 磁盘文件 | `<home>/settings.json` | 一个 home 一份，各插件共用 |
+| 说明书 | `gwb-settings` | 包根 `skills/gwb-settings/` |
+| 事件 | 无 | |
+
+{/* has file="../plugins/settings/src/index.ts" text="super(ctx, 'gwbSettings')" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="export const ALL_COMMAND = 'settings.all'" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="export const GET_COMMAND = 'settings.get'" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="export const SET_COMMAND = 'settings.set'" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="export const DELETE_COMMAND = 'settings.delete'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 局部注入 | `workspace:^`，标 `optional` | 登记四条命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.7.0` | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+
+{/* has file="../plugins/settings/src/index.ts" text="this.ctx.inject(['gwbCommands'], (contextWithCommands) => {" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="this.ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+
+{/* has file="../plugins/settings/package.json" text="&quot;@godcreator/gwb-commands&quot;: {" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="this.settingsFile = homeFile(requireKernel(ctx).dataDir)" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| loader 的 `fiber.entry` | cordis loader | `entry.id`、`entry.options.name` | 条目 id 的末段定分区，包名记归属；服务按它分区，插件只能读写自己声明的项 |
+| 磁盘文件（各插件共用一份） | 声明过设置的每个插件、设置界面、手工处理归属的人 | `<home>/settings.json`：每条条目一个分区（条目 id 末段）、`shared` 项进公共区 `*`、顶层 `$owners` 记分区归哪个包 | 所有插件的设置写在同一个文件里，按分区隔开 |
+| 命令总线（被调） | 页面、agent、任何插件 | `settings.get`、`settings.set`、`settings.delete` 的 `{ section, key }` | 按位置读写**任意分区**，不看调用方身份 |
+| 同一套算法的另一份 | gwb-data 的 `entryDirName` | `entrySection` | 条目 id 转分区名；两份必须给出同一个答案 |
+
+**四条命令就是设置的权限边界**：命令按 `{ section, key }` 定位、不认调用方身份，这是有意的——页面不是插件，没有条目身份可取，设置界面要能改所有插件的设置。所以拿得到命令总线的一方（任何插件、页面、带着 token 的 agent）能读写全部设置，`settings.get` 对 secret 项也回明文；服务那一侧按调用方身份分区，只防插件写错，不防别的插件有意去读。
+
+{/* has file="../plugins/settings/src/index.ts" text="命令按位置定位，不看调用方身份：页面不是插件，没有身份可取" */}
+
+{/* has file="../plugins/settings/src/index.ts" text="entry?: { id?: unknown; options?: { name?: unknown } }" */}
+
+{/* has file="../plugins/settings/src/paths.ts" text="const HOME_FILE = 'settings.json'" */}
+
+{/* has file="../plugins/settings/src/paths.ts" text="export const SHARED_SECTION = '*'" */}
+
+{/* has file="../plugins/settings/src/paths.ts" text="export const OWNERS_KEY = '$owners'" */}
+
+## @godcreator/gwb-skills
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbSkills` | `register(dir)` 登记一个装说明书的目录、回注销函数；`list()`；`read(name, file?)`。类型 `GwbSkillsApi`、`GwbSkill` 由本包导出 |
+| 命令 | `skill.list`、`skill.read` | agent 经 MCP 入口的 `run` 调 `skill.read` 读正文 |
+| 说明书 | 无 | 包根没有 `skills/` |
+| 事件 | 无 | |
+
+{/* has file="../plugins/skills/src/index.ts" text="super(ctx, 'gwbSkills')" */}
+
+{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_LIST_COMMAND = 'skill.list'" */}
+
+{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_READ_COMMAND = 'skill.read'" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `skill.list`、`skill.read` | 服务 `gwbSkills` 不提供，插件一直等待 |
+
+{/* has file="../plugins/skills/src/index.ts" text="static inject = ['gwbCommands']" */}
+
+{/* has file="../plugins/skills/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;workspace:^&quot;" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 认出登记方的包名，记成说明书的 `plugin`；取不到时 `register` 抛错 |
+| 登记方插件的包目录 | 登记方插件 | 登记方传入的目录（约定是自己包根的 `skills/`），下面每个带 `SKILL.md` 的子目录是一份 | 登记时扫一遍定下文件清单，读正文时每次从磁盘读；这个目录要列进登记方 `package.json` 的 `files` |
+
+{/* has file="../plugins/skills/src/index.ts" text="const name = fiber?.entry?.options?.name" */}
+
+{/* has file="../plugins/skills/src/collect.ts" text="export const SKILL_ENTRY = 'SKILL.md'" */}

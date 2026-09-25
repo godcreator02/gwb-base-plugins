@@ -4,7 +4,7 @@
   "author": {
     "name": "godcreator"
   },
-  "description": "日志插件（core）：登记第二个 cordis exporter，收下内核、插件、页面三方的全部日志，自己缓存最近两千条，经内核的 emit 实时推给页面；日志窗格在 gwb-baseui。服务 gwbLogger（上面刻意没有方法）；skill 0 份；命令 2 条。",
+  "description": "日志插件（core）：在 cordis 日志流上注册第三个 exporter（前两个是 cordis 自带的缓冲与内核写 gwb.log 的那个），收下内核、插件、页面三方的全部日志，自己缓存最近两千条，经内核的 emit 实时推给页面；日志窗格在 gwb-baseui。服务 gwbLogger（上面刻意没有方法）；skill 0 份；命令 2 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

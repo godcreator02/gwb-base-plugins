@@ -1,12 +1,10 @@
 packages:
   - plugins/*
-  # 共享包：不是 cordis 件，是件的依赖（运行时环境、设计令牌），跟件一起装进 home
-  - packages/*
   # 文档站：自己的依赖树，不进根 check
   - docs-site
 
 allowBuilds:
-  # @tailwindcss/cli 拖来的，只在 `tailwindcss --watch` 那条路上用得着；件的构建是一次性的，
-  # 那个原生模块不编也一样跑
+  # @tailwindcss/cli 的依赖，只有 `tailwindcss --watch` 用得着；插件的构建是一次性的，
+  # 这个原生模块不编译也能构建
   '@parcel/watcher': false
   esbuild: true

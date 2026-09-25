@@ -29,7 +29,8 @@ importmap、要么强制打包进来，并配上构建产物检查。
 文档站在 `docs-site/`，端口 4315（`pnpm --filter gwb-base-plugins-docs-site dev`）。现状区：
 
 * **入口页** `/docs`：接缝图，插件之间的十条接缝各有一页（`/docs/seams/…`）
-* **八个插件页**：每页写功能、接口（各属于哪条接缝）、依赖、不做的事
+* **八个插件页**：每页写功能、接口（各属于哪条接缝）、不做的事
+* **插件之间怎么连** `/docs/wiring`：每个插件提供什么、注入了谁（必需还是局部注入、peer 怎么写）、按名字调用了哪些命令、用了哪些约定通道
 * **关键设计** `/docs/design`、**开发** `/docs/develop`（构建、检查、各插件的测试、发版时包的顺序）、**遇到过的问题** `/docs/pitfalls`
 
 这份 AGENTS.md 是生成物，正本是 `docs-site/content/outputs/agents.mdx`，改完在 `docs-site` 运行 `pnpm exec docfirst render`。
