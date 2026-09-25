@@ -69,13 +69,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 {/* has file="../plugins/mcp/instructions.md" text="再调 shell.reload" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="调 unit-folder.list 查" */}
-
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="14-16" */}
 
 {/* has file="../plugins/mcp/src/index.ts" text="隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段" */}
 
-这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`unit-folder.list` 由单元目录插件仓（gwb-unit-folder）的插件登记；`devkit.home.list` 由 devkit 登记。名字写在登记处与本插件两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
+这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`devkit.home.list` 由 devkit 登记。名字写在登记处与本插件两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
 
 ## 约定
 
