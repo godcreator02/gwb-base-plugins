@@ -532,16 +532,13 @@
     "has ../plugins/mcp/tests/tools.test.ts \"带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平\"": {
       "kind": "has"
     },
-    "has ../plugins/mcp/tests/tools.test.ts \"进程回执摊平:退出码、输出、耗时都在顶层,而不是塞在 data 里被撞没\"": {
-      "kind": "has"
-    },
     "has ../plugins/mcp/tests/inventory.test.ts \"skills 插件不在（undefined）时说明书清单是空表——MCP 入口照常可用\"": {
       "kind": "has"
     },
     "../plugins/mcp/src/inventory.ts:18-37": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         18,
         37
@@ -551,7 +548,7 @@
     "../plugins/mcp/src/index.ts:181-190": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         181,
         190
@@ -561,7 +558,7 @@
     "../plugins/mcp/src/index.ts:205-221": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         205,
         221
@@ -571,52 +568,22 @@
     "../plugins/mcp/src/index.ts:222-226": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         222,
         226
       ],
       "hash": "847738aaadcef2b54be703e10c3db81de7f909ace498aa4d7f93cb00a34d27f4"
     },
-    "../plugins/mcp/src/index.ts:192-203": {
-      "kind": "git",
-      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
-      "lines": [
-        192,
-        203
-      ],
-      "hash": "ff399644e15fd09a38d2554af6b8c625829930e443e33234e530d8b83e0a3262"
-    },
     "../plugins/mcp/src/tools.ts:26-36": {
       "kind": "git",
       "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         26,
         36
       ],
       "hash": "64e103aee77e9b319dd3b95eeea7c8ec8aad328b6a50c0faed4b15a769c58771"
-    },
-    "../plugins/mcp/src/tools.ts:38-65": {
-      "kind": "git",
-      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
-      "lines": [
-        38,
-        65
-      ],
-      "hash": "f08ab60b459dd27693c3237189be1af4557b4db1394a2a41e6569f3b05c9c938"
-    },
-    "../plugins/mcp/src/inventory.ts:15-16": {
-      "kind": "git",
-      "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
-      "lines": [
-        15,
-        16
-      ],
-      "hash": "d3d11335b0b4b400c095ae4b0ad31b6896386a931fd31e235015f1a963b59ced"
     },
     "has ../plugins/mcp/instructions.md \"调 unit-folder.list 查\"": {
       "kind": "has"
@@ -626,56 +593,62 @@
     },
     "has ../plugins/mcp/instructions.md \"再调 shell.reload\"": {
       "kind": "has"
+    },
+    "../plugins/mcp/src/inventory.ts:135-155": {
+      "kind": "git",
+      "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        135,
+        155
+      ],
+      "hash": "2c697961ba22a4094e046dfc698ea91fd992903640e9357c8bbedd4c6e55f998"
+    },
+    "../plugins/mcp/src/tools.ts:16-24": {
+      "kind": "git",
+      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        16,
+        24
+      ],
+      "hash": "99876956f9f59b7801fdec23f05c64392bb54e73589c3b3db518423ef0ece3c3"
+    },
+    "../plugins/mcp/src/tools.ts:50-65": {
+      "kind": "git",
+      "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        50,
+        65
+      ],
+      "hash": "6bb18be9bfa4dd005c39d252ef168141d70234b3a9c177f5e684bc8fed8b551a"
+    },
+    "../plugins/mcp/src/inventory.ts:14-16": {
+      "kind": "git",
+      "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        14,
+        16
+      ],
+      "hash": "74fa700a01a8d4bafc9800cce03424ca0a0d0ce57df601746d9d12e315486def"
+    },
+    "has ../plugins/mcp/src/index.ts \"隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段\"": {
+      "kind": "has"
     }
   },
   "content/docs/seams/bus.mdx": {
     "has ../plugins/commands/tests/registry.test.ts \"处理函数返回带 ok 的对象就原样返回，否则包成 data\"": {
       "kind": "has"
     },
-    "has ../plugins/commands/tests/registry.test.ts \"处理函数抛错不抛给调用方，回成失败回执\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/tests/registry.test.ts \"注销只删自己那条：同名被替换后，先登记的一方注销不影响接手的那条\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/src/index.ts \"export default class GwbCommandBus extends Service implements GwbCommands {\"": {
-      "kind": "has"
-    },
     "has ../plugins/commands/tests/service.test.ts \"调用方卸载后，它登记的命令自动注销\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/tests/service.test.ts \"调用方自己包了 ctx.effect 再卸载，不出错，命令照样注销\"": {
-      "kind": "has"
-    },
-    "has ../plugins/py-cli/src/index.ts \"usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }\"": {
-      "kind": "has"
-    },
-    "../plugins/node-cli/src/index.ts:110-147": {
-      "kind": "git",
-      "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
-      "lines": [
-        110,
-        147
-      ],
-      "hash": "28869c3f87a6b83a8fa9b3abb8a38731e076c41b43ab2382ec0c4e3958607d5a"
-    },
-    "has ../plugins/commands/tests/registry.test.ts \"%s 为空串被拒，消息写明包、命令、缺哪个字段、该怎么写\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/tests/service.test.ts \"在 ctx.inject 的回调里登记也取得到调用方的包名\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/tests/service.test.ts \"在 ctx.plugin 装的子插件里登记也取得到调用方的包名，再套一层 inject 也一样\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/tests/service.test.ts \"plugin 与调用方的包名不同就抛错，消息里写着两者，命令不进表\"": {
       "kind": "has"
     },
     "../plugins/commands/src/registry.ts:3-37": {
       "kind": "git",
       "blob": "cc6ca1dd093c5522cfa9c2f6eae241ddf15dd6dd",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         3,
         37
@@ -685,7 +658,7 @@
     "../plugins/commands/src/index.ts:54-74": {
       "kind": "git",
       "blob": "639dfb39e2beb85877fadf3991b55f8c6b20ad2c",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         54,
         74
@@ -695,7 +668,7 @@
     "../plugins/commands/src/registry.ts:68-87": {
       "kind": "git",
       "blob": "cc6ca1dd093c5522cfa9c2f6eae241ddf15dd6dd",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         68,
         87
@@ -705,7 +678,7 @@
     "../plugins/commands/src/registry.ts:120-129": {
       "kind": "git",
       "blob": "cc6ca1dd093c5522cfa9c2f6eae241ddf15dd6dd",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         120,
         129
@@ -715,28 +688,32 @@
     "../plugins/commands/src/registry.ts:135-147": {
       "kind": "git",
       "blob": "cc6ca1dd093c5522cfa9c2f6eae241ddf15dd6dd",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         135,
         147
       ],
       "hash": "88331f68087f61bf67b096bb14f0e8d73e7dc02d34ae77de2973b1e90b8f80fe"
     },
-    "../plugins/commands/src/registry.ts:106-114": {
+    "../plugins/commands/src/registry.ts:97-114": {
       "kind": "git",
       "blob": "cc6ca1dd093c5522cfa9c2f6eae241ddf15dd6dd",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
-        106,
+        97,
         114
       ],
-      "hash": "0ad81db87dd201f032c9bdcab9e49f0cc2a83ff9ca57eeff9ddce59781f7bf43"
+      "hash": "b05cadc232f4790e9755320129431ac98d7ce93ef50bb925aaf18a6b4fcb511f"
     },
-    "has ../plugins/commands/tests/registry.test.ts \"调用时带的来源原样交给处理函数；不带就是 plugin\"": {
-      "kind": "has"
-    },
-    "has ../plugins/mcp/tests/apply.test.ts \"booted.bus.register({ name: 'demo.via'\"": {
-      "kind": "has"
+    "../plugins/node-cli/src/index.ts:110-133": {
+      "kind": "git",
+      "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        110,
+        133
+      ],
+      "hash": "4bc7f6d5ff1fc8371d32dfa91eb88ada5c74d0920bbb4e6ab7194dfce5fce2a0"
     }
   },
   "content/docs/seams/cli.mdx": {
@@ -746,19 +723,10 @@
     "has ../plugins/py-cli/src/run.ts \"是这份的正本，一字不差\"": {
       "kind": "has"
     },
-    "has ../plugins/node-cli/tests/invoke.test.ts \"cwd 原样带出不收窄——给错了要让调用方看见拒绝,不是静默当没给\"": {
-      "kind": "has"
-    },
-    "has ../plugins/node-cli/tests/registry.test.ts \"注销只收自己那份——HMR 时新的先注册覆盖、旧的后 dispose\"": {
-      "kind": "has"
-    },
-    "has ../plugins/py-cli/tests/bootstrap.test.ts \"没有出身记号——多半是连着包目录从别处拷来的\"": {
-      "kind": "has"
-    },
     "../plugins/node-cli/src/index.ts:42-53": {
       "kind": "git",
       "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         42,
         53
@@ -768,7 +736,7 @@
     "../plugins/node-cli/src/invoke.ts:12-24": {
       "kind": "git",
       "blob": "cc40faad0aea39293712712d583e9626d99df62a",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         12,
         24
@@ -778,7 +746,7 @@
     "../plugins/node-cli/src/index.ts:25-26": {
       "kind": "git",
       "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         25,
         26
@@ -788,13 +756,10 @@
     "has ../plugins/node-cli/tests/run.test.ts \"输出超过上限只留尾部，全量写进临时文件并给出路径\"": {
       "kind": "has"
     },
-    "has ../plugins/node-cli/tests/service.test.ts \"cwd 优先级：按次给的 > 登记时给的 > entry 所在目录\"": {
-      "kind": "has"
-    },
     "../plugins/py-cli/src/index.ts:58-77": {
       "kind": "git",
       "blob": "db4732f608e04e45d83e772eeedfd7570aacbadb",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         58,
         77
@@ -804,7 +769,7 @@
     "../plugins/py-cli/src/bootstrap.ts:23-33": {
       "kind": "git",
       "blob": "a9b52d1d43a54689d5745438b67926cd868ed975",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         23,
         33
@@ -814,7 +779,7 @@
     "../plugins/py-cli/src/bootstrap.ts:107-125": {
       "kind": "git",
       "blob": "a9b52d1d43a54689d5745438b67926cd868ed975",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         107,
         125
@@ -827,7 +792,7 @@
     "../plugins/node-cli/src/run.ts:9-30": {
       "kind": "git",
       "blob": "602e71c697f981c56093af2ecc42aeee563552f7",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         9,
         30
@@ -837,7 +802,7 @@
     "../plugins/node-cli/src/run.ts:107-130": {
       "kind": "git",
       "blob": "602e71c697f981c56093af2ecc42aeee563552f7",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         107,
         130
@@ -847,7 +812,7 @@
     "../plugins/node-cli/src/registry.ts:9-35": {
       "kind": "git",
       "blob": "44a788f7e953d5696003af6f77a95ab4f0154126",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         9,
         35
@@ -857,7 +822,7 @@
     "../plugins/py-cli/src/registry.ts:9-36": {
       "kind": "git",
       "blob": "c3cc43f3fd4ff6c351c26b5f54df1c63f1da0d07",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         9,
         36
@@ -867,28 +832,39 @@
     "../plugins/node-cli/src/index.ts:169-181": {
       "kind": "git",
       "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         169,
         181
       ],
       "hash": "add67b05394a1f0695a0faf2b43410da894ce4cf0b11335eecad9e73933ce56c"
+    },
+    "../plugins/node-cli/src/invoke.ts:28-41": {
+      "kind": "git",
+      "blob": "cc40faad0aea39293712712d583e9626d99df62a",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        28,
+        41
+      ],
+      "hash": "a63f7d51a8a60a1fa873ea62b71e2f6863aae4dcc152ee3cef8e41490edaf4bd"
+    },
+    "../plugins/node-cli/src/index.ts:110-123": {
+      "kind": "git",
+      "blob": "3cc7f4b3bfc6945b3363c0b95fda2e1697b417a3",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        110,
+        123
+      ],
+      "hash": "4d427abcc5d4e3a788a66fb958e9f8ddf841222f97738befee2fd059cc00b0f8"
     }
   },
   "content/docs/seams/data.mdx": {
-    "has ../plugins/data/tests/store.test.ts \"覆盖失败不会毁掉原来那份——原子落盘的意义就在这\"": {
-      "kind": "has"
-    },
-    "has ../plugins/data/tests/store.test.ts \"坏了:回 undefined 但**要 warn**\"": {
-      "kind": "has"
-    },
-    "has ../plugins/data/tests/paths.test.ts \"同一个包的两条条目各是各的目录——按包名切的话它们会互相覆盖\"": {
-      "kind": "has"
-    },
     "../plugins/data/src/index.ts:16-28": {
       "kind": "git",
       "blob": "9a6f5666e5e3cd81b9dfe3a965af0cbc916d37ce",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         16,
         28
@@ -898,7 +874,7 @@
     "../plugins/data/src/paths.ts:52-59": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         52,
         59
@@ -908,7 +884,7 @@
     "../plugins/data/src/index.ts:58-76": {
       "kind": "git",
       "blob": "9a6f5666e5e3cd81b9dfe3a965af0cbc916d37ce",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         58,
         76
@@ -918,7 +894,7 @@
     "../plugins/data/src/paths.ts:18-24": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         18,
         24
@@ -931,7 +907,7 @@
     "../plugins/data/src/store.ts:6-21": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         6,
         21
@@ -941,7 +917,7 @@
     "../plugins/data/src/store.ts:23-62": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         23,
         62
@@ -959,19 +935,13 @@
     "has ../plugins/settings/src/paths.ts \"const RANDOM_ID = /^[0-9a-f]{8}$/\"": {
       "kind": "has"
     },
-    "has ../plugins/data/tests/paths.test.ts \"只取末段——前缀 home: 是 loader 拼的，冒号不进目录名\"": {
-      "kind": "has"
-    },
-    "has ../plugins/settings/tests/paths.test.ts \"每一段都要 kebab-case,前缀那段也算——跟 gwb-data 的目录名一套字符集\"": {
-      "kind": "has"
-    },
     "has ../plugins/settings/tests/paths.test.ts \"超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区\"": {
       "kind": "has"
     },
     "../plugins/data/src/index.ts:46-56": {
       "kind": "git",
       "blob": "9a6f5666e5e3cd81b9dfe3a965af0cbc916d37ce",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         46,
         56
@@ -981,7 +951,7 @@
     "../plugins/data/src/paths.ts:26-50": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         26,
         50
@@ -991,7 +961,7 @@
     "../plugins/skills/src/index.ts:84-92": {
       "kind": "git",
       "blob": "17cfceb934004e732b0d324a8f9eb951fb3bc6a8",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         84,
         92
@@ -1001,7 +971,7 @@
     "../plugins/settings/src/index.ts:143-153": {
       "kind": "git",
       "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         143,
         153
@@ -1011,7 +981,7 @@
     "../plugins/settings/src/paths.ts:42-66": {
       "kind": "git",
       "blob": "fa8c33f0a6bdcdaeed6c530677160fe1efd85778",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         42,
         66
@@ -1024,38 +994,28 @@
     "has ../plugins/py-cli/src/index.ts \"ctx.gwbPyCli 只能在经 cordis.yml 加载的插件里用\"": {
       "kind": "has"
     },
-    "../plugins/commands/src/index.ts:45-56": {
-      "kind": "git",
-      "blob": "7f5b2b63dda935c4aa0520d7bcbc56a9a456db12",
-      "commit": "1a6c9d9fee96fd1a335de6d391dbdd74b554f67d",
-      "lines": [
-        45,
-        56
-      ],
-      "hash": "7a9c0577708d5b839013da88d2cd60c40eb8561ef996e4dd8996ed7731389445"
-    },
     "has ../plugins/commands/tests/service.test.ts \"在 ctx.plugin 装的子插件里登记也取得到调用方的包名，再套一层 inject 也一样\"": {
       "kind": "has"
+    },
+    "../plugins/commands/src/index.ts:54-65": {
+      "kind": "git",
+      "blob": "639dfb39e2beb85877fadf3991b55f8c6b20ad2c",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        54,
+        65
+      ],
+      "hash": "7a9c0577708d5b839013da88d2cd60c40eb8561ef996e4dd8996ed7731389445"
     }
   },
   "content/docs/seams/log.mdx": {
     "has ../plugins/logger/tests/source.test.ts \"kernel 与 loader 是内核\"": {
       "kind": "has"
     },
-    "../plugins/logger/src/index.ts:10-15": {
-      "kind": "git",
-      "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
-      "lines": [
-        10,
-        15
-      ],
-      "hash": "a93190411d4825784ccdc5e1f4aa4f8c56c196d19178c969a72bcfcbb6e3d3d2"
-    },
     "../plugins/logger/src/index.ts:29-39": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         29,
         39
@@ -1065,37 +1025,17 @@
     "../plugins/logger/src/index.ts:49-55": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         49,
         55
       ],
       "hash": "eb68dee2a0f1d8b09ef1f61d560bdacdaffaca6d8a518bd0730899f6a2f5d609"
     },
-    "../plugins/logger/src/index.ts:111-119": {
-      "kind": "git",
-      "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
-      "lines": [
-        111,
-        119
-      ],
-      "hash": "10d718aee37661ebfb593829e05bee1f23681381558a0f6963ecd13b37d46488"
-    },
-    "../plugins/logger/src/index.ts:121-123": {
-      "kind": "git",
-      "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
-      "lines": [
-        121,
-        123
-      ],
-      "hash": "053d94f00619f47350eef12cb80d58cb09a7ccd028611d77139681c141e54a9b"
-    },
     "../plugins/logger/src/index.ts:127-137": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         127,
         137
@@ -1105,7 +1045,7 @@
     "../plugins/logger/src/index.ts:20-21": {
       "kind": "git",
       "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
-      "commit": "2ca82e9af2cab36d66da1d35f99194893dd3a486",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         20,
         21
@@ -1115,21 +1055,32 @@
     "has ../plugins/logger/tests/apply.test.ts \"装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复\"": {
       "kind": "has"
     },
-    "has ../plugins/logger/tests/artifact.test.ts \"除了 node 内置模块与 cordis，一个包名 import 都没有\"": {
-      "kind": "has"
+    "../plugins/logger/src/index.ts:12-15": {
+      "kind": "git",
+      "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        12,
+        15
+      ],
+      "hash": "99deb307e049c2ed4902ca0364e2652abd0a633534da5d92590faf968647e91c"
+    },
+    "../plugins/logger/src/index.ts:111-124": {
+      "kind": "git",
+      "blob": "1bdd43a8fdf9f345a6944acba42624475c8477cd",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        111,
+        124
+      ],
+      "hash": "aed7753ffbed9da991777799012df44374bfb867c5b6c0a11267c1a9d1c1c297"
     }
   },
   "content/docs/seams/mcp-protocol.mdx": {
-    "has ../plugins/mcp/src/index.ts \"name: 'mcp.info'\"": {
-      "kind": "has"
-    },
-    "has ../plugins/mcp/src/index.ts \"name: 'mcp.token'\"": {
-      "kind": "has"
-    },
     "../plugins/mcp/bin/client.mjs:102-106": {
       "kind": "git",
       "blob": "25b63d6cdeb32fccb1cb6c060c76ba56d2c19711",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         102,
         106
@@ -1139,7 +1090,7 @@
     "../plugins/mcp/bin/client.mjs:38-46": {
       "kind": "git",
       "blob": "25b63d6cdeb32fccb1cb6c060c76ba56d2c19711",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         38,
         46
@@ -1149,19 +1100,10 @@
     "has ../plugins/mcp/tests/server.test.ts \"tools/list 恰好是 index / search / run 三个,没有第四个\"": {
       "kind": "has"
     },
-    "has ../plugins/mcp/tests/auth.test.ts \"rotate 之后旧 token 立刻不认、新的立刻认\"": {
-      "kind": "has"
-    },
-    "has ../plugins/mcp/tests/runtime.test.ts \"内核那几格原样留着,自己那格补上去\"": {
-      "kind": "has"
-    },
-    "has ../plugins/mcp/tests/endpoint.test.ts \"片段与 mcp.token 给的那份逐字一致\"": {
-      "kind": "has"
-    },
     "../plugins/mcp/src/index.ts:83-123": {
       "kind": "git",
-      "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         83,
         123
@@ -1170,8 +1112,8 @@
     },
     "../plugins/mcp/src/index.ts:230-252": {
       "kind": "git",
-      "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         230,
         252
@@ -1180,8 +1122,8 @@
     },
     "../plugins/mcp/src/index.ts:254-266": {
       "kind": "git",
-      "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         254,
         266
@@ -1191,7 +1133,7 @@
     "../plugins/mcp/src/auth.ts:136-162": {
       "kind": "git",
       "blob": "0e1ae6b5535bc69e090f02bc0a78b6529617f9b5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         136,
         162
@@ -1201,7 +1143,7 @@
     "../plugins/mcp/src/auth.ts:8-20": {
       "kind": "git",
       "blob": "0e1ae6b5535bc69e090f02bc0a78b6529617f9b5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         8,
         20
@@ -1211,7 +1153,7 @@
     "../plugins/mcp/src/endpoint.ts:34-47": {
       "kind": "git",
       "blob": "65e4dd6cd78c7be59e516eaa2bcf7c9cd435f6e9",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         34,
         47
@@ -1220,35 +1162,45 @@
     },
     "../plugins/mcp/src/index.ts:276-289": {
       "kind": "git",
-      "blob": "70c16493f178403205ea6687d4ddf6c852b32fc8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         276,
         289
       ],
       "hash": "65e06d276e74d7e3e9c83d86f2f37d9a1ef952a9b710b954c1249f74c69842bc"
     },
-    "../plugins/mcp/src/runtime.ts:17-26": {
-      "kind": "git",
-      "blob": "5e93263b10241ccbc48868212c6ae1d7c751f395",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
-      "lines": [
-        17,
-        26
-      ],
-      "hash": "571e9dce682f83d36734cf98170e24bd8e4eb959ca452799e2a135d90d307c23"
-    },
     "../plugins/mcp/src/endpoint.ts:54-83": {
       "kind": "git",
       "blob": "65e4dd6cd78c7be59e516eaa2bcf7c9cd435f6e9",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         54,
         83
       ],
       "hash": "acf3ecfac41226032ad7d1ad51a52eb26f6099adca1f12db2d6c43de155010a5"
     },
-    "has ../plugins/mcp/tests/apply.test.ts \"mcp.token 不带参数回当前 token；rotate 之后旧 token 立刻 401、新 token 立刻能用\"": {
+    "../plugins/mcp/src/runtime.ts:16-26": {
+      "kind": "git",
+      "blob": "5e93263b10241ccbc48868212c6ae1d7c751f395",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        16,
+        26
+      ],
+      "hash": "bbd776e3ce86d3d38d77f5d4361465120bf12892c5e70d5acf6d603b1489d8c9"
+    },
+    "../plugins/mcp/src/index.ts:378-392": {
+      "kind": "git",
+      "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        378,
+        392
+      ],
+      "hash": "7a8245d9bdd93d312c4ba866e556aa807eec0c01a2b4281f5c7834fa7fa048ae"
+    },
+    "has ../plugins/mcp/tests/apply.test.ts \"default home 的端口被占时不换端口、不开入口；mcp.info 与 mcp.token 回 ok:false 说原因\"": {
       "kind": "has"
     }
   },
@@ -1256,46 +1208,20 @@
     "has ../plugins/data/tests/owner.test.ts \"scope 不同、短名相同的包拿不到别人的目录——这就是要挡的事故\"": {
       "kind": "has"
     },
-    "has ../plugins/data/tests/owner.test.ts \"章坏了当场抛，不当没章——当没章等于谁都能认领\"": {
-      "kind": "has"
-    },
-    "has ../plugins/settings/tests/registry.test.ts \"过户之后新包名放行、旧包名拒\"": {
-      "kind": "has"
-    },
     "../plugins/data/src/index.ts:78-88": {
       "kind": "git",
       "blob": "9a6f5666e5e3cd81b9dfe3a965af0cbc916d37ce",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         78,
         88
       ],
       "hash": "c979fdc01ba4a6c8458e7dd569fb021fd0e88e7dba444fd3cbec5092281dae69"
     },
-    "../plugins/data/src/owner.ts:5-6": {
-      "kind": "git",
-      "blob": "864bbdec37d5b017fe7718703b3b0371e19a38aa",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
-      "lines": [
-        5,
-        6
-      ],
-      "hash": "7406bee120b57f667d6c2cea99e819751d334953560e008e23450fd79c7e43b1"
-    },
-    "../plugins/data/src/owner.ts:44-57": {
-      "kind": "git",
-      "blob": "864bbdec37d5b017fe7718703b3b0371e19a38aa",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
-      "lines": [
-        44,
-        57
-      ],
-      "hash": "2be6fc9561f70cb52a93f3624429ac2188768703928685cbe624e8e31d9dc8c2"
-    },
     "../plugins/settings/src/index.ts:184-193": {
       "kind": "git",
       "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         184,
         193
@@ -1305,7 +1231,7 @@
     "../plugins/settings/src/paths.ts:8-9": {
       "kind": "git",
       "blob": "fa8c33f0a6bdcdaeed6c530677160fe1efd85778",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         8,
         9
@@ -1315,7 +1241,7 @@
     "../plugins/settings/src/registry.ts:188-197": {
       "kind": "git",
       "blob": "d5dc41e8d48e9ebcd63ac3d41d298bb3e9846666",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         188,
         197
@@ -1327,22 +1253,29 @@
     },
     "has ../plugins/settings/src/registry.ts \"就调 plugin-manager.transfer-owner 改归属\"": {
       "kind": "has"
+    },
+    "../plugins/data/src/owner.ts:26-57": {
+      "kind": "git",
+      "blob": "864bbdec37d5b017fe7718703b3b0371e19a38aa",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        26,
+        57
+      ],
+      "hash": "ec05e8ec4b538761524d8fd7c3b40ae5f4a9d53dbf6a88029ecaa27d8c6e2b5b"
+    },
+    "has ../plugins/settings/tests/registry.test.ts \"分区名相同、包名不同：拒，而且不动表\"": {
+      "kind": "has"
     }
   },
   "content/docs/seams/settings.mdx": {
-    "has ../plugins/settings/tests/registry.test.ts \"件 B 不用 define 也读得到件 A 声明进公共区的——凭据就靠这条\"": {
-      "kind": "has"
-    },
     "has ../plugins/settings/tests/registry.test.ts \"all：不出现明文，回「是 secret ＋ 设没设过 ＋ 定长掩码」三格\"": {
-      "kind": "has"
-    },
-    "has ../plugins/settings/tests/registry.test.ts \"按位取用照旧拿得到真值：服务面 get 与 read（settings.get 那条路）\"": {
       "kind": "has"
     },
     "../plugins/settings/src/index.ts:41-55": {
       "kind": "git",
       "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         41,
         55
@@ -1352,7 +1285,7 @@
     "../plugins/settings/src/registry.ts:6-24": {
       "kind": "git",
       "blob": "d5dc41e8d48e9ebcd63ac3d41d298bb3e9846666",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         6,
         24
@@ -1362,7 +1295,7 @@
     "../plugins/settings/src/index.ts:143-153": {
       "kind": "git",
       "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         143,
         153
@@ -1372,7 +1305,7 @@
     "../plugins/settings/src/paths.ts:5-6": {
       "kind": "git",
       "blob": "fa8c33f0a6bdcdaeed6c530677160fe1efd85778",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         5,
         6
@@ -1382,77 +1315,65 @@
     "../plugins/settings/src/registry.ts:245-255": {
       "kind": "git",
       "blob": "d5dc41e8d48e9ebcd63ac3d41d298bb3e9846666",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         245,
         255
       ],
       "hash": "aea5ba430ddb1d90c466255ea8b78687cb59cd14cc30c4d5f69761016f196852"
     },
-    "../plugins/settings/src/index.ts:101-135": {
-      "kind": "git",
-      "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
-      "lines": [
-        101,
-        135
-      ],
-      "hash": "cb71d3942ea2b2be4cb6f34c16f0908fb94cc4fece41c1c36ef02715106ec8c1"
-    },
     "../plugins/settings/src/registry.ts:115-121": {
       "kind": "git",
       "blob": "d5dc41e8d48e9ebcd63ac3d41d298bb3e9846666",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         115,
         121
       ],
       "hash": "64912377c35d8f065b4318d9c51c0db29229d4d1696957685f414abf8cd0f975"
     },
-    "has ../plugins/settings/tests/service.test.ts \"构造时同步读完 settings.json：调用方 apply 里第一次 get 就读得到盘上的值\"": {
-      "kind": "has"
-    },
     "../plugins/settings/src/store.ts:38-78": {
       "kind": "git",
       "blob": "747545bd06719aceacd32790b45a803b6891e750",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         38,
         78
       ],
       "hash": "9ce09b780c4388a57803074756767d62e88dccacded8b1209770ca22af25f226"
     },
-    "has ../plugins/settings/tests/store.test.ts \"都写成功，最后发起的那次留在文件里，不留临时文件\"": {
+    "../plugins/settings/src/index.ts:57-70": {
+      "kind": "git",
+      "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        57,
+        70
+      ],
+      "hash": "1802484c68aef7746df9d71f77bbeff162f438fc6fce2dfbf39e603765fbc90c"
+    },
+    "has ../plugins/settings/tests/service.test.ts \"按位置读写删：settings.get 对 secret 项也回明文，settings.all 不回\"": {
       "kind": "has"
     }
   },
   "content/docs/seams/skills.mdx": {
     "../plugins/commands/package.json:18-22": {
       "kind": "git",
-      "blob": "ece78e4bcf278c1853b33375e8d68348b940dac2",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "blob": "3f536d98f484d597b3db5a348a2557352cdac60d",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         18,
         22
       ],
       "hash": "17cd10117409f14876b1154001d11f9a433fd8152e1a120dd2c0e43b218526ae"
     },
-    "has ../plugins/skills/tests/collect.test.ts \"装 skill 的目录只看一层——再深的 SKILL.md 不算一个 skill\"": {
-      "kind": "has"
-    },
-    "has ../plugins/skills/tests/collect.test.ts \"折叠块取不到值——留空让调用方报,不静默当成有\"": {
-      "kind": "has"
-    },
     "has ../plugins/skills/tests/collect.test.ts \"缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它\"": {
-      "kind": "has"
-    },
-    "has ../plugins/commands/src/index.ts \"const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)\"": {
       "kind": "has"
     },
     "../plugins/skills/src/index.ts:19-30": {
       "kind": "git",
       "blob": "17cfceb934004e732b0d324a8f9eb951fb3bc6a8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         19,
         30
@@ -1462,7 +1383,7 @@
     "../plugins/skills/src/collect.ts:6-13": {
       "kind": "git",
       "blob": "95333fdc150ed7e49a8c29c75c003d3efc4b57bb",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         6,
         13
@@ -1472,7 +1393,7 @@
     "../plugins/skills/src/index.ts:56-82": {
       "kind": "git",
       "blob": "17cfceb934004e732b0d324a8f9eb951fb3bc6a8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         56,
         82
@@ -1485,7 +1406,7 @@
     "../plugins/skills/src/index.ts:94-132": {
       "kind": "git",
       "blob": "17cfceb934004e732b0d324a8f9eb951fb3bc6a8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         94,
         132
@@ -1495,15 +1416,32 @@
     "../plugins/skills/src/index.ts:138-149": {
       "kind": "git",
       "blob": "17cfceb934004e732b0d324a8f9eb951fb3bc6a8",
-      "commit": "5f9d905708aee64316c89299fb01e28505ead893",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
       "lines": [
         138,
         149
       ],
       "hash": "204f00be4947654c063eaabce883eb295249cf3a4b703e2200a76100962a40f4"
     },
-    "has ../plugins/skills/tests/service.test.ts \"注销函数不删别人后来登记的同名说明书\"": {
-      "kind": "has"
+    "../plugins/commands/src/index.ts:29-30": {
+      "kind": "git",
+      "blob": "639dfb39e2beb85877fadf3991b55f8c6b20ad2c",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        29,
+        30
+      ],
+      "hash": "ad63ef54ee4f77d515fdbabd2c2f59da0f5a84cb89854f8f52ae95df4f454ed6"
+    },
+    "../plugins/settings/src/index.ts:137-141": {
+      "kind": "git",
+      "blob": "370e70ee749be43d3e3c32965dab4079d0613bc5",
+      "commit": "afd7f147aa397982b90e522bcab7ec0ab279d10e",
+      "lines": [
+        137,
+        141
+      ],
+      "hash": "87ed568be72e9cf951720becf1479ade1b40371f4b7b89b51cffd9b5ebb0c703"
     }
   }
 }
