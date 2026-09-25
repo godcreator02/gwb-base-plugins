@@ -469,9 +469,6 @@
     "has ../plugins/mcp/instructions.md \"读说明书就是用 run 调 skill.read\"": {
       "kind": "has"
     },
-    "has ../plugins/mcp/instructions.md \"plugin-manager.update-all\"": {
-      "kind": "has"
-    },
     "has ../plugins/mcp/tests/tools.test.ts \"带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平\"": {
       "kind": "has"
     },
@@ -484,7 +481,7 @@
     "../plugins/mcp/src/inventory.ts:18-37": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         18,
         37
@@ -494,7 +491,7 @@
     "../plugins/mcp/src/index.ts:181-190": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         181,
         190
@@ -504,7 +501,7 @@
     "../plugins/mcp/src/index.ts:205-221": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         205,
         221
@@ -514,7 +511,7 @@
     "../plugins/mcp/src/index.ts:222-226": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         222,
         226
@@ -524,7 +521,7 @@
     "../plugins/mcp/src/index.ts:192-203": {
       "kind": "git",
       "blob": "2a4f8986ed05e5ff29e1ed3c3280dd435e170ff2",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         192,
         203
@@ -534,7 +531,7 @@
     "../plugins/mcp/src/tools.ts:26-36": {
       "kind": "git",
       "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         26,
         36
@@ -544,7 +541,7 @@
     "../plugins/mcp/src/tools.ts:38-65": {
       "kind": "git",
       "blob": "af7d71e61eca9669df22efd12796e8ff35512941",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         38,
         65
@@ -554,7 +551,7 @@
     "../plugins/mcp/src/inventory.ts:15-16": {
       "kind": "git",
       "blob": "b0e8bedc8b4b8b105e420a51dd5cada019f173f1",
-      "commit": "e1a67b22185a486273329f40979557ff46e25864",
+      "commit": "f5cc7ad361ba554a93a6b9f70a86103c8cf31a2d",
       "lines": [
         15,
         16
@@ -562,6 +559,12 @@
       "hash": "d3d11335b0b4b400c095ae4b0ad31b6896386a931fd31e235015f1a963b59ced"
     },
     "has ../plugins/mcp/instructions.md \"调 unit-folder.list 查\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"plugin-manager.update\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"再调 shell.reload\"": {
       "kind": "has"
     }
   },
