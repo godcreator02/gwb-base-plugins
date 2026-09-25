@@ -120,3 +120,31 @@ MCP 入口的 instructions 里写着「发完新版本调 plugin-manager.update-
 - `docs-site/content/future/roadmap.mdx` 里也提到了 `update-all`，顺带看一下要不要改
 
 现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
+
+## 2026-09-25 要跟内核 0.7：八个插件 peer 里内核包改成 ^0.7.0
+
+来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代投。
+
+内核包 `@godcreator/gwb-kernel-desktop` 马上从 0.6.2 发 0.7.0，这是破坏性版本：内核服务删掉了 `gwbKernel.launcherVersion`，home 里的 `runtime.json` 删掉了 `appDir`（内核仓轨迹卡 `2026-09-25-drop-launcher-version`）。此前 0.6.1、0.6.2 还给页面加了导航锁（内核仓 `docs-site/content/docs/seams/ipc.mdx` 的「页面保证」）：
+
+- 页面的主框架只能是内核的 `index.html`：不带 `target` 的链接点击、拖进窗口的链接一律拒绝，页面上没有任何反应
+- `window.open(url)` 与 `target="_blank"` 的链接不再开新窗口：`http:`、`https:` 地址交给系统默认浏览器打开，别的协议（`file:`、`javascript:`、`data:`、自定义协议）拒绝
+- 页面经 `window.gwb.command` 调命令，只接收顶层框架发来的；iframe 里调用拿到的是 `ok: false` 的回执
+
+本仓八个插件 peer 里内核包写的都是 `^0.4.1`，不包含 0.7.0（也不包含现在的 0.6）：
+
+- `@godcreator/gwb-commands`（`plugins/commands/package.json` 第 54 行）
+- `@godcreator/gwb-mcp`（`plugins/mcp/package.json` 第 33 行）
+- `@godcreator/gwb-skills`（`plugins/skills/package.json` 第 29 行）
+- `@godcreator/gwb-settings`（`plugins/settings/package.json` 第 31 行）
+- `@godcreator/gwb-data`（`plugins/data/package.json` 第 30 行）
+- `@godcreator/gwb-logger`（`plugins/logger/package.json` 第 39 行）
+- `@godcreator/gwb-node-cli`（`plugins/node-cli/package.json` 第 31 行）
+- `@godcreator/gwb-py-cli`（`plugins/py-cli/package.json` 第 31 行）
+
+用到删掉字段的地方只有一处测试数据：`plugins/mcp/tests/runtime.test.ts` 第 13 行的假 `runtime.json` 里有 `appDir`。mcp 插件写 `runtime.json` 时保留别的字段、不读 `appDir`，运行时不受影响；想让假数据跟上现状，可以改成 0.7.0 实际写的 `pid`、`startedAt`、`version`、`cdp`。`launcherVersion`、`window.open`、`target="_blank"`：没有用到；本仓插件没有页面，导航锁对它们没有影响。
+
+要做的：
+
+1. 内核 0.7.0 发布后，在装了 0.7.0 的隔离 home 里把八个插件验一遍，再把 peer 里内核包的范围改成 `^0.7.0`，版本号照说明书 `gwb-release` 升，然后发版。上面「内核直接跟 0.6」那条还没做的，peer 直接写 `^0.7.0`，不用先改到 0.6；那条里别的改动照做
+2. 不改的后果：`plugin-manager.list` 会把这些插件标成 `kernelUntested`；`devkit.release` 发版前检查要求 peer 里内核包的范围包含运行中的内核，不改就拒发。运行时照常
