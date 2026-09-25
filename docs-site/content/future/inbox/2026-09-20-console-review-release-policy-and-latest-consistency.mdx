@@ -1,0 +1,27 @@
+---
+title: '跨仓生态：审查报告两条（20 包 latest 领先公开 main/latest 组合不自洽）——无单一目标仓'
+description: '来源：《gwb 全系统审查报告》（2026-09-19），编号沿用 GWB-xx；完整证据链见原报告 `gwb-system-review.md（原报告在本机，未入库）`'
+docfirst: none
+---
+
+* **目标仓**：跨仓。GWB-09 落发布制度（各仓 tag/release + 包元数据）；GWB-10 落 gwb-base-plugins 的 plugin-manager（`D:\unitfolders\26090709qzp\gwb-base-plugins`）+ 各消费仓 peer 声明
+* **来源**：《gwb 全系统审查报告》（2026-09-19），编号沿用 GWB-xx；完整证据链见原报告
+  `gwb-system-review.md（原报告在本机，未入库）`
+* **派发注意**：feedback README 说生态级、跨插件的协议问题该进目标仓 spec 区谈、不是 feedback——这两条按那条规矩走 spec，别投 inbox
+
+### GWB-09 20 个分发包领先公开 main，装机基准与审查源码分叉（P1｜已验证：匿名 registry + 全量 clone + 远端 main 二次对照）
+* 位置：12 仓基准表；例 `gwb-base-plugins/plugins/mcp/package.json:3` @678ce2e 为 0.7.0、registry latest 0.9.0；`gwb-devkit` 0.16.5 vs latest 0.18.2
+* 现象：34 个在役发布包 20 个 latest 高于对应 main；9 仓无任何 tag。INSTALL 装 latest、外部维护者只能从首页 main 找说明——「源码某问题已修/未修」与「用户正在运行哪套契约」难以对齐
+* 期望：发布前确保对应提交在公开仓可读；包元数据/release/tag 绑定该提交及制品摘要；文档与安装入口引用同一版基准；持续校验 package、tag、registry 三方。**发布制度调整需拍板**
+
+### GWB-10 latest 组合已不满足两条 peer，update-all 不按兼容闭包规划（P1｜已验证约束不满足；运行后果读码推断）
+* 位置：`gwb-block-note/plugins/gwb-bn-core/package.json`（0.16.1）、`gwb-unit-folder/package.json`（0.7.5）均要求 shell `^0.9.1`，shell latest 已 0.13.1，0.x caret 不含后者；`gwb-base-plugins/plugins/plugin-manager/src/update-all.ts:63-95`、`src/index.ts:753-788`
+* 现象：升级支持 only、按包名排序、先安装再报 peerWarnings 仍继续重挂，无持久化升级事务/恢复清单——单包安装成功不保证整套运行契约成立
+* 期望：机读发布/升级计划（兼容性、版本集合、依赖闭包）；先验证完整目标集合再改 home；记录可恢复状态、半途失败有明确终态；涉格式变化要有恢复设计。**plugin-manager 与跨仓契约需拍板**
+* 派发前先核对现状：gwb-windows-backup 已有 2026-09-19 提交「shell 钉跟 0.13.1（0.2.1 还没发）」——peer 追赶可能已在路上，逐仓查 peer 再定改动面
+
+### 附：冷启动表残余两条（随上面两条一并定）
+* 「看 main 的 scaffold 还是按安装后 search 的 scaffold.plugin」——应指向精确版本的公开源码与手册（GWB-09 的文档面）
+* 出现 peerWarnings 能否当装完——只能确定包安装阶段；仍需核对依赖/ACTIVE（写进 INSTALL 与 plugin-manager usage）
+* 升级回执中断后有没有持久化记录可查——当前主要靠 list/日志重建局面，无统一升级事务 id（GWB-10 的恢复面）
+* UI 引导（亮色/字体/默认布局去哪配）：默认基础集不含独立 theme，待实装确认后补说明
