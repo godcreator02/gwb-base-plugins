@@ -34,8 +34,8 @@ description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401�
 3. 回 401：token 没带、对不上，或刚换过。重新取 `mcp.info` 的片段写进配置、重连。`gwb.log` 里 `拒绝了一条请求：…` 那一行写着没过的是 token、`Host` 还是 `Origin` 哪项检查。
 4. 回 403：入口只回 401，403 来自中间的代理，让客户端直连 `127.0.0.1`。
 5. 返回 `isError` 的文本：入口是通的，是命令自身失败，照说明书 `gwb-commands` 的「命令失败了」处理。
-6. 入口这一版本身坏了：修好发下一版，让人在插件窗格点「全部更新」；工作台窗口也打不开时，在 home 目录运行 `pnpm add @godcreator/gwb-mcp@<新版本号>`，再重启这个 home。
-7. `plugin-manager.update-all` 升级到 `gwb-mcp` 自己时，进行中的回执会丢、连接断开：重连后用 `plugin-manager.list` 核对 `gwb-mcp` 那条条目的 `active` 为 `true`。
+6. 入口这一版本身坏了：修好发下一版，让人在插件管理窗格点「全部更新」；工作台窗口也打不开时，在 home 目录运行 `pnpm add @godcreator/gwb-mcp@<新版本号>`，再重启这个 home。
+7. `plugin-manager.update {"all":true}` 升级到 `gwb-mcp` 自己时，进行中的回执会丢、连接断开：重连后用 `plugin-manager.list` 核对 `gwb-mcp` 那条条目的 `active` 为 `true`，再调 `shell.reload` 刷新界面。
 
 隔离 home 的基础插件集里没有 MCP 入口：对它调命令用 `devkit.cdp`（参数形状用 `search {"prefix": "devkit.cdp"}` 查）。`devkit.cdp` 只对隔离 home 用。
 

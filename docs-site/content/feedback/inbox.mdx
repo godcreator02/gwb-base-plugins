@@ -31,8 +31,8 @@ home、停用再启用重新加载、收集结果。那条命令**有意绕开�
 已有条目，绕开的正是这个重复建条目的行为。也就是说这个行为已经在实际使用中逼出了一条绕开的路：装插件
 本来只该有一条路，现在开发循环那边得自己再走一条。
 
-原始记录原在总控台的暂存区（2026-09-12 收件箱退役时随处理清掉）
-主送 devkit，这一条是抄送。
+原始记录原在总控台的暂存区（2026-09-12 停用那个收件箱时一并清掉）
+原本投给 devkit，这里是同一条的副本。
 
 ## 2026-09-14 带路径的 JSON 经 curl 必定出错；稳妥的做法（body 写成文件）没写进 command-http 说明书
 
@@ -65,7 +65,7 @@ agent 再猜。
 
 来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同批发）。
 
-devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成从 home 里各包的 `.d.ts` 现读：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
+devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成每次调用时从 home 里各包的 `.d.ts` 读取：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
 `plugins/logger/package.json`（以及别的插件如果有）的 `gwb.provides`，AGENTS 正本、develop 页、design 页里讲 `gwb.provides` 与 `devkit.services` 旧用法的段落，下次改到时删掉或改成现状。
 
 ## 2026-09-25 内核直接跟 0.6：跳过 0.5，外置名单写死 react 的四个名字
@@ -103,27 +103,9 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 
 随适配内核 0.6 那一轮一起改、一起发，版本号照说明书 `gwb-release` 升。规矩正本是 devkit 文档站的规则页「用到的插件写 peer」与说明书 `gwb-release`（`run skill.read {"name":"gwb-release"}`）。
 
-## 2026-09-25 插件管理 0.12：plugin-manager.update-all 改名为 plugin-manager.update，升级全部要明确传 `{"all":true}`
-
-来源：总控台会话（devkit 仓 e6cf2b2，插件管理 0.12.0，破坏性改动）。
-
-MCP 入口的 instructions 里写着「发完新版本调 plugin-manager.update-all 一次升级全部插件」，插件管理升到 0.12 之后，agent 照着调会得到「没有这条命令」。
-
-新命令的参数三种写法，必须恰好给一种：`{"all":true}` 把所有过期的包升到 latest；`{"only":["<包名>"]}` 只升这几个包；`{"specs":{…}}` 按给定的版本写法安装。不给参数直接报错。`all` 与 `only` 的行为和回执与原来的 `update-all` 相同。
-
-要改的地方：
-
-- `plugins/mcp/instructions.md`（MCP 入口 instructions 的正文）：改成 `plugin-manager.update {"all":true}`
-- `plugins/mcp/skills/mcp/SKILL.md`（`docfirst.config.mjs` 的 outputs 里没有它的 mdx 正本，直接改这份）
-- `docs-site/content/docs/seams/agent-surface.mdx`、`docs-site/content/docs/develop.mdx`
-- `docs-site/content/outputs/readme.mdx`（仓根 README.md 的正本，改完 render）
-- `docs-site/content/future/roadmap.mdx` 里也提到了 `update-all`，顺带看一下要不要改
-
-现状：插件管理 0.12.0 与 devkit 0.20.0 已经合进 devkit 仓的 main，但还没发布到本机 registry，什么时候发由人决定。在那之前不要改用 `plugin-manager.update`——default home 里装的还是插件管理 0.11.0，只有 `update-all` 这条命令。
-
 ## 2026-09-25 要跟内核 0.7：八个插件 peer 里内核包改成 ^0.7.0
 
-来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代投。
+来源：gwb-kernel（内核仓 `D:\unitfolders\igldu-gwbkernel\gwb-kernel`），提交 `6ab4ed8`，2026-09-25；总控台会话代为投递。
 
 内核包 `@godcreator/gwb-kernel-desktop` 马上从 0.6.2 发 0.7.0，这是破坏性版本：内核服务删掉了 `gwbKernel.launcherVersion`，home 里的 `runtime.json` 删掉了 `appDir`（内核仓轨迹卡 `2026-09-25-drop-launcher-version`）。此前 0.6.1、0.6.2 还给页面加了导航锁（内核仓 `docs-site/content/docs/seams/ipc.mdx` 的「页面保证」）：
 

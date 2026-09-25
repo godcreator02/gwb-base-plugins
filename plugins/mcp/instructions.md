@@ -24,8 +24,8 @@ god 工作台（gwb）是一台本机桌面工作台：本体只提供插件平�
 看 gwb-kernel 仓 AGENTS 的「怎么跑」），启动后重连一次——MCP 连接不会自动接上中途才启动的工作台。
 
 这台工作台鼓励你在工作中改进它自己——改插件、发版、重新装进 home 都在预期之内。
-发完新版本调 plugin-manager.update-all 一次升级全部插件（不重启）；升级到 mcp 插件自己时，这次调用的
-返回会丢失、连接中途断开——重连后用 plugin-manager.list 核对。
+发完新版本调 plugin-manager.update {"all":true} 升级全部插件（不重启），升完调 shell.reload 刷新界面；
+升级到 mcp 插件自己时，这次调用的返回会丢失、连接中途断开——重连后用 plugin-manager.list 核对，再调 shell.reload。
 不用问就能做：
 - 修已有命令的 bug
 - 补充或修改插件自带的 SKILL.md

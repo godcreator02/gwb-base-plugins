@@ -63,13 +63,15 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 {/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update-all" */}
+{/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update" */}
+
+{/* has file="../plugins/mcp/instructions.md" text="再调 shell.reload" */}
 
 {/* has file="../plugins/mcp/instructions.md" text="调 unit-folder.list 查" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="15-16" */}
 
-这几个名字**靠约定**：`skill.read` 由说明书插件登记，`plugin-manager.list`、`plugin-manager.update-all` 由 devkit 仓的插件管理登记，`unit-folder.list` 由单元目录插件仓（gwb-unit-folder）的插件登记，名字写在登记处与 `instructions.md`、`inventory.ts` 两处。改了命令名，这里不会报错，agent 照着调会收到「没有这条命令」。
+这几个名字**靠约定**：`skill.read` 由说明书插件登记，`plugin-manager.list`、`plugin-manager.update` 由 devkit 仓的插件管理登记，`shell.reload` 由 UI 平台仓（gwb-ui-plugins）的外壳登记，`unit-folder.list` 由单元目录插件仓（gwb-unit-folder）的插件登记，名字写在登记处与 `instructions.md`、`inventory.ts` 两处。改了命令名，这里不会报错，agent 照着调会收到「没有这条命令」。
 
 ## 约定
 
