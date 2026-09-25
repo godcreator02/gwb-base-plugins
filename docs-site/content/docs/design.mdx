@@ -1,6 +1,6 @@
 ---
 title: 关键设计
-description: 基础插件仓为什么这么切——只放无界面的插件、插件只依赖词汇表包的类型、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
+description: 基础插件仓为什么这么切——只放无界面的插件、插件的类型只从内核包取、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
 ---
 
 **本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的功能在各自的页，插件之间约定了什么在各接缝页。
@@ -22,15 +22,15 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 不在这个仓的：
 
-- **内核**在内核仓 gwb-kernel：内核应用、词汇表包和安装包，一个插件也不带
+- **内核**在内核仓 gwb-kernel：内核应用和安装包，一个插件也不带
 - **插件管理** `@godcreator/gwb-plugin-manager` 在生命周期插件仓 gwb-lifecycle-plugins：装插件、找插件、配包源都是它的命令
 - **有界面的插件**（外壳、主题、基础窗格）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
 
 这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
 
-## 插件只依赖词汇表包的类型
+## 插件的类型只从内核包取
 
-词汇表包 `@godcreator/gwb-plugin-api`（内核仓）是内核对插件的契约，只有类型。插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
+内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
@@ -41,12 +41,11 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 本仓插件的依赖这样写：
 
 - **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的七个插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份
-- **词汇表包**：只有类型，写 dev，范围 `^0.4.1`。命令插件导出的类型里有它的 `GwbResult`，用命令插件类型的插件自己在 dev 里列词汇表包
-- **本仓别的插件**：只写 dev（`workspace:*`），只 `import type`
+- **本仓别的插件**：用到的写 peer（`workspace:^`，`devkit.release` 发版时换成 `^<版本号>`），只局部注入、缺了只少一部分功能的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
-- **类型引用到的包都在各插件的 dev 里列全**（包括 `@types/node`）
+- **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
 
-{/* ref file="../plugins/commands/package.json" lines="51-54" */}
+{/* ref file="../plugins/commands/package.json" lines="42-45" */}
 
 ## 插件之间只经服务和命令
 
@@ -61,7 +60,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 两个插件要用同一段小逻辑时各存一份，不为它新建共享包：两个命令行运行插件的 `run.ts`、`invoke.ts`，数据插件的 `entryDirName` 与设置插件的 `entrySection`。这些副本的注释互相提到对方，改一处就要改另一处（见[命令行工具](/docs/seams/cli)、[条目身份](/docs/seams/entry-identity)）。
 
-cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安装时按 peer 范围检查的那一次，本仓插件之间又只写 devDependencies，所以服务的接口只增加、不改名、不改形状。细节见[遇到过的问题](/docs/pitfalls)。
+cordis 不给服务做版本校验，插件之间的版本约束只写在 peer 里：插件管理把 home 里没满足的列在 `plugin-manager.list` 的 `unmetPeers`，只报告、不拦加载，所以服务的接口只增加、不改名、不改形状。细节见[遇到过的问题](/docs/pitfalls)。
 
 ## 命令总线是唯一的调用面
 
@@ -91,9 +90,9 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 插件在 peer 里写内核包
 
-内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻 MCP 插件写的是 `^0.7.0`，其余七个写的是 `^0.4.1`：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。八个插件此刻都写 `^0.7.0`：
 
-{/* ref file="../plugins/mcp/package.json" lines="30-32" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-36" */}
 
 {/* ref file="../plugins/data/package.json" lines="27-30" */}
 

@@ -26,24 +26,23 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-skills": "workspace:^",
     "cordis": "^4.0.0-rc.10"
   },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-skills": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
-    "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "provides": {
-      "gwbPyCli": {
-        "summary": "登记随包发的 python 命令行工具，venv 不在时当场用 uv 重建",
-        "usage": "register({ name, description?, usage?, packageRoot, distName, version, command?|module?, args?, cwd?, env?, timeoutMs? })；ensureReady({ packageRoot, distName, version }) 检查并补齐 venv，重复调用结果相同；run 与 gwbNodeCli 的 run 形状相同；inject ['gwbPyCli']"
-      }
-    }
   },
   "repository": {
     "type": "git",

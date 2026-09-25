@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Service, type Logger } from 'cordis'
-import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbResult } from '@godcreator/gwb-kernel-desktop'
 // 这个 import 同时激活命令插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands
 import type { GwbCommands } from '@godcreator/gwb-commands'
 import { collectSkills, SKILL_ENTRY, type CollectedSkill, type CollectProblem, type GwbSkill } from './collect.js'

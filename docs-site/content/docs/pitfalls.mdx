@@ -19,13 +19,11 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 {/* ref file="../plugins/commands/tests/artifact.test.ts" lines="16-45" */}
 
-### 词汇表包只写 dev，用到别人类型的插件自己在 dev 里列全
+### 类型从 peer 里的包取，不是插件的类型包写 dev
 
-peer 写的是运行时要从 home 里解析到的包。词汇表包只有类型，运行时不存在，所以写 dev。
+`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，来自内核包。内核包是每个插件的 peer，用到的别的插件也写在 peer，插件仓里 pnpm 把它们装进各插件的 `node_modules`，这些类型总解析得到。类型引用到、又不是插件的包（`@types/node`）写 dev。少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
 
-代价在类型上：`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，而发布出去的命令插件不带词汇表包。用命令插件类型的插件要自己在 dev 里列词汇表包；少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」。所以本仓每个插件都在 dev 里列全了类型用到的包，包括 `@types/node`；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
-
-{/* ref file="../plugins/logger/package.json" lines="39-45" */}
+{/* ref file="../plugins/logger/package.json" lines="27-39" */}
 
 继承 cordis `Service` 的七个插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 
@@ -36,7 +34,7 @@ cordis 的服务只有一个字符串名字：注册记录里没有版本、没�
 所以：
 
 - **可选依赖只能用 `ctx.inject([...], cb)` 局部注入**：缺服务时只有这个局部上下文一直等待，插件本身照常加载。本仓插件登记说明书（`gwbSkills`）都这么写
-- **插件之间的版本约束只在 pnpm 安装时按 peer 的范围检查一次**：本仓插件对命令插件、设置插件这类服务提供方只写 devDependencies（只 `import type`），装插件时 pnpm 不检查 home 里这些插件的版本。服务的接口改了、home 里装的是旧版时，调用不报错，多出来的参数被旧版忽略
+- **插件之间的版本约束只写在 peer 里**：插件管理把 home 里没满足的列在 `plugin-manager.list` 的 `unmetPeers`，只报告、不拦加载。服务的接口改了、home 里装的是旧版时，调用不报错，多出来的参数被旧版忽略
 
 ### `await ctx.plugin(...)` 会立即返回，即使插件没有运行
 
@@ -101,4 +99,4 @@ error TS1127: Invalid character.
 
 ### MCP SDK 的类型声明要 DOM 类型
 
-关掉 `skipLibCheck` 做类型检查时，SDK 的 `shared/transport.d.ts` 用到 `HeadersInit`，插件的 tsconfig 只带 `ES2023` 库，报 `Cannot find name 'HeadersInit'`。现在能通过，是因为词汇表包在自己的类型声明里写了 `/// <reference lib="dom" />`，MCP 插件 import 了它，DOM 类型就进了同一次检查。词汇表包去掉这一行，MCP 插件关掉 `skipLibCheck` 的类型检查会先红。
+关掉 `skipLibCheck` 做类型检查时，SDK 的 `shared/transport.d.ts` 用到 `HeadersInit`，插件的 tsconfig 只带 `ES2023` 库，报 `Cannot find name 'HeadersInit'`。现在能通过，是因为内核包的类型声明 `dist/api.d.ts` 第一行写了 `/// <reference lib="dom" preserve="true" />`，MCP 插件 import 了它，DOM 类型就进了同一次检查。内核包去掉这一行，MCP 插件关掉 `skipLibCheck` 的类型检查会先红。

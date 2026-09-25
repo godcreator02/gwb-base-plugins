@@ -26,24 +26,26 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-skills": "workspace:^",
     "cordis": "^4.0.0-rc.10"
   },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-commands": {
+      "optional": true
+    },
+    "@godcreator/gwb-skills": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
-    "@godcreator/gwb-skills": "workspace:*",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "provides": {
-      "gwbSettings": {
-        "summary": "插件的设置项——define 之后界面自动出现这一项；值按条目存放，shared 项存进公共区",
-        "usage": "define({ key, title, type: 'string'|'number'|'boolean'|'secret'|'string-list', shared?, description?, default? }) → get（同步）/ set / delete；先 define 再读写，没声明的 key 写入会抛错；配置一律用 define，别写 cordis.yml 的 config；inject ['gwbSettings']"
-      }
-    }
   },
   "repository": {
     "type": "git",

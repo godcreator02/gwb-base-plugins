@@ -74,10 +74,9 @@ export function apply(ctx: GwbContext) {
 | loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
 | `process.execPath`（工作台进程的 electron.exe）与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js | 不带这个环境变量的话 electron 会开一个应用，而不是运行 js |
 | Windows 的 `taskkill` | 超时时结束整个进程树 | 启动不了或退出码不是 0 时，改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程，孙进程可能留下 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件除开头一行注释外逐字相同，本包这份是正本，改一处就要改另一处（见[命令行工具](/docs/seams/cli)）。
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`；说明书只局部注入，标 `optional`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件除开头一行注释外逐字相同，本包这份是正本，改一处就要改另一处（见[命令行工具](/docs/seams/cli)）。
 
 ## 不做的事
 

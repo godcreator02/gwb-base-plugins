@@ -8,7 +8,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Context } from 'cordis'
 import type { Fiber, Message, Plugin } from 'cordis'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { GwbResult } from '@godcreator/gwb-plugin-api'
+import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
 import * as mcpPlugin from '../src/index.js'
 
 let homesRoot: string

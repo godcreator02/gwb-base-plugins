@@ -25,23 +25,17 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "cordis": "^4.0.0-rc.10"
   },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "provides": {
-      "gwbSkills": {
-        "summary": "登记随包发的说明书（给 agent 读的流程文档），说明书名全局唯一",
-        "usage": "register(dir: string | URL)——目录下每个子目录一份 SKILL.md，返回注销函数（调用方卸载时自动注销，不用包 effect）；目录必须列进 package.json 的 files，漏了要到装上之后才报错；局部 ctx.inject 即可，说明书插件没装时主插件照常加载"
-      }
-    }
   },
   "repository": {
     "type": "git",

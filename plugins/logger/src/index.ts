@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { Service } from 'cordis'
-import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbKernelApi } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 // 这个 import 同时激活命令插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands
 import type { GwbCommands } from '@godcreator/gwb-commands'

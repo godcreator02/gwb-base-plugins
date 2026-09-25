@@ -1,5 +1,5 @@
 import { Service, type Context } from 'cordis'
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 import { isRecord, requireKernel } from './vocab.js'
 // 这两个 import 同时激活命令插件与说明书插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands、gwbSkills
 import type { GwbCommands } from '@godcreator/gwb-commands'

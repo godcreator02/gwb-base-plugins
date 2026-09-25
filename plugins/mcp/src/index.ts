@@ -6,7 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { Context, Logger } from 'cordis'
 import { z } from 'zod'
-import type { GwbContext, GwbResult } from '@godcreator/gwb-plugin-api'
+import type { GwbContext, GwbResult } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 // 这几个 import 同时激活对应插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands、gwbSettings、gwbSkills、gwbNodeCli
 import type { GwbCommands } from '@godcreator/gwb-commands'

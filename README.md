@@ -1,6 +1,6 @@
 # gwb-base-plugins
 
-gwb 的**无界面基础插件仓**：八个插件，全部只依赖词汇表包 `@godcreator/gwb-plugin-api` 的类型，不依赖任何界面包。
+gwb 的**无界面基础插件仓**：八个插件，类型只从内核包 `@godcreator/gwb-kernel-desktop` 的包根取，不依赖任何界面包。
 界面插件（shell / theme / baseui；令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins；
 插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，和 devkit 一起开发；内核在 gwb-kernel。
 

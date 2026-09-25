@@ -69,12 +69,11 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | node 命令行运行插件服务 `gwbNodeCli`（局部注入，[gwb-node-cli](/docs/node-cli)） | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` 这条命令 |
 | 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 | `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`），写在 dev，构建时打包进 `dist/index.js` | MCP 协议、工具参数的 schema | 打包在构建产物里，装进 home 时不另装它们 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbResult` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-`gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 dev 里（`workspace:*`）：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块；类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里只有内核包；`publishConfig.registry` 指向团队源：
+`gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`；只局部注入的说明书与 node 命令行运行插件标 `optional`）：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块；类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里没有 `cordis`；`publishConfig.registry` 指向团队源：
 
-{/* ref file="../plugins/mcp/package.json" lines="30-35" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-47" */}
 
 ## 不做的事
 

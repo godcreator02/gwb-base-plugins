@@ -2,7 +2,7 @@ import { Context, Service } from 'cordis'
 import type { Message, Plugin } from 'cordis'
 import Loader, { type ModuleLoader } from '@cordisjs/plugin-loader'
 import { describe, expect, it } from 'vitest'
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 import GwbCommandBus, { type GwbCommandDef, type GwbCommands } from '../src/index.js'
 
 const BUS_PACKAGE = '@godcreator/gwb-commands'

@@ -2,7 +2,7 @@ import path from 'node:path'
 import { Context } from 'cordis'
 import type { Plugin } from 'cordis'
 import { describe, expect, it } from 'vitest'
-import type { GwbResult } from '@godcreator/gwb-plugin-api'
+import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
 import * as loggerPlugin from '../src/index.js'
 import type { LogEntry } from '../src/index.js'
 

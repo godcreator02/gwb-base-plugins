@@ -25,22 +25,16 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "cordis": "^4.0.0-rc.10"
   },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "provides": {
-      "gwbData": {
-        "summary": "插件写进文件的状态：<home>/data/<条目末段>/，一份文档一个 JSON",
-        "usage": "readDoc(doc)（不存在或读坏了返回 undefined，第一次读要自己处理这种情况）· writeDoc(doc, value)（整份替换、原子写入）· dir（存非 JSON 文件用它，别自己拼路径）· owners()/transferOwner(id, pkg)（包改名后接上旧数据）；inject ['gwbData']"
-      }
-    }
   },
   "repository": {
     "type": "git",

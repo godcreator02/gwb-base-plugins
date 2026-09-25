@@ -29,7 +29,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 | --- | --- | --- |
 | 服务 `ctx.gwbCommands` 的 `register(def, handler)`、`run(name, args?, context?)` | 登记一条命令、拿回注销函数；按名字执行，返回 `Promise<GwbResult>`，不抛错 | [1 命令总线](/docs/seams/bus) |
 | 服务 `ctx.gwbCommands` 的 `list()` | 全部命令的 `{ name, description, usage, plugin }`；MCP 入口的 `index`、`search` 从这里取 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型在词汇表包 `@godcreator/gwb-plugin-api` | [1 命令总线](/docs/seams/bus) |
+| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型在内核包 `@godcreator/gwb-kernel-desktop` 的包根 | [1 命令总线](/docs/seams/bus) |
 | 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
 **服务的类型**由本包导出，用命令总线的插件 `import type { GwbCommands } from '@godcreator/gwb-commands'`（或 `import type {} from …`，让 `ctx.gwbCommands` 有类型）。一条命令的定义、请求来源、处理函数的签名：
@@ -60,16 +60,15 @@ export function apply(ctx: GwbContext) {
 | 内核带的 cordis：`Service`、`effect`、`inject`、`logger`（peer，`^4.0.0-rc.10`） | 提供服务、把注销登记在登记方的 `effect` 上、局部注入说明书插件、写日志 | 由内核提供，不会缺；构建产物按值 import 了 `cordis`，必须和内核用同一份，所以写 peer |
 | loader 放在调用方 fiber 上的条目 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 不是经 `cordis.yml` 加载的插件登记命令时，`register` 抛错 |
 | 说明书插件服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核，代码里不用它 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbResult` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-{/* ref file="../plugins/commands/package.json" lines="51-54" */}
+{/* ref file="../plugins/commands/package.json" lines="42-45" */}
 
 说明书插件不写进服务类的 `static inject`，局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）：
 
 {/* ref file="../plugins/commands/src/index.ts" lines="22-25" */}
 
-`GwbResult` 出现在本包导出的类型里，而发布出去的包不带词汇表包：用命令总线类型的插件要自己在 dev 里列词汇表包，原因见[遇到过的问题](/docs/pitfalls)。
+`GwbResult` 出现在本包导出的类型里，它来自内核包；内核包是每个插件的 peer，用命令总线类型的插件那里总解析得到，见[遇到过的问题](/docs/pitfalls)。
 
 ## 不做的事
 

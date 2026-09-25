@@ -1,5 +1,5 @@
 import { Service } from 'cordis'
-import type { GwbContext } from '@godcreator/gwb-plugin-api'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 import { requireKernel } from './vocab.js'
 import { claimDir, listOwners, stampOwner } from './owner.js'
 import { dataRoot, entryDir, looksRandom } from './paths.js'

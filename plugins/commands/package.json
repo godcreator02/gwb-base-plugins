@@ -27,18 +27,9 @@
   },
   "devDependencies": {
     "@cordisjs/plugin-loader": "1.0.0-rc.7",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
-  },
-  "gwb": {
-    "provides": {
-      "gwbCommands": {
-        "summary": "命令总线：插件与页面、agent 之间的调用入口，能力要被调用就登记成命令",
-        "usage": "ctx.gwbCommands.register({ name: '<短名>.<动作>', description: '一句话', usage: '{ 参数形状 }' }, handler) → 注销函数；name、description、usage 都必须是非空字符串，缺一项就抛错，无参数的 usage 写「无参数」；plugin 不用写，由服务取调用方的包名，写了必须相同；调用方卸载时自动注销，不用包 ctx.effect"
-      }
-    }
   },
   "repository": {
     "type": "git",
@@ -49,7 +40,10 @@
     "gwb-plugin"
   ],
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "cordis": "^4.0.0-rc.10"
+  },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   }
 }

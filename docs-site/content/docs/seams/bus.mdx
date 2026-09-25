@@ -14,7 +14,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 ## 接口
 
-**服务的类型**由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核的词汇表包里；回执类型 `GwbResult`（`{ ok: boolean, data?, error?: string }`）在词汇表包 `@godcreator/gwb-plugin-api` 里：
+**服务的类型**由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核包里；回执类型 `GwbResult`（`{ ok: boolean, data?, error?: string }`）在内核包 `@godcreator/gwb-kernel-desktop` 的包根里：
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="3-37" */}
 

@@ -28,17 +28,24 @@
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.7.0"
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-node-cli": "workspace:^",
+    "@godcreator/gwb-settings": "workspace:^",
+    "@godcreator/gwb-skills": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-node-cli": {
+      "optional": true
+    },
+    "@godcreator/gwb-skills": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
   },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-node-cli": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
-    "@godcreator/gwb-settings": "workspace:*",
-    "@godcreator/gwb-skills": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",

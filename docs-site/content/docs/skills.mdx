@@ -56,10 +56,9 @@ ctx.inject(['gwbSkills'], (scoped) => {
 | cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
 | 文件系统 | 登记时扫目录，读正文 | 目录读不了时写 warn、这个目录一份都不登记；正文读不了回 `undefined` 并写 warn |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbResult` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-`@godcreator/gwb-commands` 写在 dev 里（`workspace:*`）：代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型。frontmatter 是手写的逐行解析，没有 YAML 库。
+`@godcreator/gwb-commands` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`）：代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型。frontmatter 是手写的逐行解析，没有 YAML 库。
 
 ## 不做的事
 

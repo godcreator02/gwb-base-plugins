@@ -72,10 +72,9 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 | Windows 的 venv 布局（`Scripts/*.exe`、`Lib/site-packages`） | 找要运行的程序、读装了哪个版本 | 别的系统上找不到程序；工作台只支持 Windows |
 | cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
 | loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 是 [gwb-node-cli](/docs/node-cli) 里同名文件的副本，除开头一行注释外逐字相同，改那边就要改这边。
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`；说明书只局部注入，标 `optional`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 是 [gwb-node-cli](/docs/node-cli) 里同名文件的副本，除开头一行注释外逐字相同，改那边就要改这边。
 
 ## 不做的事
 

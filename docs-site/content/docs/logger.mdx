@@ -54,10 +54,9 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 | 内核服务 `gwbKernel` 的 `emit`、`dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 推事件给页面；算 `logger.where` 返回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
 | cordis 的日志流：`ctx.logger.exporter`、`ctx.logger.buffer`、`Logger.format` | 收全部日志；补插件加载之前的历史；格式化正文 | 由内核提供，不会缺；`buffer` 不在时不补历史 |
 | cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
-| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.7.0`） | 声明兼容哪些内核；`GwbContext`、`GwbKernelApi` 的类型从它的包根 `import type` | 只在编译时用它的类型，运行时由 home 根上的内核提供 |
 
-`@godcreator/gwb-commands` 写在 dev 里（`workspace:*`）：代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。来源名单里的 `kernel`、`renderer` 由内核定，`loader` 是 cordis loader 自己的 logger 名，日志插件另写一份，靠约定对齐（见[日志](/docs/seams/log)）。
+`@godcreator/gwb-commands` 写在 peer 里（`workspace:^`，发版时换成 `^<版本号>`）：代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。来源名单里的 `kernel`、`renderer` 由内核定，`loader` 是 cordis loader 自己的 logger 名，日志插件另写一份，靠约定对齐（见[日志](/docs/seams/log)）。
 
 ## 不做的事
 

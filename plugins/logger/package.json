@@ -19,26 +19,20 @@
     "dist",
     "src"
   ],
-  "gwb": {
-    "provides": {
-      "gwbLogger": {
-        "summary": "日志插件的占位服务——上面刻意没有方法，别调用",
-        "usage": "插件写日志用 ctx.logger('<插件名>')，自动进 gwb.log、日志窗格与 logger.backlog；日志窗格这类使用方 inject ['gwbLogger'] 只为等它出现"
-      }
-    }
-  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "pnpm build"
   },
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.4.1",
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.7.0",
     "cordis": "^4.0.0-rc.10"
   },
+  "publishConfig": {
+    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+  },
   "devDependencies": {
-    "@godcreator/gwb-commands": "workspace:*",
-    "@godcreator/gwb-plugin-api": "^0.4.1",
     "@types/node": "^24.0.0",
     "cordis": "4.0.0-rc.10",
     "typescript": "^7.0.2"
