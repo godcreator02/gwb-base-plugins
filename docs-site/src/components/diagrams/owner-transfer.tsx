@@ -66,7 +66,7 @@ export function OwnerTransfer() {
       <svg viewBox="0 0 760 400" role="img" aria-label="数据目录与设置分区的归属记录与转移">
         <Box x={10} y={20} w={200} h={52} lines={['@old/gwb-foo', '条目 home:foo']} tone={lit('old')} mono dim={state.step >= 2 && !current.lit.includes('old')} />
         <Box x={10} y={96} w={200} h={52} lines={['@new/gwb-foo', '改名后，条目仍是 home:foo']} tone={lit('renamed')} mono dim={state.step < 2} dashed={state.step < 2} />
-        <Box x={10} y={172} w={200} h={52} lines={['插件管理（devkit 仓）', 'plugin-manager.transfer-owner']} tone={lit('manager')} mono />
+        <Box x={10} y={172} w={200} h={52} lines={['插件管理（生命周期插件仓）', 'plugin-manager.transfer-owner']} tone={lit('manager')} mono />
 
         <Box x={270} y={34} w={200} h={64} lines={['数据插件 gwbData', 'owners() · transferOwner()']} tone={lit('data')} mono />
         <Box x={270} y={134} w={200} h={64} lines={['设置插件 gwbSettings', 'owners() · transferOwner()']} tone={lit('settings')} mono />

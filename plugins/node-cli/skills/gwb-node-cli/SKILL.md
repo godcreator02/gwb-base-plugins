@@ -52,7 +52,7 @@ description: 调 node 命令行工具的命令、读它的退出码与输出、�
 
 ## 规矩
 
-- `package.json` 的 `files` 白名单列全：devkit 仓 `docs-site/content/docs/rules/deps.mdx`
+- `package.json` 的 `files` 白名单列全：生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/deps.mdx`
 
 ## 回执字段
 

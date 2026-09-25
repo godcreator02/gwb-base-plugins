@@ -37,7 +37,7 @@ description: 读设置、改设置、查凭据配没配、在插件里声明设�
 1. 先完成「找到一项设置的位置」。
 2. 调 `settings.get` 记下旧值：日志只记「哪一项已写」，不记值，改错了只能靠这份旧值恢复。
 3. 调 `settings.set {"section": "…", "key": "…", "value": …}`，立即写进文件。`value` 的类型照那一行的 `type` 给：`string`、`number`、`boolean`，`secret` 给字符串，`string-list` 给字符串数组。设置插件不校验类型，类型给错了，读它的插件读到的就是错的值。
-4. 要抹掉值、回到默认值：调 `settings.delete {"section": "…", "key": "…"}`，声明留着。
+4. 要删掉值、回到默认值：调 `settings.delete {"section": "…", "key": "…"}`，声明留着。
 5. 看这一行的 `description`：写了「改了要重启才生效」的（比如 MCP 入口的 `port`），告诉人要重启这个 home。
 
 完成的判据：对同一位置调 `settings.get`，`data` 是新值（`delete` 之后是 `null`）。
@@ -57,7 +57,7 @@ description: 读设置、改设置、查凭据配没配、在插件里声明设�
 
 ## 规矩
 
-- 插件的配置一律用 `gwbSettings.define` 声明，`cordis.yml` 的条目上只写 `id`：devkit 仓 `docs-site/content/docs/rules/services.mdx`
+- 插件的配置一律用 `gwbSettings.define` 声明，`cordis.yml` 的条目上只写 `id`：生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/services.mdx`
 
 ## `settings.all` 一行的字段
 

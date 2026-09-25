@@ -19,7 +19,7 @@ const config = {
     // 现状区按接缝图重写（2026-09-24）。用临时跳转：永久跳转会被浏览器缓存，以后这些网址再用上就打不开
     { source: '/docs/decisions', destination: '/docs/design', permanent: false },
     { source: '/docs/walls', destination: '/docs/pitfalls', permanent: false },
-    // 找插件、配包源并回 devkit 仓的插件管理（2026-09-24），这个站没有对应的页
+    // 找插件、配包源已并入生命周期插件仓 gwb-lifecycle-plugins 的插件管理（2026-09-24），这个文档站没有对应的页
     { source: '/docs/plugin-sources', destination: '/docs', permanent: false },
     { source: '/docs/seams/sources', destination: '/docs', permanent: false },
   ],

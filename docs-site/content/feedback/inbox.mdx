@@ -28,24 +28,24 @@ docfirst: none
 
 **为什么现在提**：devkit 正在做一条「改一版看一版」的循环命令，步骤是发开发版、装进隔离
 home、停用再启用重新加载、收集结果。那条命令**有意绕开了 `plugins.install`**，用的是 `pnpm add` 加一条
-已有条目，绕开的正是这个重复建条目的行为。也就是说这个行为已经在实际使用中逼出了一条绕开的路：装插件
-本来只该有一条路，现在开发循环那边得自己再走一条。
+已有条目，绕开的正是这个重复建条目的行为。也就是说实际使用中已经不得不另写一套绕开这个行为的做法：装插件
+本来只该有一种做法，现在开发循环那边得自己再做一套。
 
 原始记录原在总控台的暂存区（2026-09-12 停用那个收件箱时一并清掉）
-原本投给 devkit，这里是同一条的副本。
+原本投给生命周期插件仓 `gwb-lifecycle-plugins`，这里是同一条的副本。
 
 ## 2026-09-14 带路径的 JSON 经 curl 必定出错；稳妥的做法（body 写成文件）没写进 command-http 说明书
 
 来源：总控台（第三轮新会话自举验收，功能题 gwb-timer）。
 
 经入口 `POST /run` 传含 Windows 路径的 JSON，bash 里 curl 的引号与反斜杠转义怎么写都不对：
-双反斜杠被去掉一层、`printf` 写文件也去掉一层，回执只回 `bad json`，不指出根因（正斜杠的绕法
+双反斜杠被去掉一层、`printf` 写文件也去掉一层，回执只回 `bad json`，不指出根因（改用正斜杠的办法
 09-12 在 devkit 那边提过，本轮复验还是会出错，而且对 devkit 的 scaffold 行不通——那条投给了
-devkit）。本轮 agent 最后确定的稳妥做法：**用写文件工具把 body 写成 JSON 文件（转义交给它），
+`gwb-lifecycle-plugins` 仓）。本轮 agent 最后确定的稳妥做法：**用写文件工具把 body 写成 JSON 文件（转义交给它），
 再 `curl --data-binary @file`**，此后全程没再出错。
 
 **投来的建议**：command-http 说明书补一段「带路径或复杂参数的调用用 body 文件」，把这个
-做法写成推荐写法；`bad json` 的回执顺带点一句根因（反斜杠进 JSON 的错误转义），省得下一个
+做法写成推荐写法；`bad json` 的回执顺带说明一句根因（反斜杠进 JSON 的错误转义），省得下一个
 agent 再猜。
 
 ## 2026-09-24 要适配内核 0.5：词汇表包并进内核包
@@ -63,7 +63,7 @@ agent 再猜。
 
 ## 2026-09-25 gwb.provides 不用写了：logger 等清单字段与文档段落可以删
 
-来源：总控台会话（devkit 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同一批发布）。
+来源：总控台会话（`gwb-lifecycle-plugins` 仓删掉过度设计的机制，devkit 0.19.0、插件管理 0.10.0 同一批发布）。
 
 devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.audit-deps`，以及 `package.json` 里 `gwb.provides` 这一整套（发版不再核对它，也没有命令再读它）。`devkit.services` 改成每次调用时从 home 里各包的 `.d.ts` 读取：给 cordis `Context` 补了服务、类型定义在自己声明里的包就是提供方，回执带类型定义原文。插件作者不用再写 `gwb.provides`；想让别人看懂服务，就在类型上写文档注释。发版检查还改了一条：node 侧产物的包名 import 只放行 node 内置模块、electron 与本包 peer 里写了的包。
 `plugins/logger/package.json`（以及别的插件如果有）的 `gwb.provides`，AGENTS 正本、develop 页、design 页里讲 `gwb.provides` 与 `devkit.services` 旧用法的段落，下次改到时删掉或改成现状。
@@ -78,7 +78,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - peer 里的内核包写 `^0.6.0`（不是 `^0.5.0`），在运行内核 0.6.0 的隔离 home 里验过再发
 - 浏览器端构建（`build.ts` 或 `tools/build-plugin.ts`）里从内核包清单读 `gwb.shared` 的那段删掉，`external` 直接写上面四个名字；
   产物测试里读 `gwb.shared` 的名单一样写死。没有浏览器端产物的包只改 peer
-- 等 devkit 发了认 0.6 的新版再发：devkit 现在的发版检查还读内核包的 `gwb.shared`，装上 0.6 会被拒（已投 devkit 收件页）
+- 等 devkit 发了认 0.6 的新版再发：devkit 现在的发版检查还读内核包的 `gwb.shared`，装上 0.6 会被拒（已投 `gwb-lifecycle-plugins` 仓的收件页）
 
 ## 2026-09-25 用到的插件写 peer：从 dev 挪到 peer，gwb.requires 已删
 
@@ -101,7 +101,7 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 - `gwb-commands`、`gwb-data` 没有用到别的插件，不用改
 - 几乎每个插件都会在 peer 里写命令总线，所以命令总线热升级时 home 里大部分插件会被一起重新加载，这是交接页定下的代价
 
-随适配内核 0.6 那一轮一起改、一起发，版本号照说明书 `gwb-release` 升。规矩正本是 devkit 文档站的规则页「用到的插件写 peer」与说明书 `gwb-release`（`run skill.read {"name":"gwb-release"}`）。
+随适配内核 0.6 那一轮一起改、一起发，版本号照说明书 `gwb-release` 升。规矩正本是 `gwb-lifecycle-plugins` 仓文档站的规则页「用到的插件写 peer」与说明书 `gwb-release`（`run skill.read {"name":"gwb-release"}`）。
 
 ## 2026-09-25 要跟内核 0.7：八个插件 peer 里内核包改成 ^0.7.0
 
@@ -135,10 +135,10 @@ devkit 0.19.0 删了 `devkit.capabilities`、`devkit.audit-structure`、`devkit.
 
 来源：gwb-lifecycle-plugins（devkit 所在的仓 `D:\unitfolders\igldu-gwbkernel\gwb-lifecycle-plugins`），提交 `9caafe0`，2026-09-25；总控台会话代为投递。
 
-`@godcreator/gwb-devkit` 0.21.0 已发到团队源。这是破坏性版本，删掉了两个只为旧仓留着的缺省值（devkit 仓轨迹卡 `2026-09-25-drop-legacy-defaults`）：
+`@godcreator/gwb-devkit` 0.21.0 已发到团队源。这是破坏性版本，删掉了两个只为旧仓留着的缺省值（`gwb-lifecycle-plugins` 仓轨迹卡 `2026-09-25-drop-legacy-defaults`）：
 
-1. **`devkit.dev` 与 `devkit.release` 的 `packages` 必给**：非空数组，每一项是相对仓根的包目录，如 `["plugins/<短名>"]`；`devkit.release` 的按依赖顺序排，被依赖的排前面。不给或写错直接拒。这两条命令不再把仓根当成插件包：仓根本身就是插件包的仓（仓根 `package.json` 就是插件，`pnpm-workspace.yaml` 里没有 `plugins/*`）要先改成 workspace 布局才能用——插件放在 `plugins/<短名>/`，仓根是 `"private": true` 的 `package.json`，照 devkit 仓或 `devkit.scaffold` 新建的仓的样子。devkit 不替仓改布局
-2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒绝发布。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（devkit 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
+1. **`devkit.dev` 与 `devkit.release` 的 `packages` 必给**：非空数组，每一项是相对仓根的包目录，如 `["plugins/<短名>"]`；`devkit.release` 的按依赖顺序排，被依赖的排前面。不给或写错直接拒。这两条命令不再把仓根当成插件包：仓根本身就是插件包的仓（仓根 `package.json` 就是插件，`pnpm-workspace.yaml` 里没有 `plugins/*`）要先改成 workspace 布局才能用——插件放在 `plugins/<短名>/`，仓根是 `"private": true` 的 `package.json`，照 `gwb-lifecycle-plugins` 仓或 `devkit.scaffold` 新建的仓的样子。devkit 不替仓改布局
+2. **每个要发的包在自己的 `package.json` 里写 `publishConfig.registry`**：发到团队源写 `"publishConfig": { "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/" }`，发到别的源就写那个源的地址。没写的包 `devkit.release` 拒绝发布。发到哪只看这个字段：`devkit.release` 不再在命令行带 `--registry`，这个字段的优先级也高于用户级 `~/.npmrc` 里的范围行（`gwb-lifecycle-plugins` 仓轨迹卡 `2026-09-25-scope-and-publish-target`）
 
 同一天还发了插件管理 0.12.1，修了发出去的包里带着过时文件的问题，用它的插件不用改。另外有一项早就可以做的清理：命令总线 `@godcreator/gwb-commands` 0.4.6 起（源上现在是 0.5.0），`gwbCommands.register` 自己把注销登记在调用方的上下文上，调用方卸载时命令自动注销，登记命令不用再在外面包一层 `ctx.effect(() => ….register(…))`。包着也只注销一次、照样能用，删不删随意；登记说明书的 `gwbSkills.register` 不是命令总线的方法，外面那层 `effect` 要留着。
 

@@ -63,9 +63,9 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 
 ## 规矩
 
-- 扩展点用服务，数据读写和动作用命令，同一能力只提供一种调用方式：devkit 仓 `docs-site/content/docs/rules/services.mdx`
-- 登记命令时参数形状写进 `usage`，无参数写「无参数」：devkit 仓 `docs-site/content/docs/rules/services.mdx`
-- 调别的插件的能力只经服务和命令，调命令只写命令名、不 import 提供方的常量：devkit 仓 `docs-site/content/docs/rules/interaction.mdx`
+- 扩展点用服务，数据读写和动作用命令，同一能力只提供一种调用方式：生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/services.mdx`
+- 登记命令时参数形状写进 `usage`，无参数写「无参数」：`gwb-lifecycle-plugins` 仓 `docs-site/content/docs/rules/services.mdx`
+- 调别的插件的能力只经服务和命令，调命令只写命令名、不 import 提供方的常量：`gwb-lifecycle-plugins` 仓 `docs-site/content/docs/rules/interaction.mdx`
 
 ## 回执参考
 

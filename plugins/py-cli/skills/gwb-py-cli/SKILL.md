@@ -47,8 +47,8 @@ venv 就绪但回执 `exitCode` 为 `null`、`timedOut` 为 `false`：程序没�
 
 ## 规矩
 
-- uv、python 这类机器上的外部程序不写进依赖，用的时候检测它在不在：devkit 仓 `docs-site/content/docs/rules/deps.mdx`
-- `package.json` 的 `files` 白名单列全：devkit 仓 `docs-site/content/docs/rules/deps.mdx`
+- uv、python 这类机器上的外部程序不写进依赖，用的时候检测它在不在：生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/deps.mdx`
+- `package.json` 的 `files` 白名单列全：`gwb-lifecycle-plugins` 仓 `docs-site/content/docs/rules/deps.mdx`
 
 ## venv 检查参考
 

@@ -7,13 +7,13 @@ description: 基础插件仓是什么、为什么只放无界面的插件；一�
 
 ## 是什么，为什么这么切
 
-god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 列出的普通插件，和别的插件一样装在 home 里、可以停用和升级。内核只提供插件平台，不认识任何命令；界面在界面插件仓，插件管理（装插件、找插件、配包源）在 devkit 仓，内核在内核仓。
+god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 列出的普通插件，和别的插件一样装在 home 里、可以停用和升级。内核只提供插件平台，不认识任何命令；界面在界面插件仓，插件管理（装插件、找插件、配包源）在生命周期插件仓 `gwb-lifecycle-plugins`，内核在内核仓。
 
 这个仓的插件只依赖内核词汇表包的类型，不依赖任何界面包，彼此之间只经服务和命令连接。为什么这么切、刻意不做什么，见[关键设计](/docs/design)。
 
 ## 走一遍
 
-**一次 agent 调用**：agent 的 MCP 客户端向 `http://127.0.0.1:<端口>/mcp` 发 POST → MCP 插件先过 token、Host、Origin 三项检查（接缝 2）→ `index` / `search` 现取命令总线与说明书插件的清单，`run` 把命令名和参数交给命令总线、标明来自 MCP（接缝 3、1）→ 命令总线找到登记这条命令的插件执行，比如设置插件的 `settings.get` 按分区读出一项（接缝 5）→ 回执原路回到 MCP 插件，翻译成工具结果；命令失败是带 `isError` 的文本，不是协议错误。
+**一次 agent 调用**：agent 的 MCP 客户端向 `http://127.0.0.1:<端口>/mcp` 发 POST → MCP 插件先做 token、Host、Origin 三项检查（接缝 2）→ `index` / `search` 每次重新读取命令总线与说明书插件的清单，`run` 把命令名和参数交给命令总线、标明来自 MCP（接缝 3、1）→ 命令总线找到登记这条命令的插件执行，比如设置插件的 `settings.get` 按分区读出一项（接缝 5）→ 回执原路回到 MCP 插件，翻译成工具结果；命令失败是带 `isError` 的文本，不是协议错误。
 
 **一个插件加载时**：loader 按 `cordis.yml` 加载它，在它的 fiber 上放下条目（接缝 8）→ 它在 `apply` 里把能力登记成命令（接缝 1）、把包根的 `skills/` 交给说明书插件（接缝 4）、声明自己的设置项（接缝 5）、取自己的数据目录（接缝 6）；设置分区与数据目录按条目 id 的末段命名，第一次用到时记下归哪个包（接缝 7）→ 它随包带的命令行工具交给 node 或 python 命令行运行插件，同时成为总线命令（接缝 9）→ 它写的日志汇进 cordis 的日志流，日志插件收下、推给页面（接缝 10）。插件卸载时，它登记的命令、说明书、设置声明、命令行工具都跟着注销。
 
@@ -23,7 +23,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 - **在本仓动手**（构建、检查、测试、发版时包的顺序）：[开发](/docs/develop)；写这些插件时遇到过的、不报错的问题见[遇到过的问题](/docs/pitfalls)；硬约束在仓根 AGENTS
 - **写一个用命令总线的插件**：[命令总线](/docs/seams/bus)、[说明书](/docs/seams/skills)
 - **插件要存设置或数据**：[设置](/docs/seams/settings)、[数据](/docs/seams/data)、[条目身份](/docs/seams/entry-identity)；包改了名要接着用旧数据：[数据归属](/docs/seams/owners)
-- **给 agent 开能力、排查 MCP**：[MCP 协议](/docs/seams/mcp-protocol)、[命令表开给 agent](/docs/seams/agent-surface)
+- **给 agent 提供能力、排查 MCP**：[MCP 协议](/docs/seams/mcp-protocol)、[命令表开给 agent](/docs/seams/agent-surface)
 - **把一个命令行工具接进工作台**：[命令行工具](/docs/seams/cli)
 - **在界面上看日志、排查故障**：[日志](/docs/seams/log)
 
@@ -31,7 +31,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 
 <Diagram name="seam-map" title="虚线框是本仓，连线是接缝，编号对应下面的表">
 - 本仓八个插件：MCP 入口 `gwb-mcp`、日志 `gwb-logger`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`
-- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；插件管理（devkit 仓）；cordis loader；子进程（Electron 以 node 模式运行、uv）
+- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；插件管理（`gwb-lifecycle-plugins` 仓）；cordis loader；子进程（Electron 以 node 模式运行、uv）
 - 各插件都经接缝 1 登记自己的命令；图上只画命令总线到别的插件那一条
 - 实线接缝有代码接口；点线接缝 8 只靠约定
 </Diagram>

@@ -1,6 +1,6 @@
 ---
 title: 7 数据归属 owners
-description: 连接数据插件、设置插件与 devkit 仓的插件管理；交换的是两个服务都有的 owners() / transferOwner(id, pkg)，归属在磁盘上记成数据目录里的 .owner.json 和 settings.json 顶层的 $owners。数据插件与设置插件保证包名对不上就拒绝、报错指向 plugin-manager.transfer-owner；插件管理保证只经这两个方法读写归属、两边一起转
+description: 连接数据插件、设置插件与生命周期插件仓 gwb-lifecycle-plugins 的插件管理；交换的是两个服务都有的 owners() / transferOwner(id, pkg)，归属在磁盘上记成数据目录里的 .owner.json 和 settings.json 顶层的 $owners。数据插件与设置插件保证包名对不上就拒绝、报错指向 plugin-manager.transfer-owner；插件管理保证只经这两个方法读写归属、两边一起转移
 ---
 
 **本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么；插件管理怎么读归属、怎么转移归属；这几方各保证什么。
@@ -9,7 +9,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 - [数据插件](/docs/data)：每个数据目录里一个 `.owner.json`
 - [设置插件](/docs/settings)：`settings.json` 顶层一张 `$owners`
-- 插件管理 `@godcreator/gwb-plugin-manager`（devkit 仓）：给新条目分配 id 时读两边的归属，命令 `plugin-manager.transfer-owner` 同时转移两边的归属
+- 插件管理 `@godcreator/gwb-plugin-manager`（生命周期插件仓 `gwb-lifecycle-plugins`）：给新条目分配 id 时读两边的归属，命令 `plugin-manager.transfer-owner` 同时转移两边的归属
 
 为什么要记归属：数据目录名与设置分区名都是条目 id 的末段（见[条目身份](/docs/seams/entry-identity)），而不同 scope 的同名包会算出同一个条目 id（`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`）；条目删了数据与设置留在磁盘上，下一个拿到这个 id 的包就会读到前一个包的东西（轨迹卡[户主章](/trajectory/2026-09-19-owner-stamp)）。
 
@@ -19,7 +19,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 - 两处归属记录：数据目录里的 `.owner.json`（`{ "pkg": "<包名>" }`）、`settings.json` 顶层 `$owners` 里的一项，键都是条目 id 的末段
 - 第 1 步：`@old/gwb-foo` 的条目 `home:foo` 第一次取数据目录、第一次 `define` 时，两处都记成 `@old/gwb-foo`
 - 第 2 步：同一个插件改名成 `@new/gwb-foo`，条目 id 还是 `foo`；数据插件与设置插件都抛错、不动数据，报错指向 `plugin-manager.transfer-owner`
-- 第 3 步：插件管理（devkit 仓）确认是同一个插件后，调两边的 `transferOwner('foo', '@new/gwb-foo')`，立刻写盘
+- 第 3 步：插件管理（`gwb-lifecycle-plugins` 仓）确认是同一个插件后，调两边的 `transferOwner('foo', '@new/gwb-foo')`，立刻写盘
 - 第 4 步：之后新包名放行、旧包名被拒；`owners()` 列出 `foo → @new/gwb-foo`
 </Diagram>
 
@@ -42,7 +42,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="188-197" */}
 
-**插件管理那一端**：插件管理在 devkit 仓里自己声明一个只含这两个方法的接口，把 `ctx.gwbData`、`ctx.gwbSettings` 直接赋给它。两个服务改了这两个方法的签名，devkit 仓升级开发依赖之后的类型检查会报错；没升级之前发现不了。
+**插件管理那一端**：插件管理在 `gwb-lifecycle-plugins` 仓里自己声明一个只含这两个方法的接口，把 `ctx.gwbData`、`ctx.gwbSettings` 直接赋给它。两个服务改了这两个方法的签名，`gwb-lifecycle-plugins` 仓升级开发依赖之后的类型检查会报错；没升级之前发现不了。
 
 **报错里的命令名**：两边拒绝时的报错按名字指向插件管理的命令：
 
@@ -50,7 +50,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 {/* has file="../plugins/settings/src/registry.ts" text="就调 plugin-manager.transfer-owner 改归属" */}
 
-这个命令名**靠约定**：它在 devkit 仓的插件管理里登记，名字写在那里和本仓这两条报错里。插件管理改了命令名，这两条报错会指向一条不存在的命令。
+这个命令名**靠约定**：它在 `gwb-lifecycle-plugins` 仓的插件管理里登记，名字写在那里和本仓这两条报错里。插件管理改了命令名，这两条报错会指向一条不存在的命令。
 
 ## 约定
 
@@ -65,7 +65,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 **插件管理**保证：
 
 - 给新条目分配 id 时读两边的 `owners()`，不把属于别的包的 id 分给新包
-- 只在确认是同一个插件改了包名时才调 `transferOwner`，并且两边一起转：数据插件或设置插件有一个没装就报错，哪一份都不转
+- 只在确认是同一个插件改了包名时才调 `transferOwner`，并且两边一起转移：数据插件或设置插件有一个没装就报错，哪一份都不转移
 - 不直接读写 `.owner.json` 与 `$owners`：只经这两个方法
 
 ## 不负责的事
@@ -76,7 +76,7 @@ description: 连接数据插件、设置插件与 devkit 仓的插件管理；�
 
 ## 测试
 
-数据插件的归属由 `plugins/data/tests/owner.test.ts` 与 `service.test.ts` 测，设置插件的归属由 `plugins/settings/tests/registry.test.ts` 测；插件管理那一端由 devkit 仓的测试保护，两边一起转移只能在隔离 home 里验证。
+数据插件的归属由 `plugins/data/tests/owner.test.ts` 与 `service.test.ts` 测，设置插件的归属由 `plugins/settings/tests/registry.test.ts` 测；插件管理那一端由 `gwb-lifecycle-plugins` 仓的测试保护，两边一起转移只能在隔离 home 里验证。
 
 {/* has file="../plugins/data/tests/owner.test.ts" text="scope 不同、短名相同的包拿不到别人的目录——这就是要挡的事故" */}
 

@@ -10,7 +10,7 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 - [设置插件](/docs/settings) `@godcreator/gwb-settings`：提供服务 `ctx.gwbSettings`；有命令总线时登记四条 `settings.*` 命令（局部注入，没有命令总线时服务照样完整）
 - 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件用它存地址、凭据等配置
 - 按位置读写的一方：编辑设置的界面、经 MCP 入口的 agent、要读另一个插件分区里凭据的插件
-- 插件管理（devkit 仓）：用 `owners()` / `transferOwner()`，见[数据归属](/docs/seams/owners)
+- 插件管理（生命周期插件仓 `gwb-lifecycle-plugins`）：用 `owners()` / `transferOwner()`，见[数据归属](/docs/seams/owners)
 
 ## 接口
 
@@ -48,11 +48,11 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 | `settings.all` | 无 | 全部设置项，每行带位置、`title`、`type`、`description`、`value`、`live`（此刻有没有插件声明它）；`live` 且声明了默认值的行再带 `default` |
 | `settings.get` | `{ section, key }` | 那一项存下的值，**secret 项也回明文**；没设过回 `undefined`，不回落到 `default` |
 | `settings.set` | `{ section, key, value }` | `{ ok: true }` |
-| `settings.delete` | `{ section, key }` | `{ ok: true }`；只抹值，声明还在 |
+| `settings.delete` | `{ section, key }` | `{ ok: true }`；只删值，声明还在 |
 
 删值和写值一样按位置：删条目的界面要能顺手把那个插件的设置值删干净。
 
-**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）——照真实长度打码等于把长度也交出去：
+**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）——按真实长度生成掩码等于把长度也泄露出去：
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="115-121" */}
 
