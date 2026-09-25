@@ -115,7 +115,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | home 名（目录的最后一段）、token 文件、`runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 | `@modelcontextprotocol/sdk`（`^1.30.0`）、`zod`（`^4.5.4`），写在 dev，构建时打包进 `dist/index.js` | MCP 协议、工具参数的 schema | 打包在构建产物里，装进 home 时不另装它们 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
 
 `gwb-commands`、`gwb-settings`、`gwb-skills`、`gwb-node-cli` 写在 devDependencies 里：代码只 `import type {}` 它们，为的是让 `ctx` 上的服务有类型，构建产物里没有它们。SDK 与 zod 由 `build.ts` 用 esbuild 打包进 `dist/index.js`，构建产物里的包名 import 只剩 node 内置模块：`devkit.release` 的发版前检查不许 node 侧产物留下别的包名 import。类型声明另由 `tsc --emitDeclarationOnly` 输出。这个插件对 `cordis` 只 import 类型，peer 里只有内核包：
 

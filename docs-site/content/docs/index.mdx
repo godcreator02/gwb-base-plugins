@@ -7,7 +7,7 @@ description: 基础插件仓是什么；八个插件之间、插件与仓外模�
 
 ## 是什么
 
-god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 点名的普通插件，只依赖内核词汇表包的类型，不依赖任何界面包；界面在界面插件仓，插件管理（装插件、找插件、配包源）在 devkit 仓，内核在内核仓。为什么这么切见[关键设计](/docs/design)，怎么改、怎么发版见[开发](/docs/develop)。
+god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、日志、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 列出的普通插件，只依赖内核词汇表包的类型，不依赖任何界面包；界面在界面插件仓，插件管理（装插件、找插件、配包源）在 devkit 仓，内核在内核仓。为什么这么切见[关键设计](/docs/design)，怎么构建、检查见[开发](/docs/develop)。
 
 ## 接缝图
 
@@ -22,7 +22,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 
 | # | 接缝 | 连接的模块 | 接口 | 细节在 |
 | --- | --- | --- | --- | --- |
-| 1 | 命令总线 | 命令总线 ↔ 各插件 | `gwbCommands` 的 `register`、`run`、`list` 与回执；命令行工具镜像成的命令也走这里 | [命令总线](/docs/seams/bus) |
+| 1 | 命令总线 | 命令总线 ↔ 各插件 | `gwbCommands` 的 `register`、`run`、`list` 与回执；命令行工具同时登记成的命令也走这里 | [命令总线](/docs/seams/bus) |
 | 2 | MCP 协议 | MCP 入口 ↔ MCP 客户端 | HTTP `/mcp`、`index` / `search` / `run` 三个工具、Bearer token、端口、`runtime.json` 的 `mcp` 项 | [MCP 协议](/docs/seams/mcp-protocol) |
 | 3 | 命令表开给 agent | MCP 入口 ↔ 命令总线、说明书 | `list` / `run`、`gwbSkills.list`；回执怎么翻译 | [命令表开给 agent](/docs/seams/agent-surface) |
 | 4 | 说明书 | 说明书 ↔ 带说明书的插件 | `gwbSkills.register(dir)`、`SKILL.md` 的格式、`skill.list` / `skill.read` | [说明书](/docs/seams/skills) |
@@ -41,8 +41,8 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | `@godcreator/gwb-mcp` | 唯一的 MCP 入口：三个工具、token、端口 | [gwb-mcp](/docs/mcp) |
 | `@godcreator/gwb-skills` | 说明书的登记表 | [gwb-skills](/docs/skills) |
 | `@godcreator/gwb-settings` | 各插件的设置 | [gwb-settings](/docs/settings) |
-| `@godcreator/gwb-data` | 各插件的数据落盘 | [gwb-data](/docs/data) |
-| `@godcreator/gwb-logger` | 日志聚合，给日志窗格供数据 | [gwb-logger](/docs/logger) |
+| `@godcreator/gwb-data` | 各插件的数据目录与文档 | [gwb-data](/docs/data) |
+| `@godcreator/gwb-logger` | 收集日志，给日志窗格提供数据 | [gwb-logger](/docs/logger) |
 | `@godcreator/gwb-node-cli` | 把 node 写的命令行工具变成命令 | [gwb-node-cli](/docs/node-cli) |
 | `@godcreator/gwb-py-cli` | 把 python 写的命令行工具变成命令 | [gwb-py-cli](/docs/py-cli) |
 
@@ -56,8 +56,8 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 ## 按要做的事读
 
 - **想知道这个仓为什么这么切**：[关键设计](/docs/design)
-- **在本仓动手**（构建、检查、在隔离 home 里看效果、发版）：[开发](/docs/develop)；踩过的问题见[遇到过的问题](/docs/pitfalls)
-- **写一个用命令总线的插件**：[命令总线](/docs/seams/bus)、[说明书](/docs/seams/skills)；写插件的规矩在 devkit 仓的文档站
+- **在本仓动手**（构建、检查、发版时包的顺序）：[开发](/docs/develop)；遇到过的问题见[遇到过的问题](/docs/pitfalls)
+- **写一个用命令总线的插件**：[命令总线](/docs/seams/bus)、[说明书](/docs/seams/skills)
 - **插件要存设置或数据**：[设置](/docs/seams/settings)、[数据](/docs/seams/data)、[条目身份](/docs/seams/entry-identity)
 - **给 agent 开能力、排查 MCP**：[MCP 协议](/docs/seams/mcp-protocol)、[命令表开给 agent](/docs/seams/agent-surface)
 - **把一个命令行工具接进工作台**：[命令行工具](/docs/seams/cli)

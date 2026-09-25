@@ -11,27 +11,18 @@ description: 仓根 AGENTS.md 由这一页生成——每次会话都要知道�
 **这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。
 
-peer 只写 home 根上的两个包：内核包 `@godcreator/gwb-kernel-desktop`（每个插件都写，`^x.y.z` 范围就是兼容哪些内核）与 `cordis`（构建产物里按值 import 了它才写）。
-词汇表包、本仓别的插件、MCP SDK 与 zod 写 dev（SDK 与 zod 由 MCP 插件的 `build.ts` 打包进构建产物）。
-内核升 x 后，在新内核上验证过，再把内核包的范围改成 `^<新内核的版本号>`。
+peer 里是内核包 `@godcreator/gwb-kernel-desktop`（八个插件都写）与 `cordis`（继承 cordis `Service` 的七个插件在构建产物里按值 import 它，MCP 插件不写）。
+MCP SDK 与 zod 写 dev，由 MCP 插件的 `build.ts` 打包进构建产物。
 
 ## 动手之前
 
-- 先读内核仓的 `AGENTS.md`，那是 gwb 各仓共同规矩的正本
-- 写插件的完整流程（新建、修改、隔离 home 里验证、发版）读 devkit 的说明书 `gwb-devkit`（`skill.read {"name":"gwb-devkit"}`）
-- 升版本号、改依赖版本号之前读 `gwb-release`；写文档、改代码引用读 `docfirst-docs`
-
-## 构建产物的规矩
-
-- 相对 import 必须带 `.js`；构建产物里的包名 import 只能是 node 内置模块与 `cordis`——两条都有测试检查
-- 类型用到的包都在各插件的 dev 里列全：`devkit.release` 发版前在包目录运行 `pnpm exec tsc --noEmit -p tsconfig.json --skipLibCheck false`
-- 命名（包名前缀、服务名以 `gwb` 开头）与依赖写法的正本在 devkit 的说明书 `gwb-devkit`、`gwb-release`
+写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，写文档读 skill「docfirst-docs」。
 
 ## 检查
 
-提交前 `pnpm check`（类型检查 + oxlint + vitest，含构建产物检查）。`gwb.provides` 与源码对不对得上由 devkit 的
-`devkit.audit-structure` 与 `devkit.release` 检查，不在 `pnpm check` 里。文档检查单独运行 `pnpm doc`，
-报红时这个提交不许推送；改了被文档引用的源码，先 commit，再 `pnpm doc:confirm <自己改的页…>`。
+提交前 `pnpm check`（类型检查 + oxlint + vitest）。各插件的 `tests/artifact.test.ts` 检查构建产物：相对 import 带 `.js`、
+包名 import 只有 node 内置模块与 `cordis`；没构建时整组跳过，改了代码先 `pnpm build` 再 `pnpm check`。
+文档检查 `pnpm doc` 与 `pnpm doc:confirm <页…>` 的脚本在仓根。
 
 ## 旧插件仓只作参考，不是模板
 
@@ -39,24 +30,12 @@ peer 只写 home 根上的两个包：内核包 `@godcreator/gwb-kernel-desktop`
 问题要避开：接口包声明成 `peerDependencies` 时 tsdown 会把它外置成包名 import——接口包要么声明进
 importmap、要么强制打包进来，并配上构建产物检查。
 
-## 实验材料放 `probes/`
-
-实验、测量的全部材料放在仓根 `probes/<时间戳>_<目的>/`：一次实验一个目录、**自包含**（半年后照
-README 第一行运行一次能得到同样结论）、**进 git**、**不进 pnpm 工作区**、不进 `pnpm check`。
-依据类轨迹卡在依据段写相对仓根的路径指向它。
-
 ## 文档地图
 
 文档站在 `docs-site/`，端口 4315（`pnpm --filter gwb-base-plugins-docs-site dev`）。现状区：
 
 - **入口页** `/docs`：接缝图，插件之间的十条接缝各有一页（`/docs/seams/…`）
 - **八个插件页**：每页写功能、接口（各属于哪条接缝）、依赖、不做的事
-- **关键设计** `/docs/design`、**开发** `/docs/develop`、**遇到过的问题** `/docs/pitfalls`
+- **关键设计** `/docs/design`、**开发** `/docs/develop`（构建、检查、发版时包的顺序）、**遇到过的问题** `/docs/pitfalls`
 
-其余五个区：轨迹（`trajectory/`）、交接（`spec/`）、未来（`future/`）、生成文件正本（`outputs/`）、反馈（`feedback/`）。
-
-## 生成文件
-
-仓根 `README.md`、`AGENTS.md`、`CLAUDE.md` 都是生成文件，别手改——正本在 `docs-site/content/outputs/`
-（`readme.mdx` / `agents.mdx` / `claude.mdx`），改完在 `docs-site` 运行 `pnpm exec docfirst render`
-重新生成，一起提交。
+这份 AGENTS.md 是生成物，正本是 `docs-site/content/outputs/agents.mdx`，改完在 `docs-site` 运行 `pnpm exec docfirst render`。

@@ -77,7 +77,7 @@ export function apply(ctx: GwbContext) {
 | `process.execPath`（工作台进程的 electron.exe）与 `ELECTRON_RUN_AS_NODE` | 当作 node 运行 js | 不带这个环境变量的话 electron 会开一个窗口，而不是运行 js |
 | Windows 的 `taskkill` | 超时时结束整个进程树 | `taskkill` 启动不了或退出码不是 0 时，改用 `process.kill(pid, 'SIGKILL')`，只结束直接子进程，孙进程可能留下 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
 
 `@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 devDependencies 里：代码只 `import type {}` 它们。`src/run.ts` 与 `src/invoke.ts` 和 [gwb-py-cli](/docs/py-cli) 里的同名文件内容一样，改一处就要改另一处。
 

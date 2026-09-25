@@ -60,7 +60,7 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 | cordis 的日志流：`ctx.logger.exporter`、`ctx.logger.buffer` | 收全部日志；补插件加载之前的历史 | 由内核提供，不会缺；`buffer` 不在时不补历史 |
 | cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
 
 `@godcreator/gwb-commands` 写在 devDependencies 里：代码只 `import type {}` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。
 

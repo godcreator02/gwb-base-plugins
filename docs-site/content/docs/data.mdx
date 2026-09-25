@@ -64,7 +64,7 @@ await ctx.gwbData.writeDoc('layout', layout ?? { panes: [] })
 | cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis，两份的 `instanceof` 对不上 |
 | loader 在调用方上下文上加的 `fiber.entry`（`id`、`options.name`） | 认出调用方的条目 id 与包名 | 不是经 `cordis.yml` 加载的插件调用时抛错「取不到调用方的身份」 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
 | 文件系统 | 建目录、读写文档与 `.owner.json` | 读失败当作没有这份文档；写失败把异常抛给调用方 |
 
 数据插件和[设置插件](/docs/settings)用同一个办法从条目 id 算名字：两边各有一份十几行的算法（`entryDirName` 与 `entrySection`），必须给出同一个答案，改一处就要改另一处。

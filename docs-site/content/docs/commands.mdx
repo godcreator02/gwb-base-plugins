@@ -120,7 +120,7 @@ export function apply(ctx: GwbContext) {
 | loader 放在调用方 fiber 上的条目 `entry`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 不是经 `cordis.yml` 加载的插件登记命令时，`register` 抛错 |
 | 说明书插件的服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
 | 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用；`GwbResult` 出现在导出的类型里，发布出去的命令插件不带词汇表包，用命令插件类型的插件要自己在 dev 里列它，否则关掉 `skipLibCheck` 的类型检查失败；运行时没有影响 |
-| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核：`plugin-manager.list` 报出范围不包含 home 里内核的插件 | 不 import，运行时没有影响；没写或范围不包含 devkit 所在 home 的内核时，`devkit.release` 不发 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | — | — |
 
 说明书插件不写进服务类的 `static inject`，用 `ctx.inject(['gwbSkills'], …)` 局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出。
 

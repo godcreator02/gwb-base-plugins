@@ -31,20 +31,9 @@ pnpm build          # 构建产物都在各包的 dist/
 pnpm doc            # docfirst check：被引用的代码变了会标黄
 ```
 
-发正式版用 devkit 插件的命令（经 MCP 入口的 `run` 调用，从哪个 home 调都行；`packages` 相对仓根、
-被依赖的在前），发之前读 devkit 的说明书 `gwb-release`：
+## 怎么装
 
-```
-devkit.release {"dir":"<仓根>","packages":["plugins/commands"]}
-```
-
-手工发布是在包目录里 `pnpm publish --no-git-checks`——不手写 `--registry`，`@godcreator` 的
-scope 路由写在用户级配置里。发完装进 home 用 `plugin-manager.install {"pkg":"@godcreator/gwb-commands"}`
-（包和条目一起加）；已装的升级用 `plugin-manager.update-all`。
-
-## 两条命名规矩
-
-**包名 `@godcreator/gwb-<插件名>`**。**服务名一律 `gwb` 开头小驼峰**，默认和插件名对应；cordis 官方插件的服务名照它自己的。
+在工作台里调 `plugin-manager.install {"pkg":"<包名>"}`，比如 `{"pkg":"@godcreator/gwb-commands"}`。
 
 ## 文档
 
@@ -56,8 +45,4 @@ pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 
 入口页是插件之间的接缝图，十条接缝各一页；八个插件各一页；另有关键设计、开发、遇到过的问题三页。
 
-**代码注释只写现状**——为什么这么写、遇到过什么问题，写在文档站，并用 docfirst 引用对应的代码：代码一改，
-文档就标黄。这份 README 是生成文件，正本是 `docs-site/content/outputs/readme.mdx`；仓根 `AGENTS.md`
-同理，正本是同目录的 `agents.mdx`。
-
-共同规矩（准入判据、服务命名、依赖写法）的正本在内核仓与 devkit 的说明书，这个站只记这八个插件自己的事。
+这份 README 是生成文件，正本是 `docs-site/content/outputs/readme.mdx`。

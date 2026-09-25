@@ -38,17 +38,15 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 {/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
 
-依赖写法按「运行时由谁提供」决定：
+本仓插件的依赖现在这样写：
 
-- **peer 只写 home 根上的两个包**：内核包 `@godcreator/gwb-kernel-desktop`，每个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，构建产物里按值 import 了它的插件写，也就是继承 `Service` 的七个，运行时必须和内核用同一份
+- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的七个插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份
 - **词汇表包**：只有类型，写 dev，范围 `^0.4.1`。命令插件导出的类型里有它的 `GwbResult`，用命令插件类型的插件自己在 dev 里列词汇表包
 - **本仓别的插件**：只写 dev（`workspace:*`），只 `import type`
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
-- **类型引用到的包都在各插件的 dev 里列全**（包括 `@types/node`）：`devkit.release` 发版前在包目录关掉 `skipLibCheck` 做一次类型检查，少列一个就不发
+- **类型引用到的包都在各插件的 dev 里列全**（包括 `@types/node`）
 
 {/* ref file="../plugins/commands/package.json" lines="52-56" */}
-
-版本号与依赖范围怎么写，正本是 devkit 的说明书 `gwb-release`；包名以 `@godcreator/gwb-` 开头、服务名以 `gwb` 开头的命名规矩，正本在 devkit 的说明书 `gwb-devkit`。
 
 ## 插件之间只经服务和命令
 
@@ -63,7 +61,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 两个插件要用同一段小逻辑时各存一份，不为它新建共享包：两个命令行运行插件的 `run.ts`、`invoke.ts`，数据插件的 `entryDirName` 与设置插件的 `entrySection`。这些副本的注释互相提到对方，改一处就要改另一处；有第三个插件要用时，再判断要不要抽成包。
 
-cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安装时按 peer 范围检查的那一次，本仓插件之间又只写 devDependencies，所以服务的接口只增加、不改名、不改形状；非改不可时照 `gwb-release` 升 x 并先通知下游。细节见[遇到过的问题](/docs/pitfalls)。
+cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安装时按 peer 范围检查的那一次，本仓插件之间又只写 devDependencies，所以服务的接口只增加、不改名、不改形状。细节见[遇到过的问题](/docs/pitfalls)。
 
 ## 命令总线是唯一的调用面
 
@@ -96,19 +94,6 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核，这个仓八个插件都写 `^0.4.1`：
 
 {/* ref file="../plugins/data/package.json" lines="28-32" */}
-
-- **范围怎么算**：主版本号是 0 时次版本号相同，否则主版本号相同，并且不低于下限；预发布段不看
-- **插件管理的 `plugin-manager.list`** 按包报出范围不包含 home 里内核的插件。只报出来，不拦加载
-- **devkit 的 `devkit.release`** 发插件之前检查它：没写、写法不是 `^x.y.z`、范围不包含 devkit 所在 home 运行的内核，一个包都不发
-
-内核改了接缝上已有的东西就升 x，范围不再包含新内核；在新内核上验证过之后，把范围改成 `^<新内核的版本号>` 再发版。
-
-## 包清单的自我描述
-
-每个插件的 `package.json` 里有两处给人和 agent 读的描述：
-
-- **`description`** 一句话说这个插件做什么
-- **`gwb.provides`** 为每个提供的服务写一句 `summary` 与 `usage`，devkit 的 `devkit.services` 把它们带进回执。源码提供的每个服务都要有一条、`summary` 与 `usage` 不空，由 devkit 的 `devkit.release` 在发版前检查、`devkit.audit-structure` 报告，本仓的 `pnpm check` 不查
 
 ## 刻意不做的事
 
