@@ -1,136 +1,88 @@
 ---
 title: gwb-py-cli · python 命令行工具
-description: python 命令行运行插件运行别的插件随包带的 python 命令行工具：在登记方的包根下用 uv 建 venv、每次运行前只看目录名检查一遍、不对就重建，再运行 venv 里的程序；参数、时限、输出截断、回执与 node 命令行运行插件同一套。本页是它的模块页：七段固定块
+description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登记方的包根下用 uv 建 venv、每次运行前检查一遍、被删了就重建，再运行 venv 里的程序；登记的工具同时成为命令总线上的命令。本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
-**本页回答**：python 命令行运行插件 `@godcreator/gwb-py-cli` 管什么、刻意不知道什么；登记表与 venv 的形状；它提供哪些接口、依赖哪些接口；不启动工作台、不装 uv 怎么测它；代码从哪读起。登记方的 python 项目要满足什么写在接缝页[命令行工具](/docs/seams/cli)。
+**本页回答**：python 命令行运行插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；登记方的 python 项目要满足什么；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-py-cli`，源码目录 `plugins/py-cli/src`，入口文件 `index.ts`。
 
-## 管什么
+它和 [gwb-node-cli](/docs/node-cli) 是同一套运行办法（登记时校验、同名登记成总线命令、参数、工作目录校验、时限、输出截断、回执形状都一样），多出来的是 venv：检查 venv 在不在、对不对，不对就用 uv 重建。它自己不带 python 项目，python 项目在登记它的插件的包根下。
 
-它和 [gwb-node-cli](/docs/node-cli) 是同一套运行办法：登记时校验、同名登记成总线命令、经调用方的上下文取命令总线、按次给的工作目录先校验、时限与输出截断、回执形状都一样，`src/run.ts` 与 `src/invoke.ts` 是那边的逐字副本。多出来的只有 **venv**：检查它在不在、对不对，不对就用 uv 重建。
+## 功能
 
-**登记方给包根、项目名与版本、入口。** 与 node 那边不同的几项：`packageRoot`（登记方包根的绝对路径）、`distName` 与 `version`（`pyproject.toml` 里的项目名与版本）、`command` 或 `module` 二选一。`command: 'x'` 运行 `<venv>/Scripts/x.exe`（`[project.scripts]` 生成的入口程序），`module: 'x.cli'` 运行 `<venv>/Scripts/python.exe -m x.cli`：
-
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="70-93" */}
-
-**venv 建在登记方的包根下**：`<包根>/py/.venv`。插件装在 `node_modules` 里，venv 也就在 `node_modules` 里；pnpm 重新安装时整个包目录被替换、venv 随之消失，下一次运行自己重建：
-
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="23-33" */}
-
-**检查只看目录名、不启动 python。** 每次运行前都要检查，承担不起启动解释器的开销。三样都对就跳过：venv 目录在；venv 里的包根记号 `.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`（项目名按 PyPA 的规则归一化后比较）：
+- **登记 python 命令行工具**：插件给名字、自己的包根、python 项目的名字与版本，以及要运行的入口点（`command`）或模块（`module`），二选一；插件卸载时自动注销
+- **venv 建在登记方的包根下**：`<包根>/py/.venv`；插件装在 `node_modules` 里，venv 也就在 `node_modules` 里
+- **每次运行前检查 venv**：三样都对就跳过——venv 目录在；venv 里的包根记号 `.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`（项目名按 PyPA 的规则归一化后比较）。只看目录名、不启动 python：每次运行前都要检查，承担不起启动解释器的开销。pnpm 重新安装时整个包目录被替换、venv 随之消失，下一次运行自己重建
+- **包根记号防搬家**：venv 里的可编辑安装记着建它那次的包根，整个包目录被搬走（home 被复制或改名）后照样能启动、却指向原来的目录。记号放在 venv 里面，跟 venv 一起创建、一起删除；放在外面的话 venv 被删了记号还在
+- **不对就用 uv 重建**：运行 `uv sync --frozen --no-dev --inexact`，`--inexact` 是因为开发时 `py/.venv` 也是项目自己的开发环境，不删里面多装的包；时限 300 秒，第一次可能要下载 python 解释器。记号最后写，写完再检查一遍，版本仍不对就算失败
+- **检查失败不抛错**：uv 不在 PATH、`uv sync` 失败或超时，都收成 `{ ready: false, reason }`，原因写成人读得懂的一句；插件本身照常加载，只是这些工具运行不了
+- **登记时顺带检查一次**：不等它完成，不阻塞登记方的 `apply`
+- **同一个包根同时只建一次**：并发的运行共用同一次检查
+- **venv 没就绪时运行抛错**：写一条 warn 再抛，经命令总线调用时变成失败回执；按次给的工作目录不合规时连 venv 都不检查
+- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，`plugin` 固定是登记方的包名
+- **中文输出不乱码**：给 python 子进程加 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`
+- **时限、输出截断、同名处理、日志**：和 node 命令行运行插件一样；工作目录缺省是 `<包根>/py`
+- **带一份说明书 `gwb-py-cli`**：给 agent 讲第一次运行为什么慢、venv 怎么重建、回执与 node 的异同
 
 {/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="61-72" */}
 
-包根记号防的是 venv 跟着包目录被整个搬走：venv 里的可编辑安装记着建它那次的包根，搬到别处照样能启动、却指向原来的目录，home 被整体复制或改名时就会这样。记号放在 venv 里面，跟 venv 一起创建、一起删除；放在外面的话 venv 被删了记号还在。
-
-**不对就运行 `uv sync` 重建**，记号最后写，写完再检查一遍；失败不抛错，收成 `{ ready: false, reason }`，原因写成人读得懂的一句：
-
 {/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="138-167" */}
 
-`uv sync` 带 `--frozen`（照 `uv.lock` 装）、`--no-dev`、`--inexact`（开发时 `py/.venv` 也是项目自己的开发环境，不删里面多装的包），时限 300 秒——第一次可能要下载 python 解释器：
+## 接口
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="107-125" */}
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列 python 命令行运行插件提供了哪些接口。
 
-**同一个包根同时只建一次**：正在进行的检查按包根记在内存里，并发的运行共用同一次：
+<Diagram name="py-cli-run" title="python 命令行工具的 venv 检查、重建与运行（分步）">
+- 登记方插件调 `ctx.gwbPyCli.register({ name, packageRoot, distName, version, command 或 module })`，同名登记成总线命令，顺带发起一次 venv 检查、不等它完成
+- 每次运行前检查三样：`<包根>/py/.venv` 在；`.gwb-built-for` 写的是这个包根；`Lib/site-packages` 下有 `<distName>-<version>.dist-info`。都对就跳过
+- 不对就运行 `uv sync --frozen --no-dev --inexact --project <包根>/py` 重建；uv 不在 PATH、失败或超过 300 秒时 venv 没就绪，运行抛错，经命令总线调用时变成失败回执
+- 就绪后运行 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，加 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`，回执形状和 node 命令行工具一样
+</Diagram>
 
-{/* ref file="../plugins/py-cli/src/index.ts" lines="137-152" */}
-
-**登记时顺带检查一次、不等它完成**，不阻塞登记方的 `apply`；**每次运行前再检查一次**，没就绪就写 warn 并抛错，经命令总线调用时变成失败回执。按次给的工作目录不合规时连 venv 都不检查：
-
-{/* ref file="../plugins/py-cli/src/index.ts" lines="224-249" */}
-
-**中文输出不乱码**：给 python 子进程加 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`；工作目录缺省是 `<包根>/py`。
-
-**一条自己的命令 `py-cli.list`**。**带一份说明书 `gwb-py-cli`**，讲第一次运行为什么慢、venv 怎么重建、回执与 node 的异同。
-
-## 不知道什么
-
-**不带 python 项目。** `py/` 与 venv 都在登记方的包根下；本包只有 `dist`、`skills`、`src`，测试检查包根没有 `py/`：
-
-{/* ref file="../plugins/py-cli/tests/artifact.test.ts" lines="57-65" */}
-
-**不装 uv、不装 python。** npm 上没有 astral 官方发布的 uv 包，uv 由机器自己装、从 PATH 找；python 解释器由 uv 下载。
-
-**不在安装时建 venv。** home 不放行依赖的 `postinstall`，pnpm 默认跳过它；venv 在登记与运行时建。
-
-**只认 Windows 的 venv 布局**（`Scripts/*.exe`、`Lib/site-packages`），工作台只在 Windows 上分发。
-
-**登记方写不了别的 `plugin`。** 与 node 那边不同，`PyCliSpec` 没有 `plugin` 字段，总线命令的 `plugin` 固定是调用方的包名：
-
-{/* ref file="../plugins/py-cli/src/index.ts" lines="164-174" */}
-
-**找程序、shell、输出解释、权限、运行记录、调用方的超时**：和 node 命令行运行插件一样都不管，见 [gwb-node-cli](/docs/node-cli)。
-
-## 数据结构
-
-登记方给的：
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 服务 `ctx.gwbPyCli` 的 `register(spec)` | `spec`：`name`、`packageRoot`（包根的绝对路径）、`distName`、`version`、`command` 或 `module`、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`args?`、`cwd?`、`env?`、`timeoutMs?`；类型 `PyCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbPyCli` 的 `ensureReady({ packageRoot, distName, version })` | 检查并在需要时重建 venv，不抛错，返回 `{ ready, reason?, action }`，`action` 是 `skipped`、`synced` 或 `failed` | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbPyCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，回执形状同 node 命令行运行插件的 `CliRunResult`；venv 没就绪时抛错 | [9 命令行工具](/docs/seams/cli) |
+| 登记出来的命令、命令 `py-cli.list` | 参数形状同 node 命令行运行插件 | [1 命令总线](/docs/seams/bus) |
+| venv 目录 `<包根>/py/.venv` 与其中的 `.gwb-built-for` | venv 建成后把包根写进 `.gwb-built-for`；记号缺失或指着别的包根，就当 venv 不是这里的、重建 | [9 命令行工具](/docs/seams/cli) |
+| 说明书 `gwb-py-cli` | 包根 `skills/gwb-py-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
 {/* ref file="../plugins/py-cli/src/registry.ts" lines="9-36" */}
 
-表里存的在这之上补了缺省值与登记方的包名（`RegisteredPyCli`）。一次 venv 检查的结果：
+{/* has file="../plugins/py-cli/src/index.ts" text="export const LIST_COMMAND = 'py-cli.list'" */}
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="100-105" */}
+{/* has file="../plugins/py-cli/src/bootstrap.ts" text="export const STAMP_NAME = '.gwb-built-for'" */}
 
-venv 的几个位置见上面 `venvPaths`；包根记号 `<包根>/py/.venv/.gwb-built-for` 的内容是包根的绝对路径加一个换行。回执 `CliRunResult` 与 node 那边相同，见 [gwb-node-cli](/docs/node-cli)。
+`command: 'x'` 运行 `<venv>/Scripts/x.exe`（`[project.scripts]` 生成的入口程序），`module: 'x.cli'` 运行 `<venv>/Scripts/python.exe -m x.cli`。
 
-## 提供的接口
+**登记方的 python 项目要满足什么**：
 
-| 接口 | 做什么 | 契约在 |
+- 在包根的 `py/` 下，有 `pyproject.toml`；它的项目名与版本就是登记时给的 `distName`、`version`
+- **`uv.lock` 必须在**：重建用的是 `uv sync --frozen`，没有锁文件当场失败
+- 用 `command` 时，`[project.scripts]` 里要有这个入口点
+- 包清单的 `files` 要带上 `py`
+
+## 依赖
+
+| 依赖 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- |
-| 服务 `ctx.gwbPyCli` 的 `register(spec)` | 登记一个工具，同时登记成总线命令，顺带发起一次 venv 检查；返回注销函数，调用方卸载时自动注销 | [9 命令行工具](/docs/seams/cli) |
-| 服务 `ctx.gwbPyCli` 的 `ensureReady({ packageRoot, distName, version })` | 检查并在需要时重建 venv，不抛错，返回 `{ ready, reason?, action }` | [9 命令行工具](/docs/seams/cli) |
-| 服务 `ctx.gwbPyCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，venv 没就绪时抛错 | [9 命令行工具](/docs/seams/cli) |
-| 登记出来的总线命令、命令 `py-cli.list` | 参数形状同 node 命令行运行插件 | [1 命令总线](/docs/seams/bus) |
-| venv `<包根>/py/.venv` 与其中的 `.gwb-built-for` | 记号缺失或指着别的包根，就当 venv 不是这里的、重建 | [9 命令行工具](/docs/seams/cli) |
-| 导出的类型 `PyCliSpec`、`RegisteredPyCli`、`BootstrapResult`、`VenvPaths`、`CliRunResult`、`CliStream`、`CwdCheck`、`Invocation`，函数 `venvPaths`、`checkCwd`、`parseInvocation`，常量 `STAMP_NAME`、`DEFAULT_TIMEOUT_MS`、`MAX_TIMEOUT_MS`、`LIST_COMMAND` | `import type {} from '@godcreator/gwb-py-cli'` 让 `ctx.gwbPyCli` 有类型 | [9 命令行工具](/docs/seams/cli) |
-| 说明书 `gwb-py-cli` | 包根 `skills/gwb-py-cli/` | [4 说明书](/docs/seams/skills) |
+| 命令插件服务 `gwbCommands`（服务类上的 `static inject`，[gwb-commands](/docs/commands)） | 把登记的工具登记成命令；登记 `py-cli.list` | 服务 `gwbPyCli` 不提供，插件一直等待 |
+| 说明书插件服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
+| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器 | venv 建不成，原因是「启动不了 uv（PATH 上没有？）」；装上 uv 后再调用一次就行，每次运行前都会重新检查 venv，不用重新加载插件 |
+| Windows 的 venv 布局（`Scripts/*.exe`、`Lib/site-packages`） | 找要运行的程序、读装了哪个版本 | 别的系统上找不到程序；工作台只支持 Windows |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
+| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名 | 不是经 `cordis.yml` 加载的插件调用 `register` 时抛错「取不到调用方的身份」 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
 
-{/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" */}
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`）：代码只 `import type` 它们。`src/run.ts` 与 `src/invoke.ts` 是 [gwb-node-cli](/docs/node-cli) 里同名文件的副本，除开头一行注释外逐字相同，改那边就要改这边。
 
-## 依赖的接口
+## 不做的事
 
-| 接口 | 用来做什么 | 生产实现 | 测试实现 |
-| --- | --- | --- | --- |
-| 命令总线服务 `gwbCommands` 的 `register`（服务类上的 `static inject`） | 把登记的工具登记成命令；登记 `py-cli.list`；缺了服务 `gwbPyCli` 不提供 | [gwb-commands](/docs/commands) | 只记登记的替身；另有按 `Service` 写、记下登记方的替身与拒收的替身 |
-| 说明书服务 `gwbSkills` 的 `register`（局部注入） | 登记自带的说明书；缺了不登记 | [gwb-skills](/docs/skills) | 不提供 |
-| cordis 的 `Service`、`effect`、`get`、`logger` | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 内核带的 cordis（peer `^4.0.0-rc.10`） | dev 里的 `cordis` 4.0.0-rc.10 |
-| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出登记方的包名；取不到时 `register` 抛错 | 内核带的 cordis loader | 调用方插件在 `apply` 里自己往 fiber 上放一个 `entry` |
-| PATH 上的 `uv` | 建 venv、装依赖，第一次还会下载 python 解释器；启动不了时回执原因是「启动不了 uv（PATH 上没有？）」，装上后再调用一次就行 | 机器上装的 uv | 服务测试把 venv 摆成已就绪的样子，不启动 uv；`ensureVenv` 可以传入替身 `sync` |
-| venv 里的程序 | 运行工具 | uv 建出的 `Scripts/*.exe` | 当前 node 的一份拷贝，改名成 `Scripts/tool.exe` |
-| Windows 的 `taskkill` | 超时时结束整个进程树 | 系统自带 | 真的 `taskkill` |
-| 词汇表包的 `GwbContext` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | 同一份 |
-| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
-
-{/* ref file="../plugins/py-cli/package.json" lines="29-41" */}
-
-## 怎么单独测
-
-七个测试文件，都在 `plugins/py-cli/tests/`：
-
-- `bootstrap.test.ts`：项目名归一化、`dist-info` 的比对、venv 是否过期的四种原因与判断顺序、venv 各位置
-- `registry.test.ts`：包根要绝对路径、缺项目名或版本不收、`command` 与 `module` 恰好一个、时限范围、同名后登记的生效、注销只删自己那条
-- `invoke.test.ts`、`run.test.ts`：副本各有一份测试，内容与 node 那边相同
-- `service.test.ts`：见下
-- `artifact.test.ts`：构建产物规则；包里只有 `dist`、`skills`、`src`，没有 `py/`；仓根 `.gitignore` 忽略 `.venv/`
-
-**`service.test.ts` 测服务这一层**，不装 uv：venv 按已就绪的样子摆好（目录、包根记号、`dist-info`），检查因此直接跳过；入口程序 `Scripts/tool.exe` 是当前 node 的一份拷贝，靠固定参数 `-e <脚本>` 把它看到的 argv、工作目录与两条 UTF-8 环境变量写到 stdout：
-
-{/* ref file="../plugins/py-cli/tests/service.test.ts" lines="9-42" */}
-
-证明的是：`py-cli.list` 登记与注销；登记成总线命令、登记时的那次检查写 info；`ensureReady` 在已就绪时跳过；argv 顺序、UTF-8 环境变量、`cwd` 的优先级（这两条只在 Windows 上跑）；`module` 形态缺 `python.exe` 时回启动失败的回执；不合规的 `cwd` 不启动进程；venv 建不起来时 `run` 抛错并写 warn；注销同时撤掉两处；取不到身份时抛错；总线看到的登记方是调用方、总线拒收时撤掉表里那条。
-
-`uv sync` 真的建出 venv，只能在隔离 home 里验证。
-
-## 代码地图
-
-**在哪**：`plugins/py-cli/`。
-
-{/* tree dir="../plugins/py-cli/src" depth="1" */}
-
-{/* tree dir="../plugins/py-cli/tests" depth="1" */}
-
-**先读** `src/bootstrap.ts`：venv 在哪、怎么判断过期、怎么重建都在里面，这是本插件与 node 那边唯一不同的部分。
-
-**读序**：`registry.ts`、`invoke.ts`、`run.ts` → `bootstrap.ts`（用 `run.ts` 启动 uv）→ `index.ts`。
-
-**可跳过**：`dist/`（构建产物）；`run.ts`、`invoke.ts` 与 node 那边逐字相同，读一份即可；`skills/gwb-py-cli/SKILL.md` 是给 agent 读的操作说明。
+- **不带 python 项目**：`py/` 与 venv 都在登记方的包根下
+- **不装 uv**：npm 上没有 astral 官方发布的 uv 包，uv 由机器自己装、从 PATH 找
+- **不在安装时建 venv**：home 不放行依赖的 `postinstall`，pnpm 默认跳过它；venv 在登记与运行时建
+- **不启动 python 查版本**：只看 `dist-info` 目录名
+- **不让登记方另写 `plugin`**：总线命令的 `plugin` 固定是调用方的包名
+- **不支持 Windows 以外的系统**
+- **没有自检命令**：工具对不对由登记它的插件验收

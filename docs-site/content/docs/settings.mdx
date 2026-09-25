@@ -1,153 +1,100 @@
 ---
 title: gwb-settings · 设置
-description: 设置插件让插件声明自己的设置项，一个 home 的全部值写在 <home>/settings.json 一份文件里，按条目分区、shared 项进公共区 *；服务按调用方条目定分区，四条 settings.* 命令按位置读写，settings.all 不回 secret 项的值。本页是它的模块页：七段固定块
+description: gwb-settings 让插件声明自己的设置项，值写在 <home>/settings.json 一份文件里，按条目分区，shared 项进公共区 *；settings.all 不回 secret 项的值。本页讲它的功能、接口与所属接缝（服务、四条命令、settings.json）、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
-**本页回答**：设置插件 `@godcreator/gwb-settings` 管什么、刻意不知道什么；内存与 `settings.json` 里是什么形状；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。声明方、按位置读写的一方各保证什么写在接缝页[设置](/docs/seams/settings)，分区归属写在[数据归属](/docs/seams/owners)。
+**本页回答**：设置插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；值写在哪、怎么分区、读的时候按什么顺序找；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-settings`，源码目录 `plugins/settings/src`，入口文件 `index.ts`。
 
-## 管什么
+插件声明「我有一项叫 `level` 的设置，标题是这个、类型是那个」，值写到哪由设置插件决定。一个 home 的全部设置在 `<home>/settings.json` 一份文件里，和 `cordis.yml` 在同一个目录。
 
-插件声明「我有一项叫 `level` 的设置，标题是这个、类型是那个」，值存到哪由设置插件决定。它管三样：**一张声明表**（此刻哪些插件声明了哪些项）、**一份值表**（从 `settings.json` 读进来的整份内容）、**把值表写回文件**。
+## 功能
 
-**分为三层。** `registry.ts` 是内存里的两张表与全部读写规则，不碰上下文、不碰文件；`store.ts` 读写 `settings.json`；`index.ts` 是继承 cordis `Service` 的服务，负责认出调用方、登记命令、安排写文件：
+- **插件声明设置项**：给 `key`（kebab-case）、`title`、`type`，可选 `shared`、`description`、`default`；插件卸载时声明自动撤销
+- **按条目分区**：值写在调用方条目 id 的末段那个分区里，同一个包的两条条目各存各的；`shared: true` 的项写进公共区 `*`
+- **认得出调用方**：服务从调用方的上下文里认出条目，插件只能读写自己声明的项，报不出别人的身份
+- **读的顺序**：调用方声明过这一项，回它的值，没有值回 `default`；没声明过，去公共区 `*` 找——一个插件把 token 声明进公共区，别的插件不用声明就读得到；都没有回 `undefined` 并写一条 warn
+- **只写自己声明过的项**：`set`、`delete` 没声明就抛错——写一项谁也不认识的设置进文件，出了问题没人查得到
+- **页面与 agent 用命令读写**：四条命令按「分区 + 键」定位，不认调用方身份
+- **列出全部设置时不给 secret 项的值**：`settings.all` 里 secret 项只说设没设过，带定长掩码；要值按位置用 `settings.get` 取，回明文（轨迹卡[凭据掩码](/trajectory/2026-09-20-secret-mask)）
+- **分区记着归哪个包**：文件顶层的 `$owners` 记每个分区归哪个包，包名对不上的声明直接抛错；插件管理经 `owners`、`transferOwner` 列出和改写归属
+- **声明写进文件，加载着时以代码为准**：`title`、`type`、`description` 写进 `settings.json`，插件停用后界面上仍看得到这一项；插件加载着时以代码里的声明为准，值不动。同一个条目重复声明同一个键，后声明的生效并写 warn
+- **读文件在构造函数里同步做完**：`Service` 在构造时就提供了服务，构造一返回，别的插件就可能加载并调用同步的 `get`；异步读的话那一刻表还是空的
+- **写入是原子的**：先写同目录的临时文件再改名，临时文件名带随机后缀；同一个文件的多次写入按发起顺序一次一个，后发起的那次最后写进文件（轨迹卡[写入排队](/trajectory/2026-09-24-serialize-file-writes)）；写失败写一条 warn、异常照样抛给调用方。同一轮里的多次 `define` 合并成一次写文件，否则每个插件加载时各写一次；合并写入还没开始时有别的写入，那次合并写入取消，因为每次写的都是整张表
+- **值不写进日志**：日志里只有「哪一项已写、已删」
+- **条目没写 id 时提醒**：声明时发现条目 id 是 loader 生成的随机串，写一条 warn
+- **带一份说明书 `gwb-settings`**：给 agent 讲四条命令的参数、分区是什么、secret 项怎么取值
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="4-4" */}
-
-**服务按调用方条目定分区。** `define`、`get`、`set`、`delete` 只收短的 `key`；服务从调用方 fiber 上 loader 放的条目取条目 id 与包名，分区名是条目 id 的末段（`home:logger` 的分区是 `logger`），插件报不出别人的身份：
-
-{/* ref file="../plugins/settings/src/index.ts" lines="143-153" */}
-
-**`get` 的查找顺序**：调用方声明过这一项，回存下的值，没有值回 `default`；没声明过，去公共区 `*` 找；都没有回 `undefined` 并写 warn。`set`、`delete` 只能动调用方自己声明过的项，没声明就抛错——写一项谁也不认识的设置进文件，出了问题没人查得到：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="245-260" */}
-
-**声明写进文件，插件加载着时以代码为准。** `define` 把 `title`、`type`、`description` 写进值表（值不动），插件停用后界面上仍看得到这一项；同一个条目重复声明同一个键，后声明的生效并写 warn；注销函数只删自己那份：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="229-243" */}
-
-**分区记着归哪个包。** 第一次 `define` 时分区没有归属就记成调用方的包名，归别的包就抛错，报错写明两种处理办法（给条目换 id，或确认是同一个插件改了包名、调 `plugin-manager.transfer-owner`）：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="188-197" */}
-
-**`settings.all` 不回 secret 项的值**：secret 行摘掉 `value` 与 `default`，补上 `secret: true`、`isSet`，设过值时再带定长掩码 `••••`；`settings.get` 与服务的 `get` 照旧回明文（轨迹卡[凭据掩码](/trajectory/2026-09-20-secret-mask)）：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="115-121" */}
-
-**读文件在构造函数里同步做完。** `Service` 构造一返回就提供了服务，别的插件随即可能加载并调同步的 `get`；异步读的话那一刻表还是空的：
+{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
 
 {/* ref file="../plugins/settings/src/index.ts" lines="81-91" */}
 
-**写文件**：整份替换，先写同目录的临时文件（名字带随机后缀）再改名；同一个文件的写入按发起顺序排队，内容在发起时就序列化好（轨迹卡[写入排队](/trajectory/2026-09-24-serialize-file-writes)）。同一轮里的多次 `define` 合并成一次写文件，否则每个插件加载时各写一次；合并写入还没开始时有别的写入，那次合并写入取消，因为每次写的都是整张表。写失败先写 warn 再把异常抛给调用方，日志里只写「哪一项已写、已删」，不写值：
+## 接口
 
-{/* ref file="../plugins/settings/src/index.ts" lines="217-243" */}
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列设置插件提供了哪些接口。
 
-**四条命令**：`settings.all`、`settings.get`、`settings.set`、`settings.delete`，按 `{ section, key }` 定位，不认调用方身份——页面不是插件，没有身份可取。命令总线是可选的，局部注入，没有它服务照样完整：
+<Diagram name="settings-layout" title="settings.json 按条目分区，服务与命令各读写哪一块">
+- 右边是 `<home>/settings.json` 的顶层：`$owners`（分区名 → 包名）、每条条目一个分区（条目 `home:mcp` 的分区叫 `mcp`）、公共区 `*`
+- 插件经服务 `ctx.gwbSettings` 的 `define` / `get` / `set` / `delete` 只给 `key`，分区由设置插件从调用方条目算出
+- 别的插件 `get` 一项自己没声明的设置时读公共区，`shared: true` 的项在那里
+- 页面与 agent 经 `settings.all` / `get` / `set` / `delete` 四条命令按 `{ section, key }` 读写任意分区；`settings.all` 里 secret 项只给 `isSet` 与掩码，`settings.get` 回明文
+</Diagram>
 
-{/* ref file="../plugins/settings/src/index.ts" lines="101-135" */}
-
-**条目没写 id 时提醒**：`define` 时发现条目 id 是 loader 生成的 8 位十六进制随机串，写一条 warn——这种 id 每次启动都变，设置重启后就对不上了。
-
-**带一份说明书 `gwb-settings`**，放在包根 `skills/gwb-settings/`，讲四条命令的参数、分区是什么、secret 项怎么取值。
-
-## 不知道什么
-
-**不校验值的类型。** `type` 只用来给界面挑控件，读的一方自己判断值对不对；`settings.set` 写的位置有没有插件声明过也不查。
-
-**不加密、不是安全边界。** 文件里 secret 项也是明文；名字校验只防误写（名字里带斜杠、条目占用公共区），插件本来就能直接改这个文件。
-
-**不知道界面长什么样。** 编辑设置的界面在别的仓，经四条命令读写。
-
-**不收 `cordis.yml` 里条目的 `config`。** 插件的配置一律经 `define` 声明。
-
-**没有跨 home 的设置。** 一个 home 一份 `settings.json`，要共享就复制文件。
-
-**不删分区。** 条目删掉后它的设置留在文件里，由调 `settings.delete` 的一方清理。
-
-**算分区名的那段逻辑与数据插件各有一份**（`entrySection` 与 `entryDirName`），两份靠约定保持一致，见[条目身份](/docs/seams/entry-identity)。
-
-## 数据结构
-
-一项设置的声明，插件在 `apply` 里给：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
-
-文件里的一项、一份文件（分区 → 设置名 → 那一项）、归属表（分区名 → 包名）、调用方身份、一项设置的位置：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="26-50" */}
-
-`settings.json` 的顶层是 `$owners` 加各分区，写文件时 `$owners` 放在最前；公共区的分区名是 `*`：
-
-{/* ref file="../plugins/settings/src/paths.ts" lines="5-11" */}
-
-`settings.all` 交出去的一行：
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="55-72" */}
-
-声明表只在内存里，键是「分区名 + NUL + 设置名」；值表与归属表是文件内容在内存里的那一份，每次写文件整份写出。
-
-## 提供的接口
-
-| 接口 | 做什么 | 契约在 |
+| 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | 服务 `ctx.gwbSettings` 的 `define(def)`、`get(key)`、`set(key, value)`、`delete(key)` | 声明一项；同步读；写并写入文件；抹掉值（声明还在，`get` 回到 `default`） | [5 设置](/docs/seams/settings) |
 | 服务 `ctx.gwbSettings` 的 `owners()`、`transferOwner(id, pkg)` | 各分区归哪个包；把一个分区改归另一个包 | [7 数据归属](/docs/seams/owners) |
-| 命令 `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 按 `{ section, key }` 读写任意分区；`settings.all` 不回 secret 项的值 | [5 设置](/docs/seams/settings) |
-| 文件 `<home>/settings.json` | 和 `cordis.yml` 在同一个目录 | [5 设置](/docs/seams/settings) |
-| 分区名 | 调用方条目 id 的末段；超过两段、有段不是 kebab-case 就抛错；条目不能叫 `*` | [8 条目身份](/docs/seams/entry-identity) |
-| 导出的类型 `GwbSettingsApi`、`SettingDef`、`SettingType`、`SettingView`、`SettingsFile`、`SettingsOwners`、`Slot`、`StoredSetting`，常量 `SHARED_SECTION` 与四个命令名 | `import type {} from '@godcreator/gwb-settings'` 让 `ctx.gwbSettings` 有类型 | [5 设置](/docs/seams/settings) |
-| 说明书 `gwb-settings` | 包根 `skills/gwb-settings/` | [4 说明书](/docs/seams/skills) |
+| 命令 `settings.all` | 无参数，返回全部设置项，每行带 `section`、`key`、`title`、`type`、`description`、`value`、`live`（此刻还有插件声明它吗）、`default`（只有 `live` 的项带）；secret 项不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长掩码 `mask: '••••'` | [5 设置](/docs/seams/settings) |
+| 命令 `settings.get`、`settings.set`、`settings.delete` | 参数 `{ section, key }`，`set` 另加 `value`；`get` 对 secret 项也回明文，没设过回 `undefined`，不回落到 `default` | [5 设置](/docs/seams/settings) |
+| 文件 `<home>/settings.json` | 顶层 `$owners`（分区名 → 包名），其余每个键是一个分区：条目 id 的末段，或公共区 `*`；分区下是设置名 → `{ title, type, description, value }` | [5 设置](/docs/seams/settings) |
+| 分区名 | 调用方条目 id 的末段，`home:logger` 得 `logger`；超过两段、有段不是 kebab-case 就抛错；条目不能叫 `*` | [8 条目身份](/docs/seams/entry-identity) |
+| 说明书 `gwb-settings` | 包根 `skills/gwb-settings/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+
+服务与声明的类型由本包导出（`GwbSettingsApi`、`SettingDef` 等，`import type {} from '@godcreator/gwb-settings'` 让 `ctx.gwbSettings` 有类型）；`type` 有五种，只用来给界面挑控件：
 
 {/* ref file="../plugins/settings/src/index.ts" lines="41-55" */}
 
-## 依赖的接口
+{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
 
-| 接口 | 用来做什么 | 生产实现 | 测试实现 |
-| --- | --- | --- | --- |
-| 内核服务 `gwbKernel` 的 `dataDir`（经 `src/vocab.ts` 的 `requireKernel` 取，不写进 `inject`） | 算出 `<home>/settings.json`；缺了构造时抛错、插件加载失败 | 内核应用 | `{ dataDir: <临时目录> }` |
-| 命令总线服务 `gwbCommands` 的 `register`（局部注入） | 登记四条命令；缺了服务照常提供，页面与 agent 调不到设置 | [gwb-commands](/docs/commands) | 只记登记与注销的替身，按名字取出处理函数直接调 |
-| 说明书服务 `gwbSkills` 的 `register`（局部注入） | 登记自带的说明书；缺了不登记 | [gwb-skills](/docs/skills) | 只记登记了哪些目录的替身 |
-| cordis 的 `Service`、`effect`、`inject`、`logger` | 提供服务；方法里的 `this.ctx` 是调用方的上下文；声明的注销登记在调用方的 `effect` 上 | 内核带的 cordis（peer `^4.0.0-rc.10`） | dev 里的 `cordis` 4.0.0-rc.10 |
-| loader 放在调用方 fiber 上的 `entry.id`、`entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 认出调用方的条目 id 与包名；取不到时抛错 | 内核带的 cordis loader | 调用方插件在 `apply` 里自己往 fiber 上放一个 `entry` |
-| 文件系统 | 构造时同步读 `settings.json`，写时异步写临时文件再改名 | `node:fs` | 临时目录里的真文件 |
-| 词汇表包的 `GwbContext`、`GwbKernelApi` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | 同一份 |
-| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
+{/* has file="../plugins/settings/src/index.ts" text="export const ALL_COMMAND = 'settings.all'" */}
 
-{/* ref file="../plugins/settings/package.json" lines="29-42" */}
+{/* has file="../plugins/settings/src/paths.ts" text="export const OWNERS_KEY = '$owners'" */}
 
-`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`）：代码只 `import type {}` 它们，构建产物里没有它们。
+声明一项：
 
-## 怎么单独测
+```ts
+export const inject = ['gwbSettings']
 
-五个测试文件，都在 `plugins/settings/tests/`：
+export function apply(ctx: GwbContext) {
+  ctx.gwbSettings.define({ key: 'level', title: '日志级别', type: 'string', default: 'info' })
+  const level = ctx.gwbSettings.get('level')
+}
+```
 
-**`registry.test.ts` 测内存里的全部规则**：直接调 `createRegistry`，warn 传 `vi.fn()`，几个调用方身份是写死的对象，不碰文件：
+插件的配置一律用 `define` 声明，不收 `cordis.yml` 里条目的 `config`。
 
-{/* ref file="../plugins/settings/tests/registry.test.ts" lines="4-14" */}
+## 依赖
 
-证明的是：`get` 的查找顺序与公共区；同一个包的两条条目各存各的；重复声明后声明的生效并告警、注销只删自己那份；名字与条目 id 不合规在动表之前抛错；代码里的声明覆盖文件里的元信息、插件停了标成不 `live`；文件内容坏了只丢那一项；归属的记录、拒绝与转移，公共区不能转移；secret 行的掩码与明文读法。
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 内核服务 `gwbKernel` 的 `dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+| 命令插件服务 `gwbCommands`（局部注入，[gwb-commands](/docs/commands)） | 登记四条命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
+| 说明书插件服务 `gwbSkills`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供服务；方法里的 `this.ctx` 是调用方的上下文 | 无法加载；必须和内核用同一份 cordis |
+| loader 放在调用方 fiber 上的 `entry`（`id`、`options.name`，[8 条目身份](/docs/seams/entry-identity)） | 认出调用方的条目 id 与包名 | 不是经 `cordis.yml` 加载的插件调用时抛错「取不到调用方的身份」 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
 
-**`paths.test.ts`** 测设置名、分区名、条目 id 转分区名、随机 id 的判断；**`store.test.ts`** 在临时目录里测文件的两半（`$owners` 与各分区）读写，以及同一个文件同时写好几次时最后发起的那次留在文件里。
+`@godcreator/gwb-commands`、`@godcreator/gwb-skills` 写在 dev 里（`workspace:*`）：代码只 `import type {}` 它们，构建产物里没有它们；这两个插件对设置插件都是可有可无的，只局部注入。
 
-**`service.test.ts` 测服务这一层**：真 cordis 上下文，内核、命令总线、说明书用替身，调用方插件在 `apply` 里往自己的 fiber 上放一个 `entry`：
+设置插件和[数据插件](/docs/data)用同一个办法从条目 id 算名字：两边各有一份十几行的算法（`entrySection` 与 `entryDirName`），必须给出同一个答案，改一处就要改另一处（见[条目身份](/docs/seams/entry-identity)）。
 
-{/* ref file="../plugins/settings/tests/service.test.ts" lines="54-67" */}
+## 不做的事
 
-证明的是：构造时同步读完文件，调用方 `apply` 里第一次 `get` 就读得到；`define` 之后合并写一次文件；`define` 之后马上 `set` 不报错；写删没声明过的项抛错；随机 id 写 warn；调用方卸载后它的项不再 `live`；取不到身份时抛错；写失败先 warn 再抛；四条命令的登记、回执与参数报错。
-
-**`artifact.test.ts`** 查构建产物：相对 import 带 `.js`，包名 import 只有 node 内置模块与 `cordis`。
-
-loader 真的把调用方自己那条条目放在 fiber 上，只能在隔离 home 里验证。
-
-## 代码地图
-
-**在哪**：`plugins/settings/`。
-
-{/* tree dir="../plugins/settings/src" depth="1" */}
-
-{/* tree dir="../plugins/settings/tests" depth="1" */}
-
-**先读** `src/registry.ts`：声明、读写、归属、掩码的规则全在里面，而且是纯函数。
-
-**读序**：`vocab.ts`、`paths.ts`（名字与路径，不做 I/O）→ `registry.ts`（内存里的表）→ `store.ts`（读写文件，用 `registry.ts` 的收窄函数）→ `index.ts`（服务、命令、写文件的安排）。
-
-**可跳过**：`dist/`（构建产物）；`skills/gwb-settings/SKILL.md` 是给 agent 读的操作说明。
+- **没有跨 home 的设置**：一个 home 一份 `settings.json`，要在几个 home 之间共享就复制文件
+- **不做运行时类型校验**：`type` 只给界面挑控件，读的一方自己判断值对不对（[gwb-mcp](/docs/mcp) 的端口设置就是这样）
+- **不加密**：文件里是明文；`settings.all` 不回 secret 项的值，`settings.get` 与服务的 `get` 照旧回明文
+- **命令不认身份**：四条命令按分区与键定位，能读写任何分区；服务按调用方身份分区
+- **不是安全边界**：名字校验只防误写，插件本来就能直接改这个文件
+- **不画设置界面**：界面由别的插件用这四条命令做
+- **不写数据文件**：插件的其他数据在 [gwb-data](/docs/data)
+- **不删分区**：条目删掉后它的设置留在文件里，由调用 `settings.delete` 的一方清理

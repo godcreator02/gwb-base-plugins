@@ -1,118 +1,83 @@
 ---
 title: gwb-commands · 命令总线
-description: 命令插件管一张只在内存里的「命令名 → 处理函数」表：登记时检查定义并从调用方取包名、注销跟着登记方走、执行从不抛错、请求来源原样转交；它不认识任何命令名，也不 import 说明书插件。本页是它的模块页：七段固定块
+description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令名 → 处理函数」的表；本页讲它有哪些功能，插件、页面和 agent 经哪些接口用它（register / run / list、回执形状、说明书 gwb-commands）、各属于哪条接缝，它依赖什么、缺了会怎样，哪些事不归它做
 ---
 
-**本页回答**：命令插件 `@godcreator/gwb-commands` 管什么、刻意不知道什么；它的表里存什么形状；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。登记方、调用方各保证什么写在接缝页[命令总线](/docs/seams/bus)。
+**本页回答**：命令插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归别的插件。包名 `@godcreator/gwb-commands`，源码目录 `plugins/commands/src`，入口文件 `index.ts`。
 
-## 管什么
+命令插件提供命令总线：一张只在内存里的「命令名 → 处理函数」表，插件把自己的能力登记成命令，页面、agent 和别的插件都经这张表调用。它是 `cordis.yml` 里的一条普通条目，和别的插件一样装在 home 里、可以停用和升级。
 
-**一张命令表，外面包一层 cordis 服务。** 表本身是 `registry.ts` 里的 `createRegistry`：一个按命令名索引的 `Map`，只收检查过的定义，不碰 cordis 上下文，只接一个写日志的函数：
+## 功能
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="116-118" */}
-
-外面那层是继承 cordis `Service` 的 `GwbCommandBus`，服务名 `gwbCommands`。它只做表做不了的两件事：从调用方取包名，把注销登记在调用方的 `effect` 上：
+- **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；登记方卸载时命令自动注销，不用包 `ctx.effect`。服务方法里的 `this.ctx` 是调用方的上下文，注销就登记在它的 `effect` 上——这是命令总线继承 cordis `Service` 而不是 `ctx.provide` 一个普通对象的原因（轨迹卡[命令总线改成继承 cordis Service](/trajectory/2026-09-24-commands-bus-as-service)）
+- **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错；命令记在哪个包名下由命令总线从调用方条目取，登记方写的 `plugin` 与之不同也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
+- **同名命令后登记的生效**：同时写一条 warn，写明原来是哪个包、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
+- **按名字执行命令**：页面经 `window.gwb.command`（内核收下后交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
+- **转交请求来源**：内核带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
+- **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在都回失败回执并写明原因
+- **列出全部命令**：每条带名字、一句话介绍、用法和登记方的包名
+- **写日志**：每次登记、执行都写一行；成功写 info，返回失败、抛错、找不到命令写 warn。异常都转成了回执，不写日志就查不到谁在什么时候调了哪条命令
+- **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么读、失败有哪几种、插件里怎么登记命令
 
 {/* ref file="../plugins/commands/src/index.ts" lines="67-74" */}
 
-`Service` 的方法里 `this.ctx` 是调用方的上下文，所以 `this.ctx.fiber` 上是 loader 放的调用方条目，`this.ctx.effect` 在调用方卸载时执行。这就是为什么命令总线是 `Service` 而不是 `ctx.provide` 出去的普通对象（取舍见轨迹卡[命令总线改成继承 cordis Service](/trajectory/2026-09-24-commands-bus-as-service)）。
+## 接口
 
-**四条规则**，契约与钉住的实现都在[命令总线](/docs/seams/bus)那一页，这里只列出来：
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列命令插件提供了哪些接口。
 
-- 登记时检查定义：`name`、`description`、`usage` 缺一项或为空串就抛错；`plugin` 由命令总线从调用方取，登记方写了不同的包名也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
-- 同名命令后登记的生效并写 warn；注销函数只删表里仍是自己那条的记录
-- `run` 从不抛错：处理函数返回带 `ok` 的对象原样交回，其余包成 `{ ok: true, data }`，抛错与找不到命令都回 `{ ok: false, error }`
-- 请求来源 `{ via }` 原样交给处理函数，不给就是 `plugin`；命令总线不按来源限制调用（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
-
-**每次登记、执行都写一行日志**：成功写 info，返回失败、抛错、找不到命令写 warn。异常都变成了回执，不写日志就查不到谁在什么时候调了哪条命令。
-
-**带一份说明书 `gwb-commands`**，放在包根 `skills/gwb-commands/`。说明书插件在时交给它登记，不在时命令总线照常加载：
-
-{/* ref file="../plugins/commands/src/index.ts" lines="42-52" */}
-
-## 不知道什么
-
-**不认识任何命令名。** 表里每一条都是别的插件登记的；命令总线自己一条命令都不登记，命令做什么、参数怎么校验由登记它的插件决定。页面发来的命令由内核应用收下再交给 `run`，命令总线不接收 IPC 消息。
-
-**不认识说明书插件的包。** 说明书插件依赖命令总线，命令总线反过来 import 它的类型会让两个包互相依赖，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环直接报错退出。所以只按形状声明用到的那一个方法，`package.json` 的 dev 里也没有 `@godcreator/gwb-skills`（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）：
-
-{/* ref file="../plugins/commands/src/index.ts" lines="22-25" */}
-
-{/* ref file="../plugins/commands/package.json" lines="29-35" */}
-
-**不核实请求来源。** `via` 是调用方自己写的：内核转页面的命令时写 `ui`，MCP 入口写 `mcp`。命令总线只转交，谁冒充谁它也看不出来。
-
-**不知道命令怎么展示给 agent。** `list()` 只交出定义；`index`、`search` 返回什么格式由 [MCP 入口](/docs/mcp)决定。
-
-**不管时限、不保存。** `run` 一直等到处理函数返回；表只在内存里，重启就空，靠各插件加载时重新登记。
-
-## 数据结构
-
-登记方给的定义、表里存的定义、请求来源、处理函数的签名：
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-25" */}
-
-`RegisteredCommandDef` 是 `Required<GwbCommandDef>`：进表之前 `plugin` 一定补上了，是登记方的完整包名。表里一条记录是定义加处理函数，按命令名索引；注销函数比较的是这条记录对象本身，所以同名替换后先登记的一方删不到接手的那条：
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="52-55" */}
-
-回执类型 `GwbResult`（`{ ok, data?, error? }`）不在本包，在词汇表包 `@godcreator/gwb-plugin-api`。
-
-## 提供的接口
-
-| 接口 | 做什么 | 契约在 |
+| 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 服务 `ctx.gwbCommands` 的 `register(def, handler)`、`run(name, args?, context?)` | 登记一条命令、拿回注销函数；按名字执行，返回 `Promise<GwbResult>` | [1 命令总线](/docs/seams/bus) |
+| 服务 `ctx.gwbCommands` 的 `register(def, handler)`、`run(name, args?, context?)` | 登记一条命令、拿回注销函数；按名字执行，返回 `Promise<GwbResult>`，不抛错 | [1 命令总线](/docs/seams/bus) |
 | 服务 `ctx.gwbCommands` 的 `list()` | 全部命令的 `{ name, description, usage, plugin }`；MCP 入口的 `index`、`search` 从这里取 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| 导出的类型 `GwbCommands`、`GwbCommandDef`、`RegisteredCommandDef`、`GwbCommandContext`、`GwbCommandHandler`、`GwbRequestSource` | 用命令总线的插件 `import type` 它们；`import type {} from '@godcreator/gwb-commands'` 就让 `ctx.gwbCommands` 有类型 | [1 命令总线](/docs/seams/bus) |
-| 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，讲回执怎么读、失败有哪几种、插件里怎么登记命令 | [4 说明书](/docs/seams/skills) |
+| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型在词汇表包 `@godcreator/gwb-plugin-api` | [1 命令总线](/docs/seams/bus) |
+| 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/commands/src/index.ts" lines="15-15" */}
+**服务的类型**由本包导出，用命令总线的插件 `import type { GwbCommands } from '@godcreator/gwb-commands'`（或 `import type {} from …`，让 `ctx.gwbCommands` 有类型）。一条命令的定义、请求来源、处理函数的签名：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="85-89" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-37" */}
 
-## 依赖的接口
+{/* has file="../plugins/commands/src/index.ts" text="export default class GwbCommandBus extends Service implements GwbCommands {" */}
 
-| 接口 | 用来做什么 | 生产实现 | 测试实现 |
-| --- | --- | --- | --- |
-| cordis 的 `Service`、`effect`、`inject`、`logger` | 提供服务；把注销登记在调用方的 `effect` 上；局部注入说明书插件；写日志 | 内核带的 cordis，写在 peer（`^4.0.0-rc.10`），构建产物按值 import 它，必须和内核同一份 | dev 里的 `cordis` 4.0.0-rc.10 |
-| loader 放在调用方 fiber 上的 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 内核带的 cordis loader | dev 里的 `@cordisjs/plugin-loader` 1.0.0-rc.7，真 loader |
-| 说明书插件服务 `gwbSkills` 的 `register(dir)`（局部注入） | 登记自带的说明书 | [gwb-skills](/docs/skills) | 测试里不提供，这一段不走 |
-| 词汇表包的 `GwbContext`、`GwbResult` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`），只在编译时用 | 同一份 |
-| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核，代码里不用它 | home 根上装的内核包 | 不装 |
+用它的插件把 `gwbCommands` 写进 `export const inject`；命令对这个插件可有可无时，改用 `ctx.inject(['gwbCommands'], …)` 局部注入。登记一条命令的写法：
+
+```ts
+export const inject = ['gwbCommands']
+
+export function apply(ctx: GwbContext) {
+  ctx.gwbCommands.register(
+    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }' },
+    (args, { via }) => ({ got: args, via }),
+  )
+}
+```
+
+`description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。
+
+## 依赖
+
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 内核带的 cordis：`Service`、`effect`、`inject`、`logger`（peer，`^4.0.0-rc.10`） | 提供服务、把注销登记在登记方的 `effect` 上、局部注入说明书插件、写日志 | 由内核提供，不会缺；构建产物按值 import 了 `cordis`，必须和内核用同一份，所以写 peer |
+| loader 放在调用方 fiber 上的条目 `entry.options.name`（[8 条目身份](/docs/seams/entry-identity)） | 取登记方的包名，记成命令的 `plugin` | 不是经 `cordis.yml` 加载的插件登记命令时，`register` 抛错 |
+| 说明书插件服务 `gwbSkills` 的 `register(dir)`（局部注入，[gwb-skills](/docs/skills)） | 登记自带的说明书 | 不登记说明书，命令总线照常加载 |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbResult` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核，代码里不用它 | — |
 
 {/* ref file="../plugins/commands/package.json" lines="52-56" */}
 
+说明书插件不写进服务类的 `static inject`，局部注入：写进 `static inject` 的话，没装说明书插件的 home 里命令总线会一直等待。命令插件也不 import 说明书插件的类型，只按形状声明用到的 `register`：说明书插件反过来依赖命令总线，这样包之间的依赖是单向的，pnpm 12 的 `pnpm -r` 遇到工作区里的依赖环会直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）：
+
+{/* ref file="../plugins/commands/src/index.ts" lines="22-25" */}
+
 `GwbResult` 出现在本包导出的类型里，而发布出去的包不带词汇表包：用命令总线类型的插件要自己在 dev 里列词汇表包，原因见[遇到过的问题](/docs/pitfalls)。
 
-## 怎么单独测
+## 不做的事
 
-三个测试文件，都在 `plugins/commands/tests/`，不启动工作台：
-
-**`registry.test.ts` 测表本身**：直接调 `checkedCommandDef` 与 `createRegistry`，日志传一个什么都不做的对象，要看告警的用例传 `vi.fn()`。证明的是：缺字段与 `plugin` 不符时的报错文本、来源原样转交、回执的两种形状、抛错收成失败回执、同名后登记的生效并告警、注销只删自己那条。
-
-{/* ref file="../plugins/commands/tests/registry.test.ts" lines="4-11" */}
-
-**`service.test.ts` 测服务这一层**：真 cordis 加真 loader，loader 的模块加载换成按包名查表，插件按包名建成条目加载，fiber 上就有 loader 放的 `entry`：
-
-{/* ref file="../plugins/commands/tests/service.test.ts" lines="22-50" */}
-
-证明的是：`plugin` 取自调用方条目，在 `ctx.inject` 回调里、`ctx.plugin` 装的子插件里、`Service.init` 里登记都取得到；不经 loader 加载的插件登记时抛错；调用方卸载后命令自动注销，调用方自己包了 `ctx.effect` 也只注销一次；同名命令被接手后，先登记的插件卸载不删接手的那条。
-
-**`artifact.test.ts` 查构建产物**：相对 import 带 `.js`，包名 import 只有 node 内置模块与 `cordis`。没构建时整组跳过，改了代码先 `pnpm build` 再 `pnpm check`。
-
-页面经内核调到命令、MCP 入口带 `{ via: 'mcp' }` 调到命令，这两段不在本包的测试里：前者只能在隔离 home 里验证，后者由 [gwb-mcp](/docs/mcp) 的 `apply.test.ts` 测。
-
-## 代码地图
-
-**在哪**：`plugins/commands/`。
-
-{/* tree dir="../plugins/commands/src" depth="1" */}
-
-{/* tree dir="../plugins/commands/tests" depth="1" */}
-
-**先读** `src/registry.ts`：类型与命令表都在里面，读完就知道登记、执行的全部规则。
-
-**读序**：`registry.ts` → `index.ts`。`index.ts` 依赖 `registry.ts`，只多了取包名、登记在 `effect` 上、局部注入说明书三件事；反过来 `registry.ts` 不认识 cordis。
-
-**可跳过**：`dist/`（构建产物）；`skills/gwb-commands/SKILL.md` 是给 agent 读的操作说明，不是代码。
+- **不登记任何命令**：表里每一条都是别的插件登记的，命令做什么由登记它的插件决定
+- **不校验参数、不给命令分权限**：参数由处理函数自己校验；登记时只检查命令的定义
+- **不按来源限制调用、不核实来源**：页面、agent、插件调的是同一个 `run`、同一张表；`via` 是内核与 MCP 入口自己写的，由处理函数决定用不用它
+- **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；命令不能登记成单独的 MCP 工具
+- **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)
+- **不给命令设时限**：`run` 一直等到处理函数返回
+- **不保存命令表**：表只在内存里，登记命令的插件卸载时它登记的命令自动注销
+- **不接收页面的 IPC 消息**：页面发来的命令由内核收下、带上 `{ via: 'ui' }` 交给 `run`；内核不认识任何命令名

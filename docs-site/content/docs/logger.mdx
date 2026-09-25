@@ -1,117 +1,68 @@
 ---
 title: gwb-logger · 日志
-description: 日志插件在 cordis 的日志流上注册第二个 exporter，把插件、内核、页面三个来源的日志收到一处，保留最近两千条、逐条经内核事件推给页面，并提供 logger.backlog、logger.where 两条命令和一个没有方法的服务 gwbLogger；日志窗格在界面插件仓。本页是它的模块页：七段固定块
+description: gwb-logger 收集插件、内核、页面三个来源的日志，保留最近两千条，实时推给页面，并提供 logger.backlog 与 logger.where 两条命令；日志窗格在界面插件仓。本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
-**本页回答**：日志插件 `@godcreator/gwb-logger` 管什么、刻意不知道什么；一条日志是什么形状；它提供哪些接口、依赖哪些接口；不启动工作台怎么测它；代码从哪读起。日志窗格怎么拿历史与实时日志、来源名单靠什么约定，写在接缝页[日志](/docs/seams/log)。
+**本页回答**：日志插件有哪些功能；页面、agent 和日志窗格经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归内核或界面插件。包名 `@godcreator/gwb-logger`，源码目录 `plugins/logger/src`，入口文件 `index.ts`。
 
-## 管什么
+日志插件没有界面。人在界面上看日志用的日志窗格在界面插件仓 gwb-ui-plugins 里，它从这个插件取数据。
 
-**三个来源的日志本来就汇在一条流上。** 插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志）都经 cordis 的 `ctx.logger`；内核在这条流上注册了第一个 exporter，写 stderr 与 `<home>/gwb.log`。日志插件注册第二个，级别设为 3（`debug` 也收），每收到一条就编号、分来源、存进缓冲、经 `gwbKernel.emit` 推给页面：
+<Diagram name="log-flow" title="日志从三个来源到日志插件、页面与日志窗格（分步）">
+- 插件（`ctx.logger('<名字>')`）、内核（`kernel`、`loader`）、页面 console（内核转成 `renderer`）的日志都经 cordis 的 `ctx.logger` 汇成一条流
+- 流上有三个接收方：内核的 exporter 写 stderr 与 `<home>/gwb.log`；cordis 自带的缓冲 `ctx.logger.buffer` 留 info 及以上；日志插件的 exporter 收全部（debug 也收）
+- 日志插件加载时先从 `ctx.logger.buffer` 补历史，再注册自己的 exporter
+- 每条新日志编 `seq`、分来源，存进 2000 条的缓冲，经 `gwbKernel.emit` 推 `{ t: 'gwb-logger', line }` 给页面
+- 界面插件仓的日志窗格先用 `window.gwb.on` 订阅，再调 `logger.backlog` 取历史，两段按 `seq` 合并
+</Diagram>
+
+## 功能
+
+- **把三个来源的日志收到一处**：插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志），都经 cordis 的日志流来，插件注册一个 exporter（级别设为 3，`debug` 也收）就全部收到
+- **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader` 的算内核，其余算插件；cordis 的 `success` 等级别算 `info`
+- **保留最近两千条**：足够查看启动以来的日志，又不至于占太多内存；插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来，先补再注册 exporter，两段不重叠；每条带从 1 起递增的序号 `seq`
+- **实时推给页面**：每收到一条，经内核的事件通道推给页面
+- **不打断别人写日志**：格式化失败时退回把参数逐个转成文本——exporter 抛错会打断写这条日志的那次调用
+- **两条命令**：`logger.backlog` 取最近两千条，`logger.where` 报 home 目录与日志文件的路径；插件卸载时注销
+- **提供一个没有方法的服务 `gwbLogger`**：日志窗格按服务名等它出现，服务上刻意不放任何方法；`apply` 里先提供这个服务再做别的
+- **就绪时写一行 info**：写明补进了多少条历史；装了日志窗格的话，这一行会出现在窗格里，可以用来确认整条链路是通的
 
 {/* ref file="../plugins/logger/src/index.ts" lines="100-125" */}
 
-**插件加载之前的日志从 cordis 自带的缓冲补进来。** `ctx.logger.buffer` 是 cordis 注册的第一个 exporter，留 info 及以上；先补这一段再注册自己的 exporter，两段不重叠。
+{/* ref file="../plugins/logger/src/index.ts" lines="49-55" */}
 
-**分来源、定级别。** logger 名是 `renderer` 的算页面，是 `kernel`、`loader` 的算内核，其余算插件；cordis 的 `success` 等级别一律算 `info`：
+## 接口
 
-{/* ref file="../plugins/logger/src/index.ts" lines="49-60" */}
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列日志插件提供了哪些接口。
 
-**保留最近两千条**，超出时从最早的开始丢；每条带从 1 起递增的 `seq`，窗格按它合并历史与实时日志、去重。
-
-**exporter 不抛错。** 格式化失败时退回把参数逐个转成文本——exporter 抛错会打断别人写日志的那次调用：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="74-81" */}
-
-**两条命令**：`logger.backlog` 回缓冲里最近两千条的副本，`logger.where` 回 home 目录与内核写的日志文件路径；登记包在 `ctx.effect` 里，插件卸载时注销：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="127-137" */}
-
-**一个没有方法的服务 `gwbLogger`。** 日志窗格写 `inject: ['gwbLogger']` 只为等日志插件加载；`apply` 里先提供这个服务再做别的，就绪时以 `gwb-logger` 的名字写一行 info，装了日志窗格的话这一行出现在窗格里，可以用来确认整条链路是通的：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="139-153" */}
-
-## 不知道什么
-
-**不写日志文件、不写 stderr。** `<home>/gwb.log` 与 stderr 由内核的 exporter 写，日志插件不在时人照样看得到日志；更早的日志去 `gwb.log` 找。
-
-**不画窗格。** 日志窗格在界面插件仓 gwb-ui-plugins，筛选、搜索、清屏都是窗格的事；日志插件的 `package.json` 里没有任何界面包。
-
-**不过滤、不改级别。** `debug` 也进缓冲；日志插件只收，不管别的插件怎么写日志。
-
-**来源名单是抄来的。** `kernel`、`renderer` 两个名字由内核定，`loader` 是 cordis loader 自己的 logger 名，日志插件在 `KERNEL_LOGGER_NAMES` 里另写一份。内核改名或新增名字，这边会把它算成插件，不报错（见[日志](/docs/seams/log)的「靠约定」）。
-
-**服务上不放方法。** 取数据走命令、推送走内核事件；出现第二个绕不开服务的使用方之前不加：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="20-27" */}
-
-## 数据结构
-
-一条日志：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="29-39" */}
-
-- `seq`：日志插件从 1 开始编的号，唯一、单调递增
-- `ts`：毫秒时间戳，cordis 没给就用收到的时刻
-- `msg`：用 cordis 自己的 `Logger.format` 格式化后的正文
-
-推给页面的事件是 `{ t: 'gwb-logger', line: LogEntry }`，页面靠 `t` 认出它：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="12-18" */}
-
-缓冲是一个数组，只在内存里，重启就清空。
-
-## 提供的接口
-
-| 接口 | 做什么 | 契约在 |
+| 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 命令 `logger.backlog` | 无参数，返回最近两千条日志的数组 | [10 日志](/docs/seams/log) |
+| 命令 `logger.backlog` | 无参数，返回最近两千条日志的数组（副本） | [10 日志](/docs/seams/log) |
 | 命令 `logger.where` | 无参数，返回 `{ home, logFile }`，`logFile` 是内核写的 `<home>/gwb.log` | [10 日志](/docs/seams/log) |
-| 页面事件 `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收 | [10 日志](/docs/seams/log) |
-| 服务 `ctx.gwbLogger` | 没有方法；出现就说明日志插件已加载、`logger.backlog` 可以调了 | [10 日志](/docs/seams/log) |
-| 导出的类型 `LogEntry`、`LogSource`、`LogLevel`，常量 `EVENT`、`BACKLOG_COMMAND`、`WHERE_COMMAND`，函数 `sourceOf` | 给同在 node 侧的使用方与测试用；日志窗格在浏览器里，不 import 它们 | [10 日志](/docs/seams/log) |
+| 页面事件 `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出 | [10 日志](/docs/seams/log) |
+| 一条日志 `LogEntry` | `seq`、`ts`、`source`（`plugin` / `kernel` / `renderer`）、`level`（`error` / `warn` / `info` / `debug`）、`name`、`msg`；类型由本包导出 | [10 日志](/docs/seams/log) |
+| 服务 `ctx.gwbLogger` | 没有方法；日志窗格写 `inject: ['gwbLogger']` 只为等日志插件加载 | [10 日志](/docs/seams/log) |
 
-## 依赖的接口
+{/* ref file="../plugins/logger/src/index.ts" lines="12-39" */}
 
-| 接口 | 用来做什么 | 生产实现 | 测试实现 |
-| --- | --- | --- | --- |
-| 命令总线服务 `gwbCommands` 的 `register`（写在 `export const inject` 里） | 登记两条命令；缺了插件一直等待、不加载 | [gwb-commands](/docs/commands) | 只记登记与注销的替身 |
-| 内核服务 `gwbKernel` 的 `emit`、`dataDir`（经 `src/vocab.ts` 的 `requireKernel` 取，不写进 `inject`） | 推事件给页面；算 `logger.where` 的路径；缺了加载时抛错 | 内核应用 | 把 `emit` 的载荷收进数组的替身 |
-| cordis 日志流：`ctx.logger.exporter`、`ctx.logger.buffer`、`Logger.format` | 收全部日志；补加载之前的历史；格式化正文 | 内核带的 cordis | 真 cordis 根上下文的日志流 |
-| cordis 的 `Service` | 提供没有方法的服务 `gwbLogger` | 内核带的 cordis（peer `^4.0.0-rc.10`） | dev 里的 `cordis` 4.0.0-rc.10 |
-| 词汇表包的 `GwbContext`、`GwbKernelApi` | 类型 | `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | 同一份 |
-| 内核包 `@godcreator/gwb-kernel-desktop` | peer 范围 `^0.4.1` 声明兼容哪些内核 | home 根上装的内核包 | 不装 |
+**日志窗格怎么取**：先用 `window.gwb.on` 订阅实时事件，再调 `logger.backlog` 取历史，两段按 `seq` 拼接、去重。反过来先取历史再订阅，中间那一刻产生的日志会漏掉；按 `ts`、`name`、`msg` 拼字符串去重会把同一毫秒里两条一样的日志丢掉一条，所以用 `seq`。
 
-{/* ref file="../plugins/logger/package.json" lines="37-48" */}
+## 依赖
 
-`@godcreator/gwb-commands` 写在 dev 里（`workspace:*`），代码只 `import type` 它。
+| 依赖 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- |
+| 命令插件服务 `gwbCommands`（写在 `export const inject` 里，[gwb-commands](/docs/commands)） | 登记两条命令 | 插件一直等待、不加载 |
+| 内核服务 `gwbKernel` 的 `emit`、`dataDir`（内核仓 gwb-kernel；不写进 `inject`，经 `src/vocab.ts` 里的 `requireKernel` 取） | 推事件给页面；算 `logger.where` 返回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
+| cordis 的日志流：`ctx.logger.exporter`、`ctx.logger.buffer`、`Logger.format` | 收全部日志；补插件加载之前的历史；格式化正文 | 由内核提供，不会缺；`buffer` 不在时不补历史 |
+| cordis 的 `Service`（peer，`^4.0.0-rc.10`） | 提供没有方法的服务 `gwbLogger` | 无法加载；必须和内核用同一份 cordis |
+| 词汇表包 `@godcreator/gwb-plugin-api`（dev，`^0.4.1`） | `GwbContext`、`GwbKernelApi` 的类型 | 只在编译时用 |
+| 内核包 `@godcreator/gwb-kernel-desktop`（peer，`^0.4.1`） | 声明兼容哪些内核 | — |
 
-## 怎么单独测
+`@godcreator/gwb-commands` 写在 dev 里（`workspace:*`）：代码只 `import type` 它，为的是让 `ctx.gwbCommands` 有类型，构建产物里没有它。来源名单里的 `kernel`、`renderer` 由内核定，`loader` 是 cordis loader 自己的 logger 名，日志插件另写一份，靠约定对齐（见[日志](/docs/seams/log)）。
 
-三个测试文件，都在 `plugins/logger/tests/`：
+## 不做的事
 
-**`source.test.ts`** 测 `sourceOf`：`renderer` 是页面，`kernel`、`loader` 是内核，其余都算插件。
-
-**`apply.test.ts` 装上整个插件测**：真 cordis 根上下文，内核与命令总线用替身，内核替身把 `emit` 的载荷收进数组：
-
-{/* ref file="../plugins/logger/tests/apply.test.ts" lines="28-40" */}
-
-证明的是：提供服务 `gwbLogger`；两条命令登记在本包包名下、卸载时注销；每条新日志推一次 `{ t: 'gwb-logger', line }` 并进 backlog；来源与级别的分类；装上之前的日志从 cordis 缓冲补进来，`seq` 从 1 起连续；就绪时写一条 info；backlog 最多两千条、返回副本。
-
-**`artifact.test.ts`** 查构建产物：相对 import 带 `.js`，包名 import 只有 node 内置模块与 `cordis`。
-
-窗格按 `seq` 拼接历史与实时日志，只能在隔离 home 里验证：日志插件加载后自己写的那条 info 出现在窗格里，来源是插件、名字是 `gwb-logger`。
-
-## 代码地图
-
-**在哪**：`plugins/logger/`，源码只有一个 `src/index.ts`（外加取内核服务的 `src/vocab.ts`）。
-
-{/* tree dir="../plugins/logger/src" depth="1" */}
-
-{/* tree dir="../plugins/logger/tests" depth="1" */}
-
-**先读** `src/index.ts` 末尾的 `apply`：先提供服务、再开始收日志、再登记命令、最后写就绪日志。
-
-**读序**：`index.ts` 从上往下——常量与类型 → `sourceOf`、`levelOf` → 格式化与缓冲 → `startCollectingLogs` → `registerLogCommands` → `apply`。
-
-**可跳过**：`dist/`（构建产物）。
+- **不写日志文件**：`<home>/gwb.log` 与 stderr 由内核写，日志插件不在时人照样看得到日志
+- **不画窗格**：日志窗格在界面插件仓 gwb-ui-plugins，筛选、搜索、清屏都是窗格的事
+- **不保存缓冲**：两千条只在内存里，重启就清空；更早的日志去 `gwb.log` 找
+- **不改日志级别、不过滤**：`debug` 也进缓冲；日志插件只收，不管别的插件怎么写日志
+- **服务 `gwbLogger` 上不放方法**：取数据走命令，推送走内核事件
