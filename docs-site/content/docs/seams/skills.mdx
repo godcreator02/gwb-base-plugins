@@ -1,14 +1,14 @@
 ---
 title: 4 说明书 gwbSkills
-description: 连接说明书插件与带说明书的插件；接口是服务 ctx.gwbSkills 的 register(dir) / list() / read()，目录下每个子目录一份 SKILL.md，以及命令 skill.list / skill.read；说明书插件保证名字全局唯一、先登记的占住名字、只读登记过的文件，带说明书的插件保证把 skills/ 列进包的 files、frontmatter 每项写成单行
+description: 连接说明书插件与带说明书的插件；交换的是服务 ctx.gwbSkills 的 register(dir) / list() / read()、目录下每个子目录一份 SKILL.md 的目录形状，以及命令 skill.list / skill.read。说明书插件保证名字全局唯一、先登记的保留、只读登记过的文件；带说明书的插件保证把 skills/ 列进包的 files、frontmatter 每项写成单行
 ---
 
-**本页回答**：插件怎么把随包发布的说明书交给说明书插件；目录与 SKILL.md 要满足什么；agent 怎么读到正文；说明书插件和带说明书的插件各保证什么。
+**本页回答**：插件怎么把随包发布的说明书交给说明书插件；目录与 SKILL.md 要满足什么；agent 怎么读到正文；说明书插件和带说明书的插件各保证什么。说明书插件的功能见 [gwb-skills](/docs/skills)。
 
 ## 连接的模块
 
-- [说明书插件](/docs/skills) `@godcreator/gwb-skills`：提供服务 `ctx.gwbSkills`，登记命令 `skill.list`、`skill.read`；`inject` 里有 `gwbCommands`
-- 带说明书的插件：本仓的 commands、settings、mcp、node-cli、py-cli，以及别的仓里的插件。各自用 `ctx.inject(['gwbSkills'], …)` 局部注入，没装说明书插件时照常加载
+- [说明书插件](/docs/skills) `@godcreator/gwb-skills`：提供服务 `ctx.gwbSkills`，登记命令 `skill.list`、`skill.read`
+- 带说明书的插件：本仓的命令总线、设置、MCP 入口、两个命令行运行插件，以及别的仓里的插件。各自局部注入 `gwbSkills`，没装说明书插件时照常加载
 - 读说明书的一方：agent 经 MCP 入口 `run` 调 `skill.read`；MCP 插件用 `list()` 拼 `index` 里的说明书清单（见[命令表开给 agent](/docs/seams/agent-surface)）
 
 ## 接口
@@ -25,21 +25,23 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 {/* ref file="../plugins/skills/src/index.ts" lines="19-30" */}
 
-带说明书的插件在包根放一个 `skills/` 目录，从构建产物所在的 `dist/` 往上一级找到它：
+**登记的写法**：带说明书的插件在包根放 `skills/`，从构建产物所在的 `dist/` 往上一级找到它，局部注入说明书服务后登记，注销放在局部上下文的 `effect` 里：
 
-{/* has file="../plugins/commands/src/index.ts" text="const OWN_SKILLS_DIR = new URL('../skills/', import.meta.url)" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="29-30" */}
 
-这个目录要列进包的 `files`，否则发布出去的包里没有它：
+{/* ref file="../plugins/settings/src/index.ts" lines="137-141" */}
+
+这个目录要列进包的 `files`，否则发布出去的包里没有它——包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」：
 
 {/* ref file="../plugins/commands/package.json" lines="18-22" */}
 
-**目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份说明书，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`：说明书的 frontmatter 按惯例只有 `name`、`description` 两个单行值，用不着 YAML 库。`name` 缺了用目录名；`description` 缺了照收并写 warn，没有描述的说明书只是没人主动去读，比整份不收好查；折叠块（`>-`、`|`）取不到值，同样写 warn，不悄悄当成空的，否则作者要等到 agent 一直不读这份说明书才发现描述丢了。每份说明书收下的文件有上限：
+**目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`：`name` 缺了用目录名；`description` 缺了照收并写 warn；折叠块（`>-`、`|`）取不到值，同样写 warn。每份收下的文件有上限：
 
 {/* ref file="../plugins/skills/src/collect.ts" lines="6-13" */}
 
-只收文本，因为 agent 读二进制文件只会得到乱码；单个文件 512KB，再大的一份 agent 读一遍就占满上下文；往下三层、最多 64 个文件，防止误把一整棵目录树交进来。超限、读不出、缺 SKILL.md 的都写 warn 写明是哪一份，不静默丢掉。
+只收文本，agent 读二进制文件只会得到乱码；单个文件 512KB，再大的一份 agent 读一遍就占满上下文；往下三层、最多 64 个文件，防止误把一整棵目录树交进来。超限、读不出、缺 SKILL.md 的都写 warn，写明是哪一份。
 
-**登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删表里仍是自己那条记录的说明书，并登记到调用方的 effect 里。插件先注销、同名说明书随后被别的插件登记，前一个插件卸载时再调用一次注销函数，删不到后来那份：
+**登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删表里仍是自己那条记录的说明书，并登记到调用方的 `effect` 上：
 
 {/* ref file="../plugins/skills/src/index.ts" lines="94-132" */}
 
@@ -47,21 +49,23 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 {/* ref file="../plugins/skills/src/index.ts" lines="138-149" */}
 
-**两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」，分开报等于告诉外面哪些名字存在：
+**两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省或空串都读 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」：
 
 {/* ref file="../plugins/skills/src/index.ts" lines="56-82" */}
 
 ## 约定
 
-说明书插件保证：
-- 说明书的名字全局唯一：同名时先登记的保留，后来的不登记并写 warn（和命令总线的「后登记的生效」相反）。静默覆盖的话 agent 会读到另一个插件的说明书，症状只是照着做却做错了
+**说明书插件**保证：
+
+- 说明书的名字全局唯一：同名时先登记的保留，后来的不登记并写 warn（和命令总线的「后登记的生效」相反）。静默换掉的话 agent 会照着另一个插件的说明书做，症状只是做错了
 - 每份说明书的 `plugin` 是登记方条目的包名，登记方报不出别人的名字
 - `files` 里 `SKILL.md` 总在第一位，路径是相对路径、用 `/` 分隔；交出去的 `GwbSkill` 里不带本机路径
 - 正文每次都从磁盘读：改了 SKILL.md 正文立刻生效；增删文件、改 frontmatter 要重新加载那个插件
 - 只读登记过的文件，参数里带 `../` 也读不到目录外的东西
 - 插件卸载时它登记的说明书自动注销；注销只删表里仍是自己那条记录的，不删别的插件后来登记的同名说明书
 
-带说明书的插件保证：
+**带说明书的插件**保证：
+
 - 把 `skills/` 目录列进 `package.json` 的 `files`
 - 每个子目录一份说明书，主文件叫 `SKILL.md`；frontmatter 的 `name`、`description` 写成单行，`description` 写成触发条件（agent 靠它决定要不要读正文）
 - 附件只用 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个不超过 512KB，并在 SKILL.md 正文里提到它们的路径（MCP 入口不列出附件）
@@ -77,18 +81,8 @@ description: 连接说明书插件与带说明书的插件；接口是服务 ctx
 
 ## 测试
 
-扫描与 frontmatter 解析由 `plugins/skills/tests/collect.test.ts` 用真实的临时目录保护，其中这三条检查目录形状的约定：
-
-{/* has file="../plugins/skills/tests/collect.test.ts" text="装 skill 的目录只看一层——再深的 SKILL.md 不算一个 skill" */}
-
-{/* has file="../plugins/skills/tests/collect.test.ts" text="折叠块取不到值——留空让调用方报,不静默当成有" */}
-
-{/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}
-
-服务这一层（身份取自调用方条目、同名时先登记的保留、注销与调用方卸载时自动注销、注销不删别人后来登记的同名说明书、两条命令的回执）由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
+`plugins/skills/tests/collect.test.ts` 在临时目录里测扫描与 frontmatter，`service.test.ts` 在真 cordis 上下文里测身份、同名先登记的保留、注销、只读清单里的文件与两条命令；loader 真的把调用方的包名放在 fiber 上，只能在隔离 home 里验证。
 
 {/* has file="../plugins/skills/tests/service.test.ts" text="同名说明书先到先得：后来的那份不收并写 warn" */}
 
-{/* has file="../plugins/skills/tests/service.test.ts" text="注销函数不删别人后来登记的同名说明书" */}
-
-loader 真的把调用方的包名放在 fiber 上，只能在隔离 home 里实际运行验证。
+{/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}

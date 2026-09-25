@@ -1,6 +1,6 @@
 ---
 title: 8 条目身份 entry id
-description: 连接数据、设置、说明书、命令、node-cli、py-cli 六个插件与 cordis 的 loader；接口是 loader 放在调用方上下文上的 ctx.fiber.entry——id 取 entry.id（形如 home:<id> 的两段），包名取 entry.options.name；条目 id 转成目录名与分区名的算法在数据插件与设置插件各写一份，靠约定保持一致；loader 保证 entryId 两段且 id 稳定要靠 cordis.yml 手写，六个插件保证身份取不到就抛错
+description: 连接数据、设置、说明书、命令、node 命令行、python 命令行六个插件与 cordis 的 loader；交换的是 loader 放在调用方 fiber 上的 entry——条目 id 取 entry.id（形如 home:<id> 的两段），包名取 entry.options.name。条目 id 转成目录名与分区名的算法在数据插件与设置插件各写一份，靠约定保持一致；六个插件保证身份取不到就抛错
 ---
 
 **本页回答**：提供服务的插件怎么知道是哪个插件在调用它；条目 id 怎么变成数据目录名与设置分区名；哪些插件依赖这一点、各取哪一样；两份相同的算法怎么保持一致。
@@ -10,7 +10,7 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 - 用调用方身份的六个插件：
   - [数据插件](/docs/data)与[设置插件](/docs/settings)：取条目 id 定目录与分区，取包名记归属
   - [说明书插件](/docs/skills)、[命令插件](/docs/commands)、[gwb-node-cli](/docs/node-cli)、[gwb-py-cli](/docs/py-cli)：只取包名，写进说明书与命令的 `plugin`
-- cordis 的 loader（`@cordisjs/plugin-loader`，版本由内核定）：加载 `cordis.yml` 里的条目时，在每个插件的 fiber 上放一个 `entry`；内核把承载 `cordis.yml` 的 include 条目（id 是 `home`）作为 loader 根层唯一的条目（内核那边见内核仓文档站的「插件加载」与「home 布局与条目树」）
+- cordis 的 loader（版本由内核定）：加载 `cordis.yml` 里的条目时，在每个插件的 fiber 上放一个 `entry`；内核把承载 `cordis.yml` 的那条 include 条目（id 是 `home`）放在 loader 根层
 
 ## 接口
 
@@ -21,7 +21,7 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 - 身份一律从调用方的 fiber 上取，取不到就抛错
 </Diagram>
 
-**身份从哪取**：这六个插件都是 cordis 的 `Service`。`Service` 的方法里 `this.ctx` 是调用方的上下文，`this.ctx.fiber.entry` 就是调用方在 `cordis.yml` 里的那条条目。调用方在 `ctx.inject`、`ctx.plugin` 里建的子上下文也带着同一个条目：loader 给每个新 fiber 挂条目时，从父上下文顺着原型链读条目记号，读到的就是外层插件那条。`entry` 是 loader 放上去的，不在 cordis 的类型里，所以按运行时的形状取：
+**身份从哪取**：这六个插件都继承 cordis 的 `Service`，方法里 `this.ctx` 是调用方的上下文，`this.ctx.fiber.entry` 就是调用方在 `cordis.yml` 里的那条条目。调用方在 `ctx.inject`、`ctx.plugin` 里建的子上下文也带着同一个条目：loader 给每个新 fiber 放条目时，从父上下文顺着原型链读条目记号，读到的就是外层插件那条，所以不用沿 `fiber.parent` 往上找。`entry` 是 loader 放上去的，不在 cordis 的类型里，按运行时的形状取：
 
 {/* ref file="../plugins/data/src/index.ts" lines="46-56" */}
 
@@ -33,7 +33,7 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 
 {/* ref file="../plugins/skills/src/index.ts" lines="84-92" */}
 
-{/* ref file="../plugins/commands/src/index.ts" lines="45-56" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="54-65" */}
 
 {/* has file="../plugins/node-cli/src/index.ts" text="ctx.gwbNodeCli 只能在经 cordis.yml 加载的插件里用" */}
 
@@ -44,9 +44,9 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 | `entry.id` | `home:logger` | 数据插件、设置插件 |
 | `entry.options.name` | `@godcreator/gwb-logger` | 六个插件都用 |
 
-**entryId 是两段**：`entry.id` 由 loader 用 `:` 把父条目的 id 和自己的 id 拼起来。条目都在内核那条 id 为 `home` 的 include 下面，所以是 `home:<cordis.yml 里写的 id>`。
+**条目 id 是两段**：`entry.id` 由 loader 用 `:` 把父条目的 id 和自己的 id 拼起来。条目都在 id 为 `home` 的那条 include 下面，所以是 `home:<cordis.yml 里写的 id>`。
 
-**条目 id → 目录名 / 分区名**：只取末段；超过两段抛错（出现嵌套分组时不同分组下的同名末段会算成同一个名字）；每一段都要 kebab-case。数据插件的版本：
+**条目 id → 目录名 / 分区名**：只取末段；超过两段抛错（嵌套分组之后不同分组下的同名末段会算成同一个名字）；每一段都要 kebab-case，字符集里没有点号，`.` 与 `..` 进不来。冒号不进名字——它在 Windows 上是保留字符，`home` 那段又是内核的常量。数据插件的版本：
 
 {/* ref file="../plugins/data/src/paths.ts" lines="26-50" */}
 
@@ -54,9 +54,9 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="42-66" */}
 
-这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则都相同，两处注释互相指着对方。改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，插件管理按 id 查两边归属时也会对不上（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
+这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则相同，两处注释互相指着对方。十几行纯逻辑不值得为它开一个共享包；代价是改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，插件管理按 id 查两边归属时也对不上（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
 
-**随机 id**：条目没在 `cordis.yml` 里写 `id` 时，loader 给一个 8 位十六进制的随机 id，每次启动都变。两个插件各有一份相同的 `looksRandom`，认出来只写 warn：
+**随机 id**：条目没在 `cordis.yml` 里写 `id` 时，loader 给一个 8 位十六进制的随机 id，每次启动都变。两个插件各有一份相同的 `looksRandom`，认出来只写 warn——条目本来能正常运行，不抛错；手写一个正好 8 位十六进制的 id 会多一条 warn：
 
 {/* has file="../plugins/data/src/paths.ts" text="const RANDOM_ID = /^[0-9a-f]{8}$/" */}
 
@@ -64,16 +64,19 @@ description: 连接数据、设置、说明书、命令、node-cli、py-cli 六�
 
 ## 约定
 
-loader 与内核保证（内核仓的约定）：
+**loader 与内核**保证（内核仓的约定）：
+
 - 经 `cordis.yml` 加载的插件，fiber 上都有 `entry`，`entry.id` 是 `home:<id>` 两段，`entry.options.name` 是条目里写的包名
-- loader 与 include 的版本由内核定；它们改了 `entry` 的形状，就是内核改了对外承诺
+- loader 的版本由内核定；它改了 `entry` 的形状，就是内核改了对外承诺
 
-六个插件保证：
-- 身份一律从调用方的 fiber 上取，不接受调用方传进来的名字：插件报不出别人的身份（命令插件收登记方写的 `plugin`，但只用来核对，与取到的包名不同就抛错）
+**六个插件**保证：
+
+- 身份一律从调用方的 fiber 上取，不接受调用方传进来的名字（命令插件与 node 命令行运行插件收登记方写的 `plugin`，只用来核对，与取到的包名不同就被命令总线拒收）
 - 取不到身份（不是经 `cordis.yml` 加载的插件在调用）就抛错，写明服务只能在经 `cordis.yml` 加载的插件里用
-- 数据插件与设置插件对同一个 entryId 算出同一个名字：只取末段，超过两段、段不是 kebab-case 就抛错
+- 数据插件与设置插件对同一个条目 id 算出同一个名字
 
-在 `cordis.yml` 里加条目的一方（人或插件管理）保证：
+**在 `cordis.yml` 里加条目的人或插件管理**保证：
+
 - 每条条目手写 `id`，用 kebab-case
 - 不嵌套分组：条目都在 `home` 这一层下面
 - 不给条目起名叫 `*`（那是设置插件的公共区）
@@ -86,16 +89,8 @@ loader 与内核保证（内核仓的约定）：
 
 ## 测试
 
-两份算法各由自己插件的 `paths.test.ts` 保护，用例对着同一套规则写：
-
-{/* has file="../plugins/data/tests/paths.test.ts" text="只取末段——前缀 home: 是 loader 拼的，冒号不进目录名" */}
-
-{/* has file="../plugins/settings/tests/paths.test.ts" text="每一段都要 kebab-case,前缀那段也算——跟 gwb-data 的目录名一套字符集" */}
-
-{/* has file="../plugins/settings/tests/paths.test.ts" text="超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区" */}
-
-命令插件的测试用真 cordis 加真 loader 检查：插件按包名建成条目加载，在 `ctx.inject` 回调里、`ctx.plugin` 装的子插件里登记的命令，`plugin` 都是外层条目的包名：
+两份算法各由 `plugins/data/tests/paths.test.ts`、`plugins/settings/tests/paths.test.ts` 按同一套规则测，没有测试把两份放在一起比；命令插件的 `service.test.ts` 用真 loader 证明嵌套上下文里取到的是外层条目的包名，其余插件的测试由调用方自己往 fiber 上放 `entry`。
 
 {/* has file="../plugins/commands/tests/service.test.ts" text="在 ctx.plugin 装的子插件里登记也取得到调用方的包名，再套一层 inject 也一样" */}
 
-数据目录与设置分区取到的确实是调用方自己那条条目，只能在隔离 home 里实际运行验证（探针插件调用服务，看写出来的目录与分区是不是探针那条条目的）。
+{/* has file="../plugins/settings/tests/paths.test.ts" text="超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区" */}

@@ -1,15 +1,15 @@
 ---
 title: 5 设置 gwbSettings
-description: 连接设置插件与声明设置项的插件、以及读写设置的界面和 agent；接口是服务 ctx.gwbSettings 的 define / get / set / delete（身份自动绑定到调用方条目）、公共区 *，和四条按位置读写的命令 settings.all / get / set / delete，值都存在 <home>/settings.json；设置插件保证 settings.all 不回 secret 的明文、写盘是原子的，插件保证先 define 再读写
+description: 连接设置插件与声明设置项的插件、以及按位置读写设置的界面、agent 与别的插件；交换的是服务 ctx.gwbSettings 的 define / get / set / delete（分区由调用方条目定）、公共区 *，和四条按位置读写的命令 settings.all / get / set / delete，值都存在 <home>/settings.json。设置插件保证 settings.all 不回 secret 项的值、写文件是原子的；声明方保证先 define 再读写
 ---
 
-**本页回答**：插件怎么声明、读写自己的设置；插件之间怎么共享凭据；界面和 agent 怎么看到、改到全部设置；值存在哪；设置插件和各方各保证什么。
+**本页回答**：插件怎么声明、读写自己的设置；插件之间怎么共享凭据；界面和 agent 怎么看到、改到全部设置；值存在哪；设置插件、声明设置的插件、按位置读写的界面与插件各保证什么。设置插件的功能见 [gwb-settings](/docs/settings)，分区归属见[数据归属](/docs/seams/owners)。
 
 ## 连接的模块
 
 - [设置插件](/docs/settings) `@godcreator/gwb-settings`：提供服务 `ctx.gwbSettings`；有命令总线时登记四条 `settings.*` 命令（局部注入，没有命令总线时服务照样完整）
-- 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件（如 gitea 插件仓的 gitea 插件）用它存地址与凭据
-- 按位置读写的一方：界面插件仓里插件管理窗格的设置部分、经 MCP 入口的 agent、要读别的插件设置的插件（插件管理配包源时经 `settings.get` 读 `gitea` 分区的 `base-url` 与 `token`）
+- 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件用它存地址、凭据等配置
+- 按位置读写的一方：编辑设置的界面、经 MCP 入口的 agent、要读另一个插件分区里凭据的插件
 - 插件管理（devkit 仓）：用 `owners()` / `transferOwner()`，见[数据归属](/docs/seams/owners)
 
 ## 接口
@@ -29,86 +29,78 @@ description: 连接设置插件与声明设置项的插件、以及读写设置�
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
 
-**身份自动绑定**：`define` / `get` / `set` / `delete` 都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
+**分区由调用方条目定**：四个方法都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
 
 {/* ref file="../plugins/settings/src/index.ts" lines="143-153" */}
 
-**公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找本插件声明过的项，没有就读公共区，别的插件不用 `define` 也读得到：
+**公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找调用方声明过的项，没有就读公共区，别的插件不用 `define` 也读得到；都没有回 `undefined` 并写 warn：
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="5-6" */}
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
 
-**四条命令**按 `{ section, key }` 定位，不经身份：
+**四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="101-135" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="57-70" */}
 
 | 命令 | 参数 | 回执 |
 | --- | --- | --- |
-| `settings.all` | 无 | 全部设置项，每行带位置、`title`、`type`、`value`、`live`（此刻有没有插件声明它）；`live` 的项再带声明时给的 `default` |
-| `settings.get` | `{ section, key }` | 那一项的值，**secret 项也回明文**；没设过回 `undefined`，不回落到 `default` |
+| `settings.all` | 无 | 全部设置项，每行带位置、`title`、`type`、`description`、`value`、`live`（此刻有没有插件声明它）；`live` 且声明了默认值的行再带 `default` |
+| `settings.get` | `{ section, key }` | 那一项存下的值，**secret 项也回明文**；没设过回 `undefined`，不回落到 `default` |
 | `settings.set` | `{ section, key, value }` | `{ ok: true }` |
-| `settings.delete` | `{ section, key }` | `{ ok: true }`；只抹值，定义还在 |
+| `settings.delete` | `{ section, key }` | `{ ok: true }`；只抹值，声明还在 |
 
-删值和写值一样按位置：删条目的界面要能顺手把那个插件的设置值删干净，不然文件里留下一堆没有归属的值。
+删值和写值一样按位置：删条目的界面要能顺手把那个插件的设置值删干净。
 
-**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`），照真实长度打码等于把长度也交出去：
+**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）——照真实长度打码等于把长度也交出去：
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="115-121" */}
 
-**存储**：`<home>/settings.json`，和 `cordis.yml` 并排，一个 home 一份。顶层是 `$owners`（分区归属，见[数据归属](/docs/seams/owners)）和各分区；分区下是设置名到 `{ title, type, description, value }` 的表。整份替换，先写同目录的临时文件再改名，临时文件名带随机后缀；同一个文件的写入按发起顺序排队，一次一个，后发起的那次最后写进文件。写入内容在发起时就序列化好，排队期间表再变也不影响这一次：
+**存储**：`<home>/settings.json`，和 `cordis.yml` 在同一个目录，一个 home 一份。顶层是 `$owners` 和各分区；分区下是设置名到 `{ title, type, description, value }` 的表。整份替换，先写同目录的临时文件再改名；同一个文件的写入按发起顺序排队，写入内容在发起时就序列化好：
 
 {/* ref file="../plugins/settings/src/store.ts" lines="38-78" */}
 
 ## 约定
 
-设置插件保证：
-- 服务的每个方法都绑定到调用方的条目：插件报不出别人的名字，读写不到别人分区里的项（公共区除外）
+**设置插件**保证：
+
+- 服务的每个方法都绑定到调用方的条目：插件报不出别人的身份，读写不到别人分区里的项（公共区除外）
 - `get` 是同步的：构造时同步读完 `settings.json`，插件一拿到服务就能读
 - 声明过的项没设过值时 `get` 回声明里的 `default`；没声明过的 key 读公共区，公共区也没有就回 `undefined` 并写 warn
-- 插件加载期间，代码里声明的 `title`、`type`、`description` 覆盖磁盘上那份，值不动；插件停了磁盘上的项还在，`settings.all` 里 `live` 为 `false`
+- 插件加载着时，代码里声明的 `title`、`type`、`description` 覆盖文件里那份，值不动；插件停了文件里的项还在，`settings.all` 里 `live` 为 `false`
 - `settings.all` 不交出 secret 项的明文和默认值；`settings.get` 与服务的 `get` 照旧回明文
 - 日志里永远不写设置的值
-- 写盘是原子的；同一个文件的多次写入按发起顺序写进文件，后发起的那次留在文件里；写失败写一条 warn 并把异常抛给调用方
-- 同一条目重复声明同一项，后声明的生效并写 warn；注销只删自己那份，注销函数登记到调用方的 effect 里
+- 写文件是原子的；同一个文件的多次写入按发起顺序写进文件；写失败写一条 warn 并把异常抛给调用方
+- 同一条目重复声明同一项，后声明的生效并写 warn；注销只删自己那份，注销函数登记到调用方的 `effect` 上
 
-声明设置的插件保证：
+**声明设置的插件**保证：
+
 - 先 `define` 再 `set` / `delete`：没声明过就调 `set` / `delete` 会抛错
-- 设置名用 kebab-case（小写字母、数字、单连字符），`title` 不为空
-- 条目在 `cordis.yml` 里手写 `id`：随机 id 每次启动都变，设置会对不上（设置插件认出随机 id 时写 warn）
+- 设置名用 kebab-case，`title` 不为空
+- 条目在 `cordis.yml` 里手写 `id`：随机 id 每次启动都变，设置会对不上
 - 插件的配置一律经 `define` 声明，不用 `cordis.yml` 条目里的 `config`
 - 读到的值自己校验类型：`type` 只用来给界面挑控件，设置插件不做运行时校验
 - 要给别的插件共享的凭据才写 `shared: true`
 
-按位置读写的一方保证：
+**按位置读写的界面、插件与经 MCP 入口的 agent**保证：
+
 - 知道自己要的 `section` 与 `key`：`section` 是声明方条目 id 的末段，或者公共区 `*`
-- 用 `settings.all` 判断 secret 项有没有设过值时看 `isSet`，不看 `value`
+- 判断 secret 项有没有设过值时看 `isSet`，不看 `value`；只要判断配没配就不调 `settings.get`，它回的明文会进调用方的记录
+- 写的值照那一行的 `type` 给
 
 ## 不负责的事
 
 - 设置插件不校验值的类型，也不检查 `settings.set` 写的位置有没有插件声明过
 - 设置插件不加密：`settings.json` 里 secret 项也是明文
-- 设置插件不是安全边界：名字校验只防误写（名字里带斜杠、条目占用公共区），插件本来就能直接改这个文件
-- 设置插件不提供机器级设置：每个 home 一份，要跨 home 共享就复制文件
-- 设置插件不画界面：编辑设置的界面在界面插件仓的插件管理窗格里，经 `settings.*` 命令读写
+- 设置插件不是安全边界：名字校验只防误写，插件本来就能直接改这个文件
+- 设置插件不提供跨 home 的设置：要共享就复制文件
+- 设置插件不画界面
 - 声明方不负责别的插件读不读它公共区里的项
 
 ## 测试
 
-解析顺序、公共区、secret 掩码由 `plugins/settings/tests/registry.test.ts` 保护，其中这三条检查跨插件共享与两种读法的区别：
-
-{/* has file="../plugins/settings/tests/registry.test.ts" text="件 B 不用 define 也读得到件 A 声明进公共区的——凭据就靠这条" */}
+`plugins/settings/tests/registry.test.ts` 测读的顺序、公共区、secret 掩码与归属，`store.test.ts` 测同一个文件的写入排队，`service.test.ts` 在真 cordis 上下文里测服务这一层与四条命令；loader 真的把调用方的条目放在 fiber 上，只能在隔离 home 里验证。
 
 {/* has file="../plugins/settings/tests/registry.test.ts" text="all：不出现明文，回「是 secret ＋ 设没设过 ＋ 定长掩码」三格" */}
 
-{/* has file="../plugins/settings/tests/registry.test.ts" text="按位取用照旧拿得到真值：服务面 get 与 read（settings.get 那条路）" */}
-
-同时写同一个文件由 `store.test.ts` 测：
-
-{/* has file="../plugins/settings/tests/store.test.ts" text="都写成功，最后发起的那次留在文件里，不留临时文件" */}
-
-服务这一层（构造时同步读文件、分区按调用方条目算、`define` 之后马上 `set` 写盘不报错、写删没声明过的项抛错、调用方卸载后不再 `live`、写失败先 warn 再抛）与四条命令，由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
-
-{/* has file="../plugins/settings/tests/service.test.ts" text="构造时同步读完 settings.json：调用方 apply 里第一次 get 就读得到盘上的值" */}
-
-loader 真的把调用方自己那条条目放在 fiber 上，只能在隔离 home 里实际运行验证。
+{/* has file="../plugins/settings/tests/service.test.ts" text="按位置读写删：settings.get 对 secret 项也回明文，settings.all 不回" */}

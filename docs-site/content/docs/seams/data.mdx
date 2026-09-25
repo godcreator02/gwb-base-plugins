@@ -1,14 +1,14 @@
 ---
 title: 6 数据 gwbData
-description: 连接数据插件与要把状态写进磁盘的插件（包括界面插件仓的外壳、devkit 仓的插件管理）；接口是服务 ctx.gwbData 的 dir、readDoc、writeDoc，目录是 <home>/data/<条目 id 末段>/，身份自动绑定到调用方条目；数据插件保证 readDoc 没有或坏了都回 undefined、writeDoc 整份原子替换，插件保证文档名用 kebab-case、自己处理读不到的情况
+description: 连接数据插件与要把状态写进磁盘的插件；交换的是服务 ctx.gwbData 的 dir、readDoc、writeDoc，目录是 <home>/data/<条目 id 末段>/，由调用方条目定。数据插件保证 readDoc 没有或坏了都回 undefined、writeDoc 整份原子替换；用它的插件保证文档名用 kebab-case、自己处理读不到的情况
 ---
 
-**本页回答**：插件把自己的状态存到哪、怎么读写；数据插件对读写各保证什么；用它的插件要遵守什么。目录归属怎么记、怎么转移见[数据归属](/docs/seams/owners)，目录名怎么从条目 id 算出来见[条目身份](/docs/seams/entry-identity)。
+**本页回答**：插件把自己的状态存到哪、怎么读写；数据插件对读写各保证什么；用它的插件要遵守什么。目录归属怎么记、怎么转移见[数据归属](/docs/seams/owners)，目录名怎么从条目 id 算出来见[条目身份](/docs/seams/entry-identity)，数据插件的功能见 [gwb-data](/docs/data)。
 
 ## 连接的模块
 
 - [数据插件](/docs/data) `@godcreator/gwb-data`：提供服务 `ctx.gwbData`，没有命令
-- 用它的插件：写 `inject: ['gwbData']`，或用 `ctx.inject(['gwbData'], …)` 局部注入。界面插件仓的外壳用它存窗格布局，devkit 仓的插件管理用它存条目的显示名
+- 用它的插件：写 `inject: ['gwbData']`，或局部注入；本仓的插件都不用它，用它的在别的仓（外壳存窗格布局、插件管理存条目的显示名等）
 
 ## 接口
 
@@ -22,13 +22,13 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 {/* ref file="../plugins/data/src/index.ts" lines="16-28" */}
 
-`owners()` 与 `transferOwner()` 只给插件管理用，见[数据归属](/docs/seams/owners)。
+`owners()` 与 `transferOwner()` 给插件管理用，见[数据归属](/docs/seams/owners)。
 
 **目录**：`<home>/data/<条目 id 的末段>/`。同一个包加了两条条目，就是两个目录：
 
 {/* ref file="../plugins/data/src/paths.ts" lines="52-59" */}
 
-`dir`、`readDoc`、`writeDoc` 每次都先按调用方条目算出目录并核对归属；读 `dir` 时目录不在就建出来：
+`dir`、`readDoc`、`writeDoc` 每次都先按调用方条目算出目录并核对归属；目录第一次被用到时，不在就建出来：
 
 {/* ref file="../plugins/data/src/index.ts" lines="58-76" */}
 
@@ -46,16 +46,18 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 ## 约定
 
-数据插件保证：
+**数据插件**保证：
+
 - 目录绑定到调用方的条目：插件报不出别人的条目 id，读写不到别人的目录
 - 按条目 id 分目录、不按包名：同一个包的两条条目各用各的目录
 - `readDoc` 从不因为文件不在或内容坏了而抛错：一律回 `undefined`，坏了多写一条 warn
 - `writeDoc` 整份替换，写到一半崩溃也不会留下半个文件、不会毁掉原来那份；写失败先写一条 error，再把异常抛给调用方
-- 序列化失败（比如循环引用）在建目录之前抛出
+- 序列化失败（比如循环引用）在建目录之前抛出，排队期间调用方再改那个对象，这次写的仍是发起时的内容
 - 同一份文档同时写好几次，都按发起顺序写完，后发起的那次留在文件里
-- 条目没手写 id（8 位十六进制的随机 id）时写一条 warn，每条条目只说一次
+- 条目没手写 id（8 位十六进制的随机 id）时写一条 warn，每条条目只写一次
 
-用它的插件保证：
+**用数据插件的插件**保证：
+
 - 文档名用 kebab-case（小写字母、数字、单连字符），不带扩展名、不带路径
 - 自己处理 `readDoc` 回 `undefined`：第一次运行、文件坏了都是这个结果，用默认值继续
 - 存 JSON 以外的东西（图片、日志）时放在 `dir` 下，不自己拼 `<home>/data/…` 路径
@@ -64,27 +66,17 @@ description: 连接数据插件与要把状态写进磁盘的插件（包括界�
 
 ## 不负责的事
 
-- 数据插件不合并写入：`writeDoc` 是整份替换，要改一个字段由调用方读出、改好、整份写回
+- 数据插件不合并写入：要改一个字段由调用方读出、改好、整份写回
 - 数据插件不做读改写的并发控制：两方各自读出、改好、写回，后发起写入的一方覆盖前一方的改动
 - 数据插件不校验文档内容，不做版本迁移
-- 数据插件不是安全边界：kebab-case 校验只防误写出意外的嵌套目录，插件本来就能直接写任何文件
+- 数据插件不是安全边界：kebab-case 校验只防误写出意外的嵌套目录
 - 数据插件不删数据：条目删了，目录留在磁盘上
-- 数据插件不管 `settings.json`：设置由设置插件存在 home 根下（见[设置](/docs/seams/settings)）
+- 数据插件不管 `settings.json`（见[设置](/docs/seams/settings)）
 
 ## 测试
 
-读写语义由 `plugins/data/tests/store.test.ts` 用真实临时目录保护，目录规则由 `paths.test.ts` 保护：
-
-{/* has file="../plugins/data/tests/store.test.ts" text="覆盖失败不会毁掉原来那份——原子落盘的意义就在这" */}
-
-{/* has file="../plugins/data/tests/store.test.ts" text="坏了:回 undefined 但**要 warn**" */}
+`plugins/data/tests/store.test.ts`、`paths.test.ts` 在临时目录里测读写语义与目录规则，`service.test.ts` 在真 cordis 上下文里测按调用方条目给目录、归属不符时三个方法都抛错、写失败先写 error；loader 真的把调用方的条目放在 fiber 上，只能在隔离 home 里验证。
 
 {/* has file="../plugins/data/tests/store.test.ts" text="同一份文档同时写好几次:都写成功,最后发起的那次留在文件里,不留临时文件" */}
 
-{/* has file="../plugins/data/tests/paths.test.ts" text="同一个包的两条条目各是各的目录——按包名切的话它们会互相覆盖" */}
-
-服务这一层（目录按调用方条目算、归属不符时三个方法都抛错、写失败先写 error、随机 id 只告警一次）由 `service.test.ts` 在真实的 cordis 上下文里测，调用方 fiber 上的 `entry` 由测试放上：
-
 {/* has file="../plugins/data/tests/service.test.ts" text="目录归别的包时 dir、readDoc、writeDoc 都抛错，报错指向 plugin-manager.transfer-owner" */}
-
-loader 真的把调用方自己那条条目放在 fiber 上，只能在隔离 home 里实际运行验证。

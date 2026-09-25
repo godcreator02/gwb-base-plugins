@@ -1,17 +1,17 @@
 ---
-title: 9 命令行工具 gwbNodeCli
-description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件、以及被启动的子进程；接口是服务 ctx.gwbNodeCli / ctx.gwbPyCli 的 register(spec) / list() / run()（py-cli 另有 ensureReady），登记的命令同时成为总线命令，回执带退出码、输出与超时；运行插件保证 argv 不经 shell、输出超过 64,000 字节写进临时文件、超时杀掉整棵进程树，两份 run.ts / invoke.ts 靠约定保持相同
+title: 9 命令行工具 gwbNodeCli / gwbPyCli
+description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件、以及被启动的子进程；交换的是服务 ctx.gwbNodeCli / ctx.gwbPyCli 的 register(spec) / list() / run()（python 那边另有 ensureReady），登记的工具同时成为总线命令，回执带退出码、输出与超时。运行插件保证 argv 不经 shell、输出超过 64,000 字节写进临时文件、超时结束整个进程树；两份 run.ts / invoke.ts 靠约定保持相同
 ---
 
-**本页回答**：插件怎么把自己带的 node 或 python 命令行工具交给运行插件；运行插件怎么启动子进程、回执长什么样；子进程能拿到什么；python 的 venv 由谁建、建在哪；各方各保证什么。
+**本页回答**：插件怎么把自己带的 node 或 python 命令行工具交给运行插件；运行插件怎么启动子进程、回执长什么样；子进程拿到什么；python 的 venv 由谁建、建在哪；运行插件、登记工具的插件、子进程各保证什么。两个运行插件的功能见 [gwb-node-cli](/docs/node-cli)、[gwb-py-cli](/docs/py-cli)。
 
 ## 连接的模块
 
 - [gwb-node-cli](/docs/node-cli) `@godcreator/gwb-node-cli`：服务 `ctx.gwbNodeCli`，运行 node 写的命令行工具
-- [gwb-py-cli](/docs/py-cli) `@godcreator/gwb-py-cli`：服务 `ctx.gwbPyCli`，运行 python 写的命令行工具，在调用方包根下用 uv 建 venv
-- 登记命令行工具的插件：本仓的 MCP 插件把 `bin/client.mjs` 登记成 `mcp.client`，别的仓里的插件登记自己编译出来的命令行工具
-- 被启动的子进程：登记方插件包里的 js 文件，或 venv 里的 python 可执行文件
-- 命令插件：两个运行插件都 `inject` 了 `gwbCommands`，登记的每条命令同时登记成总线命令（见[命令总线](/docs/seams/bus)）
+- [gwb-py-cli](/docs/py-cli) `@godcreator/gwb-py-cli`：服务 `ctx.gwbPyCli`，运行 python 写的命令行工具，在登记方包根下用 uv 建 venv
+- 登记命令行工具的插件：本仓的 MCP 插件把 `bin/client.mjs` 登记成 `mcp.client`；别的仓里的插件登记自己编译出来的工具
+- 被启动的子进程：登记方包里的 js 文件，或 venv 里的程序
+- 命令插件：两个运行插件都 `inject` 了 `gwbCommands`，登记的每个工具同时登记成总线命令（见[命令总线](/docs/seams/bus)）
 
 ## 接口
 
@@ -30,47 +30,53 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 - 就绪后运行 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，加 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`，回执形状和 node 命令行工具一样
 </Diagram>
 
-**gwb-node-cli 的服务与登记参数**：
+**node 那边的服务与登记参数**：
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="42-53" */}
 
 {/* ref file="../plugins/node-cli/src/registry.ts" lines="9-35" */}
 
-**gwb-py-cli 的服务与登记参数**：`command`（`[project.scripts]` 里的入口点名）与 `module`（`python -m` 的模块名）二选一；多一个 `ensureReady`：
+**python 那边的服务与登记参数**：`command`（`[project.scripts]` 里的入口点名）与 `module`（`python -m` 的模块名）二选一；多一个 `ensureReady`：
 
 {/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" */}
 
 {/* ref file="../plugins/py-cli/src/registry.ts" lines="9-36" */}
 
-**总线参数**：登记的命令经总线调用时，参数给一个字符串数组就是追加参数，给 `{ args?, cwd? }` 也认，别的当成没有参数：
+**总线参数**：登记的命令经总线调用时，参数给一个数组就是追加参数（逐项转成字符串），给 `{ args?, cwd? }` 也认，别的当成没有参数；`cwd` 原样带出、交给后面的校验：
 
 {/* ref file="../plugins/node-cli/src/invoke.ts" lines="12-24" */}
 
-按次给的 `cwd` 必须是存在的目录的绝对路径，不合规时不启动子进程，回 `{ ok: false, error }`。
+按次给的 `cwd` 必须是存在的目录的绝对路径，不合规时不启动子进程，回 `{ ok: false, error }`：
 
-**怎么启动 node 子进程**：可执行文件一律是 `process.execPath`，也就是 Electron 本身，所以加上环境变量 `ELECTRON_RUN_AS_NODE=1` 让它以 node 模式运行；argv 是 `[entry, ...spec.args, ...追加参数]`，工作目录依次取按次给的、登记时给的、`entry` 所在目录：
+{/* ref file="../plugins/node-cli/src/invoke.ts" lines="28-41" */}
+
+**总线命令经调用方的上下文登记**：运行插件用 `this.ctx.get('gwbCommands')` 取总线。命令总线从取它的那个上下文认登记方；经运行插件自己的上下文（`inject` 过 `gwbCommands` 的那份）取的话，总线认出的是运行插件，与写进去的调用方包名对不上，登记被拒；调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛错，而 `get` 不查 `inject`：
+
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
+
+**怎么启动 node 子进程**：可执行文件一律是 `process.execPath`，也就是工作台进程的 electron.exe，所以加上 `ELECTRON_RUN_AS_NODE=1` 让它以 node 模式运行；工作目录依次取按次给的、登记时给的、`entry` 所在目录：
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="25-26" */}
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" */}
 
-**怎么启动 python 子进程**：每次运行前先检查 venv，venv 在 `<packageRoot>/py/.venv`；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
+**怎么启动 python 子进程**：每次运行前先检查 venv（`<packageRoot>/py/.venv`）；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
 
 {/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="23-33" */}
 
-venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `uv sync`。uv 从 PATH 找，找不到就回 `{ ready: false, reason }`：
+venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `uv sync`；uv 从 PATH 找，找不到回 `{ ready: false, reason }`：
 
 {/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="107-125" */}
 
-**回执**：退出码 0 且没超时才算 `ok`；输出只在内存里留最后 64,000 字节，超过时全量写进系统临时目录的文件，路径放在 `spillPath`；全量留着是因为出错原因常常在被截掉的那头：
+**回执**：退出码 0 且没超时才算 `ok`；输出只在内存里留最后 64,000 字节，超过时全量写进系统临时目录的文件，路径放在 `spillPath`——出错原因常常在被截掉的那头：
 
 {/* ref file="../plugins/node-cli/src/run.ts" lines="9-30" */}
 
-**超时**：缺省 60 秒，上限是 Node 定时器能表示的最大值。超时后在 Windows 上用 `taskkill /T /F` 杀掉整棵进程树，别的平台只杀直接子进程。Windows 上 `proc.kill()` 只结束直接子进程，孙进程会留下来，不占 CPU 却占住目录，父进程结束后再用 taskkill 也找不到它们，所以不先发 SIGTERM，直接整棵树强制结束：
+**超时**：缺省 60 秒，上限是 Node 定时器能表示的最大值。超时后在 Windows 上用 `taskkill /T /F` 结束整个进程树，别的平台只结束直接子进程。Windows 上 `proc.kill()` 只结束直接子进程，孙进程会留下来、占住目录，父进程结束后再用 taskkill 也找不到它们，所以不先发 SIGTERM，直接整个进程树强制结束：
 
 {/* ref file="../plugins/node-cli/src/run.ts" lines="107-130" */}
 
-**两份相同的执行代码**：`run.ts`（启动、收输出、超时）与 `invoke.ts`（总线参数、`cwd` 校验）在 node-cli 与 py-cli 各有一份，除开头那一行注释外逐字相同。插件之间要共享运行时代码只能做成一个包（构建用 tsc、不打包，跨包的相对 import 发布之后就断了），两个使用方还不值得单开一个包，出现第三个要启动子进程的插件时再抽出来。这两份**靠约定**保持一致：约定写在两份文件开头的注释里，node-cli 那份是正本；没有测试比较两份。MCP 插件还按 `CliRunResult` 的键名认这种回执（见[命令表开给 agent](/docs/seams/agent-surface)）。
+**两份相同的执行代码**：`run.ts`（启动、收输出、超时）与 `invoke.ts`（总线参数、`cwd` 校验）在两个运行插件里各有一份，除开头那一行注释外逐字相同。插件之间要共享运行时代码只能做成一个包（构建用 tsc、不打包，跨包的相对 import 发布之后就断了），两个使用方不值得单开一个包。这两份**靠约定**保持一致：约定写在两份文件开头的注释里，node 那份是正本；没有测试比较两份。MCP 插件还按 `CliRunResult` 的键名认这种回执（见[命令表开给 agent](/docs/seams/agent-surface)）。
 
 {/* has file="../plugins/node-cli/src/run.ts" text="是这份的副本，一字不差" */}
 
@@ -78,60 +84,49 @@ venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `u
 
 ## 约定
 
-两个运行插件保证：
+**两个运行插件**保证：
+
 - 身份取自调用方条目的包名，登记方不用报名字（见[条目身份](/docs/seams/entry-identity)）
-- 登记时就校验：名字为空或带空白、node 的 `entry` 不是绝对路径、py 的 `packageRoot` 不是绝对路径或缺 `distName` / `version`、`command` 与 `module` 都给或都不给、超时不在范围内，当场抛错：拖到运行时才发现的话，报错的地方已经离登记的地方很远
-- 同名后登记的生效并写 warn；注销只删自己那条；注销函数登记到调用方的 effect 里，插件卸载时命令从运行插件的表上和总线上一起注销
-- 总线上那条命令的 `usage` 缺省是运行插件写的参数说明
-- 总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉运行插件表里那条，把错抛给调用方
+- 登记时就校验：名字为空或带空白、node 的 `entry` 不是绝对路径、python 的 `packageRoot` 不是绝对路径或缺 `distName` / `version`、`command` 与 `module` 都给或都不给、时限不在范围内，当场抛错
+- 同名后登记的生效并写 warn；注销只删自己那条；注销函数登记到调用方的 `effect` 上，调用方卸载时工具从运行插件的表上和总线上一起注销
+- 总线上那条命令的 `usage` 缺省是运行插件写的参数说明；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉运行插件表里那条，把错抛给调用方
 - argv 全程是数组，不经过 shell：引号、空格、中文参数原样到达子进程
-- 不继承内核进程的工作目录
-- 子进程的 stdin 是空的；环境变量是内核进程的环境加上运行插件与 spec 给的几条
-- 启动失败（可执行文件不在）收成 `exitCode: null` 的回执、原因写进 `stderr`，不抛错；按次给的 `cwd` 不合规回 `{ ok: false, error }`
+- 不继承内核进程的工作目录；子进程的 stdin 是空的；环境变量是内核进程的环境加上运行插件与登记时给的几条
+- 启动失败（可执行文件不在）收成 `exitCode: null` 的回执、原因写进 `stderr`，不抛错；按次给的 `cwd` 不合规回 `{ ok: false, error }`；运行一个不存在的工具抛错
 - 每次运行的开始与结束都写日志
 
-gwb-py-cli 另外保证：
+**gwb-py-cli** 另外保证：
+
 - 登记时发起一次 venv 检查、不等它完成；每次运行前再检查一次，venv 被删了当场重建
-- 同一个包根同时只运行一次 `uv sync`（`uv sync --frozen --no-dev --inexact`）
-- venv 检查只读 `dist-info` 目录名，不启动 python
+- 同一个包根同时只运行一次 `uv sync`
+- venv 检查只读目录名，不启动 python
 - venv 没就绪时运行抛错，经总线调用时变成 `{ ok: false, error }`
 
-登记命令行工具的插件保证：
+**登记命令行工具的插件**保证：
+
 - node：`entry` 是自己包里编译好的 js 的绝对路径，从 `import.meta.url` 算出来
-- python：包根下有 `py/` 目录，里面是带 `pyproject.toml` 与 `uv.lock` 的 python 项目；`distName`、`version` 与 `pyproject.toml` 一致
+- python：包根下有 `py/` 目录，里面是带 `pyproject.toml` 与 `uv.lock` 的 python 项目（重建用 `--frozen`，没有锁文件当场失败）；`distName`、`version` 与 `pyproject.toml` 一致；用 `command` 时 `[project.scripts]` 里有这个入口点；包的 `files` 带上 `py`
+- 写 `description`：命令总线要求非空，不写登记会被拒
 - 命令名不和别的命令重名；需要的环境变量写在 `env` 里
 
-子进程保证：
+**子进程**保证：
+
 - 成功时退出码 0，失败时非 0，原因写 stderr
-- 在超时之前结束；要更长时间就在登记时给 `timeoutMs`
+- 在时限之前结束；要更长时间就在登记时给 `timeoutMs`
 - 输出用 UTF-8
 
 ## 不负责的事
 
 - 运行插件不查 PATH 找可执行文件（uv 除外）、不读包的 `bin` 字段、不认 `.bin` 里的包装脚本
 - 运行插件不解释子进程的输出：`stdout` 原样放进回执，结构化内容由调用方自己解析
-- 运行插件不做交互：没有 stdin，不支持需要输入的命令行工具
+- 运行插件不做交互：没有 stdin，不支持需要输入的工具
 - gwb-py-cli 自己不带 python 项目，也不装 uv 与 python 解释器
 - 子进程不知道自己是被总线、MCP 入口还是别的插件调用的
 
 ## 测试
 
-参数解析与登记校验由两个插件各自的 `invoke.test.ts`、`registry.test.ts` 保护，venv 检查的判断由 py-cli 的 `bootstrap.test.ts` 保护：
-
-{/* has file="../plugins/node-cli/tests/invoke.test.ts" text="cwd 原样带出不收窄——给错了要让调用方看见拒绝,不是静默当没给" */}
-
-{/* has file="../plugins/node-cli/tests/registry.test.ts" text="注销只收自己那份——HMR 时新的先注册覆盖、旧的后 dispose" */}
-
-{/* has file="../plugins/py-cli/tests/bootstrap.test.ts" text="没有出身记号——多半是连着包目录从别处拷来的" */}
-
-启动子进程、长输出写临时文件、超时结束进程由 node-cli 的 `run.test.ts` 用真进程测；服务这一层（登记成总线命令、参数拼接、`cwd` 的优先级与校验、注销）由 `service.test.ts` 在真实的 cordis 上下文里测：
+两个运行插件各自的 `registry.test.ts`、`invoke.test.ts`、`run.test.ts`（真进程）、`service.test.ts`（真 cordis 上下文）测登记校验、参数、启动与超时、经调用方上下文登记，python 那边的 `bootstrap.test.ts` 测 venv 检查的判断；electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv，只能在隔离 home 里验证。
 
 {/* has file="../plugins/node-cli/tests/run.test.ts" text="输出超过上限只留尾部，全量写进临时文件并给出路径" */}
 
-{/* has file="../plugins/node-cli/tests/service.test.ts" text="cwd 优先级：按次给的 > 登记时给的 > entry 所在目录" */}
-
-py-cli 的副本由它自己的 `run.test.ts` 测；py-cli 的服务这一层由它的 `service.test.ts` 测，venv 按已就绪的样子摆好，入口程序是当前 node 的一份拷贝：
-
 {/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 没就绪、也建不起来时 run 抛错，并写 warn" */}
-
-`uv sync` 真的建出 venv 只能在隔离 home 里实际运行验证。

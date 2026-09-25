@@ -1,16 +1,16 @@
 ---
 title: 3 命令表开给 agent
-description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbCommands 的 list() / run() 和 gwbSkills 的 list()，MCP 插件每次调用都重新读取，拼成 index / search 的返回、把 run 的回执翻译成 MCP 工具结果；回执有标准回执、处理函数原样返回的对象、命令行工具回执三种形状，靠键名区分，这一点靠约定
+description: 连接 MCP 插件与命令插件、说明书插件；交换的是 gwbCommands 的 list() / run() 与 gwbSkills 的 list()，MCP 插件每次调用都重新读取，拼成 index / search 的返回，把 run 的回执翻译成 MCP 工具结果。回执有标准回执、处理函数原样返回的对象、命令行工具回执三种形状，靠键名区分；instructions 与提示里按名字提到的别的插件的命令，都只靠约定
 ---
 
-**本页回答**：`index`、`search`、`run` 三个工具的内容从哪来；命令回执怎么变成 MCP 工具结果；MCP 插件对命令插件、说明书插件依赖了哪几样，哪些地方只靠约定。HTTP 与鉴权见 [MCP 协议](/docs/seams/mcp-protocol)。
+**本页回答**：`index`、`search`、`run` 三个工具的内容从哪来；命令回执怎么变成 MCP 工具结果；MCP 插件对命令插件、说明书插件依赖了哪几样；哪些地方只靠约定、写在哪两处。HTTP 与鉴权见 [MCP 协议](/docs/seams/mcp-protocol)。
 
 ## 连接的模块
 
-- [MCP 插件](/docs/mcp) `@godcreator/gwb-mcp`：`index` / `search` 由 `inventory.ts` 生成，`run` 的结果由 `tools.ts` 翻译
+- [MCP 插件](/docs/mcp) `@godcreator/gwb-mcp`：`index` / `search` 的返回由 `src/inventory.ts` 生成，`run` 的结果由 `src/tools.ts` 翻译
 - [命令插件](/docs/commands)：`gwbCommands.list()` 提供命令清单，`gwbCommands.run()` 执行命令；写在 MCP 插件的 `export const inject` 里，缺了 MCP 插件不加载
-- [说明书插件](/docs/skills)：`gwbSkills.list()` 提供说明书清单；MCP 插件用 `ctx.inject(['gwbSkills'], …)` 局部注入，缺了照常工作、说明书清单是空表
-- 命令行运行插件（[gwb-node-cli](/docs/node-cli)、[gwb-py-cli](/docs/py-cli)）：它们的回执形状由 MCP 插件单独识别
+- [说明书插件](/docs/skills)：`gwbSkills.list()` 提供说明书清单；MCP 插件局部注入，缺了照常工作、说明书清单是空表
+- 命令行运行插件（[gwb-node-cli](/docs/node-cli)、[gwb-py-cli](/docs/py-cli)）：它们的回执形状由 MCP 插件单独认出
 
 ## 接口
 
@@ -29,25 +29,27 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="181-190" */}
 
-**`index` 与 `search` 每次调用都重新读取**命令表和说明书清单，运行中新登记的命令下一次调用就在：
+**`index` 与 `search` 每次调用都重新读取**命令表与说明书清单，运行中新登记的命令下一次调用就在：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="205-221" */}
 
-- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截断）、命令按包名分组只列名字、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；写成一句话是登记方的责任，截断只防写得过长的描述把清单撑大
-- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，这时说明书只回名字与包名；`q` 在名字、description、usage 里找子串；命中的命令行总带 `usage`；不带参数返回全部
+- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述把清单撑大
+- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，只给它时说明书只回名字与包名；`q` 在命令的名字、description、usage 里找子串，在说明书的名字、description 里找；多个条件同时满足；命中的命令总带 `usage`；不带参数返回全部，带了条件时返回里多一个 `filter` 写明这次按什么筛的
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
-**`run`**：先把参数处理一次（有的客户端把对象参数序列化成字符串发来，能解析成 JSON 就用解析结果），再交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`（处理函数据此知道是 agent 调的），每次调用都写一条日志，最后按回执的形状翻译：
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="135-155" */}
+
+**`run`**：先把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），再交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
+
+{/* ref file="../plugins/mcp/src/tools.ts" lines="16-24" */}
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="222-226" */}
-
-{/* ref file="../plugins/mcp/src/index.ts" lines="192-203" */}
 
 **回执的三种形状**靠键名区分：
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="26-36" */}
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="38-65" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="50-65" */}
 
 | 形状 | 怎么认出来 | 翻译成 |
 | --- | --- | --- |
@@ -57,9 +59,9 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 这张表**靠约定**：命令行工具回执的形状定义在 node-cli、py-cli 两份相同的 `run.ts` 里（`CliRunResult`），MCP 插件在 `tools.ts` 里另写一份只含用得到字段的 `CliRunResultView`，不依赖这两个包；命令插件「带 `ok` 就原样返回」的规则（见[命令总线](/docs/seams/bus)）决定了这两种对象会绕过标准回执到达这里。`run.ts` 改了键名，MCP 插件的类型检查发现不了。
 
-**命令表和说明书表靠 `plugin` 对上**：命令的 `plugin` 是登记方自己写的包名，说明书的 `plugin` 是说明书插件从调用方条目上取的包名（见[说明书](/docs/seams/skills)）；`search {plugin}` 同时筛两张表，要求两边写的是同一个包名。
+**命令表和说明书表靠 `plugin` 对上**：两边的 `plugin` 都是服务从登记方条目取的包名（见[条目身份](/docs/seams/entry-identity)）；`search {plugin}` 同时筛两张表。
 
-**instructions 里按名字提到的命令**：`instructions.md` 在 `initialize` 时发给客户端，`index` 的返回再带一份：有的客户端（zcode）不把 `initialize` 里的 instructions 交给模型，`index` 里这一份是它们唯一拿到的地方。它和 `index` 末尾的提示按名字提到别的插件的命令：
+**按名字提到的别的插件的命令**：`instructions.md` 在 initialize 时发给客户端，`index` 的返回再带一份——有的客户端不把 initialize 里的 instructions 交给模型，`index` 里这一份是它们唯一拿到的地方。它、`index` 末尾的提示、`index` 工具的描述、`mcp.client` 的用法与 `bin/client.mjs` 的帮助按名字提到别的插件的命令：
 
 {/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
 
@@ -69,45 +71,46 @@ description: 连接 MCP 插件与命令插件、说明书插件；接口是 gwbC
 
 {/* has file="../plugins/mcp/instructions.md" text="调 unit-folder.list 查" */}
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="15-16" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="14-16" */}
 
-这几个名字**靠约定**：`skill.read` 由说明书插件登记，`plugin-manager.list`、`plugin-manager.update` 由 devkit 仓的插件管理登记，`shell.reload` 由 UI 平台仓（gwb-ui-plugins）的外壳登记，`unit-folder.list` 由单元目录插件仓（gwb-unit-folder）的插件登记，名字写在登记处与 `instructions.md`、`inventory.ts` 两处。改了命令名，这里不会报错，agent 照着调会收到「没有这条命令」。
+{/* has file="../plugins/mcp/src/index.ts" text="隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段" */}
+
+这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由 devkit 仓的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`unit-folder.list` 由单元目录插件仓（gwb-unit-folder）的插件登记；`devkit.home.list` 由 devkit 登记。名字写在登记处与本插件两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
 
 ## 约定
 
-MCP 插件保证：
-- `index`、`search` 每次调用都重新读取命令表与说明书清单，不缓存
+**MCP 插件**保证：
+
+- `index`、`search` 每次调用都重新读取命令表与说明书清单，不缓存；同样的输入生成的 `index` 逐字节一致
 - 说明书插件不在时照常工作，说明书清单是空表；说明书插件卸载时清单跟着清空
 - 命令执行失败翻译成带 `isError` 的文本结果，不抛成 JSON-RPC 错误
 - 命令行工具回执与处理函数原样返回的对象不按标准回执拆，字段一个不丢
 - agent 每次调 `run` 都写一条日志：成功写 info，失败写 warn 并带原因
 
-命令插件保证：
+**命令插件**保证：
+
 - `list()` 的每条都带 `name`、`plugin`、`description`、`usage`，四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名
 - `run()` 不抛错，回执形状见[命令总线](/docs/seams/bus)
 
-说明书插件保证：
+**说明书插件**保证：
+
 - `list()` 的每条带 `name`、`description`、`plugin`，`plugin` 是登记方的包名
 
-登记命令、说明书的插件保证：
+**登记命令、说明书的插件**保证：
+
 - 命令的 `description` 与说明书的 description 都写成一句话（触发条件），参数形状写进 `usage`
-- 处理函数自己返回带 `ok` 的对象时，不和标准回执的三个键混用：要么只用 `ok` / `data` / `error`，要么放心加别的键，它会原样到达 agent
+- 处理函数自己返回带 `ok` 的对象时，不和标准回执的三个键混用
 
 ## 不负责的事
 
 - MCP 插件不校验参数、不给命令分权限：`args` 原样交给 `gwbCommands.run`；带上的来源 `mcp` 只是告诉处理函数，不限制能调哪条命令
 - MCP 插件不把命令登记成单独的工具，也不列出装了哪些插件（那是插件管理的 `plugin-manager.list`）
 - 命令插件、说明书插件不知道 MCP 插件的存在，不为它调整任何格式
-- 说明书插件不决定 `index` / `search` 里说明书行长什么样
 
 ## 测试
 
-`plugins/mcp/tests/tools.test.ts` 覆盖回执的转换，`inventory.test.ts` 覆盖 `index` / `search` 的生成规则：
+`plugins/mcp/tests/inventory.test.ts` 测 `index` / `search` 的生成规则，`tools.test.ts` 测参数解析与回执翻译，`apply.test.ts` 经真的 HTTP 调到命令总线替身；MCP 插件拿到运行中真的命令表与说明书清单，只能在隔离 home 里验证。
 
 {/* has file="../plugins/mcp/tests/tools.test.ts" text="带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平" */}
 
-{/* has file="../plugins/mcp/tests/tools.test.ts" text="进程回执摊平:退出码、输出、耗时都在顶层,而不是塞在 data 里被撞没" */}
-
 {/* has file="../plugins/mcp/tests/inventory.test.ts" text="skills 插件不在（undefined）时说明书清单是空表——MCP 入口照常可用" */}
-
-三个工具经真的 HTTP 调到命令总线（替身）、`run` 写日志、`index` 按插件分组，由 `apply.test.ts` 测；MCP 插件拿到的是运行中真的命令表与说明书清单，这一段只能在隔离 home 里实际运行验证。
