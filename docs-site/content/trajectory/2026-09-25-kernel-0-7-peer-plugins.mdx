@@ -1,0 +1,29 @@
+---
+title: 跟上内核 0.7：类型改从内核包取、用到的插件写 peer，命令登记外层的 effect 不删
+born-at: 2026-09-25T18:00
+type: choice
+parent: [2026-09-24-peer-kernel-package]
+label: 跟内核 0.7
+domain: 插件
+---
+
+## 背景
+
+收件页攒了六条上游通知：内核 0.5 起词汇表包 `@godcreator/gwb-plugin-api` 不再发布、类型并进内核包；内核 0.6、0.7 连着两个破坏性版本；插件管理 0.9 起用到的插件要写进 peer；devkit 0.19 删掉 `gwb.provides`；devkit 0.21 起每个要发的包都要写 `publishConfig.registry`。八个插件里七个的 peer 还写着内核包 `^0.4.1`，只有 MCP 插件跟到了 `^0.7.0`。另有两条早先的反馈已经过时：`plugins.install` 重复建条目在插件管理 0.13 已改成直接报错，command-http 在 2026-09-17 就退役了。
+
+## 结论与边界
+
+**采纳**：八个插件的 peer 里内核包都写 `^0.7.0`；类型全部改从内核包包根 `import type`，dev 里删掉词汇表包；用到的本仓插件从 dev 的 `workspace:*` 挪进 peer 的 `workspace:^`；八个包都写团队源的 `publishConfig.registry`；清单里的 `gwb.provides` 删掉。
+
+必需与可选照「顶层 `inject` 算必需、局部 `ctx.inject(..., fn)` 算可选」判：skills、logger、node-cli、py-cli 顶层注入命令总线，必需；MCP 插件顶层注入命令总线与设置，必需；说明书对所有插件都是局部注入，可选；命令总线对设置插件是局部注入，可选；node 命令行运行插件对 MCP 插件是局部注入，可选。commands 与 data 不写别的插件：commands 对说明书插件只按形状声明 `register(dir)`，写进 peer 会重新造出 commands ↔ skills 的包依赖环。
+
+原来「词汇表包只写 dev、用到命令插件类型的插件自己在 dev 里列词汇表包」那条问题随之消失：`GwbResult` 来自内核包，内核包是每个插件的 peer，总解析得到。关掉 `skipLibCheck` 的类型检查在 mcp 与 commands 上都通过，MCP SDK 要的 DOM 类型改由内核包 `dist/api.d.ts` 第一行的 `/// <reference lib="dom" preserve="true" />` 带进来。
+
+**不采纳：删掉命令登记外层的 `ctx.effect`**。收件页说命令总线 0.4.6 起 `register` 自己把注销登记在调用方上下文上、外层 `effect` 删不删随意。删掉 skills、logger、settings、mcp 的十处之后有三个测试失败：那几个测试用的假命令总线不会把注销挂到调用方上下文，靠的正是外层 `effect`。真实命令总线上两种写法行为一样，但重构只能靠「测试一字不改、改前改后都通过」来证明，于是整项撤回，外层 `effect` 留着。
+
+## 代价与遗留
+
+- 命令总线在几乎每个插件的 peer 里，它热升级时 home 里大部分插件会被插件管理一起重新加载（插件管理回执里的 `dependents`），这是写 peer 的规矩本身定下的代价
+- 设置插件与数据插件里「目录与分区记着归哪个包」那一套（`owners`、`transferOwner`），生命周期插件仓那边插件管理正在删 `transfer-owner` 与对归属记录的读取，本仓的对应部分等那边定稿后再跟
+
+pivots-from:: [2026-09-24-peer-kernel-package](2026-09-24-peer-kernel-package.md)
