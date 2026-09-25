@@ -1,9 +1,9 @@
 ---
 title: 开发
-description: 这个仓怎么构建、pnpm check 里的两类测试各查什么、只有 node 部分的插件怎么不启动工作台验证、发版时八个包按什么顺序给
+description: 这个仓怎么构建、pnpm check 查什么、每个插件的测试文件各证明什么、哪些只能在隔离 home 里验证、发版时八个包按什么顺序给、发版前各包清单要满足什么
 ---
 
-**本页回答**：这个仓怎么构建；`pnpm check` 查什么、什么时候它的构建产物检查才真的运行；只有 node 部分的插件怎么不启动工作台验证；发版时八个包按什么顺序给。
+**本页回答**：这个仓怎么构建；`pnpm check` 查什么、什么时候构建产物检查才真的运行；每个插件的测试文件各证明什么、哪些只能在隔离 home 里验证；发版时八个包按什么顺序给、各包清单此刻是什么样。写插件、在隔离 home 里验证的通用做法在 devkit 的说明书 `gwb-devkit`，升版本号、发版的规矩在说明书 `gwb-release`，这里只写本仓自己的。
 
 ## 构建
 
@@ -14,9 +14,11 @@ pnpm install
 pnpm build
 ```
 
-`pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`：七个插件用 `tsc -p tsconfig.json`，MCP 插件先用 `build.ts`（esbuild）打包出 `dist/index.js`，再用 `tsc --emitDeclarationOnly` 输出类型声明。pnpm 工作区是 `plugins/*`、`packages/*` 与 `docs-site`；`packages/` 下的 `shared-react`、`tokens` 只剩旧的构建产物、没有 `package.json`，不是在用的包。
+`pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`：七个插件用 `tsc -p tsconfig.json`，MCP 插件先用 `build.ts`（esbuild）打包出 `dist/index.js`，再用 `tsc --emitDeclarationOnly` 输出类型声明。每个包的 `prepublishOnly` 都是 `pnpm build`：`pnpm check` 不构建，少了这一步会把上一版的 `dist` 原样发出去。
 
 {/* ref file="../package.json" lines="5-13" */}
+
+pnpm 工作区是 `plugins/*`、`packages/*` 与 `docs-site`；`packages/` 下的 `shared-react`、`tokens` 只剩旧构建留下的未跟踪文件、没有 `package.json`，不是在用的包。
 
 ## 提交前的检查
 
@@ -24,21 +26,45 @@ pnpm build
 pnpm check
 ```
 
-依次是类型检查（仓根 `tsc --noEmit`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。测试有两类：
+依次是类型检查（仓根 `tsc --noEmit` 收各插件的 `tests/` 与 `build.ts`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。
 
-- **单元测试**：纯逻辑，比如命令表、路径与名字规则、MCP 的 `index`/`search` 返回、设置的解析顺序
-- **构建产物检查**（`tests/artifact.test.ts`）：相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了
+各插件的**构建产物检查**（`tests/artifact.test.ts`）查相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块，且只有一个打包好的 `index.js`）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了。
 
-文档检查 `pnpm doc`、`pnpm doc:confirm <页…>` 的脚本写在仓根，不在 `docs-site`。
+文档检查 `pnpm doc`、`pnpm doc:confirm <页…>` 的脚本写在仓根，不在 `docs-site`；确认只点名自己改的页。
 
-## 不启动工作台验证
+## 测试
 
-只有 node 部分的插件可以不启动工作台，直接在 home 里用 node 建一个 cordis 上下文验证，注意事项见[遇到过的问题](/docs/pitfalls)。
+测试都用 vitest，在各插件的 `tests/` 下，不启动工作台。提供服务的插件用真 cordis 上下文测服务这一层：命令插件用真 loader，别的插件由测试里的调用方插件自己往 fiber 上放 `entry`；内核、命令总线、设置等别的插件用替身。每条接缝由哪些测试保护写在各接缝页的「测试」一节，下表按插件列出各文件证明什么：
 
-## 发版时包的顺序
+| 插件 | 测试文件 | 证明什么 |
+| --- | --- | --- |
+| commands | `registry.test.ts` | 命令表本身：定义缺项与 `plugin` 不符的报错文本、来源原样转交、回执两种形状、抛错收成失败回执、同名后登记的生效并告警、注销只删自己那条 |
+| commands | `service.test.ts` | 真 cordis 加真 loader（`@cordisjs/plugin-loader`，模块加载换成按包名查表）：`plugin` 取自调用方条目，在 `ctx.inject`、`ctx.plugin`、`Service.init` 里都取得到；不经 loader 加载时抛错；调用方卸载后命令自动注销 |
+| skills | `collect.test.ts`、`service.test.ts` | 临时目录里的真目录树：frontmatter、只看一层、缺描述照收并报；服务：身份、同名先登记的保留、注销不删别人后来的、只读清单里的文件、两条命令 |
+| mcp | `auth.test.ts`、`endpoint.test.ts`、`inventory.test.ts`、`tools.test.ts`、`runtime.test.ts` | 纯函数：三项检查与换发 token、端口的决定与配置片段、`index` / `search` 的生成（同样输入逐字节一致、现实规模下不超过 18KB）、回执翻译、`runtime.json` 只改 `mcp` 项 |
+| mcp | `server.test.ts`、`apply.test.ts` | 内存传输连一对真的 server 与 client，工具恰好三个，`instructions.md` 的长度与两句话；装上整个插件，用真端口、真 HTTP 请求与 SDK 客户端测三种 401、404、405、`run` 带 `{ via: 'mcp' }`、换 token、端口被占时的两种处理 |
+| settings | `registry.test.ts`、`paths.test.ts`、`store.test.ts`、`service.test.ts` | 读的顺序、公共区、secret 掩码、归属；名字与分区；写入排队；服务在构造时同步读文件、合并写入、四条命令 |
+| data | `paths.test.ts`、`store.test.ts`、`owner.test.ts`、`service.test.ts` | 名字与目录；读的三种结果、原子写、同时写好几次；归属文件；服务按调用方条目给目录、归属不符时抛错 |
+| logger | `source.test.ts`、`apply.test.ts` | 来源分类；补读 cordis 缓冲、推给页面、两千条上限、两条命令 |
+| node-cli | `registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | 登记校验；总线参数与 `cwd` 校验；真 node 子进程的退出码、参数不经 shell、超时、长输出写临时文件；服务登记成总线命令、经调用方上下文取总线、总线拒收时撤掉表里那条 |
+| py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务把 venv 摆成已就绪的样子、用当前 node 的拷贝当入口程序，不启动 uv |
 
-`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、日志、两个命令行运行插件用命令总线，设置与两个命令行运行插件用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件。八个一起发时这样给：
+{/* has file="../plugins/commands/tests/service.test.ts" text="一个 home 的最小复刻：真 cordis 加真 loader，插件按包名建成条目加载，fiber 上有 loader 放的条目" */}
+
+{/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 按「已经就绪」的样子摆好（目录、出身记号、dist-info），守卫因此直接跳过、不启动 uv。" */}
+
+测试覆盖不到、只能在隔离 home 里实际运行验证的：loader 真的把调用方条目放在 fiber 上（数据目录、设置分区、说明书与命令的包名）、页面经内核调到命令、MCP 入口拿到运行中真的命令表与说明书清单、`bin/client.mjs`、electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv、日志窗格按 `seq` 拼接历史与实时日志。只有 node 部分的插件也可以不启动工作台、直接在 home 里用 node 建一个 cordis 上下文验证，注意事项见[遇到过的问题](/docs/pitfalls)。
+
+## 发版
+
+**包的顺序**：`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、日志、两个命令行运行插件用命令总线，设置与两个命令行运行插件用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件。八个一起发时这样给：
 
 ```
 devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills","plugins/settings","plugins/data","plugins/logger","plugins/node-cli","plugins/py-cli","plugins/mcp"]}
 ```
+
+**各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里内核包的范围包含运行中的内核。此刻只有 MCP 插件写了 `publishConfig.registry`、peer 里内核包是 `^0.7.0`；其余七个没写 `publishConfig`，peer 里内核包还是 `^0.4.1`：
+
+{/* ref file="../plugins/mcp/package.json" lines="32-37" */}
+
+{/* ref file="../plugins/settings/package.json" lines="30-33" */}

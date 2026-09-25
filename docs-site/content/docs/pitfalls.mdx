@@ -1,9 +1,9 @@
 ---
 title: 遇到过的问题
-description: 这个仓的插件代码为什么写成现在这样——构建与依赖、命令总线、服务与调用方身份、验证、MCP 入口几类问题，每条写症状、原因与现在的写法，并引用对应的那段代码
+description: 写这个仓的插件时遇到过、此刻仍会遇到的不报错、难定位的问题——构建与依赖、cordis 的服务与调用方身份、不启动工作台的验证、TypeScript 与 MCP SDK 几类，每条写症状、原因与现在的写法，并引用对应的那段代码
 ---
 
-**本页回答**：写这个仓的插件时遇到过哪些不报错、难定位的问题；每个问题的症状、原因，现在的代码怎么避开它。规则本身写在各插件页与[关键设计](/docs/design)，这里只写为什么非这样不可。
+**本页回答**：写这个仓的插件时会遇到哪些不报错、难定位的问题；每个问题的症状、原因，现在的代码怎么避开它。这里只收跨插件、此刻仍成立的；只跟一条接缝有关的写在那条接缝页里（比如 MCP 入口的 `Accept` 少一个值回 406 在 [MCP 协议](/docs/seams/mcp-protocol)，命令行运行插件经调用方上下文取命令总线在[命令行工具](/docs/seams/cli)）。规则本身写在各插件页与[关键设计](/docs/design)。
 
 ## 构建与依赖
 
@@ -15,23 +15,23 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 {/* ref file="../tsconfig.base.json" lines="4-6" */}
 
-这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件，名单里写死允许 `cordis`）。没构建时整组跳过，`pnpm check` 不依赖构建：
+这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件允许 `cordis`）。没构建时整组跳过，`pnpm check` 不依赖构建：
 
-{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="23-45" */}
+{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="16-45" */}
 
 ### 词汇表包只写 dev，用到别人类型的插件自己在 dev 里列全
-
-{/* ref file="../plugins/commands/package.json" lines="52-56" */}
 
 peer 写的是运行时要从 home 里解析到的包。词汇表包只有类型，运行时不存在，所以写 dev。
 
 代价在类型上：`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，而发布出去的命令插件不带词汇表包。用命令插件类型的插件要自己在 dev 里列词汇表包；少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」。所以本仓每个插件都在 dev 里列全了类型用到的包，包括 `@types/node`；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
 
+{/* ref file="../plugins/logger/package.json" lines="42-48" */}
+
 继承 cordis `Service` 的七个插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 
 ### cordis 不给服务做版本校验
 
-cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有版本、没有 schema；类型里的 `Plugin.provide` 字段运行时从来不读；`inject` 全是必须满足的依赖，没有可选写法（`'foo?'` 不认，`{ required, optional }` 会被当成两个叫 `required`、`optional` 的服务，一直等待）；依赖不满足时没有日志、没有超时、没有报错。
+cordis 的服务只有一个字符串名字：注册记录里没有版本、没有 schema；`inject` 全是必须满足的依赖，没有可选写法（`'foo?'` 不认，`{ required, optional }` 会被当成两个叫 `required`、`optional` 的服务，一直等待）；依赖不满足时没有日志、没有超时、没有报错。
 
 所以：
 
@@ -42,86 +42,24 @@ cordis 4.0.0-rc.9 的服务只有一个字符串名字：注册记录里没有�
 
 `Fiber.await()` 是 `while (this.inertia) await this.inertia`，依赖没满足时 `inertia` 是 `undefined`，循环一次都不进。写实验脚本时别拿它当「加载完成」：`await ctx.plugin(x)` 之后立刻去调 `x` 提供的服务，服务可能还不存在。
 
-## 命令总线
-
-### 同名命令后登记的生效，但要告警
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="89-95" */}
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="120-129" */}
-
-插件之间平等，换掉一条命令是允许的。但不告警的话，调用方从此调到另一个插件的处理函数上，两边都不报错，所以同名时写一条告警，写明原来是哪个插件、现在是哪个。
-
-### 注销只删自己那条
-
-上面第二段里的 `if (registrationsByName.get(def.name) === registration)`：同名命令被替换后，先卸载的插件不能把接手的那条一起删掉。少了这个比较，卸载一个插件会让另一个插件登记的命令跟着消失。两个命令行运行插件、设置插件的声明表用的是同一个写法。
-
-### 处理函数抛错不抛给调用方
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="135-147" */}
-
-{/* ref file="../plugins/commands/src/registry.ts" lines="106-114" */}
-
-调用方可能是页面上的一次点击。处理函数自己返回了带 `ok` 的对象就原样返回，其余一律算成功。
-
-### 条目停用后命令名还在表里
-
-症状：停用一个插件后列命令，它登记的一部分命令还在，调用时报的是 `cannot get required service "gwbData" in inactive context`，和「停用」看不出关系。原因是扩展点服务用 `ctx.provide` 提供普通对象时拿不到调用方的上下文，只能把注销函数还给调用方；那几条命令直接调 `register`、没包 `ctx.effect`，返回的注销函数没人调用，条目停用了、上下文销毁了，命令名还留在表上。
-
-所以命令总线继承 cordis 的 `Service`：服务方法里的 `this.ctx` 是调用方的上下文，`register` 把注销登记在调用方的 `effect` 上，登记方不包 `ctx.effect` 也会在卸载时注销；已经包了的登记方不受影响，卸载时只注销一次。经命令行运行插件登记的命令同样由运行插件把注销登记在调用方的 `effect` 上：
-
-{/* ref file="../plugins/commands/src/index.ts" lines="67-74" */}
-
-对 agent 尤其不好：它看到的命令表里有一部分已经失效，照着调只会拿到一句无关的报错。
-
 ## 服务与调用方身份
 
 ### 服务要认出调用方，用 `Service` 基类，不用 `accessor`
 
-`ctx.gwbData` 给出的目录要自动属于取用它的那条条目：插件不报名字，也就没法用别人的名字读别人的数据。cordis 有两种写法能让服务知道调用方是谁，实测后只有一种可用：
-
-{/* ref file="../plugins/data/src/index.ts" lines="46-60" */}
+数据、设置、说明书、命令总线、两个命令行运行插件给出的东西要自动属于调用它的那条条目：插件不报名字，也就没法用别人的名字。cordis 有两种写法能让服务知道调用方是谁，实测后只有一种可用：
 
 - **`ctx.accessor(name, { get() {…} })`**：`get` 里的 `this` 确实是调用方的上下文，但 `inject` 不认它：插件写 `inject: ['那个名字']` 会一直等待，不执行 `apply`，也不报任何错
 - **`Service` 基类**：`inject` 认它，方法里的 `this.ctx` 就是调用方的上下文；两个插件各自取同一个服务，拿到的身份互不相同
 
-身份从 `this.ctx.fiber.entry` 上取：`entry.id` 决定数据存在哪，`entry.options.name` 是包名。`entry` 是 loader 加上的属性，不是 cordis 本身的接口，所以代码按运行时的形状取、不改全局类型声明；根上下文上没有它。
+{/* ref file="../plugins/data/src/index.ts" lines="46-60" */}
 
-插件在 `ctx.inject([...], cb)` 的回调里、或 `ctx.plugin(子插件)` 装的子插件里调服务，`this.ctx.fiber` 是那个子 fiber，上面照样有同一个 `entry`：loader 在每个新 fiber 创建时检查父上下文上有没有条目记号，条目的上下文是插件上下文的原型，子 fiber 的父上下文顺着原型链能读到它，于是关联到同一个条目。所以取身份只读 `this.ctx.fiber.entry`，不用沿 `fiber.parent` 往上找；命令总线的测试用真 loader 验证了这一点。
+身份从 `this.ctx.fiber.entry` 上取：`entry.id` 是条目 id，`entry.options.name` 是包名。`entry` 是 loader 加上的属性，不是 cordis 本身的接口，所以代码按运行时的形状取、不改全局类型声明；根上下文上没有它。插件在 `ctx.inject([...], cb)` 的回调里、或 `ctx.plugin(子插件)` 装的子插件里调服务，`this.ctx.fiber` 是那个子 fiber，上面照样有同一个 `entry`，所以取身份只读 `this.ctx.fiber.entry`，不用沿 `fiber.parent` 往上找；命令总线的测试用真 loader 验证了这一点（见[条目身份](/docs/seams/entry-identity)）。
 
-继承 `Service` 的插件，私有字段用 TypeScript 的 `private`，不用 `#`：cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。
+### 继承 `Service` 的插件，私有字段用 `private`，不用 `#`
 
-### 替调用方登记命令，命令总线要经调用方的上下文取
+cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。本仓继承 `Service` 的插件，有私有字段的都用 TypeScript 的 `private`：
 
-两个命令行运行插件把调用方登记的工具转登记成总线命令。命令总线从取它的那个上下文认登记方：运行插件经自己的上下文（`inject` 过 `gwbCommands` 的那份）取总线的话，总线认出的登记方是运行插件自己，与写进去的调用方包名对不上，登记被拒。调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛 `cannot get property "gwbCommands" without inject`。所以运行插件用 `this.ctx.get('gwbCommands')`：`get` 不查 `inject`，拿到的总线认的是调用方：
-
-{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
-
-### 数据与设置按条目归属，不按包
-
-cordis 的条目模型里 `id` 才是身份，`name` 只说明装的是哪个包；同一个包可以在 `cordis.yml` 里配几条条目，各有各的配置（两条 `gwb-py-cli` 分别配不同的解释器）。按包名分的话，这两条共用一个数据目录、互相覆盖。所以[数据插件](/docs/data)的目录与[设置插件](/docs/settings)的分区都按条目 id 分。
-
-### 条目 id 用作目录名：只取末段
-
-条目 id 的样子是 `home:hello`：
-
-- **冒号在 Windows 上是保留字符**：`mkdir home:hello` 不是干净地失败，可能造出一个 NTFS 备用数据流，目录看不见，写进去的内容也找不回来
-- **`home` 那段是内核的常量**：承载 `cordis.yml` 的那条 include 条目的 id，`:` 是 cordis 的 `EntryTree.sep`。内核改一次那个常量，所有目录名都会跟着变
-- **末段才是人在 `cordis.yml` 里手写的 id**
-
-所以只取末段：没有冒号，也不依赖内核的常量。代价是多段 id 会重名（`home:a:hello` 与 `home:b:hello` 末段一样），所以超过两段直接抛错；真要用嵌套分组时，算法要和这条检查一起重新设计。id 要用作目录名与分区名，每一段都按 kebab-case 校验，字符集里没有点号，`.` 与 `..` 进不来。
-
-{/* ref file="../plugins/data/src/paths.ts" lines="26-50" */}
-
-两个插件的这段算法必须给出同一个答案，而它们是两份副本（数据插件的 `entryDirName`、设置插件的 `entrySection`）。十几行纯逻辑，为它新建一个共享包不值得；两边的注释互相提到对方，改一处就要改另一处。
-
-{/* ref file="../plugins/settings/src/paths.ts" lines="42-66" */}
-
-### 没手写 id 的条目，数据与设置每次启动新建一份
-
-条目没写 `id` 时，loader 生成一个 8 位随机十六进制串，启动时不写回 `cordis.yml`，每次启动换一个，那条条目的数据与设置每次都新建一份。数据插件与设置插件遇到这种条目都写一条 warn：不抛错（这条条目本来能正常运行），也不省略日志（数据对不上是最难查的那种问题）。
-
-`a3f9c210` 是合法的 kebab-case，所以这条检查和上面的字符集校验互不覆盖。手写一个正好 8 位十六进制的 id（`deadbeef`）会多一条 warn，代价只是一行日志。
+{/* ref file="../plugins/commands/src/index.ts" lines="32-34" */}
 
 ## 验证
 
@@ -142,7 +80,7 @@ cordis 的条目模型里 `id` 才是身份，`name` 只说明装的是哪个包
 
 实验脚本里的 `Context` 也要从插件那一层解析，和插件用同一份 cordis，否则 `Service` 的 `instanceof` 对不上。插件本身按 `<home>/node_modules/...` 的路径 import 即可，node 会解析到 `.pnpm` 里的实际目录，插件算出来的包根就是它实际安装的位置，`gwb-py-cli` 的 venv 也建在那里。
 
-## MCP 入口
+## TypeScript 与 MCP SDK
 
 ### 块注释里的 `*/` 会把注释提前结束
 
@@ -157,28 +95,10 @@ error TS1127: Invalid character.
 
 ### 函数声明拿不到外层 `const` 的类型收窄
 
-`const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件现在用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
+`const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="205-228" */}
-
-### 客户端把 `args` 转成字符串：无参数的命令正常，带参数的全部失败
-
-经 MCP 调命令时，无参数的命令正常，带 `args` 的全部被命令拒绝，报「参数要是一个对象」。用对照实验定位：同一个调用用 curl 直接发对象就成功，说明入口与命令都没问题；`args` 的 schema 是 `z.unknown()`，协议层什么形状都接受，是客户端把嵌套对象序列化成 JSON 字符串再发。
-
-在 MCP 入口修，不指望客户端改：`run` 收到的 `args` 是字符串时先 `JSON.parse`，解析成功就用结果，失败就原样交给命令。JSON 字面量来回转换不丢信息，真要传字符串参数的命令不受影响。
-
-{/* ref file="../plugins/mcp/src/tools.ts" lines="16-36" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="205-206" */}
 
 ### MCP SDK 的类型声明要 DOM 类型
 
-关掉 `skipLibCheck` 做类型检查时，SDK 的 `shared/transport.d.ts` 用到 `HeadersInit`，插件的 tsconfig 只带 `ES2023` 库，报 `Cannot find name 'HeadersInit'`。现在能通过，是因为词汇表包在自己的类型声明里写了 `/// <reference lib="dom" />`，MCP 插件 import 了它，DOM 类型就进了同一次检查。词汇表包哪天去掉这一行，MCP 插件关掉 `skipLibCheck` 的类型检查会先红。
-
-### `Accept` 少一个值就是 406
-
-SDK 的 streamable HTTP 要求 POST 同时接受 `application/json` 与 `text/event-stream`，只写前者拿到的是
-
-```
-406 {"error":{"code":-32000,"message":"Not Acceptable: Client must accept both …"}}
-```
-
-手工用 curl 或 `Invoke-WebRequest` 试入口时很容易只写 `application/json`，然后把 406 当成鉴权失败或路由没注册。鉴权失败是 401，并带一句原因。
+关掉 `skipLibCheck` 做类型检查时，SDK 的 `shared/transport.d.ts` 用到 `HeadersInit`，插件的 tsconfig 只带 `ES2023` 库，报 `Cannot find name 'HeadersInit'`。现在能通过，是因为词汇表包在自己的类型声明里写了 `/// <reference lib="dom" />`，MCP 插件 import 了它，DOM 类型就进了同一次检查。词汇表包去掉这一行，MCP 插件关掉 `skipLibCheck` 的类型检查会先红。

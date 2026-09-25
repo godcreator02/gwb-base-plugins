@@ -3,7 +3,7 @@ title: 关键设计
 description: 基础插件仓为什么这么切——只放无界面的插件、插件只依赖词汇表包的类型、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
 ---
 
-**本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的细节在各自的页，插件之间约定了什么在各接缝页。
+**本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的功能在各自的页，插件之间约定了什么在各接缝页。
 
 ## 这个仓只放无界面的基础插件
 
@@ -22,15 +22,15 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 不在这个仓的：
 
-- **内核**在内核仓 gwb-kernel，只放内核应用、词汇表包和安装包，一个插件也不带
-- **插件管理** `@godcreator/gwb-plugin-manager` 在 devkit 仓 gwb-devkit，和 devkit 一起开发；装插件、找插件（`plugin-manager.search`）、配包源（`plugin-manager.source.add` / `list` / `remove`）都是它的命令
-- **有界面的插件**（外壳 shell、主题 theme、基础窗格 baseui，令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
+- **内核**在内核仓 gwb-kernel：内核应用、词汇表包和安装包，一个插件也不带
+- **插件管理** `@godcreator/gwb-plugin-manager` 在 devkit 仓 gwb-devkit：装插件、找插件、配包源都是它的命令
+- **有界面的插件**（外壳、主题、基础窗格）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
 
 这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
 
 ## 插件只依赖词汇表包的类型
 
-词汇表包 `@godcreator/gwb-plugin-api`（内核仓）是内核对插件的契约，只有类型。插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。要用内核服务 `gwbKernel` 的插件，各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码。
+词汇表包 `@godcreator/gwb-plugin-api`（内核仓）是内核对插件的契约，只有类型。插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
@@ -38,7 +38,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 {/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
 
-本仓插件的依赖现在这样写：
+本仓插件的依赖这样写：
 
 - **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的七个插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份
 - **词汇表包**：只有类型，写 dev，范围 `^0.4.1`。命令插件导出的类型里有它的 `GwbResult`，用命令插件类型的插件自己在 dev 里列词汇表包
@@ -53,13 +53,13 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 插件之间不 import 彼此的运行时代码，只有两种连接：
 
 - **服务**：提供方用 cordis 提供一个服务名，使用方把它写进 `inject`（缺了就不加载），或用 `ctx.inject([...], cb)` 局部注入（缺了只少一部分功能）。服务的类型由提供方的包导出，使用方写 `import type {} from '<提供方包名>'`，让 `ctx` 上有这个服务的类型，构建产物里没有这个包
-- **命令**：经命令总线按名字调用，不需要类型。例如插件管理（devkit 仓）配包源时读设置插件里 `gitea` 分区的值，调的是 `settings.get` 命令，不用设置插件的服务
+- **命令**：经命令总线按名字调用，不需要类型
 
-哪个依赖是必需的、哪个是可选的，每个插件页的「依赖」一节逐条写了缺了会怎样。可选的依赖一律局部注入：说明书对所有插件都是可选的；命令对设置插件是可选的（没有命令，别的插件照样读写设置，只是页面与 agent 调不到）。
+哪个依赖是必需的、哪个是可选的，每个插件页的「依赖」一节逐条写了缺了会怎样。可选的依赖一律局部注入：说明书对所有插件都是可选的；命令总线对设置插件是可选的（没有命令，别的插件照样读写设置，只是页面与 agent 调不到）。
 
-包之间的依赖只有一个方向：说明书插件依赖命令插件，命令插件不 import 说明书插件的类型，只按形状声明用到的 `register(dir)`。工作区里有依赖环时，pnpm 12 的 `pnpm -r` 直接报错退出。
+包之间的依赖只有一个方向：说明书插件依赖命令插件，命令插件不 import 说明书插件的类型，只按形状声明用到的 `register(dir)`。工作区里有依赖环时，pnpm 12 的 `pnpm -r` 直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）。
 
-两个插件要用同一段小逻辑时各存一份，不为它新建共享包：两个命令行运行插件的 `run.ts`、`invoke.ts`，数据插件的 `entryDirName` 与设置插件的 `entrySection`。这些副本的注释互相提到对方，改一处就要改另一处；有第三个插件要用时，再判断要不要抽成包。
+两个插件要用同一段小逻辑时各存一份，不为它新建共享包：两个命令行运行插件的 `run.ts`、`invoke.ts`，数据插件的 `entryDirName` 与设置插件的 `entrySection`。这些副本的注释互相提到对方，改一处就要改另一处（见[命令行工具](/docs/seams/cli)、[条目身份](/docs/seams/entry-identity)）。
 
 cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安装时按 peer 范围检查的那一次，本仓插件之间又只写 devDependencies，所以服务的接口只增加、不改名、不改形状。细节见[遇到过的问题](/docs/pitfalls)。
 
@@ -73,27 +73,29 @@ cordis 不给服务做版本校验，插件之间的版本约束只有 pnpm 安�
 
 由此推出：
 
-- **来源只转交、不限制**：三类调用方能调的命令一样，命令总线只把 `via` 转交给处理函数；要按来源区分的是处理函数自己（块笔记的核心插件按来源记下每次提交，撤销键只撤来自界面的）
+- **来源只转交、不限制**：三类调用方能调的命令一样，命令总线只把 `via` 转交给处理函数；要按来源区分的是处理函数自己（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
 - **命令行工具也是命令**：两个命令行运行插件把登记的每个工具同时登记成一条命令，不另开入口
 - **说明书也经命令读**：`skill.list`、`skill.read` 是普通命令
-- **MCP 的工具只有三个，以后也不增加**：MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里，每次调用现查命令总线（[MCP 入口](/docs/mcp)）
-- **登记的命令跟着登记方注销**：命令总线继承 cordis 的 `Service`，把注销登记在登记方的 `effect` 上，条目停用时命令自动注销，命令表里只有能调通的命令
-- **每条命令写 `description`（一句话）、`usage`（参数形状，无参数写「无参数」），`plugin`（包名）由命令总线从登记方的条目取**：agent 只看得到这三样，命令与说明书按包名对应；缺一样命令总线就拒收
+- **MCP 的工具只有三个，以后也不增加**：MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里，每次调用现查命令总线（轨迹卡[三个工具](/trajectory/2026-09-14-three-tool-face)）
+- **登记的命令跟着登记方注销**：命令总线继承 cordis 的 `Service`，把注销登记在登记方的 `effect` 上，条目停用时命令自动注销，命令表里只有能调通的命令（轨迹卡[命令总线改成继承 cordis Service](/trajectory/2026-09-24-commands-bus-as-service)）
+- **每条命令写 `description`（一句话）、`usage`（参数形状，无参数写「无参数」），`plugin`（包名）由命令总线从登记方的条目取**：agent 只看得到这三样，命令与说明书按包名对应；缺一样命令总线就拒收（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
 
 ## 数据与设置按条目归属
 
 cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；同一个包可以配几条条目，各有各的配置。所以：
 
 - **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，设置在 `settings.json` 的 `hello` 分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
-- **调用方不自己报身份**：数据、设置、说明书、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
-- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`
+- **调用方不自己报身份**：数据、设置、说明书、命令总线、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
+- **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝；包改了名要接着用旧数据，走插件管理的 `plugin-manager.transfer-owner`（轨迹卡[户主章](/trajectory/2026-09-19-owner-stamp)）
 - **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
 
 ## 插件在 peer 里写内核包
 
-内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核，这个仓八个插件都写 `^0.4.1`：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻 MCP 插件写的是 `^0.7.0`，其余七个写的是 `^0.4.1`：
 
-{/* ref file="../plugins/data/package.json" lines="28-32" */}
+{/* ref file="../plugins/mcp/package.json" lines="32-34" */}
+
+{/* ref file="../plugins/data/package.json" lines="29-32" */}
 
 ## 刻意不做的事
 
@@ -102,4 +104,4 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 - **不管插件的安装与条目**：在插件管理，devkit 仓 gwb-devkit
 - **不给命令分权限、不做沙箱**：插件和内核在同一个进程里，装插件就是授权；MCP 入口只绑 127.0.0.1、要 token
 - **不为十几行的重复逻辑开共享包**：见上面「插件之间只经服务和命令」
-- **旧插件仓不是模板**：旧插件仓 gwb-plugins（已删除）的结构、分层、包划分一概不照搬；它那套里的 `gwb.minAppVersion` 与精确 peer 版本号两处准入检查、`platform` 分区与 `window.confirm` 拦截、为某个插件写的特殊分支，这里都不要
+- **旧插件仓不是模板**：旧插件仓 gwb-plugins（已删除）的结构、分层、包划分一概不照搬

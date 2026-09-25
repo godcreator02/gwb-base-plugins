@@ -30,6 +30,6 @@ importmap、要么强制打包进来，并配上构建产物检查。
 
 * **入口页** `/docs`：接缝图，插件之间的十条接缝各有一页（`/docs/seams/…`）
 * **八个插件页**：每页写功能、接口（各属于哪条接缝）、依赖、不做的事
-* **关键设计** `/docs/design`、**开发** `/docs/develop`（构建、检查、发版时包的顺序）、**遇到过的问题** `/docs/pitfalls`
+* **关键设计** `/docs/design`、**开发** `/docs/develop`（构建、检查、各插件的测试、发版时包的顺序）、**遇到过的问题** `/docs/pitfalls`
 
 这份 AGENTS.md 是生成物，正本是 `docs-site/content/outputs/agents.mdx`，改完在 `docs-site` 运行 `pnpm exec docfirst render`。
