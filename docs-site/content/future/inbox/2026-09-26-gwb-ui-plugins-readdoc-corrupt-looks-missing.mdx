@@ -1,0 +1,13 @@
+---
+title: 'readDoc 把「文件坏了、读不出来」和「文件不存在」都回 undefined，调用方分不出'
+description: '来源：gwb-ui-plugins（D:\unitfolders\igldu-gwbkernel\gwb-ui-plugins），2026-09-26；总控台会话投递'
+docfirst: none
+---
+
+* **现状**：`plugins/data/src/store.ts:7-21` 的 `readDoc`：
+  * 文件不存在回 `undefined`
+  * `readFile` 抛别的错（权限、被占用）也回 `undefined`，不打日志（`:12-13` 的 `catch` 不区分错误码）
+  * JSON 解析失败回 `undefined`，只打一行 warn
+* **为什么要在意**：外壳 `@godcreator/gwb-shell` 的布局存成 gwbData 的文档 `layout`。外壳 2026-09-26 起改成「只有文件不存在才用默认布局，读不回来就停止保存、不覆盖磁盘文件」（gwb-ui-plugins 提交 `77348b6`，`plugins/shell/src/layout.ts` 的 `initialLayoutOf`）。但经 `shell.layout.get` 拿到的 `undefined` 分不出这三种情况：布局文件坏了或一时读不出来时，外壳仍当第一次开机，按默认布局启动，下一次自动保存就把坏掉的那份覆盖了，人没有机会去修
+* **期望**：`readDoc` 只在错误码是 `ENOENT` 时回 `undefined`；读不出来、解析不了都抛错，错误里带上文件路径。这改的是 `gwbData.readDoc` 已有的语义（调用方依赖「读不出来也回 undefined」），按 gwb-release 属于破坏性变更，要升 x，下游写了 peer 的插件都要跟；做不做、什么时候做由本仓定
+* **下游**：外壳这边不用改代码——`shell.layout.get` 的处理函数调 `readDoc` 抛错时，命令回 `ok: false`，外壳已经按「读不回来」停止保存
