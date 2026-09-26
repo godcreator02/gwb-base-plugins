@@ -57,7 +57,7 @@ cordis 的服务只有一个字符串名字：注册记录里没有版本、没�
 
 cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。本仓继承 `Service` 的插件，有私有字段的都用 TypeScript 的 `private`：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="32-34" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-42" */}
 
 ## 验证
 
@@ -95,7 +95,7 @@ error TS1127: Invalid character.
 
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="205-206" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="242-243" */}
 
 ### MCP SDK 的类型声明要 DOM 类型
 

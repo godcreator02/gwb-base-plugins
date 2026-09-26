@@ -27,9 +27,9 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 **登记的写法**：带说明书的插件在包根放 `skills/`，从构建产物所在的 `dist/` 往上一级找到它，局部注入说明书服务后登记，注销放在局部上下文的 `effect` 里：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="29-30" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="37-38" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="137-141" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="160-164" */}
 
 这个目录要列进包的 `files`，否则发布出去的包里没有它——包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」：
 

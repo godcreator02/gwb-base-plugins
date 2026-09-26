@@ -28,7 +28,7 @@ description: 数据插件与设置插件记下每个数据目录、每个设置�
 
 {/* ref file="../plugins/data/src/index.ts" lines="78-88" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="184-193" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="207-216" */}
 
 - `owners()`：目录名或分区名（条目 id 末段）→ 包名。数据插件的是异步的，设置插件的是同步的；还没记过归属的不列
 - `transferOwner(id, pkg)`：把一个目录或分区的归属改成 `pkg`，立刻写盘；`id` 认完整的条目 id，也认只有末段的 id；包名为空抛错；设置插件拒绝转移公共区 `*`

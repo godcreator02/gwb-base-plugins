@@ -22,7 +22,7 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **服务**：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="41-55" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="42-56" */}
 
 `owners()` 与 `transferOwner()` 此刻没有调用方（插件管理 0.14 起不再调用），见[数据归属](/docs/seams/owners)。
 
@@ -32,7 +32,7 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **分区由调用方条目定**：四个方法都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="143-153" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="166-176" */}
 
 **公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找调用方声明过的项，没有就读公共区，别的插件不用 `define` 也读得到；都没有回 `undefined` 并写 warn：
 
@@ -42,7 +42,7 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取；`settings.all` 与 `settings.get` 标 `effect: 'read'`，`settings.set` 与 `settings.delete` 标 `write`：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="57-70" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="58-71" */}
 
 `settings.all` 可以只取一个分区；分区不存在时报错并列出现有的分区，免得调用方把「没有这个分区」当成「这个分区没有设置」：
 

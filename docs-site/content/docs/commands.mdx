@@ -20,7 +20,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 - **写日志**：每次登记、执行都写一行；成功写 info，返回失败、抛错、找不到命令写 warn。异常都转成了回执，不写日志就查不到谁在什么时候调了哪条命令
 - **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么读、失败有哪几种、插件里怎么登记命令
 
-{/* ref file="../plugins/commands/src/index.ts" lines="67-74" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="75-82" */}
 
 ## 接口
 
@@ -37,7 +37,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="3-10" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-37" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="12-51" */}
 
 {/* has file="../plugins/commands/src/index.ts" text="export default class GwbCommandBus extends Service implements GwbCommands {" */}
 
