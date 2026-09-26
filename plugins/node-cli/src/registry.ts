@@ -1,4 +1,5 @@
 import path from 'node:path'
+import type { GwbCommandEffect } from '@godcreator/gwb-commands'
 
 // 这个文件不碰 ctx：`warn` 由调用方给，运行时是 cordis logger
 
@@ -14,6 +15,8 @@ export interface NodeCliSpec {
   description?: string
   /** 用法（参数形状、注意事项）。缺省用运行插件写的参数形状说明 */
   usage?: string
+  /** 登记成总线命令时写的 `effect`：这条工具运行起来会动到什么，含义见命令总线的 `GwbCommandEffect` */
+  effect?: GwbCommandEffect
   /**
    * 要运行的那个 js 的绝对路径，登记方插件自己算：
    * `path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), 'dist', 'cli.js')`。

@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 interface RegisteredCommand {
-  def: { name: string; description?: string; usage?: string; plugin: string }
+  def: { name: string; description?: string; usage?: string; plugin: string; effect?: 'read' | 'write' | 'external'; hiddenFromAgents?: true }
   handler: (args: unknown, context: { via: string }) => unknown
 }
 
@@ -197,6 +197,71 @@ describe('MCP 插件装上之后', () => {
     booted.bus.register({ name: 'demo.via', plugin: '@t/demo', description: '回请求来源' }, (_args, context) => context.via)
     const via = await client.callTool({ name: 'run', arguments: { command: 'demo.via' } })
     expect(JSON.parse((via.content as { text: string }[])[0]!.text)).toEqual({ ok: true, data: 'mcp' })
+    await client.close()
+    await booted.mcpFiber.dispose()
+  })
+
+  it('instructions 末尾带这台 home 的目录：home 名、命令前缀；只给页面调用的命令不进前缀', async () => {
+    const booted = await bootMcp('side')
+    booted.bus.register({ name: 'demo.echo', plugin: '@t/demo', description: '回声' }, (args) => args)
+    booted.bus.register({ name: 'pageonly.sync', plugin: '@t/page', description: '页面专用', hiddenFromAgents: true }, () => null)
+    const client = await mcpClient(await connectionOf(booted))
+    const instructions = client.getInstructions() ?? ''
+    expect(instructions).toContain('MCP 工具只有 index / search / run 三个')
+    expect(instructions).toContain('你连上的是 home「side」')
+    expect(instructions).toMatch(/命令前缀.*demo/)
+    expect(instructions).not.toContain('pageonly')
+    await client.close()
+    await booted.mcpFiber.dispose()
+  })
+
+  it('只给页面调用的命令：index、search 不列，run 拒绝且不执行；页面照常调得到', async () => {
+    const booted = await bootMcp('side')
+    let ranTimes = 0
+    booted.bus.register({ name: 'demo.sync', plugin: '@t/demo', description: '页面推数据', hiddenFromAgents: true }, () => {
+      ranTimes += 1
+      return null
+    })
+    const client = await mcpClient(await connectionOf(booted))
+    const textOf = async (name: string, args: Record<string, unknown>): Promise<string> =>
+      ((await client.callTool({ name, arguments: args })).content as { text: string }[])[0]!.text
+    expect(await textOf('index', {})).not.toContain('demo.sync')
+    expect(await textOf('search', { prefix: 'demo.' })).not.toContain('demo.sync')
+    const refused = await client.callTool({ name: 'run', arguments: { command: 'demo.sync' } })
+    expect(refused.isError).toBe(true)
+    expect((refused.content as { text: string }[])[0]!.text).toContain('只给页面调用')
+    expect(ranTimes).toBe(0)
+    expect(await booted.bus.run('demo.sync', undefined, { via: 'ui' })).toEqual({ ok: true, data: null })
+    await client.close()
+    await booted.mcpFiber.dispose()
+  })
+
+  it('run 一条不存在的命令：isError 里告诉去哪找名字', async () => {
+    const booted = await bootMcp('side')
+    const client = await mcpClient(await connectionOf(booted))
+    const failed = await client.callTool({ name: 'run', arguments: { command: 'demo.nope' } })
+    expect(failed.isError).toBe(true)
+    expect((failed.content as { text: string }[])[0]!.text).toMatch(/没有这条命令：demo\.nope。用 search/)
+    await client.close()
+    await booted.mcpFiber.dispose()
+  })
+
+  it('返回超过上限：run 不交回原文，isError 写明命令已执行、怎么缩小范围；search 带 effect 过滤、行里带 effect', async () => {
+    const booted = await bootMcp('side')
+    booted.bus.register({ name: 'demo.huge', plugin: '@t/demo', description: '大返回', effect: 'read' }, () => 'x'.repeat(50_000))
+    booted.bus.register({ name: 'demo.poke', plugin: '@t/demo', description: '改点东西', effect: 'write' }, () => null)
+    const client = await mcpClient(await connectionOf(booted))
+    const huge = await client.callTool({ name: 'run', arguments: { command: 'demo.huge' } })
+    expect(huge.isError).toBe(true)
+    const hugeText = (huge.content as { text: string }[])[0]!.text
+    expect(hugeText).toMatch(/demo\.huge 已经执行完.*超过单次返回的上限 40000/)
+    expect(hugeText.length).toBeLessThan(1_000)
+
+    const readOnly = JSON.parse(
+      ((await client.callTool({ name: 'search', arguments: { prefix: 'demo.', effect: 'read' } })).content as { text: string }[])[0]!.text,
+    ) as { commands: { name: string; effect?: string }[]; skills: unknown[] }
+    expect(readOnly.commands).toEqual([expect.objectContaining({ name: 'demo.huge', effect: 'read' })])
+    expect(readOnly.skills).toEqual([])
     await client.close()
     await booted.mcpFiber.dispose()
   })

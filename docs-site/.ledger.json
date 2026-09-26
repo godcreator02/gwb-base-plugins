@@ -268,7 +268,7 @@
     "../plugins/data/src/store.ts:56-62": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         56,
         62
@@ -278,7 +278,7 @@
     "../plugins/data/src/index.ts:16-28": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         16,
         28
@@ -288,7 +288,7 @@
     "../plugins/data/src/index.ts:58-76": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "d5bde8756bfe09e063de126792701f68c0376aa0",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         58,
         76
@@ -303,7 +303,7 @@
     "../plugins/mcp/build.ts:16-28": {
       "kind": "git",
       "blob": "d1c03d3af923e1676ca0d6c381a91fdd3edd5d2e",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         16,
         28
@@ -312,40 +312,40 @@
     },
     "../plugins/data/package.json:27-30": {
       "kind": "git",
-      "blob": "3118d1de589b045df04fa06ce7b5709003d40ebc",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "blob": "67d10397df365bafbff00800f9ee115cbcef7279",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         27,
         30
       ],
       "hash": "16e3335f7262108a2ce93cf1a97d285b16e9cbb12895f27017ac8cc11cf0d910"
     },
-    "../plugins/commands/package.json:42-45": {
-      "kind": "git",
-      "blob": "82d61898c29ee5e25229184645eb7550f8752162",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
-      "lines": [
-        42,
-        45
-      ],
-      "hash": "16e3335f7262108a2ce93cf1a97d285b16e9cbb12895f27017ac8cc11cf0d910"
-    },
     "../plugins/mcp/package.json:30-36": {
       "kind": "git",
-      "blob": "dd4adb2b0013c3db4577f5631f7cba2837daf999",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "blob": "5131521ca2cb860f6615005cee2002acd01b9bfc",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         30,
         36
       ],
       "hash": "5c311a71c88378c0b8a179167b6fe3c4cff5d88eedc53fb55d01da22949669b8"
+    },
+    "../plugins/commands/package.json:41-44": {
+      "kind": "git",
+      "blob": "7a5463cf04a9214f37a9ab84ce703a1f4829c879",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
+      "lines": [
+        41,
+        44
+      ],
+      "hash": "16e3335f7262108a2ce93cf1a97d285b16e9cbb12895f27017ac8cc11cf0d910"
     }
   },
   "content/docs/develop.mdx": {
     "../package.json:5-13": {
       "kind": "git",
       "blob": "b3518f54e43fed1e36f67e9de6a2f9e51c1d388c",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         5,
         13
@@ -360,8 +360,8 @@
     },
     "../plugins/mcp/package.json:30-47": {
       "kind": "git",
-      "blob": "dd4adb2b0013c3db4577f5631f7cba2837daf999",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "blob": "5131521ca2cb860f6615005cee2002acd01b9bfc",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         30,
         47
@@ -370,8 +370,8 @@
     },
     "../plugins/settings/package.json:28-44": {
       "kind": "git",
-      "blob": "e59a9f763ec3d2b5ed1febdc65b2de8b79b14fff",
-      "commit": "6b2c22edddb09cd52870fc7c60b8d606bbbf19ee",
+      "blob": "405a3db85a53ce39558ba50a9498c5f5e2bb98cc",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         28,
         44
@@ -777,7 +777,7 @@
     "../plugins/data/src/index.ts:16-28": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         16,
         28
@@ -787,7 +787,7 @@
     "../plugins/data/src/paths.ts:52-59": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         52,
         59
@@ -797,7 +797,7 @@
     "../plugins/data/src/index.ts:58-76": {
       "kind": "git",
       "blob": "cc9bc17278e717aa8f39ba283fc343f4a5978363",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         58,
         76
@@ -807,7 +807,7 @@
     "../plugins/data/src/paths.ts:18-24": {
       "kind": "git",
       "blob": "8c9afd1a7ef1eaf4b7df9184fd5367cd9081a9fe",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         18,
         24
@@ -817,7 +817,7 @@
     "../plugins/data/src/store.ts:6-21": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         6,
         21
@@ -827,7 +827,7 @@
     "../plugins/data/src/store.ts:23-62": {
       "kind": "git",
       "blob": "825d68ce27e0aa136a84274177cbdf734b645b77",
-      "commit": "28709740431b07355847b3095d7508e1c267bb1f",
+      "commit": "bcf03ae8f3fef05855a22f06b02fcdb499de9c13",
       "lines": [
         23,
         62
@@ -1496,9 +1496,6 @@
     "has ../plugins/mcp/src/index.ts \"const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })\"": {
       "kind": "has"
     },
-    "has ../plugins/mcp/instructions.md \"读说明书就是用 run 调 skill.read\"": {
-      "kind": "has"
-    },
     "has ../plugins/mcp/instructions.md \"plugin-manager.update\"": {
       "kind": "has"
     },
@@ -1659,6 +1656,9 @@
       "kind": "has"
     },
     "has ../plugins/skills/src/collect.ts \"export const SKILL_ENTRY = 'SKILL.md'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/mcp/instructions.md \"读说明书是 run skill.read\"": {
       "kind": "has"
     }
   }

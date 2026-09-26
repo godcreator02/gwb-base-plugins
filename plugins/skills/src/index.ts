@@ -56,13 +56,13 @@ export default class GwbSkills extends Service implements GwbSkillsApi {
   private registerSkillCommands(commandBus: GwbCommands): void {
     this.ctx.effect(() =>
       commandBus.register(
-        { name: SKILL_LIST_COMMAND, description: '此刻登记着的全部说明书（每份带名字、描述、登记它的插件的包名、文件清单）', usage: '无参数', plugin: PACKAGE_NAME },
+        { name: SKILL_LIST_COMMAND, description: '此刻登记着的全部说明书（每份带名字、描述、登记它的插件的包名、文件清单）', usage: '无参数', plugin: PACKAGE_NAME, effect: 'read' },
         () => ({ count: this.skillsByName.size, skills: this.list() }),
       ),
     )
     this.ctx.effect(() =>
       commandBus.register(
-        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: PACKAGE_NAME },
+        { name: SKILL_READ_COMMAND, description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: PACKAGE_NAME, effect: 'read' },
         (args) => this.runSkillReadCommand(args),
       ),
     )

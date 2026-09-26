@@ -44,7 +44,9 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 {/* ref file="../plugins/logger/src/index.ts" lines="111-124" */}
 
-**两条命令**：`logger.backlog`（无参数）回缓冲里最近 2000 条的副本；`logger.where`（无参数）回 `{ home, logFile }`：
+**两条命令**：`logger.backlog` 回缓冲里日志的副本，从旧到新。参数 `{ limit?, minLevel?, name? }` 都可省：先按 `minLevel`（这一级及以上）与 `name`（logger 名精确匹配）筛，再由 `limit` 取筛完之后最近的几条；参数不是对象、有认不出的键、`limit` 不是正整数、`minLevel` 不是四个级别之一、`name` 是空串，都直接报错。不带参数回整个缓冲——日志窗格这样取；agent 经 MCP 入口调时要带 `limit`，两千条整个返回会超过单次返回的上限。`logger.where`（无参数）回 `{ home, logFile }`。两条都标 `effect: 'read'`：
+
+{/* ref file="../plugins/logger/src/index.ts" lines="127-174" */}
 
 {/* ref file="../plugins/logger/src/index.ts" lines="127-137" */}
 
@@ -85,14 +87,16 @@ description: 连接日志插件与内核的日志流、以及界面插件仓里�
 
 - 日志插件不写日志文件、不写 stderr：那是内核的 exporter
 - 日志插件不保存 2000 条以前的日志：更早的看 `logger.where` 报的 `gwb.log`
-- 日志插件不过滤、不按级别丢弃：`debug` 也进缓冲，筛选在窗格里做
+- 日志插件收的时候不过滤、不按级别丢弃：`debug` 也进缓冲；`logger.backlog` 只在取的时候按参数筛，窗格里的筛选由窗格自己做
 - 日志插件不画窗格：窗格在界面插件仓
 - 内核不按插件区分日志：来源分类只在日志插件里做
 
 ## 测试
 
-`plugins/logger/tests/source.test.ts` 测来源分类，`apply.test.ts` 在真 cordis 根上下文里（内核与命令总线用替身）测补读缓冲、推到页面、两千条上限、两条命令的登记与注销；窗格按 `seq` 拼接历史与实时日志，只能在隔离 home 里验证。
+`plugins/logger/tests/source.test.ts` 测来源分类，`apply.test.ts` 在真 cordis 根上下文里（内核与命令总线用替身）测补读缓冲、推到页面、两千条上限、两条命令的登记与注销、`logger.backlog` 的筛选与参数报错；窗格按 `seq` 拼接历史与实时日志，只能在隔离 home 里验证。
 
 {/* has file="../plugins/logger/tests/source.test.ts" text="kernel 与 loader 是内核" */}
 
 {/* has file="../plugins/logger/tests/apply.test.ts" text="装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复" */}
+
+{/* has file="../plugins/logger/tests/apply.test.ts" text="logger.backlog 带 minLevel、name 先筛，limit 再取筛完之后最近的几条" */}

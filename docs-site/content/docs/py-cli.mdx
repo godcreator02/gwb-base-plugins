@@ -18,7 +18,7 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 - **登记时顺带检查一次**：不等它完成，不阻塞登记方的 `apply`
 - **同一个包根同时只建一次**：并发的运行共用同一次检查
 - **venv 没就绪时运行抛错**：写一条 warn 再抛，经命令总线调用时变成失败回执；按次给的工作目录不合规时连 venv 都不检查
-- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，`plugin` 固定是登记方的包名
+- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，`plugin` 固定是登记方的包名，`effect` 照登记时给的写
 - **中文输出不乱码**：给 python 子进程加 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`
 - **时限、输出截断、同名处理、日志**：和 node 命令行运行插件一样；工作目录缺省是 `<包根>/py`
 - **带一份说明书 `gwb-py-cli`**：给 agent 讲第一次运行为什么慢、venv 怎么重建、回执与 node 的异同
@@ -40,10 +40,10 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 服务 `ctx.gwbPyCli` 的 `register(spec)` | `spec`：`name`、`packageRoot`（包根的绝对路径）、`distName`、`version`、`command` 或 `module`、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`args?`、`cwd?`、`env?`、`timeoutMs?`；类型 `PyCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbPyCli` 的 `register(spec)` | `spec`：`name`、`packageRoot`（包根的绝对路径）、`distName`、`version`、`command` 或 `module`、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`effect?`（总线命令的副作用标记，含义见 [gwb-commands](/docs/commands)，不写 agent 按 `write` 对待）、`args?`、`cwd?`、`env?`、`timeoutMs?`；类型 `PyCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
 | 服务 `ctx.gwbPyCli` 的 `ensureReady({ packageRoot, distName, version })` | 检查并在需要时重建 venv，不抛错，返回 `{ ready, reason?, action }`，`action` 是 `skipped`、`synced` 或 `failed` | [9 命令行工具](/docs/seams/cli) |
 | 服务 `ctx.gwbPyCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，回执形状同 node 命令行运行插件的 `CliRunResult`；venv 没就绪时抛错 | [9 命令行工具](/docs/seams/cli) |
-| 登记出来的命令、命令 `py-cli.list` | 参数形状同 node 命令行运行插件 | [1 命令总线](/docs/seams/bus) |
+| 登记出来的命令、命令 `py-cli.list` | 参数形状同 node 命令行运行插件；`py-cli.list` 无参数，标 `effect: 'read'` | [1 命令总线](/docs/seams/bus) |
 | venv 目录 `<包根>/py/.venv` 与其中的 `.gwb-built-for` | venv 建成后把包根写进 `.gwb-built-for`；记号缺失或指着别的包根，就当 venv 不是这里的、重建 | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-py-cli` | 包根 `skills/gwb-py-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 

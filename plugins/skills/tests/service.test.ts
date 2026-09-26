@@ -82,8 +82,8 @@ describe('GwbSkills 服务', () => {
   it('登记两条命令，plugin 写包名；说明书插件卸载时注销', async () => {
     const { bus, skillsFiber } = await bootSkills()
     expect(bus.list()).toEqual([
-      { name: 'skill.list', description: '此刻登记着的全部说明书（每份带名字、描述、登记它的插件的包名、文件清单）', usage: '无参数', plugin: '@godcreator/gwb-skills' },
-      { name: 'skill.read', description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@godcreator/gwb-skills' },
+      { name: 'skill.list', description: '此刻登记着的全部说明书（每份带名字、描述、登记它的插件的包名、文件清单）', usage: '无参数', plugin: '@godcreator/gwb-skills', effect: 'read' },
+      { name: 'skill.read', description: '读一份 skill 的正文', usage: '参数 { name, file? }，file 缺省 SKILL.md', plugin: '@godcreator/gwb-skills', effect: 'read' },
     ])
     await skillsFiber.dispose()
     expect(bus.list()).toEqual([])

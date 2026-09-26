@@ -1,5 +1,14 @@
 import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
 
+/**
+ * 调这条命令会动到什么。agent 靠它判断能不能直接调：
+ * `read` 什么都不改（联网只读也算）；`write` 改本机的文件、设置、数据或界面；
+ * `external` 影响本机以外或打扰人：推送、发到远端、发消息、弹窗或通知
+ */
+export type GwbCommandEffect = 'read' | 'write' | 'external'
+
+export const COMMAND_EFFECTS: readonly GwbCommandEffect[] = ['read', 'write', 'external']
+
 /** 一条命令的说明 */
 export interface GwbCommandDef {
   name: string
@@ -9,10 +18,15 @@ export interface GwbCommandDef {
   usage: string
   /** 登记方的包名。不给由服务从调用方取；给了必须与调用方的包名相同 */
   plugin?: string
+  /** 调它会动到什么；MCP 入口的 search 带出这一项。不写就是没标，agent 按 write 对待 */
+  effect?: GwbCommandEffect
+  /** 只给页面调用：MCP 入口不列出、agent 调不到。页面与别的插件照常调 */
+  hiddenFromAgents?: true
 }
 
-/** 命令表里存的样子：`plugin` 是登记方的完整包名 */
-export type RegisteredCommandDef = Required<GwbCommandDef>
+/** 命令表里存的样子：`plugin` 是登记方的完整包名；`effect`、`hiddenFromAgents` 没写就没有这一项 */
+export type RegisteredCommandDef = Required<Pick<GwbCommandDef, 'name' | 'description' | 'usage' | 'plugin'>> &
+  Pick<GwbCommandDef, 'effect' | 'hiddenFromAgents'>
 
 /** 请求从哪来：`ui` 是页面经内核转来的，`mcp` 是 agent 经 MCP 入口调的，`plugin` 是别的插件直接调的 */
 export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'
@@ -83,7 +97,16 @@ export function checkedCommandDef(callerPackage: string, def: GwbCommandDef): Re
       `包 ${callerPackage} 的命令 ${def.name} 的 plugin 写的是「${String(def.plugin)}」，与调用方的包名 ${callerPackage} 不同：删掉 plugin，或写成 ${callerPackage}`,
     )
   }
-  return { name: def.name, description: def.description, usage: def.usage, plugin: callerPackage }
+  if (def.effect !== undefined && !COMMAND_EFFECTS.includes(def.effect)) {
+    throw new Error(`包 ${callerPackage} 的命令 ${def.name} 的 effect 写的是「${String(def.effect)}」：只能是 ${COMMAND_EFFECTS.join(' / ')}，或者不写`)
+  }
+  if (def.hiddenFromAgents !== undefined && def.hiddenFromAgents !== true) {
+    throw new Error(`包 ${callerPackage} 的命令 ${def.name} 的 hiddenFromAgents 写的是「${String(def.hiddenFromAgents)}」：只能是 true，或者不写`)
+  }
+  const checked: RegisteredCommandDef = { name: def.name, description: def.description, usage: def.usage, plugin: callerPackage }
+  if (def.effect !== undefined) checked.effect = def.effect
+  if (def.hiddenFromAgents === true) checked.hiddenFromAgents = true
+  return checked
 }
 
 function logRegistrationOrOverride(log: RegistryLog, incoming: RegisteredCommandDef, previous: CommandRegistration | undefined): void {

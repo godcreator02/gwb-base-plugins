@@ -19,15 +19,15 @@ description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行
 - 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
 - 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
 - token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
-- 通过的请求新建一个 McpServer 和一条 transport，登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
-- `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 交给命令总线的 `run()`；响应结束时 server 与 transport 一起关闭
+- 通过的请求新建一个 McpServer 和一条 transport，instructions 在这时按当前的命令表与说明书清单生成，再登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
+- `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 先在 `list()` 里查到命令、确认不是只给页面调用的，再交给命令总线的 `run()`；返回超过 40000 字符换成 `isError` 的说明；响应结束时 server 与 transport 一起关闭
 </Diagram>
 
 **三个工具**，写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="83-123" */}
 
-**HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamable HTTP transport，随响应关闭；别的路径回 404，别的方法回 405（`allow: POST`）：
+**HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamable HTTP transport，随响应关闭；initialize 返回的 instructions 在新建 server 时生成（内容见[命令表开给 agent](/docs/seams/agent-surface)），所以装卸插件后客户端重连一次就拿到新的目录；别的路径回 404，别的方法回 405（`allow: POST`）：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="230-252" */}
 
@@ -90,7 +90,7 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 - default home 只用设置里的端口（缺省 2870），被占就不开入口、写一条 error，不改用别的端口——连着 default 的会话把这个地址写进了配置，换端口等于把这些会话交给占着端口的那个 home
 - 只在绑定成功之后写 `runtime.json` 的 `mcp` 项，写失败只写一条 warn、入口照常服务；只改自己那一项；进程退出时不删，记录可能过时，由读的一方核对
 - 不发清单变更通知：连接是无状态的，工具清单也不会变。构造 server 时声明 `tools.listChanged: false`，SDK 的 `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`
-- 命令执行失败（命令不存在、参数不对）在 `run` 的结果里带 `isError`，不是协议错误，连接不断
+- 命令执行失败（命令不存在、只给页面调用、参数不对）与返回超过 40000 字符，都在工具结果里带 `isError`，不是协议错误，连接不断；`search` 的 `effect` 给了三个值以外的值，由 SDK 按参数的 schema 拒掉，处理函数收不到
 
 **MCP 客户端**保证：
 
@@ -106,7 +106,7 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 
 ## 不负责的事
 
-- MCP 插件不做命令级的权限控制：token 对的请求能调命令表里的每一条命令，包括往 home 里装插件
+- MCP 插件不做命令级的权限控制：token 对的请求能调命令表里每一条没标 `hiddenFromAgents` 的命令，包括往 home 里装插件；`effect` 不拦调用
 - MCP 插件不保持会话、不推送通知
 - MCP 插件不监听 127.0.0.1 以外的地址，不提供 HTTPS
 - MCP 插件不替客户端写配置：`mcp.info` / `mcp.token` 只给片段

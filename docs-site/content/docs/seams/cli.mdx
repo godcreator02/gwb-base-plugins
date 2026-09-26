@@ -50,7 +50,7 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 {/* ref file="../plugins/node-cli/src/invoke.ts" lines="28-41" */}
 
-**总线命令经调用方的上下文登记**：运行插件用 `this.ctx.get('gwbCommands')` 取总线。命令总线从取它的那个上下文认登记方；经运行插件自己的上下文（`inject` 过 `gwbCommands` 的那份）取的话，总线认出的是运行插件，与写进去的调用方包名对不上，登记被拒；调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛错，而 `get` 不查 `inject`：
+**总线命令经调用方的上下文登记**：spec 里的 `description`、`usage`、`effect` 原样写进总线命令的定义，`effect` 的取值由命令总线检查（见[命令总线](/docs/seams/bus)）。运行插件用 `this.ctx.get('gwbCommands')` 取总线。命令总线从取它的那个上下文认登记方；经运行插件自己的上下文（`inject` 过 `gwbCommands` 的那份）取的话，总线认出的是运行插件，与写进去的调用方包名对不上，登记被拒；调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛错，而 `get` 不查 `inject`：
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
 
@@ -89,7 +89,8 @@ venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `u
 - 身份取自调用方条目的包名，登记方不用报名字（见[条目身份](/docs/seams/entry-identity)）
 - 登记时就校验：名字为空或带空白、node 的 `entry` 不是绝对路径、python 的 `packageRoot` 不是绝对路径或缺 `distName` / `version`、`command` 与 `module` 都给或都不给、时限不在范围内，当场抛错
 - 同名后登记的生效并写 warn；注销只删自己那条；注销函数登记到调用方的 `effect` 上，调用方卸载时工具从运行插件的表上和总线上一起注销
-- 总线上那条命令的 `usage` 缺省是运行插件写的参数说明；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉运行插件表里那条，把错抛给调用方
+- 总线上那条命令的 `usage` 缺省是运行插件写的参数说明，`effect` 照登记时给的写、没给就不标；总线拒收（没写 `description`、`plugin` 不是调用方的包名、`effect` 不是三个值之一）时撤掉运行插件表里那条，把错抛给调用方
+- 自己登记的 `node-cli.list`、`py-cli.list` 标 `effect: 'read'`
 - argv 全程是数组，不经过 shell：引号、空格、中文参数原样到达子进程
 - 不继承内核进程的工作目录；子进程的 stdin 是空的；环境变量是内核进程的环境加上运行插件与登记时给的几条
 - 启动失败（可执行文件不在）收成 `exitCode: null` 的回执、原因写进 `stderr`，不抛错；按次给的 `cwd` 不合规回 `{ ok: false, error }`；运行一个不存在的工具抛错
@@ -107,6 +108,7 @@ venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `u
 - node：`entry` 是自己包里编译好的 js 的绝对路径，从 `import.meta.url` 算出来
 - python：包根下有 `py/` 目录，里面是带 `pyproject.toml` 与 `uv.lock` 的 python 项目（重建用 `--frozen`，没有锁文件当场失败）；`distName`、`version` 与 `pyproject.toml` 一致；用 `command` 时 `[project.scripts]` 里有这个入口点；包的 `files` 带上 `py`
 - 写 `description`：命令总线要求非空，不写登记会被拒
+- 写 `effect`：按工具运行起来的实际后果标，不写 agent 按 `write` 对待
 - 命令名不和别的命令重名；需要的环境变量写在 `env` 里
 
 **子进程**保证：

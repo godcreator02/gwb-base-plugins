@@ -13,6 +13,23 @@ export function textResult(value: unknown): ToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] }
 }
 
+export function errorResult(text: string): ToolResult {
+  return { content: [{ type: 'text', text }], isError: true }
+}
+
+/** 单次返回的上限（字符）。Claude Code 的单次工具返回上限约 25000 token，中文 JSON 大约四万字符到顶 */
+export const RESULT_CHAR_LIMIT = 40_000
+
+function resultLength(result: ToolResult): number {
+  return result.content.reduce((total, part) => total + part.text.length, 0)
+}
+
+/** 超过上限就不交回原文，换成写明怎么缩小范围的 isError 文本；`advice` 由调用方按工具写 */
+export function withinSizeLimit(result: ToolResult, advice: (length: number) => string): ToolResult {
+  const length = resultLength(result)
+  return length <= RESULT_CHAR_LIMIT ? result : errorResult(advice(length))
+}
+
 /** 有的客户端把对象参数序列化成 JSON 字符串再发：字符串先试着解析，解析不了原样交给命令自己校验 */
 export function coerceArgs(raw: unknown): unknown {
   if (typeof raw !== 'string') return raw
@@ -32,7 +49,7 @@ function isHandlerOwnObject(value: object): boolean {
 export function toolResult(value: GwbResult): ToolResult {
   if (typeof value === 'object' && value !== null && isHandlerOwnObject(value)) return textResult(value)
   if (value.ok) return textResult({ ok: true, data: value.data ?? null })
-  return { content: [{ type: 'text', text: `执行失败：${value.error ?? '未知错误'}` }], isError: true }
+  return errorResult(`执行失败：${value.error ?? '未知错误'}`)
 }
 
 /** 命令行运行插件回执里本插件用到的字段，本地声明，不依赖那两个插件 */

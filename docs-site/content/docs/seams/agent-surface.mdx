@@ -1,6 +1,6 @@
 ---
 title: 3 命令表开给 agent
-description: 连接 MCP 插件与命令插件、说明书插件；交换的是 gwbCommands 的 list() / run() 与 gwbSkills 的 list()，MCP 插件每次调用都重新读取，拼成 index / search 的返回，把 run 的回执翻译成 MCP 工具结果。回执有标准回执、处理函数原样返回的对象、命令行工具回执三种形状，靠键名区分；instructions 与提示里按名字提到的别的插件的命令，都只靠约定
+description: 连接 MCP 插件与命令插件、说明书插件；交换的是 gwbCommands 的 list() / run() 与 gwbSkills 的 list()，MCP 插件每次调用都重新读取，拼成 instructions 末尾的目录与 index / search 的返回，跳过只给页面调用的命令，把 run 的回执翻译成 MCP 工具结果、超过 40000 字符就换成说明。回执有标准回执、处理函数原样返回的对象、命令行工具回执三种形状，靠键名区分；instructions 与提示里按名字提到的别的插件的命令，都只靠约定
 ---
 
 **本页回答**：`index`、`search`、`run` 三个工具的内容从哪来；命令回执怎么变成 MCP 工具结果；MCP 插件对命令插件、说明书插件依赖了哪几样；哪些地方只靠约定、写在哪两处。HTTP 与鉴权见 [MCP 协议](/docs/seams/mcp-protocol)。
@@ -15,13 +15,18 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 ## 接口
 
 <Diagram name="mcp-tools" title="三个工具的内容从哪来、run 的回执怎么翻译（分步）">
+- initialize：`instructions.md` 接上按 `gwbCommands.list()`、`gwbSkills.list()` 生成的目录（home 名、说明书名、命令前缀），每个请求重新生成
 - `index`（无参数）：每次重新读取 `gwbCommands.list()`、`gwbSkills.list()` 与 `instructions.md`，返回说明书清单和按包名分组的命令名
-- `search`（`plugin?`、`prefix?`、`q?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage`
-- `run`（`command`、`args?`）：参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`，带上 `{ via: 'mcp' }`
+- `search`（`plugin?`、`prefix?`、`q?`、`effect?`）：每次重新读取同一份清单再筛选，命中的命令带 `usage` 与 `effect`
+- 三处都跳过 `hiddenFromAgents` 的命令
+- `run`（`command`、`args?`）：先在 `gwbCommands.list()` 里找这条命令，不存在或是 `hiddenFromAgents` 的就回 `isError`、不执行；参数是字符串时先试着按 JSON 解析，再交给 `gwbCommands.run`，带上 `{ via: 'mcp' }`
 - `run` 的回执分三种形状：同时有 `stdout` 与 `exitCode` 的命令行工具回执只留六项；有 `ok`、`data`、`error` 以外的键的原样转成文本；标准回执失败时回「执行失败：…」并带 `isError`
+- 三个工具的返回超过 40000 字符，换成带 `isError` 的说明
 </Diagram>
 
-**MCP 插件用到的形状**在 `inventory.ts` 里本地声明，不 import 说明书插件的类型；赋值处由类型检查对着命令插件、说明书插件导出的类型核对：
+**MCP 插件用到的形状**在 `inventory.ts` 里本地声明，不 import 说明书插件的类型；`effect` 的三个值也在这里另写一份。赋值处由类型检查对着命令插件、说明书插件导出的类型核对——命令插件把 `effect` 加了第四个值，这边的类型检查会报错：
+
+{/* has file="../plugins/mcp/src/inventory.ts" text="export type CommandEffect = 'read' | 'write' | 'external'" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="18-37" */}
 
@@ -29,21 +34,31 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="181-190" */}
 
-**`index` 与 `search` 每次调用都重新读取**命令表与说明书清单，运行中新登记的命令下一次调用就在：
+**instructions、`index` 与 `search` 每次都重新读取**命令表与说明书清单，运行中新登记的命令下一次调用就在（instructions 是下一个请求）：
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="205-221" */}
 
-- `index`：home 名、MCP 插件版本、`instructions.md` 全文、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述把清单撑大
-- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，只给它时说明书只回名字与包名；`q` 在命令的名字、description、usage 里找子串，在说明书的名字、description 里找；多个条件同时满足；命中的命令总带 `usage`；不带参数返回全部，带了条件时返回里多一个 `filter` 写明这次按什么筛的
+- instructions：`instructions.md` 全文，空一行接上目录——`你连上的是 home「<home>」（gwb-mcp <版本>）`、全部说明书的名字、对 agent 开放的命令取第一个点之前的前缀去重。只给名字不给描述：按日常使用的 default home 的规模，带上每份说明书的描述要六千字符左右，超过 Claude Code 的 2048 字符截断线；描述在 `index` 里
+- `index`：home 名、MCP 插件版本、`instructions.md` 全文（不带目录）、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述让清单变得很长
+- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，只给它时说明书只回名字与包名；`q` 在命令的名字、description、usage 里找子串，在说明书的名字、description 里找；`effect` 只留标了这一种的命令，没标的不算，给了它就不回说明书；多个条件同时满足；命中的命令总带 `usage`，标了 `effect` 的再带 `effect`；不带参数返回全部，带了条件时返回里多一个 `filter` 写明这次按什么筛的
+- 标了 `hiddenFromAgents` 的命令三处都不出现
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
+
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="41-63" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="135-155" */}
 
-**`run`**：先把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），再交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
+**`run`**：先在 `gwbCommands.list()` 里找这条命令——不存在回 `isError` 的 `执行失败：没有这条命令：<命令名>。用 search {"q":"<关键词>"} 找名字，装卸过插件就重新调 index`，是 `hiddenFromAgents` 的回 `执行失败：命令 <命令名> 只给页面调用，不对 agent 开放`，两种都不执行、写一条 warn；再把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="223-240" */}
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="16-24" */}
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="222-226" */}
+
+**返回的上限**：三个工具的结果都过一遍 `withinSizeLimit`，文本超过 `RESULT_CHAR_LIMIT`（40000 字符）就整个换成 `isError` 的说明，说明文字由各工具自己写（`run` 的那句写明命令已经执行完、去 `usage` 里找筛选或条数参数）。上限按 Claude Code 单次工具返回的上限（约 25000 token）定，超了客户端会把结果转存成文件：
+
+{/* ref file="../plugins/mcp/src/tools.ts" lines="20-31" */}
 
 **回执的三种形状**靠键名区分：
 
@@ -61,9 +76,9 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 **命令表和说明书表靠 `plugin` 对上**：两边的 `plugin` 都是服务从登记方条目取的包名（见[条目身份](/docs/seams/entry-identity)）；`search {plugin}` 同时筛两张表。
 
-**按名字提到的别的插件的命令**：`instructions.md` 在 initialize 时发给客户端，`index` 的返回再带一份——有的客户端不把 initialize 里的 instructions 交给模型，`index` 里这一份是它们唯一拿到的地方。它、`index` 末尾的提示、`index` 工具的描述、`mcp.client` 的用法与 `bin/client.mjs` 的帮助按名字提到别的插件的命令：
+**按名字提到的别的插件的命令**：`instructions.md` 在 initialize 时发给客户端，`index` 的返回再带一份——有的客户端不把 initialize 里的 instructions 交给模型，`index` 里这一份是它们唯一拿到的地方。它、instructions 末尾的目录、`index` 末尾的提示、`index` 工具的描述、`mcp.client` 的用法与 `bin/client.mjs` 的帮助按名字提到别的插件的命令：
 
-{/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
+{/* has file="../plugins/mcp/instructions.md" text="读说明书是 run skill.read" */}
 
 {/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update" */}
 
@@ -79,15 +94,16 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 **MCP 插件**保证：
 
-- `index`、`search` 每次调用都重新读取命令表与说明书清单，不缓存；同样的输入生成的 `index` 逐字节一致
+- instructions、`index`、`search` 每次都重新读取命令表与说明书清单，不缓存；同样的输入生成的 `index` 逐字节一致
 - 说明书插件不在时照常工作，说明书清单是空表；说明书插件卸载时清单跟着清空
-- 命令执行失败翻译成带 `isError` 的文本结果，不抛成 JSON-RPC 错误
+- `hiddenFromAgents` 的命令不出现在 instructions 的目录、`index`、`search` 里，`run` 不执行它；`effect` 原样交给 agent，不按它拦调用
+- 命令执行失败、命令不存在、返回超过 40000 字符，都翻译成带 `isError` 的文本结果，不抛成 JSON-RPC 错误
 - 命令行工具回执与处理函数原样返回的对象不按标准回执拆，字段一个不丢
 - agent 每次调 `run` 都写一条日志：成功写 info，失败写 warn 并带原因
 
 **命令插件**保证：
 
-- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`，四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名
+- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`，四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名；`effect` 只会是 `read` / `write` / `external` 或没有，`hiddenFromAgents` 只会是 `true` 或没有
 - `run()` 不抛错，回执形状见[命令总线](/docs/seams/bus)
 
 **说明书插件**保证：
@@ -97,17 +113,21 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 **登记命令、说明书的插件**保证：
 
 - 命令的 `description` 与说明书的 description 都写成一句话（触发条件），参数形状写进 `usage`
+- 命令按调用的实际后果标 `effect`；返回可能很大的命令在 `usage` 里提供筛选或条数参数，不然 agent 经 MCP 入口永远拿不到结果
 - 处理函数自己返回带 `ok` 的对象时，不和标准回执的三个键混用
 
 ## 不负责的事
 
-- MCP 插件不校验参数、不给命令分权限：`args` 原样交给 `gwbCommands.run`；带上的来源 `mcp` 只是告诉处理函数，不限制能调哪条命令
+- MCP 插件不校验参数、不给命令分权限：`args` 原样交给 `gwbCommands.run`；带上的来源 `mcp` 只是告诉处理函数；`effect` 是给 agent 看的标签，不拦调用；只有 `hiddenFromAgents` 的命令不执行
+- MCP 插件不截断返回：超过上限就整个不交回
 - MCP 插件不把命令登记成单独的工具，也不列出装了哪些插件（那是插件管理的 `plugin-manager.list`）
-- 命令插件、说明书插件不知道 MCP 插件的存在，不为它调整任何格式
+- 命令插件、说明书插件不知道 MCP 插件的存在：命令插件只把 `effect`、`hiddenFromAgents` 原样存进命令表，怎么用由 MCP 插件决定
 
 ## 测试
 
-`plugins/mcp/tests/inventory.test.ts` 测 `index` / `search` 的生成规则，`tools.test.ts` 测参数解析与回执翻译，`apply.test.ts` 经真的 HTTP 调到命令总线替身；MCP 插件拿到运行中真的命令表与说明书清单，只能在隔离 home 里验证。
+`plugins/mcp/tests/inventory.test.ts` 测 instructions 末尾的目录与 `index` / `search` 的生成规则，`tools.test.ts` 测参数解析、回执翻译与返回上限，`server.test.ts` 按 default home 的规模测 instructions 的长度，`apply.test.ts` 经真的 HTTP 调到命令总线替身（含 `hiddenFromAgents` 被拒、命令不存在、返回超长）；MCP 插件拿到运行中真的命令表与说明书清单，只能在隔离 home 里验证。
+
+{/* has file="../plugins/mcp/tests/apply.test.ts" text="只给页面调用的命令：index、search 不列，run 拒绝且不执行；页面照常调得到" */}
 
 {/* has file="../plugins/mcp/tests/tools.test.ts" text="带 ok 但还有自己字段的回执是总线透传的原话,不当信封摊平" */}
 

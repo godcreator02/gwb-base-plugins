@@ -11,7 +11,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 - **登记命令行工具**：插件给一个名字和要运行的 js 的绝对路径，拿回注销函数；插件卸载时自动注销，不用自己包 `ctx.effect`
 - **登记时就校验**：名字为空或带空白、js 路径不是绝对路径、时限不是正数或超上限，登记时就抛错——等到运行时才发现的话，报错的地方已经离登记的地方很远
-- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面、agent、别的插件照调命令的办法调它；`usage` 没给时补上参数形状那一句。总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、`plugin` 不是调用方的包名）时撤掉表里那条，把错抛给调用方
+- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面、agent、别的插件照调命令的办法调它；`usage` 没给时补上参数形状那一句，`effect` 照登记时给的写进总线命令。总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、`plugin` 不是调用方的包名、`effect` 不是 `read` / `write` / `external`）时撤掉表里那条，把错抛给调用方
 - **用运行工作台的那个 node 启动**：程序是 `process.execPath`（工作台进程的 electron.exe），带上 `ELECTRON_RUN_AS_NODE=1`；不查 PATH、不读 `bin` 字段、不经过 shell，参数全程是数组，引号、空格、中文原样到达
 - **工作目录**：按次给的优先，其次登记时给的，都没给就是那个 js 所在的目录；不用工作台进程自己的工作目录。按次给的必须是存在的目录的绝对路径，不合规时不启动进程，回一句说明要什么的 `{ ok: false, error }`
 - **时限**：缺省 60 秒，登记时可以给到 2,147,483,647 毫秒（Node 定时器的上限，轨迹卡[显式超时](/trajectory/2026-09-21-explicit-cli-timeout)）；到时限在 Windows 上用 `taskkill /T /F` 结束整个进程树
@@ -38,11 +38,11 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | `spec`：`name`、`entry`（js 的绝对路径）、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`args?`（固定参数）、`cwd?`、`env?`、`timeoutMs?`、`plugin?`（缺省是调用方的包名，给了也必须是调用方的包名）；类型 `NodeCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
+| 服务 `ctx.gwbNodeCli` 的 `register(spec)` | `spec`：`name`、`entry`（js 的绝对路径）、`description?`（命令总线要求非空，不给登记会被拒）、`usage?`、`effect?`（总线命令的副作用标记，含义见 [gwb-commands](/docs/commands)，不写 agent 按 `write` 对待）、`args?`（固定参数）、`cwd?`、`env?`、`timeoutMs?`、`plugin?`（缺省是调用方的包名，给了也必须是调用方的包名）；类型 `NodeCliSpec` 由本包导出 | [9 命令行工具](/docs/seams/cli) |
 | 服务 `ctx.gwbNodeCli` 的 `list()`、`run(name, extraArgs?, { cwd? })` | 列出已登记的工具；运行一条，`extraArgs` 追加在固定参数后面；名字不存在时抛错 | [9 命令行工具](/docs/seams/cli) |
 | 回执 `CliRunResult` | `ok`（退出码 0 且没超时）、`exitCode`（启动失败时是 `null`，原因写进 `stderr`）、`signal`、`timedOut`、`timeoutMs`、`stdout` 与 `stderr`（各是 `{ text, truncated, spillPath? }`）、`durationMs`；按次给的 `cwd` 不合规时是 `{ ok: false, error }` | [9 命令行工具](/docs/seams/cli) |
 | 登记出来的命令 | 参数给一个数组就是追加参数，给 `{ args?, cwd? }` 也认；回执带 `ok`，命令总线原样返回 | [1 命令总线](/docs/seams/bus) |
-| 命令 `node-cli.list` | 无参数，返回已登记的工具 | [1 命令总线](/docs/seams/bus) |
+| 命令 `node-cli.list` | 无参数，返回已登记的工具；标 `effect: 'read'` | [1 命令总线](/docs/seams/bus) |
 | 输出全量文件 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`，路径在回执的 `spillPath`；写不了时照样给尾部，只是没有 `spillPath` | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
@@ -60,7 +60,7 @@ export const inject = ['gwbNodeCli']
 const CLI_ENTRY = path.join(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), 'dist', 'cli.js')
 
 export function apply(ctx: GwbContext) {
-  ctx.gwbNodeCli.register({ name: 'mine.build', description: '运行我的构建工具', entry: CLI_ENTRY, args: ['--json'] })
+  ctx.gwbNodeCli.register({ name: 'mine.build', description: '运行我的构建工具', effect: 'write', entry: CLI_ENTRY, args: ['--json'] })
 }
 ```
 

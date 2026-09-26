@@ -76,7 +76,7 @@ const reportOf = (outcome: unknown): { argv: string[]; cwd: string; asNode: stri
 describe('GwbNodeCli 服务', () => {
   it('登记 node-cli.list；运行插件卸载时注销', async () => {
     const { bus, nodeCliFiber } = await bootNodeCli()
-    expect(bus.list()).toEqual([{ name: 'node-cli.list', description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: '@godcreator/gwb-node-cli' }])
+    expect(bus.list()).toEqual([{ name: 'node-cli.list', description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: '@godcreator/gwb-node-cli', effect: 'read' }])
     await nodeCliFiber.dispose()
     expect(bus.list()).toEqual([])
   })

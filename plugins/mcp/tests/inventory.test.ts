@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildIndex, buildSearch, clampDescription, type CommandView, type SkillView } from '../src/inventory.js'
+import { buildIndex, buildSearch, clampDescription, homeCatalog, type CommandView, type SkillView } from '../src/inventory.js'
 
 const CMDS: CommandView[] = [
   { name: 'skill.list', plugin: '@godcreator/gwb-skills', description: '此刻挂着的 skill', usage: '无参数' },
@@ -81,6 +81,21 @@ describe('buildIndex：index 的返回（三层查询的第一层）', () => {
   })
 })
 
+describe('homeCatalog：instructions 末尾那段目录', () => {
+  it('写 home 名与版本、全部说明书名、去重后的命令前缀', () => {
+    const text = homeCatalog({ home: 'default', version: '0.11.0', commands: CMDS, skills: SKILLS })
+    expect(text).toContain('home「default」（gwb-mcp 0.11.0）')
+    expect(text).toContain('mcp、gwb-py-cli')
+    expect(text).toContain('skill、py-cli、devkit')
+  })
+
+  it('没有说明书、没有命令时写「无」', () => {
+    const text = homeCatalog({ home: 'x', version: '0', commands: [], skills: [] })
+    expect(text).toMatch(/说明书.*：无/)
+    expect(text).toMatch(/命令前缀.*：无/)
+  })
+})
+
 describe('buildSearch：按条件过滤与不带参数返回全部', () => {
   it('不带参数＝不过滤＝返回全部：每条都带 usage，不出现 filter 字段', () => {
     const doc = buildSearch({ commands: CMDS, skills: SKILLS })
@@ -132,6 +147,29 @@ describe('buildSearch：按条件过滤与不带参数返回全部', () => {
 
     const byName = buildSearch({ commands: CMDS, skills: SKILLS, query: { q: 'skill.read' } })
     expect(byName.commands.map((c) => c.name)).toEqual(['skill.read'])
+  })
+
+  it('effect 只留标了这一种的命令，没标的不算；给了 effect 就不回说明书；命中的行带 effect', () => {
+    const marked: CommandView[] = [
+      { ...CMDS[0]!, effect: 'read' },
+      { ...CMDS[1]!, effect: 'read' },
+      { ...CMDS[2]!, effect: 'write' },
+      CMDS[3]!,
+    ]
+    const doc = buildSearch({ commands: marked, skills: SKILLS, query: { effect: 'read' } })
+    expect(doc.commands.map((c) => [c.name, c.effect])).toEqual([
+      ['skill.list', 'read'],
+      ['skill.read', 'read'],
+    ])
+    expect(doc.skills).toEqual([])
+    const unmarkedRow = buildSearch({ commands: marked, query: { prefix: 'devkit.' } }).commands[0]!
+    expect('effect' in unmarkedRow).toBe(false)
+  })
+
+  it('只给页面调用的命令 index 与 search 都不列', () => {
+    const withHidden: CommandView[] = [...CMDS, { name: 'skill.sync', plugin: '@godcreator/gwb-skills', description: '页面推数据', hiddenFromAgents: true }]
+    expect(buildIndex({ home: 'd', version: '1', commands: withHidden }).commands[0]).toEqual({ plugin: '@godcreator/gwb-skills', names: ['skill.list', 'skill.read'] })
+    expect(buildSearch({ commands: withHidden, query: { prefix: 'skill.' } }).commands.map((c) => c.name)).toEqual(['skill.list', 'skill.read'])
   })
 
   it('多个条件按 AND 组合，没有匹配就返回空表', () => {

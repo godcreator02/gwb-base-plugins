@@ -101,7 +101,7 @@ async function bootstrapLogged(logs: Message[], name: string): Promise<void> {
 describe('GwbPyCli 服务', () => {
   it('登记 py-cli.list；运行插件卸载时注销', async () => {
     const { bus, pyCliFiber } = await bootPyCli()
-    expect(bus.list()).toEqual([{ name: 'py-cli.list', description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: '@godcreator/gwb-py-cli' }])
+    expect(bus.list()).toEqual([{ name: 'py-cli.list', description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: '@godcreator/gwb-py-cli', effect: 'read' }])
     await pyCliFiber.dispose()
     expect(bus.list()).toEqual([])
   })

@@ -22,7 +22,7 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 - **保留最近两千条**：足够查看启动以来的日志，又不至于占太多内存；插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来，先补再注册 exporter，两段不重叠；每条带从 1 起递增的序号 `seq`
 - **实时推给页面**：每收到一条，经内核的事件通道推给页面
 - **不打断别人写日志**：格式化失败时退回把参数逐个转成文本——exporter 抛错会打断写这条日志的那次调用
-- **两条命令**：`logger.backlog` 取最近两千条，`logger.where` 报 home 目录与日志文件的路径；插件卸载时注销
+- **两条命令**：`logger.backlog` 取缓冲里的日志，可以按级别、logger 名筛，只取最近几条；`logger.where` 报 home 目录与日志文件的路径；两条都标 `effect: 'read'`，插件卸载时注销。不带参数的 `logger.backlog` 回整个缓冲，日志窗格这样取；缓冲满了时经 MCP 入口远超单次返回的上限，所以 agent 调时要带 `limit`
 - **提供一个没有方法的服务 `gwbLogger`**：日志窗格按服务名等它出现，服务上刻意不放任何方法；`apply` 里先提供这个服务再做别的
 - **就绪时写一行 info**：写明补进了多少条历史；装了日志窗格的话，这一行会出现在窗格里，可以用来确认整条链路是通的
 
@@ -36,7 +36,7 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 命令 `logger.backlog` | 无参数，返回最近两千条日志的数组（副本） | [10 日志](/docs/seams/log) |
+| 命令 `logger.backlog` | 参数 `{ limit?, minLevel?, name? }` 都可省：`minLevel`（`debug` / `info` / `warn` / `error`）只要这一级及以上，`name` 按 logger 名精确匹配，`limit`（正整数）在筛完之后取最近几条；认不出的键、类型不对直接报错。返回日志数组（副本），从旧到新；都不给就是整个缓冲，最多两千条 | [10 日志](/docs/seams/log) |
 | 命令 `logger.where` | 无参数，返回 `{ home, logFile }`，`logFile` 是内核写的 `<home>/gwb.log` | [10 日志](/docs/seams/log) |
 | 页面事件 `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出 | [10 日志](/docs/seams/log) |
 | 一条日志 `LogEntry` | `seq`、`ts`、`source`（`plugin` / `kernel` / `renderer`）、`level`（`error` / `warn` / `info` / `debug`）、`name`、`msg`；类型由本包导出 | [10 日志](/docs/seams/log) |
@@ -55,5 +55,5 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 - **不写日志文件**：`<home>/gwb.log` 与 stderr 由内核写，日志插件不在时人照样看得到日志
 - **不画窗格**：日志窗格在界面插件仓 gwb-ui-plugins，筛选、搜索、清屏都是窗格的事
 - **不保存缓冲**：两千条只在内存里，重启就清空；更早的日志去 `gwb.log` 找
-- **不改日志级别、不过滤**：`debug` 也进缓冲；日志插件只收，不管别的插件怎么写日志
+- **不改日志级别、收的时候不过滤**：`debug` 也进缓冲；日志插件只收，不管别的插件怎么写日志。按级别、名字筛只发生在 `logger.backlog` 取的时候
 - **服务 `gwbLogger` 上不放方法**：取数据走命令，推送走内核事件

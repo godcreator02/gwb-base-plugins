@@ -37,18 +37,19 @@ description: 调 node 命令行工具的命令、读它的退出码与输出、�
 
 1. 声明依赖：`export const inject = ['gwbNodeCli']`，或 `ctx.inject(['gwbNodeCli'], …)` 局部注入。
 2. 算出自己构建出的 js 的绝对路径，比如 `fileURLToPath(new URL('../dist/cli.js', import.meta.url))`。
-3. 调 `ctx.gwbNodeCli.register({ name, entry, description, usage?, args?, cwd?, env?, timeoutMs?, plugin? })`：
+3. 调 `ctx.gwbNodeCli.register({ name, entry, description, usage?, effect?, args?, cwd?, env?, timeoutMs?, plugin? })`：
    - `name` 不带空白，同时是命令名
    - `entry` 是上一步的绝对路径
    - `description` 必须写：命令总线拒收没有 description 的命令
+   - `effect` 按这个工具运行起来的实际后果写 `'read'` / `'write'` / `'external'`（含义见说明书 `gwb-commands`），原样成为总线命令的 `effect`；不写 agent 按 `write` 对待
    - `usage` 不给时自动补上参数形状那一句；`plugin` 不给时取本插件的包名，给了必须就是本插件的包名
    - `timeoutMs` 缺省 60 秒
 4. 插件卸载时这条命令自动从表上和命令总线上注销，不用包 `ctx.effect`。
 5. js 所在的目录写进 `package.json` 的 `files`。
 
-登记不合规（名字为空或带空白、`entry` 不是绝对路径、时限不是正数或超过上限、没写 `description`、`plugin` 不是本插件的包名）时 `register` 当场抛错，这条不进表。
+登记不合规（名字为空或带空白、`entry` 不是绝对路径、时限不是正数或超过上限、没写 `description`、`plugin` 不是本插件的包名、`effect` 不是三个值之一）时 `register` 当场抛错，这条不进表。
 
-完成的判据：`node-cli.list` 里有这一条，`plugin` 是本插件的包名；`run` 它回 `ok: true`。
+完成的判据：`node-cli.list` 里有这一条，`plugin` 是本插件的包名；写了 `effect` 的，`search {"prefix": "<名字>"}` 那一行带着它；`run` 它回 `ok: true`。
 
 ## 规矩
 

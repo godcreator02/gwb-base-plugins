@@ -11,6 +11,7 @@ import {
   type SettingDef,
   type SettingsOwners,
   type SettingsRegistry,
+  type SettingView,
   type Slot,
 } from './registry.js'
 import { readSettings, writeSettings } from './store.js'
@@ -69,6 +70,27 @@ function slotFromArgs(args: unknown): Slot {
   return { section, key }
 }
 
+const ALL_USAGE =
+  '参数 { section? }：section 是分区名（插件条目 id 的末段，shared 项是 *），只回这一个分区；不给回全部分区。' +
+  '回 [{ section, key, title?, type?, description?, value?, default?, live, secret?, isSet?, mask? }]，secret 行不回值'
+
+/** 不给参数回全部；给了 section 只回那个分区，分区不存在就报错并列出有哪些 */
+export function settingsInSection(rows: readonly SettingView[], args: unknown): SettingView[] {
+  if (args === undefined || args === null) return [...rows]
+  if (!isRecord(args)) throw new Error(`${ALL_COMMAND} 的参数要是对象：${ALL_USAGE}`)
+  const unknownKeys = Object.keys(args).filter((key) => key !== 'section')
+  if (unknownKeys.length > 0) throw new Error(`${ALL_COMMAND} 不认识参数 ${unknownKeys.join('、')}：${ALL_USAGE}`)
+  const section = args['section']
+  if (section === undefined) return [...rows]
+  if (typeof section !== 'string' || section === '') throw new Error(`${ALL_COMMAND} 的 section 要是非空字符串`)
+  const inSection = rows.filter((row) => row.section === section)
+  if (inSection.length === 0) {
+    const sections = [...new Set(rows.map((row) => row.section))]
+    throw new Error(`没有分区 ${section}；现有的分区：${sections.join('、')}`)
+  }
+  return inSection
+}
+
 /** 方法里的 `this.ctx` 是调用方的上下文，分区由调用方的条目算出，调用方报不出别人的身份 */
 export default class GwbSettings extends Service implements GwbSettingsApi {
   /** 用 TS 的 `private` 不用 `#`：cordis 给每个调用方派生 `Object.create(this)`，`#` 字段在派生对象上一读就抛错 */
@@ -110,24 +132,25 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private registerSettingsCommands(contextWithCommands: Context, commandBus: GwbCommands): void {
     contextWithCommands.effect(() =>
       commandBus.register(
-        { name: ALL_COMMAND, description: '此刻所有设置项与它们的值（secret 项不回值，只回是否已设置）', usage: '无参数', plugin: PACKAGE_NAME },
-        () => this.settingsRegistry.all(),
+        { name: ALL_COMMAND, description: '设置项与它们的值，可只取一个分区（secret 项不回值，只回是否已设置）', usage: ALL_USAGE, plugin: PACKAGE_NAME, effect: 'read' },
+        (args) => settingsInSection(this.settingsRegistry.all(), args),
       ),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: GET_COMMAND, description: '按位置读一项设置（secret 项也回明文）', usage: '参数 { section, key }', plugin: PACKAGE_NAME }, (args) =>
-        this.settingsRegistry.read(slotFromArgs(args)),
+      commandBus.register(
+        { name: GET_COMMAND, description: '按位置读一项设置（secret 项也回明文）', usage: '参数 { section, key }', plugin: PACKAGE_NAME, effect: 'read' },
+        (args) => this.settingsRegistry.read(slotFromArgs(args)),
       ),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: SET_COMMAND, description: '按位置写一项设置', usage: '参数 { section, key, value }', plugin: PACKAGE_NAME }, async (args) => {
+      commandBus.register({ name: SET_COMMAND, description: '按位置写一项设置', usage: '参数 { section, key, value }', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
         const raw = argsAsRecord(args)
         await this.writeValueAt(slotFromArgs(raw), raw['value'])
         return { ok: true }
       }),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', usage: '参数 { section, key }', plugin: PACKAGE_NAME }, async (args) => {
+      commandBus.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', usage: '参数 { section, key }', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
         await this.dropValueAt(slotFromArgs(args))
         return { ok: true }
       }),

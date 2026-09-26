@@ -111,7 +111,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
 
   private registerListCommand(commandBus: GwbCommands): void {
     this.providerContext.effect(() =>
-      commandBus.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: PACKAGE_NAME }, () =>
+      commandBus.register({ name: LIST_COMMAND, description: '此刻登记了哪些 python CLI', usage: '无参数', plugin: PACKAGE_NAME, effect: 'read' }, () =>
         this.pyCliRegistry.list(),
       ),
     )
@@ -167,7 +167,7 @@ export default class GwbPyCli extends Service implements GwbPyCliApi {
    */
   private registerOnCommandBus(spec: PyCliSpec, callerPackage: string): (() => void) | undefined {
     const commandBusSeenByCaller = this.ctx.get('gwbCommands')
-    return commandBusSeenByCaller?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage }, (args) => {
+    return commandBusSeenByCaller?.register({ name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: callerPackage, effect: spec.effect }, (args) => {
       const invocation = parseInvocation(args)
       return this.invoke(spec.name, invocation.args, invocation.cwd)
     })

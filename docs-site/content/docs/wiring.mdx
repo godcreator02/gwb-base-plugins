@@ -177,9 +177,9 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | `list()` 给 `index`、`search`；`run()` 给 `run`；登记 `mcp.info`、`mcp.token` | 插件一直等待、不加载，没有入口 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | `list()` 给 instructions 末尾的目录、`index`、`search`，`run` 执行前也用它查命令；`run()` 给 `run`；登记 `mcp.info`、`mcp.token` | 插件一直等待、不加载，没有入口 |
 | `gwbSettings` | `@godcreator/gwb-settings` | 必需（`export const inject`） | `workspace:^` | 声明并读取 `port` | 插件一直等待、不加载，没有入口 |
-| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | `index`、`search` 里的说明书清单；登记自带的说明书 | 入口照常开，说明书清单是空表 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | instructions 末尾的目录与 `index`、`search` 里的说明书清单；登记自带的说明书 | 入口照常开，说明书清单是空表 |
 | `gwbNodeCli` | `@godcreator/gwb-node-cli` | 局部注入 | `workspace:^`，标 `optional` | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.7.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 
@@ -201,8 +201,8 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 | 通道 | 对方 | 名字 | 用来做什么 |
 | --- | --- | --- | --- |
-| 命令总线（按名字调） | 登记了命令的任何插件 | agent 给的任意命令名，带 `{ via: 'mcp' }` | `run` 工具原样转发；MCP 插件不认识任何命令名 |
-| 说明文字里点名的命令 | 说明书插件、插件管理（gwb-lifecycle-plugins）、外壳（gwb-ui-plugins）、devkit | `skill.read`、`plugin-manager.list`、`plugin-manager.update`、`shell.reload`、`devkit.home.list` | 写在 `instructions.md`、`index` 末尾的提示、`mcp.client` 的用法与 `bin/client.mjs` 的帮助里，教 agent 下一步调什么；对方改名这里不报错，agent 照着调会收到「没有这条命令」 |
+| 命令总线（按名字调） | 登记了命令的任何插件 | agent 给的任意命令名，带 `{ via: 'mcp' }` | `run` 工具先在 `list()` 里确认命令存在、没标 `hiddenFromAgents`，再原样转发；MCP 插件不认识任何命令名 |
+| 说明文字里点名的命令 | 说明书插件、插件管理（gwb-lifecycle-plugins）、外壳（gwb-ui-plugins）、devkit | `skill.read`、`plugin-manager.list`、`plugin-manager.update`、`shell.reload`、`devkit.home.list` | 写在 `instructions.md`、instructions 末尾的目录、`index` 末尾的提示、`mcp.client` 的用法与 `bin/client.mjs` 的帮助里，教 agent 下一步调什么；对方改名这里不报错，agent 照着调会收到「没有这条命令」 |
 | 回执形状 | gwb-node-cli、gwb-py-cli | 同时有 `stdout` 与 `exitCode` 的 `CliRunResult` | 认出命令行工具的回执、不按标准回执拆；形状在 `tools.ts` 里另写一份 `CliRunResultView`，那两个包改了键名这边发现不了 |
 | HTTP | MCP 客户端（agent、`bin/client.mjs`） | `127.0.0.1:<端口>/mcp`，只认本机回环地址的 `Host`、`Origin` | 唯一的对外入口 |
 | 磁盘文件（与内核共写） | 内核、读它的程序 | `<home>/runtime.json` 的 `mcp` 项 `{ port, url }` | 内核启动时整份写入 `pid`、`startedAt` 等；本插件绑定端口成功后读出整份、只改 `mcp` 一项再写回，不是原子写 |
@@ -212,7 +212,7 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 {/* has file="../plugins/mcp/src/index.ts" text="const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="读说明书就是用 run 调 skill.read" */}
+{/* has file="../plugins/mcp/instructions.md" text="读说明书是 run skill.read" */}
 
 {/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update" */}
 

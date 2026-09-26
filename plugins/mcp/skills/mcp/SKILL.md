@@ -33,7 +33,7 @@ description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401�
 2. 运行 `node <gwb-mcp 包目录>/bin/client.mjs index`。报连不上入口，就看 `<home>\gwb.log` 里 `gwb-mcp` 的那几行：`MCP 入口已就绪` 带着地址，`MCP 入口没能监听` 或 `MCP 入口没能启动` 带着原因。default 的 2870 被别的进程占着时入口不开、也不换端口：让人让出 2870 端口，再重启这个 home。
 3. 回 401：token 没带、对不上，或刚换过。重新取 `mcp.info` 的片段写进配置、重连。`gwb.log` 里 `拒绝了一条请求：…` 那一行写着没过的是 token、`Host` 还是 `Origin` 哪项检查。
 4. 回 403：入口只回 401，403 来自中间的代理，让客户端直连 `127.0.0.1`。
-5. 返回 `isError` 的文本：入口是通的，是命令自身失败，照说明书 `gwb-commands` 的「命令失败了」处理。
+5. 返回 `isError` 的文本：入口是通的。命令不存在、只给页面调用、命令自身失败，照说明书 `gwb-commands` 的「命令失败了」处理；文本说返回超过 40000 字符的，照文本里写的缩小范围（`search` 加条件，`run` 带上那条命令 `usage` 里的筛选或条数参数）再调。
 6. 入口这一版本身坏了：修好发下一版，让人在插件管理窗格点「全部更新」；工作台窗口也打不开时，在 home 目录运行 `pnpm add @godcreator/gwb-mcp@<新版本号>`，再重启这个 home。
 7. `plugin-manager.update {"all":true}` 升级到 `gwb-mcp` 自己时，进行中的回执会丢、连接断开：重连后用 `plugin-manager.list` 核对 `gwb-mcp` 那条条目的 `active` 为 `true`，再调 `shell.reload` 刷新界面。
 
@@ -59,3 +59,4 @@ description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401�
 
 - **工具只有 `index`、`search`、`run` 三个**：MCP 的工具清单是连接时的快照，插件却随时可能重新加载，所以命令一律经 `run` 按名字调，每次调用都查当前的命令表。改这个插件时：加工具、改回执形状或参数语义破坏旧协议，给现有工具加可选参数不破坏；版本号升哪一位照说明书 `gwb-release`
 - **token**：每个 home 一份，存在 `<home>/mcp/secret.json`，重启不换
+- **instructions 末尾是这个 home 的目录**：home 名、全部说明书名、命令前缀；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了 `gwb.log` 里有一条 warn

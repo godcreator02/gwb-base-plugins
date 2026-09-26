@@ -124,13 +124,65 @@ function startCollectingLogs(ctx: GwbContext, kernel: GwbKernelApi): LogEntry[] 
   return recentEntries
 }
 
+const LEVELS_FROM_LOWEST: readonly LogLevel[] = ['debug', 'info', 'warn', 'error']
+
+export const BACKLOG_USAGE =
+  '参数 { limit?, minLevel?, name? }，都可省：limit 是正整数，只要筛完之后最近的几条；minLevel 是 debug / info / warn / error，只要这一级及以上；' +
+  'name 是 logger 名，精确匹配（插件的 logger 名多是 gwb-<短名>）。都不给就回最多两千条（日志窗格这样取），agent 调时带上 limit。' +
+  '回 [{ seq, ts, source, level, name, msg }]，从旧到新'
+
+export interface BacklogFilter {
+  limit?: number
+  minLevel?: LogLevel
+  name?: string
+}
+
+/** 参数是外部输入：认不出的键、类型不对都直接报错，不猜调用方的意思 */
+export function backlogFilterFrom(args: unknown): BacklogFilter {
+  if (args === undefined || args === null) return {}
+  if (typeof args !== 'object' || Array.isArray(args)) throw new Error(`${BACKLOG_COMMAND} 的参数要是对象：${BACKLOG_USAGE}`)
+  const raw = args as Record<string, unknown>
+  const unknownKeys = Object.keys(raw).filter((key) => key !== 'limit' && key !== 'minLevel' && key !== 'name')
+  if (unknownKeys.length > 0) throw new Error(`${BACKLOG_COMMAND} 不认识参数 ${unknownKeys.join('、')}：${BACKLOG_USAGE}`)
+  const filter: BacklogFilter = {}
+  if (raw['limit'] !== undefined) {
+    if (typeof raw['limit'] !== 'number' || !Number.isInteger(raw['limit']) || raw['limit'] <= 0) {
+      throw new Error(`${BACKLOG_COMMAND} 的 limit 要是正整数，拿到 ${JSON.stringify(raw['limit'])}`)
+    }
+    filter.limit = raw['limit']
+  }
+  if (raw['minLevel'] !== undefined) {
+    if (!LEVELS_FROM_LOWEST.includes(raw['minLevel'] as LogLevel)) {
+      throw new Error(`${BACKLOG_COMMAND} 的 minLevel 只能是 ${LEVELS_FROM_LOWEST.join(' / ')}，拿到 ${JSON.stringify(raw['minLevel'])}`)
+    }
+    filter.minLevel = raw['minLevel'] as LogLevel
+  }
+  if (raw['name'] !== undefined) {
+    if (typeof raw['name'] !== 'string' || raw['name'] === '') throw new Error(`${BACKLOG_COMMAND} 的 name 要是非空字符串`)
+    filter.name = raw['name']
+  }
+  return filter
+}
+
+/** 先按级别与名字筛，再取最近 limit 条；返回副本 */
+export function selectBacklog(recentEntries: readonly LogEntry[], filter: BacklogFilter): LogEntry[] {
+  const lowestIndex = filter.minLevel === undefined ? 0 : LEVELS_FROM_LOWEST.indexOf(filter.minLevel)
+  const matching = recentEntries.filter(
+    (entry) => LEVELS_FROM_LOWEST.indexOf(entry.level) >= lowestIndex && (filter.name === undefined || entry.name === filter.name),
+  )
+  return filter.limit === undefined ? matching : matching.slice(-filter.limit)
+}
+
 function registerLogCommands(ctx: GwbContext, commandBus: GwbCommands, kernel: GwbKernelApi, recentEntries: LogEntry[]): void {
   ctx.effect(() =>
-    commandBus.register({ name: BACKLOG_COMMAND, description: '工作台启动以来的日志', usage: '最近两千条。无参数', plugin: PACKAGE_NAME }, () => [...recentEntries]),
+    commandBus.register(
+      { name: BACKLOG_COMMAND, description: '工作台启动以来的日志，可按级别、logger 名筛、只取最近几条', usage: BACKLOG_USAGE, plugin: PACKAGE_NAME, effect: 'read' },
+      (args) => selectBacklog(recentEntries, backlogFilterFrom(args)),
+    ),
   )
   ctx.effect(() =>
     commandBus.register(
-      { name: WHERE_COMMAND, description: 'home 与日志文件在哪', usage: '无参数', plugin: PACKAGE_NAME },
+      { name: WHERE_COMMAND, description: 'home 与日志文件在哪', usage: '无参数', plugin: PACKAGE_NAME, effect: 'read' },
       () => ({ home: kernel.dataDir, logFile: path.join(kernel.dataDir, 'gwb.log') }),
     ),
   )

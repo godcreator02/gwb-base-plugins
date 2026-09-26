@@ -34,6 +34,24 @@ describe('checkedCommandDef', () => {
     expect(() => checkedCommandDef('@t/caller', def)).toThrow(message)
   })
 
+  it('effect 与 hiddenFromAgents 写了就原样留下，没写就没有这两项', () => {
+    const marked = checkedCommandDef('@t/caller', { ...complete, effect: 'external', hiddenFromAgents: true })
+    expect(marked).toEqual({ ...complete, plugin: '@t/caller', effect: 'external', hiddenFromAgents: true })
+    const unmarked = checkedCommandDef('@t/caller', complete)
+    expect('effect' in unmarked).toBe(false)
+    expect('hiddenFromAgents' in unmarked).toBe(false)
+  })
+
+  it('effect 不是 read / write / external 就抛错，消息里列出能写的值', () => {
+    const def = { ...complete, effect: 'readonly' } as unknown as GwbCommandDef
+    expect(() => checkedCommandDef('@t/caller', def)).toThrow(/a\.b 的 effect.*readonly.*read \/ write \/ external/)
+  })
+
+  it('hiddenFromAgents 只收 true', () => {
+    const def = { ...complete, hiddenFromAgents: false } as unknown as GwbCommandDef
+    expect(() => checkedCommandDef('@t/caller', def)).toThrow(/hiddenFromAgents.*只能是 true/)
+  })
+
   it.each(['name', 'description', 'usage'] as const)('%s 缺失或不是字符串被拒', (field) => {
     const missing = { ...complete } as Record<string, unknown>
     delete missing[field]

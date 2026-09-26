@@ -1,0 +1,54 @@
+---
+title: 命令标副作用、只给页面调用的命令对 agent 隐藏，instructions 带上这个 home 的目录，工具返回设上限
+born-at: 2026-09-26T20:00
+type: choice
+parent: [2026-09-14-three-tool-face]
+label: 副作用与目录
+domain: 命令
+---
+
+## 背景
+
+2026-09-26 在 default home 上实测 agent 经 MCP 入口干活的过程，发现四个问题。
+
+第一，agent 不调工具时只看得到 instructions。Claude Code 延迟加载 MCP 工具，工具描述不进上下文；而 instructions 里只有通用用法，没有这个 home 有哪些说明书、哪些命令，agent 想不到该去找什么。
+
+第二，几条返回太大。`search` 不带参数实测 8.1 万字符，`logger.backlog` 38.6 万字符，`settings.all` 约 2.5 万字符，都超过 Claude Code 单次工具返回的上限，被客户端转存成文件，agent 拿不到正文。
+
+第三，命令没标副作用。agent 只能读很长的 `usage` 判断一条命令能不能直接调，比如 `cgm-alert.test` 会真的发推送。
+
+第四，页面专用的命令也列给了 agent：`shell.pane.sync` 的用法里写着「别调」，但 `index` 与 `search` 照样把它列出来。
+
+## 结论与边界
+
+**采纳**：
+
+- 命令定义加两个可选字段，登记时校验，写了别的值直接抛错。`effect` 是 `read`（什么都不改，联网只读也算）/ `write`（改本机的文件、设置、数据或界面）/ `external`（影响本机以外或打扰人：推送、发到远端、发消息、弹窗或通知），不写就是没标，agent 按 `write` 对待。`hiddenFromAgents: true` 表示只给页面调用：MCP 入口不列出、agent 调不到，页面与别的插件照常调。两个命令行运行插件的 spec 也加 `effect`，原样带进总线命令。本仓的命令全部标上
+- initialize 返回的 instructions 由 `instructions.md` 接上这个 home 的目录：home 名与 gwb-mcp 版本、全部说明书的名字、对 agent 开放的命令按前缀去重。每个请求新建 server 时重新生成。长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了只写 warn；测试按当天 default home 的规模（33 份说明书、28 个前缀）断言不超预算
+- `instructions.md` 重写得更短：写明三个工具一起加载、`search` 总是带条件、`effect` 三个值的含义与「没标按 write 对待」、返回超长回 `isError`；删掉「连不上怎么办」一段——连不上时客户端根本拿不到 instructions
+- `search` 加可选参数 `effect`，命中的命令行带 `effect`；`run` 先查命令表，不存在的给出去哪找名字，`hiddenFromAgents` 的直接拒绝、不执行
+- 三个工具的返回超过 40000 字符就不交回原文，换成 `isError` 的文本说明怎么缩小范围；`run` 那句写明命令已经执行完
+- `logger.backlog` 加 `{ limit?, minLevel?, name? }`，`settings.all` 加 `{ section? }`，让 agent 有办法把返回缩到上限以内
+
+**不采纳**：
+
+- 在 instructions 里放每份说明书的完整描述：按 default home 的规模约 6000 字符，超过 2048 截断线
+- 给说明书加一个短的触发字段 `when`：要改全部 SKILL.md，这一波不做
+- 改 `index` 的返回形状、给每条命令加一句话介绍：返回形状变化是 major，而且 `index` 会涨到约 3 万字节
+- 让 `q` 只搜名字与介绍：改了参数语义，这一波不做
+- 返回超长时静默截断：等于吞掉后半段，改为报错
+
+gwb-mcp 这一版升 0.11.0，是破坏性版本。
+
+## 代价与遗留
+
+- 别的仓里没标 `effect` 的命令暂时都按 `write` 对待，要各插件仓自己补标
+- `search` 不带条件在大 home 上直接回 `isError`，第一次接触一个 home 时不能再一次拿回全部用法
+- `effect` 只是标签，不拦任何调用；`hiddenFromAgents` 只挡 MCP 入口这一条路
+- instructions 的目录随装的插件变长，超出预算只有 warn，要靠人看日志
+
+## 依据
+
+数字是当天在 default home 上经 MCP 入口实测的返回长度，没有另存 `probes/` 目录。
+
+pivots-from:: [2026-09-14-three-tool-face](2026-09-14-three-tool-face.md)

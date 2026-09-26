@@ -49,7 +49,7 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 {/* ref file="../plugins/skills/src/index.ts" lines="138-149" */}
 
-**两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省或空串都读 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」：
+**两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省或空串都读 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」；两条都标 `effect: 'read'`：
 
 {/* ref file="../plugins/skills/src/index.ts" lines="56-82" */}
 

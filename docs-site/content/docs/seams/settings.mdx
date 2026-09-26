@@ -40,13 +40,17 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
 
-**四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取：
+**四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取；`settings.all` 与 `settings.get` 标 `effect: 'read'`，`settings.set` 与 `settings.delete` 标 `write`：
 
 {/* ref file="../plugins/settings/src/index.ts" lines="57-70" */}
 
+`settings.all` 可以只取一个分区；分区不存在时报错并列出现有的分区，免得调用方把「没有这个分区」当成「这个分区没有设置」：
+
+{/* ref file="../plugins/settings/src/index.ts" lines="73-92" */}
+
 | 命令 | 参数 | 回执 |
 | --- | --- | --- |
-| `settings.all` | 无 | 全部设置项，每行带位置、`title`、`type`、`description`、`value`、`live`（此刻有没有插件声明它）；`live` 且声明了默认值的行再带 `default` |
+| `settings.all` | `{ section? }`，不给就是全部分区；认不出的键、`section` 为空串或不存在都报错 | 设置项，每行带位置、`title`、`type`、`description`、`value`、`live`（此刻有没有插件声明它）；`live` 且声明了默认值的行再带 `default` |
 | `settings.get` | `{ section, key }` | 那一项存下的值，**secret 项也回明文**；没设过回 `undefined`，不回落到 `default` |
 | `settings.set` | `{ section, key, value }` | `{ ok: true }` |
 | `settings.delete` | `{ section, key }` | `{ ok: true }`；只删值，声明还在 |
@@ -85,8 +89,7 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **按位置读写的界面、插件与经 MCP 入口的 agent**保证：
 
-- 知道自己要的 `section` 与 `key`：`section` 是声明方条目 id 的末段，或者公共区 `*`
-- 判断 secret 项有没有设过值时看 `isSet`，不看 `value`；只要判断配没配就不调 `settings.get`，它回的明文会进调用方的记录
+- 知道自己要的 `section` 与 `key`：`section` 是声明方条目 id 的末段，或者公共区 `*`- 判断 secret 项有没有设过值时看 `isSet`，不看 `value`；只要判断配没配就不调 `settings.get`，它回的明文会进调用方的记录
 - 写的值照那一行的 `type` 给
 
 ## 不负责的事
@@ -105,3 +108,5 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 {/* has file="../plugins/settings/tests/registry.test.ts" text="all：不出现明文，回「是 secret ＋ 设没设过 ＋ 定长掩码」三格" */}
 
 {/* has file="../plugins/settings/tests/service.test.ts" text="按位置读写删：settings.get 对 secret 项也回明文，settings.all 不回" */}
+
+{/* has file="../plugins/settings/tests/service.test.ts" text="settings.all 带 section 只回那个分区；分区不存在、参数认不出都报错" */}

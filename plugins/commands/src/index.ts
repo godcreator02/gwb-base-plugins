@@ -12,7 +12,15 @@ import {
   type RegisteredCommandDef,
 } from './registry.js'
 
-export type { GwbCommandContext, GwbCommandDef, GwbCommandHandler, GwbCommands, GwbRequestSource, RegisteredCommandDef } from './registry.js'
+export type {
+  GwbCommandContext,
+  GwbCommandDef,
+  GwbCommandEffect,
+  GwbCommandHandler,
+  GwbCommands,
+  GwbRequestSource,
+  RegisteredCommandDef,
+} from './registry.js'
 
 /** loader 挂在 fiber 上的条目，只取用到的那一项；不在 cordis 的类型里 */
 interface FiberWithLoaderEntry {

@@ -29,7 +29,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 {/* ref file="../plugins/commands/src/index.ts" lines="54-74" */}
 
-定义在进表之前检查：`name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同，都抛错，错误文本写明哪个包、哪条命令、缺什么、该怎么写：
+定义在进表之前检查：`name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同、`effect` 不是 `read` / `write` / `external`、`hiddenFromAgents` 写了却不是 `true`，都抛错，错误文本写明哪个包、哪条命令、缺什么、该怎么写。`effect` 与 `hiddenFromAgents` 没写就不进表里那一条，写了原样存下：
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="68-87" */}
 
@@ -53,9 +53,9 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由内核转页面的命令时带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
 
-**列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名。
+**列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名；登记时写了 `effect`、`hiddenFromAgents` 的再带这两项。这两项是给 MCP 入口读的（见[命令表开给 agent](/docs/seams/agent-surface)），命令总线的 `run` 不看它们。
 
-**命令行运行插件的登记**：两个运行插件经调用方的上下文取总线（`this.ctx.get('gwbCommands')`），所以总线认出的登记方是调用方而不是运行插件；总线拒收时运行插件撤掉自己表里那条，把错抛给调用方：
+**命令行运行插件的登记**：两个运行插件经调用方的上下文取总线（`this.ctx.get('gwbCommands')`），所以总线认出的登记方是调用方而不是运行插件；登记方在 spec 里写的 `effect` 原样带进总线命令的定义；总线拒收时运行插件撤掉自己表里那条，把错抛给调用方：
 
 {/* ref file="../plugins/node-cli/src/index.ts" lines="110-133" */}
 
@@ -68,7 +68,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 - 同名命令后登记的生效，同时写一条 warn，写明原来是哪个包、现在是哪个包
 - 注销函数只删自己登记的那条；重复调用无副作用
 - 登记方卸载时，它登记的命令自动注销，登记方不用包 `ctx.effect`；包了也不出错，卸载时只注销一次
-- `name`、`description`、`usage` 缺一项或为空串就抛错，不进表
+- `name`、`description`、`usage` 缺一项或为空串就抛错，不进表；`effect`、`hiddenFromAgents` 写了不认识的值也抛错
 - `plugin` 由命令总线从调用方 fiber 上的条目取；登记方写了不同的包名就抛错，取不到条目也抛错
 - 处理函数的第二个参数总是 `{ via }`：调用方带了来源就原样交给它，没带就是 `plugin`
 - 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
@@ -76,6 +76,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 **登记命令的插件**保证：
 
 - `description` 写一句话，`usage` 写参数形状与注意事项，无参数的写「无参数」
+- `effect` 按调用的实际后果标；只给页面调用的命令写 `hiddenFromAgents: true`
 - 在经 `cordis.yml` 加载的插件里登记（含它 `ctx.inject`、`ctx.plugin` 出来的子上下文）；`def.plugin` 不写，要写就写自己的包名
 - 处理函数自己校验参数，校验不过就抛错或返回 `{ ok: false, error }`
 - 处理函数自己返回带 `ok` 的对象时，要么只用 `ok` / `data` / `error` 三个键，要么放心加别的键——加了别的键的对象会原样到达调用方，MCP 入口也不按标准回执拆它
@@ -89,7 +90,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 ## 不负责的事
 
-- 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不按来源限制调用：页面、agent、插件能调的命令一样；要按来源区分行为的是处理函数自己
+- 命令插件不登记任何业务命令，不校验参数，不给命令分权限，也不按来源限制调用：`run` 对页面、agent、插件一视同仁，也不看 `effect`、`hiddenFromAgents`；要按来源区分行为的是处理函数自己，不让 agent 调到 `hiddenFromAgents` 命令的是 MCP 入口
 - 命令插件不核实 `via`：它是调用方自己写的
 - 命令插件不保存命令表，不给命令设时限
 - 命令插件不接收页面的 IPC 消息；内核不认识任何命令名
@@ -102,3 +103,5 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 {/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数返回带 ok 的对象就原样返回，否则包成 data" */}
 
 {/* has file="../plugins/commands/tests/service.test.ts" text="调用方卸载后，它登记的命令自动注销" */}
+
+{/* has file="../plugins/commands/tests/registry.test.ts" text="effect 不是 read / write / external 就抛错，消息里列出能写的值" */}

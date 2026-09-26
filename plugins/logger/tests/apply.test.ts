@@ -35,7 +35,7 @@ async function bootLogger(options: { before?: (root: Context) => void } = {}) {
   options.before?.(root)
   const plugin: Plugin = loggerPlugin as unknown as Plugin
   const fiber = await root.plugin(plugin)
-  const run = (commandName: string): unknown => bus.commands.get(commandName)!.handler()
+  const run = (commandName: string, args?: unknown): unknown => bus.commands.get(commandName)!.handler(args)
   return { root, emitted, bus, fiber, run }
 }
 
@@ -55,8 +55,14 @@ describe('日志插件装上之后', () => {
   it('登记 logger.backlog 与 logger.where，plugin 写包名；插件卸载时两条都注销', async () => {
     const { bus, fiber } = await bootLogger()
     expect(bus.list()).toEqual([
-      { name: 'logger.backlog', description: '工作台启动以来的日志', usage: '最近两千条。无参数', plugin: '@godcreator/gwb-logger' },
-      { name: 'logger.where', description: 'home 与日志文件在哪', usage: '无参数', plugin: '@godcreator/gwb-logger' },
+      {
+        name: 'logger.backlog',
+        description: '工作台启动以来的日志，可按级别、logger 名筛、只取最近几条',
+        usage: loggerPlugin.BACKLOG_USAGE,
+        plugin: '@godcreator/gwb-logger',
+        effect: 'read',
+      },
+      { name: 'logger.where', description: 'home 与日志文件在哪', usage: '无参数', plugin: '@godcreator/gwb-logger', effect: 'read' },
     ])
     await fiber.dispose()
     expect(bus.list()).toEqual([])
@@ -118,5 +124,28 @@ describe('日志插件装上之后', () => {
     expect(backlog[0]!.msg).toContain('第 100 条')
     backlog.length = 0
     expect(run('logger.backlog') as LogEntry[]).toHaveLength(2000)
+  })
+
+  it('logger.backlog 带 minLevel、name 先筛，limit 再取筛完之后最近的几条', async () => {
+    const { root, run } = await bootLogger()
+    root.logger('a').info('a1')
+    root.logger('a').warn('a2')
+    root.logger('b').error('b1')
+    root.logger('a').error('a3')
+    expect((run('logger.backlog', { minLevel: 'warn', limit: 2 }) as LogEntry[]).map((e) => e.msg)).toEqual(['b1', 'a3'])
+    expect((run('logger.backlog', { name: 'a', minLevel: 'warn' }) as LogEntry[]).map((e) => e.msg)).toEqual(['a2', 'a3'])
+    expect(run('logger.backlog', { limit: 1 }) as LogEntry[]).toHaveLength(1)
+  })
+
+  it.each([
+    [{ limit: 0 }, /limit 要是正整数/],
+    [{ limit: 1.5 }, /limit 要是正整数/],
+    [{ minLevel: 'warning' }, /minLevel 只能是 debug \/ info \/ warn \/ error/],
+    [{ name: '' }, /name 要是非空字符串/],
+    [{ lines: 5 }, /不认识参数 lines/],
+    ['50', /参数要是对象/],
+  ])('logger.backlog 参数不对就报错：%j', async (args, message) => {
+    const { run } = await bootLogger()
+    expect(() => run('logger.backlog', args)).toThrow(message)
   })
 })

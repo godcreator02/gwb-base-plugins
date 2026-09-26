@@ -14,7 +14,7 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 - **认得出调用方**：服务从调用方的上下文里认出条目，插件只能读写自己声明的项，报不出别人的身份
 - **读的顺序**：调用方声明过这一项，回它的值，没有值回 `default`；没声明过，去公共区 `*` 找——一个插件把 token 声明进公共区，别的插件不用声明就读得到；都没有回 `undefined` 并写一条 warn
 - **只写自己声明过的项**：`set`、`delete` 没声明就抛错——写一项谁也不认识的设置进文件，出了问题没人查得到
-- **页面与 agent 用命令读写**：四条命令按「分区 + 键」定位，不认调用方身份
+- **页面与 agent 用命令读写**：四条命令按「分区 + 键」定位，不认调用方身份；`settings.all` 可以只取一个分区，插件装得多的 home 上 agent 不用一次拿回全部设置。`settings.all`、`settings.get` 标 `effect: 'read'`，`settings.set`、`settings.delete` 标 `write`
 - **列出全部设置时不给 secret 项的值**：`settings.all` 里 secret 项只说设没设过，带定长掩码；要值按位置用 `settings.get` 取，回明文（轨迹卡[凭据掩码](/trajectory/2026-09-20-secret-mask)）
 - **分区记着归哪个包**：文件顶层的 `$owners` 记每个分区归哪个包，包名对不上的声明直接抛错，报错写明由人关掉工作台后在 `settings.json` 里怎么手工处理；服务上的 `owners`、`transferOwner` 能列出和改写归属，插件管理 0.14 起不再调用，此刻没有调用方
 - **声明写进文件，加载着时以代码为准**：`title`、`type`、`description` 写进 `settings.json`，插件停用后界面上仍看得到这一项；插件加载着时以代码里的声明为准，值不动。同一个条目重复声明同一个键，后声明的生效并写 warn
@@ -43,7 +43,7 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 | --- | --- | --- |
 | 服务 `ctx.gwbSettings` 的 `define(def)`、`get(key)`、`set(key, value)`、`delete(key)` | 声明一项；同步读；写并写入文件；抹掉值（声明还在，`get` 回到 `default`） | [5 设置](/docs/seams/settings) |
 | 服务 `ctx.gwbSettings` 的 `owners()`、`transferOwner(id, pkg)` | 各分区归哪个包；把一个分区改归另一个包。此刻没有调用方 | [7 数据归属](/docs/seams/owners) |
-| 命令 `settings.all` | 无参数，返回全部设置项，每行带 `section`、`key`、`title`、`type`、`description`、`value`、`live`（此刻还有插件声明它吗）、`default`（只有 `live` 的项带）；secret 项不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长掩码 `mask: '••••'` | [5 设置](/docs/seams/settings) |
+| 命令 `settings.all` | 参数 `{ section? }`：给了只回那一个分区，分区不存在报错并列出现有的分区，认不出的键报错；不给返回全部设置项，每行带 `section`、`key`、`title`、`type`、`description`、`value`、`live`（此刻还有插件声明它吗）、`default`（只有 `live` 的项带）；secret 项不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长掩码 `mask: '••••'` | [5 设置](/docs/seams/settings) |
 | 命令 `settings.get`、`settings.set`、`settings.delete` | 参数 `{ section, key }`，`set` 另加 `value`；`get` 对 secret 项也回明文，没设过回 `undefined`，不回落到 `default` | [5 设置](/docs/seams/settings) |
 | 文件 `<home>/settings.json` | 顶层 `$owners`（分区名 → 包名），其余每个键是一个分区：条目 id 的末段，或公共区 `*`；分区下是设置名 → `{ title, type, description, value }` | [5 设置](/docs/seams/settings) |
 | 分区名 | 调用方条目 id 的末段，`home:logger` 得 `logger`；超过两段、有段不是 kebab-case 就抛错；条目不能叫 `*` | [8 条目身份](/docs/seams/entry-identity) |

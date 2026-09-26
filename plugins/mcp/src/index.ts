@@ -17,13 +17,27 @@ import { DEFAULT_HOME, choosePort, connectionInfo, defaultPort, endpointUrl, hom
 import { gateRequest, loadOrCreateToken, rotateToken, type GateVerdict } from './auth.js'
 import {
   buildIndex,
+  buildInstructions,
   buildSearch,
-  loadInstructions,
+  COMMAND_EFFECTS,
+  INSTRUCTIONS_CHAR_BUDGET,
+  type CommandEffect,
+  type CommandView,
   type SkillsSlot,
   type SearchQuery,
 } from './inventory.js'
 import { RUNTIME_FILE, writeRuntimeMcp } from './runtime.js'
-import { cliRunResult, coerceArgs, isCliRunResult, textResult, toolResult, type ToolResult } from './tools.js'
+import {
+  cliRunResult,
+  coerceArgs,
+  errorResult,
+  isCliRunResult,
+  RESULT_CHAR_LIMIT,
+  textResult,
+  toolResult,
+  withinSizeLimit,
+  type ToolResult,
+} from './tools.js'
 
 export const name = 'gwb-mcp'
 
@@ -67,16 +81,19 @@ export function credentialNote(file: string | undefined): string {
 
 /** 三个工具的处理函数，做成可传入的形状，测试用内存传输连一对，不用启动 http */
 export interface ToolHandlers {
+  /** initialize 返回的 instructions，每个请求新建 server 时取一次 */
+  instructions(): string
   index(): ToolResult | Promise<ToolResult>
   search(query: SearchQuery): ToolResult | Promise<ToolResult>
   run(command: string, args: unknown): ToolResult | Promise<ToolResult>
 }
 
-function searchQueryFrom(raw: { plugin?: string; prefix?: string; q?: string }): SearchQuery {
+function searchQueryFrom(raw: { plugin?: string; prefix?: string; q?: string; effect?: CommandEffect }): SearchQuery {
   const query: SearchQuery = {}
   if (typeof raw.plugin === 'string' && raw.plugin !== '') query.plugin = raw.plugin
   if (typeof raw.prefix === 'string' && raw.prefix !== '') query.prefix = raw.prefix
   if (typeof raw.q === 'string' && raw.q !== '') query.q = raw.q
+  if (raw.effect !== undefined) query.effect = raw.effect
   return query
 }
 
@@ -86,8 +103,8 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'index',
     {
       description:
-        '这台工作台的全部说明书（带完整描述）与按插件分组的全部命令名（参数形状在 search；' +
-        '装了哪些插件问 plugin-manager.list）。无参数，连上后先调一次——每次调用时重新生成，新装的插件下一次调用就能看到。',
+        '这台工作台的全部说明书（带描述，描述就是什么时候该读）与按插件分组的全部命令名（参数形状与 effect 在 search；' +
+        '装了哪些插件问 plugin-manager.list）。无参数；每次调用时重新生成，新装的插件下一次调用就能看到。',
     },
     async () => handlers.index(),
   )
@@ -96,12 +113,13 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'search',
     {
       description:
-        '按条件找命令与说明书，匹配的命令带完整用法（参数形状在 usage 里）。不带参数就不过滤，' +
-        '返回全部命令与说明书和完整用法（约八千 token，第一次接触一个 home 时调一次）；带条件只返回匹配的部分。',
+        '按条件找命令与说明书，命中的命令带 usage（参数形状）与 effect（read 只读 / write 改本机 / external 影响本机以外，没标的按 write 对待）。' +
+        '总是带条件：不带就是全部，会超过单次返回的上限。条件之间是「并且」。',
       inputSchema: {
         plugin: z.string().optional().describe('插件包名，精确匹配，命令与说明书一起过滤'),
         prefix: z.string().optional().describe('命令名前缀，如 "skill."；只给它时说明书只返回名字与所属插件'),
         q: z.string().optional().describe('在名字、一句话介绍或用法里找子串，不分大小写'),
+        effect: z.enum(COMMAND_EFFECTS as [CommandEffect, ...CommandEffect[]]).optional().describe('只要标了这种 effect 的命令，给了就不回说明书'),
       },
     },
     async (raw) => handlers.search(searchQueryFrom(raw)),
@@ -111,8 +129,8 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'run',
     {
       description:
-        '按命令名调用工作台的任意命令（先用 index 看有哪些命令、用 search 看用法）。' +
-        '命令自身失败（不存在、参数不对）不算协议错误，返回的是 isError 的结果文本，照常往下读。',
+        '按命令名调用工作台的命令（先用 index 看有哪些命令、用 search 看用法与 effect）。' +
+        `命令自身失败（不存在、参数不对）与返回超过 ${RESULT_CHAR_LIMIT} 字符都不算协议错误，返回的是 isError 的结果文本，照常往下读。`,
       inputSchema: {
         command: z.string().describe('命令名，如 skill.read'),
         args: z.unknown().optional().describe('可选参数，形状看 search 里那条命令的 usage；命令自己校验'),
@@ -122,12 +140,12 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
   )
 }
 
-/** 每个请求一个 server：instructions 与三个工具在发布时就定了，index 与 search 的内容每次调用时重新取 */
-function createMcpServer(version: string): McpServer {
+/** 每个请求一个 server：三个工具在发布时就定了；instructions 末尾的目录、index 与 search 的内容每次重新取 */
+function createMcpServer(version: string, instructions: string): McpServer {
   return new McpServer(
     { name: 'gwb', version },
     {
-      instructions: loadInstructions(),
+      instructions,
       // 无状态的入口发不出清单变更通知，所以声明 false；SDK 的 registerTool 会把它改成 true
       capabilities: { tools: { listChanged: false } },
     },
@@ -202,13 +220,42 @@ function logAgentRun(log: Logger, command: string, result: GwbResult): void {
   }
 }
 
+/** 命令总线登记的那一条，按名字找；找不到是 undefined */
+function registeredCommand(commandBus: GwbCommands, command: string): CommandView | undefined {
+  return commandBus.list().find((registered) => registered.name === command)
+}
+
+/** 调之前先认命令：不存在的给出去哪找名字，只给页面调用的直接拒 */
+function refusalBeforeRun(commandBus: GwbCommands, command: string): string | undefined {
+  const registered = registeredCommand(commandBus, command)
+  if (registered === undefined) return `执行失败：没有这条命令：${command}。用 search {"q":"<关键词>"} 找名字，装卸过插件就重新调 index`
+  if (registered.hiddenFromAgents === true) return `执行失败：命令 ${command} 只给页面调用，不对 agent 开放`
+  return undefined
+}
+
+function oversizedRunAdvice(command: string): (length: number) => string {
+  return (length) =>
+    `命令 ${command} 已经执行完，但返回有 ${length} 字符，超过单次返回的上限 ${RESULT_CHAR_LIMIT}，没有交回。` +
+    `看它的 usage（search {"prefix":"${command}"}）有没有筛选或条数参数，带上再调；没有这类参数的，给这条命令所在插件的仓提反馈，请它补上`
+}
+
 /** 三个工具的处理函数。命令表与说明书清单每次调用时重新取，运行中新加载的插件下一次调用就能看到 */
 function createToolHandlers(commandBus: GwbCommands, log: Logger, state: EndpointState, home: string, version: string): ToolHandlers {
   return {
+    instructions() {
+      const text = buildInstructions({ home, version, commands: commandBus.list(), skills: state.skills?.list() ?? [] })
+      if (text.length > INSTRUCTIONS_CHAR_BUDGET) {
+        log.warn(`instructions 有 ${text.length} 字符，超过 ${INSTRUCTIONS_CHAR_BUDGET}：Claude Code 会截掉 2048 字符之后的部分，末尾的说明书与命令前缀目录会缺一截`)
+      }
+      return text
+    },
     index() {
       const doc = buildIndex({ home, version, commands: commandBus.list(), skills: state.skills?.list() })
       log.info(`agent 调了 index（${doc.commands.reduce((n, g) => n + g.names.length, 0)} 条命令、${doc.skills.length} 份说明书）`)
-      return textResult(doc)
+      return withinSizeLimit(
+        textResult(doc),
+        (length) => `index 的返回有 ${length} 字符，超过单次返回的上限 ${RESULT_CHAR_LIMIT}：改用 search 按 plugin 一个插件一个插件地取`,
+      )
     },
     search(query) {
       const doc = buildSearch({ commands: commandBus.list(), skills: state.skills?.list(), query })
@@ -217,12 +264,21 @@ function createToolHandlers(commandBus: GwbCommands, log: Logger, state: Endpoin
           doc.filter === undefined ? '，没带条件' : ''
         }）`,
       )
-      return textResult(doc)
+      return withinSizeLimit(
+        textResult(doc),
+        (length) =>
+          `search 的返回有 ${length} 字符，超过单次返回的上限 ${RESULT_CHAR_LIMIT}：加上 plugin、prefix、q 或 effect 缩小范围（命中了 ${doc.commands.length} 条命令、${doc.skills.length} 份说明书）`,
+      )
     },
     async run(command, rawArgs) {
+      const refusal = refusalBeforeRun(commandBus, command)
+      if (refusal !== undefined) {
+        log.warn(`agent 调了 ${command}：没有执行（${refusal}）`)
+        return errorResult(refusal)
+      }
       const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })
       logAgentRun(log, command, result)
-      return isCliRunResult(result) ? cliRunResult(result) : toolResult(result)
+      return withinSizeLimit(isCliRunResult(result) ? cliRunResult(result) : toolResult(result), oversizedRunAdvice(command))
     },
   }
 }
@@ -239,7 +295,7 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse, log: 
     res.end()
     return
   }
-  const mcp = createMcpServer(version)
+  const mcp = createMcpServer(version, handlers.instructions())
   registerTools(mcp, handlers)
   // 空对象 = 无状态：不给 sessionIdGenerator，每个请求新建一对、随响应关闭
   const transport = new StreamableHTTPServerTransport({})
@@ -354,6 +410,7 @@ function registerInfoCommand(ctx: GwbContext, commandBus: GwbCommands, state: En
         usage:
           '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段里带 Authorization: Bearer <当前 token>，粘贴进客户端配置就能连接；只读当前 token、不换（换 token 用 mcp.token {"rotate":true}）。**回执里有明文凭据，会进入你的会话记录**。MCP 入口没开或凭据文件取不出来时回 ok:false 并说明原因',
         plugin: PACKAGE_NAME,
+        effect: 'read',
       },
       async () => {
         const port = await status.portOrNull()
@@ -374,6 +431,7 @@ function registerTokenCommand(ctx: GwbContext, commandBus: GwbCommands, log: Log
         usage:
           '{"rotate":true} 换一份新的；不给参数就返回当前这份。回执 { ok, data: { token, file, rotated, mcpServers } }——mcpServers 片段里带的就是这份 token，粘贴进客户端配置就能连接。**回执里有明文凭据，会进入你的会话记录**',
         plugin: PACKAGE_NAME,
+        effect: 'write',
       },
       async (raw: unknown) => {
         if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
@@ -413,6 +471,7 @@ function registerCliClientWheneverNodeCliIsLoaded(ctx: GwbContext): void {
       description: '在命令行直接调用 MCP 入口（零依赖单文件，node ≥18，不用装任何包）',
       usage:
         '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。入口地址用 --url 或环境变量 GWB_MCP_URL 给，缺省 http://127.0.0.1:2870/mcp（default home 固定用 2870 端口，隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段）。命令失败时照样打印正文，退出码 1',
+      effect: 'external',
       entry: CLIENT_ENTRY,
     })
   })

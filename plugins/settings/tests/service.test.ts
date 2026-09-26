@@ -230,6 +230,16 @@ describe('四条命令', () => {
     expect(runCommand('settings.get', { section: 'hello', key: 'token' })).toBeUndefined()
   })
 
+  it('settings.all 带 section 只回那个分区；分区不存在、参数认不出都报错', async () => {
+    const { root, runCommand } = await bootSettings()
+    await caller(root, HELLO, (s) => s.define({ key: 'level', title: '级别', type: 'string' }))
+    const rows = runCommand('settings.all', { section: 'hello' }) as SettingView[]
+    expect(rows.map((row) => [row.section, row.key])).toEqual([['hello', 'level']])
+    expect(() => runCommand('settings.all', { section: 'nope' })).toThrow(/没有分区 nope；现有的分区：.*hello/)
+    expect(() => runCommand('settings.all', { sections: 'hello' })).toThrow('不认识参数 sections')
+    expect(() => runCommand('settings.all', { section: '' })).toThrow('section 要是非空字符串')
+  })
+
   it('参数不对时抛错，写明要什么', async () => {
     const { runCommand } = await bootSettings()
     expect(() => runCommand('settings.get', 'x')).toThrow('参数要是一个对象：{ section, key }')

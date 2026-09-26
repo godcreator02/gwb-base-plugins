@@ -85,7 +85,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
 
   private registerListCommand(commandBus: GwbCommands): void {
     this.providerContext.effect(() =>
-      commandBus.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: PACKAGE_NAME }, () =>
+      commandBus.register({ name: LIST_COMMAND, description: '此刻登记了哪些 node CLI', usage: '无参数', plugin: PACKAGE_NAME, effect: 'read' }, () =>
         this.nodeCliRegistry.list(),
       ),
     )
@@ -114,7 +114,7 @@ export default class GwbNodeCli extends Service implements GwbNodeCliApi {
   private registerOnCommandBus(spec: NodeCliSpec, callerPackage: string): (() => void) | undefined {
     const commandBusSeenByCaller = this.ctx.get('gwbCommands')
     return commandBusSeenByCaller?.register(
-      { name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: spec.plugin ?? callerPackage },
+      { name: spec.name, description: spec.description ?? '', usage: spec.usage ?? INVOKE_SHAPE, plugin: spec.plugin ?? callerPackage, effect: spec.effect },
       (args) => {
         const invocation = parseInvocation(args)
         return this.invoke(spec.name, invocation.args, invocation.cwd)

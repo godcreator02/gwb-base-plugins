@@ -35,11 +35,12 @@ venv 就绪但回执 `exitCode` 为 `null`、`timedOut` 为 `false`：程序没�
 1. 在包根的 `py/` 下放 python 项目：`pyproject.toml`、`uv.lock`（重建用 `uv sync --frozen`，没有锁文件就失败）；用 `command` 时 `[project.scripts]` 里要有这个入口点。
 2. `package.json` 的 `files` 里写上 `py`。
 3. 声明依赖：`export const inject = ['gwbPyCli']`，或 `ctx.inject(['gwbPyCli'], …)` 局部注入。
-4. 调 `ctx.gwbPyCli.register({ name, packageRoot, distName, version, command 或 module, description, usage?, args?, cwd?, env?, timeoutMs? })`：
+4. 调 `ctx.gwbPyCli.register({ name, packageRoot, distName, version, command 或 module, description, usage?, effect?, args?, cwd?, env?, timeoutMs? })`：
    - `packageRoot` 是包根的绝对路径，比如 `fileURLToPath(new URL('..', import.meta.url))`
    - `distName`、`version` 与 `pyproject.toml` 的项目名、版本一致：检查 venv 时拿它们比对已装的版本
    - `command: 'x'` 运行 `Scripts/x.exe`；`module: 'x.cli'` 运行 `python -m x.cli`；两个只给一个
    - `description` 必须写：命令总线拒收没有 description 的命令，`register` 当场抛错
+   - `effect` 按这个工具运行起来的实际后果写 `'read'` / `'write'` / `'external'`（含义见说明书 `gwb-commands`），原样成为总线命令的 `effect`；不写 agent 按 `write` 对待，写了三个值以外的 `register` 当场抛错
    - 总线命令的 `plugin` 固定是本插件的包名
 5. 插件卸载时这条命令自动注销，不用包 `ctx.effect`。`register` 顺带开始建 venv，不阻塞 `apply`。
 
