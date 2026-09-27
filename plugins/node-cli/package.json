@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-node-cli",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "author": {
     "name": "godcreator"
   },
@@ -27,7 +27,7 @@
   },
   "peerDependencies": {
     "@godcreator/gwb-commands": "workspace:^",
-    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-kernel-desktop": "^0.8.0",
     "@godcreator/gwb-skills": "workspace:^",
     "cordis": "^4.0.0-rc.10"
   },

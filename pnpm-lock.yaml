@@ -79,8 +79,8 @@ importers:
   plugins/commands:
     dependencies:
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
     devDependencies:
       '@cordisjs/plugin-loader':
         specifier: 1.0.0-rc.7
@@ -98,8 +98,8 @@ importers:
   plugins/data:
     dependencies:
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -117,8 +117,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -136,8 +136,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
       '@godcreator/gwb-node-cli':
         specifier: workspace:^
         version: link:../node-cli
@@ -173,8 +173,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
       '@godcreator/gwb-skills':
         specifier: workspace:^
         version: link:../skills
@@ -195,8 +195,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
       '@godcreator/gwb-skills':
         specifier: workspace:^
         version: link:../skills
@@ -217,8 +217,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
       '@godcreator/gwb-skills':
         specifier: workspace:^
         version: link:../skills
@@ -239,8 +239,8 @@ importers:
         specifier: workspace:^
         version: link:../commands
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.7.0
-        version: 0.7.1(cordis@4.0.0-rc.10)
+        specifier: ^0.8.0
+        version: 0.8.0(cordis@4.0.0-rc.10)
     devDependencies:
       '@types/node':
         specifier: ^24.0.0
@@ -545,8 +545,8 @@ packages:
       react:
         optional: true
 
-  '@godcreator/gwb-kernel-desktop@0.7.1':
-    resolution: {integrity: sha512-d+GxIAgqUj+EjakAwEpN7KTVwEeWIgGDr6lNE1Y+TCcxiwwmWhocDvpUgYZl8Sm3gW0fVly2VmHqY+x61M8pdA==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-kernel-desktop/-/0.7.1/gwb-kernel-desktop-0.7.1.tgz}
+  '@godcreator/gwb-kernel-desktop@0.8.0':
+    resolution: {integrity: sha512-FfV4D4zUgSje5wouONinEVwhie2jd01up0Ey/faSCTWtS/meVn4sN9gWIwglXVskzohU8u163fVeD2/Vf5cr4A==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-kernel-desktop/-/0.8.0/gwb-kernel-desktop-0.8.0.tgz}
     peerDependencies:
       cordis: 4.0.0-rc.10
 
@@ -3195,7 +3195,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@godcreator/gwb-kernel-desktop@0.7.1(cordis@4.0.0-rc.10)':
+  '@godcreator/gwb-kernel-desktop@0.8.0(cordis@4.0.0-rc.10)':
     dependencies:
       '@cordisjs/plugin-include': 1.1.0(@cordisjs/plugin-loader@1.0.0-rc.7)(cordis@4.0.0-rc.10)
       '@cordisjs/plugin-loader': 1.0.0-rc.7(cordis@4.0.0-rc.10)

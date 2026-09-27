@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "author": {
     "name": "godcreator"
   },
@@ -29,7 +29,7 @@
   },
   "peerDependencies": {
     "@godcreator/gwb-commands": "workspace:^",
-    "@godcreator/gwb-kernel-desktop": "^0.7.0",
+    "@godcreator/gwb-kernel-desktop": "^0.8.0",
     "@godcreator/gwb-node-cli": "workspace:^",
     "@godcreator/gwb-settings": "workspace:^",
     "@godcreator/gwb-skills": "workspace:^"
