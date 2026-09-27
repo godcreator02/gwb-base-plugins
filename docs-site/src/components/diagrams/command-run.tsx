@@ -26,7 +26,7 @@ const STEPS: { title: string; detail: string; lit: Part[]; returning?: boolean }
   },
   {
     title: '第 5 步：回执原路返回',
-    detail: '成功写 info 日志，失败写 warn。调用方只看 ok 判断成败，失败原因读 error。',
+    detail: '成功写 info 日志（只读命令写 debug），失败写 warn。调用方只看 ok 判断成败，失败原因读 error。',
     lit: ['page', 'agent', 'plugin', 'kernel', 'mcp', 'run'],
     returning: true,
   },

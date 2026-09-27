@@ -22,7 +22,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 - 三类调用方：页面调本包的 `./client`，本包请求处理器交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
 - 命令总线按命令名查内存里的命令表，找不到回 `{ ok: false, error: '没有这条命令：<命令名>' }`
 - 找到就把参数和来源交给登记方的处理函数（没带来源就是 `{ via: 'plugin' }`）：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
-- 回执沿原路回到调用方；成功写 info，失败写 warn
+- 回执沿原路回到调用方；成功写 info（只读命令写 debug），失败写 warn
 </Diagram>
 
 **登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文：包名从它 fiber 上 loader 放的条目取（见[条目身份](/docs/seams/entry-identity)），注销登记在调用方的 `effect` 上：
@@ -71,7 +71,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 - `name`、`description`、`usage` 缺一项或为空串就抛错，不进表；`effect`、`hiddenFromAgents` 写了不认识的值也抛错
 - `plugin` 由命令总线从调用方 fiber 上的条目取；登记方写了不同的包名就抛错，取不到条目也抛错
 - 处理函数的第二个参数总是 `{ via }`：调用方带了来源就原样交给它，没带就是 `plugin`
-- 每次登记、执行都写日志：成功写 info，失败与找不到命令写 warn
+- 每次登记、执行都写日志：成功写 info，`effect` 是 `read` 的命令执行成功写 debug，失败与找不到命令写 warn
 
 **登记命令的插件**保证：
 

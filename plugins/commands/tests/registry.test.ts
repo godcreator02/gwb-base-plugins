@@ -3,7 +3,7 @@ import { checkedCommandDef, createRegistry, type GwbCommandDef, type RegisteredC
 
 const noop = (): void => {}
 /** 不写日志的假日志函数。要检查告警的用例自己传 vi.fn() */
-const silent: RegistryLog = { info: noop, warn: noop }
+const silent: RegistryLog = { debug: noop, info: noop, warn: noop }
 
 /** 检查过的定义：命令表只收这种 */
 function registeredDef(name: string, plugin = '@t/p'): RegisteredCommandDef {
@@ -129,8 +129,37 @@ describe('createRegistry', () => {
     expect(cli.list()).toEqual([registeredDef('dup', '@t/后来的')])
   })
 
+  it('只读命令（effect 是 read）执行成功写 debug，不写 info；失败照旧写 warn', async () => {
+    const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() }
+    const cli = createRegistry(log)
+    cli.register({ ...registeredDef('peek'), effect: 'read' }, () => 1)
+    cli.register({ ...registeredDef('peek.receipt'), effect: 'read' }, () => ({ ok: true, data: 1 }))
+    cli.register({ ...registeredDef('peek.sad'), effect: 'read' }, () => ({ ok: false, error: '读失败了' }))
+    await cli.run('peek', undefined)
+    await cli.run('peek.receipt', undefined)
+    await cli.run('peek.sad', undefined)
+    const debugs = log.debug.mock.calls.map((c) => String(c[0]))
+    expect(debugs).toEqual(['命令 peek 执行完成', '命令 peek.receipt 执行完成'])
+    expect(log.info.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('执行完成'))).toEqual([])
+    expect(log.warn.mock.calls.map((c) => String(c[0]))).toEqual(['命令 peek.sad 返回失败：读失败了'])
+  })
+
+  it('改东西的与没标 effect 的命令执行成功照旧写 info', async () => {
+    const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() }
+    const cli = createRegistry(log)
+    cli.register({ ...registeredDef('change'), effect: 'write' }, () => 1)
+    cli.register({ ...registeredDef('notify'), effect: 'external' }, () => ({ ok: true }))
+    cli.register(registeredDef('unmarked'), () => 1)
+    await cli.run('change', undefined)
+    await cli.run('notify', undefined)
+    await cli.run('unmarked', undefined)
+    const infos = log.info.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('执行完成'))
+    expect(infos).toEqual(['命令 change 执行完成', '命令 notify 执行完成', '命令 unmarked 执行完成'])
+    expect(log.debug).not.toHaveBeenCalled()
+  })
+
   it('登记与执行都写日志：成功写 info，失败与找不到命令写 warn', async () => {
-    const log = { info: vi.fn(), warn: vi.fn() }
+    const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() }
     const cli = createRegistry(log)
     cli.register(registeredDef('fine'), () => 1)
     cli.register(registeredDef('sad'), () => ({ ok: false, error: '执行了但结果是失败' }))
@@ -148,7 +177,7 @@ describe('createRegistry', () => {
 
   it('同名时后登记的生效，并告警写明原来是谁、现在是谁', async () => {
     const warn = vi.fn()
-    const cli = createRegistry({ info: noop, warn })
+    const cli = createRegistry({ debug: noop, info: noop, warn })
     cli.register(registeredDef('dup', '@t/先来的'), () => 1)
     cli.register(registeredDef('dup', '@t/后来的'), () => 2)
     expect(await cli.run('dup', undefined)).toEqual({ ok: true, data: 2 })

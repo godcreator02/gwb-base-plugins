@@ -1,0 +1,20 @@
+---
+title: 只读命令执行成功记 debug，其余照旧
+born-at: 2026-09-27T23:10
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 读命令记 debug
+domain: 命令总线
+---
+
+## 背景
+
+default home 自 2026-09-20 起的 `gwb.log` 九万多行，77% 是命令总线的「命令 X 执行完成」，其中 `block-note.changes.wait` 一条长轮询就占三万六千行，`windows-backup.status`、`cgm-alert.state`、`settings.get` 这些轮询各几千行。日志窗格改成可见时每秒调一次 `logger.query` 之后，窗格开着时每秒又多一行「命令 logger.query 执行完成」，下一次拉取把它读回来。用户看过验证截图后定下：
+
+> 读命令成功降成 debug，做吧
+
+## 结论与边界
+
+命令执行成功时按登记时写的 `effect` 定级别：`read` 记 debug，`write`、`external` 与没标的照旧记 info。返回失败、抛错、找不到命令照旧记 warn，登记与同名覆盖的日志不变。只读命令会被窗格和页面轮询，它的成功不改任何东西，记成 info 只会淹没改了东西的那几行；排查时把窗格或查询的级别放到 debug 仍然看得到。
+
+没标 `effect` 的命令按「可能改东西」算，和 agent 对待它的方式一致。MCP 入口给 agent 的每次调用另记的那一行、命令行运行插件的启动与结束日志不在这次范围里。

@@ -50,8 +50,9 @@ export interface GwbCommands {
   run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>
 }
 
-/** 命令表写日志用的两个级别。运行时传入 cordis 的 logger，它有这两个级别 */
+/** 命令表写日志用的三个级别。运行时传入 cordis 的 logger，它有这三个级别 */
 export interface RegistryLog {
+  debug: (message: string) => void
   info: (message: string) => void
   warn: (message: string) => void
 }
@@ -121,18 +122,25 @@ function isReceiptShaped(handlerResult: unknown): handlerResult is GwbResult {
   return handlerResult !== null && typeof handlerResult === 'object' && 'ok' in handlerResult
 }
 
-function logReceiptOutcome(log: RegistryLog, name: string, receipt: GwbResult): void {
-  if (receipt.ok) log.info(`命令 ${name} 执行完成`)
-  else log.warn(`命令 ${name} 返回失败：${receipt.error ?? '没有给出原因'}`)
+/** 只读命令的成功记 debug：窗格与页面会轮询它们，记成 info 会淹没真正改了东西的那几行 */
+function logSuccess(log: RegistryLog, def: RegisteredCommandDef): void {
+  const message = `命令 ${def.name} 执行完成`
+  if (def.effect === 'read') log.debug(message)
+  else log.info(message)
+}
+
+function logReceiptOutcome(log: RegistryLog, def: RegisteredCommandDef, receipt: GwbResult): void {
+  if (receipt.ok) logSuccess(log, def)
+  else log.warn(`命令 ${def.name} 返回失败：${receipt.error ?? '没有给出原因'}`)
 }
 
 /** 处理函数自己返回了带 ok 的对象就原样交回，其余一律包成 `{ ok: true, data }` */
-function receiptFromHandlerResult(log: RegistryLog, name: string, handlerResult: unknown): GwbResult {
+function receiptFromHandlerResult(log: RegistryLog, def: RegisteredCommandDef, handlerResult: unknown): GwbResult {
   if (isReceiptShaped(handlerResult)) {
-    logReceiptOutcome(log, name, handlerResult)
+    logReceiptOutcome(log, def, handlerResult)
     return handlerResult
   }
-  log.info(`命令 ${name} 执行完成`)
+  logSuccess(log, def)
   return { ok: true, data: handlerResult }
 }
 
@@ -162,7 +170,7 @@ export function createRegistry(log: RegistryLog): CommandTable {
         return { ok: false, error: `没有这条命令：${name}` }
       }
       try {
-        return receiptFromHandlerResult(log, name, await registration.handler(args, context))
+        return receiptFromHandlerResult(log, registration.def, await registration.handler(args, context))
       } catch (thrown) {
         log.warn(`命令 ${name} 抛出异常，已转成失败回执：${String(thrown)}`)
         return { ok: false, error: String(thrown) }
