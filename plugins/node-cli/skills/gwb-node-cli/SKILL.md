@@ -66,4 +66,4 @@ description: 调 node 命令行工具的命令、读它的退出码与输出、�
 | `durationMs` | 耗时 |
 | `error` | 只在没启动进程时出现，写明要什么 |
 
-经 MCP 入口 `run` 调时只留 `ok`、`exitCode`、`timedOut`、`durationMs`、`stdout`、`stderr` 六项；页面的 `window.gwb.command` 与服务的 `ctx.gwbNodeCli.run` 拿到全部字段。
+经 MCP 入口 `run` 调时只留 `ok`、`exitCode`、`timedOut`、`durationMs`、`stdout`、`stderr` 六项；页面的 commands 客户端 与服务的 `ctx.gwbNodeCli.run` 拿到全部字段。

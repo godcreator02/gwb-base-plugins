@@ -56,7 +56,7 @@ export function apply(ctx: GwbContext) {
 
 `description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。`effect` 按调用的实际后果标（只读的命令标 `read`，agent 就能不读 `usage` 直接调）；页面专用、agent 调了没意义或有害的命令写 `hiddenFromAgents: true`。
 
-页面入口与回执正本都归本包，内核的同名类型只作旧代码兼容。`./client` 不引用主进程入口，由页面消费方打包，不需要 importmap 单例。
+页面入口与回执正本都归本包，内核不定义或重导出命令类型。`./client` 不引用主进程入口，由页面消费方打包，不需要 importmap 单例。
 
 {/* ref file="../plugins/commands/src/client.ts" */}
 
@@ -68,7 +68,7 @@ export function apply(ctx: GwbContext) {
 
 ## 依赖
 
-注入了哪些服务、peer 怎么写、缺了会怎样，以及页面请求处理器怎样登记、旧内核兼容转交怎样调用它、用了哪些约定通道，见[插件之间怎么连](/docs/wiring#godcreatorgwb-commands)。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及页面请求处理器怎样登记、用了哪些约定通道，见[插件之间怎么连](/docs/wiring#godcreatorgwb-commands)。
 
 ## 不做的事
 

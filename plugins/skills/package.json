@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-skills",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "author": {
     "name": "godcreator"
   },
@@ -26,7 +26,7 @@
   },
   "peerDependencies": {
     "@godcreator/gwb-commands": "workspace:^",
-    "@godcreator/gwb-kernel-desktop": "^0.8.0",
+    "@godcreator/gwb-kernel-desktop": "^0.9.0",
     "cordis": "^4.0.0-rc.10"
   },
   "publishConfig": {

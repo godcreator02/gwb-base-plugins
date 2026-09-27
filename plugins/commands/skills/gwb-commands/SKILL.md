@@ -22,7 +22,7 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 ## 读回执
 
 类型 `GwbResult` 从 `@godcreator/gwb-commands`（页面也可从 `./client`）取。客户端随消费方打包，不外置到 importmap。
-命令服务未登记时客户端回 `ok: false`；通信失败或畸形回执会 reject，调用方仍需处理异常。内核的 `window.gwb.command` 与 `GwbResult` 是旧代码兼容入口，新代码不使用。
+命令服务未登记时客户端回 `ok: false`；通信失败或畸形回执会 reject，调用方仍需处理异常。内核不提供命令入口或回执类型。
 
 1. 先看 `ok`。`false` 就转到「命令失败了」一节。
 2. `ok` 为 `true`：值在 `data` 里，取值要往 `data` 里再走一层。
@@ -79,7 +79,7 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 
 ## 回执参考
 
-| 处理函数的结果 | 总线回执（`ctx.gwbCommands.run`、`window.gwb.command`） | MCP 入口 `run` 返回的文本 |
+| 处理函数的结果 | 总线回执（`ctx.gwbCommands.run`、浏览器客户端 `command`） | MCP 入口 `run` 返回的文本 |
 | --- | --- | --- |
 | 返回普通值 `v` | `{ "ok": true, "data": v }` | `{ "ok": true, "data": v }` 的 JSON，`v` 是 `undefined` 时写成 `null` |
 | 返回带 `ok` 且有别的字段的对象 | 原样返回 | 原样的 JSON；命令行工具的回执只留 `ok`、`exitCode`、`timedOut`、`durationMs`、`stdout`、`stderr` |

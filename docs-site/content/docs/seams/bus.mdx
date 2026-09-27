@@ -9,7 +9,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 - [命令插件](/docs/commands) `@godcreator/gwb-commands`：提供服务 `ctx.gwbCommands`，一张只在内存里的「命令名 → 处理函数」表
 - 登记命令的插件：本仓的设置、说明书、MCP 入口、日志、两个命令行运行插件，以及别的仓里的插件
-- 调用命令的一方：别的插件直接调 `run`；[MCP 入口](/docs/mcp)把 agent 的 `run` 交给它（见[命令表开给 agent](/docs/seams/agent-surface)）；内核把页面经 `window.gwb.command` 发来的命令名与参数交给 `run`
+- 调用命令的一方：别的插件直接调 `run`；[MCP 入口](/docs/mcp)把 agent 的 `run` 交给它（见[命令表开给 agent](/docs/seams/agent-surface)）；本包页面请求处理器把客户端发来的命令名与参数交给 `run`
 - [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)：替登记给它们的命令行工具在总线上登记同名命令（见[命令行工具](/docs/seams/cli)）
 
 ## 接口
@@ -19,7 +19,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 {/* ref file="../plugins/commands/src/registry.ts" lines="12-51" */}
 
 <Diagram name="command-run" title="一条命令从调用方到处理函数、回执原路返回（分步）">
-- 三类调用方：页面调 `window.gwb.command`，内核收下后交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
+- 三类调用方：页面调本包的 `./client`，本包请求处理器交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
 - 命令总线按命令名查内存里的命令表，找不到回 `{ ok: false, error: '没有这条命令：<命令名>' }`
 - 找到就把参数和来源交给登记方的处理函数（没带来源就是 `{ via: 'plugin' }`）：返回带 `ok` 的对象原样返回，返回别的值包成 `{ ok: true, data }`，抛错收成 `{ ok: false, error }`
 - 回执沿原路回到调用方；成功写 info，失败写 warn
@@ -51,7 +51,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="158-170" */}
 
-**请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由本包页面请求处理器带上（兼容入口仍由内核带上），`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
+**请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由本包页面请求处理器带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
 
 **列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名；登记时写了 `effect`、`hiddenFromAgents` 的再带这两项。这两项是给 MCP 入口读的（见[命令表开给 agent](/docs/seams/agent-surface)），命令总线的 `run` 不看它们。
 

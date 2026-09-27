@@ -66,7 +66,7 @@ cordis 不给服务做版本校验，插件之间的版本约束只写在 peer �
 
 插件的能力要被页面、agent 或别的插件调用，就登记成命令总线上的命令。三类调用方用的是同一张表：
 
-- **页面**经 `window.gwb.command`，内核应用把它交给 `ctx.gwbCommands.run` 并带上 `{ via: 'ui' }`，内核不认识任何命令名
+- **页面**经 commands 浏览器客户端与 `commands.run` 请求通道，本包的处理器调用 `run` 并固定 `{ via: 'ui' }`，内核只传递通道载荷
 - **agent** 经 MCP 入口：`index`、`search` 从命令总线的 `list()` 取清单，`run` 调 `ctx.gwbCommands.run` 并带上 `{ via: 'mcp' }`
 - **插件**直接调 `ctx.gwbCommands.run`，不带来源，处理函数收到的是 `{ via: 'plugin' }`
 
@@ -90,7 +90,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 插件在 peer 里写内核包
 
-内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。八个插件此刻都写 `^0.8.0`：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。八个插件此刻都写 `^0.9.0`：
 
 {/* ref file="../plugins/mcp/package.json" lines="30-36" */}
 
