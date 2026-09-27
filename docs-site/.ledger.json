@@ -228,35 +228,45 @@
     }
   },
   "content/docs/logger.mdx": {
-    "../plugins/logger/src/index.ts:100-125": {
+    "../plugins/logger/src/query.ts:114-135": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        100,
-        125
+        114,
+        135
       ],
-      "hash": "58ddb9123b5981e770fdb5939e1cc3c657064b0416d5420240233acee463815e"
+      "hash": "101b59ad3aa006139aa02a2a51e67d518c698c8d4959df03a805936f47bf6b9c"
     },
-    "../plugins/logger/src/index.ts:49-55": {
+    "../plugins/logger/src/log-file-reader.ts:35-65": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "426c715add5d97854b61f5317f7f1623c5080424",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        49,
-        55
+        35,
+        65
       ],
-      "hash": "eb68dee2a0f1d8b09ef1f61d560bdacdaffaca6d8a518bd0730899f6a2f5d609"
+      "hash": "de6ecb4429ca7b3b5df6930c85ac4841be9fda4c60f01757494758867b0c227b"
     },
-    "../plugins/logger/src/index.ts:12-39": {
+    "../plugins/logger/src/query.ts:9-32": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        12,
-        39
+        9,
+        32
       ],
-      "hash": "b9eee1d90207f51d7d63252c35f37d455e95deb54ce91ffcf6702ffcfdaa8fdd"
+      "hash": "f15700eaeb59001f102d095ca6763ae8c829de934da8b7a3863a4cae60f1c969"
+    },
+    "../plugins/logger/src/log-entry.ts:3-13": {
+      "kind": "git",
+      "blob": "8d6b2921a7369b8ceae144afe47baa42f827ea40",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
+      "lines": [
+        3,
+        13
+      ],
+      "hash": "d1580e1f75174f054ad6d56b99924d5a89f9761b6172bae3c28fab51d1db9819"
     }
   },
   "content/docs/commands.mdx": {
@@ -1021,84 +1031,95 @@
     }
   },
   "content/docs/seams/log.mdx": {
-    "has ../plugins/logger/tests/source.test.ts \"kernel 与 loader 是内核\"": {
-      "kind": "has"
-    },
-    "../plugins/logger/src/index.ts:29-39": {
+    "../plugins/logger/src/query.ts:9-32": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        29,
-        39
+        9,
+        32
       ],
-      "hash": "50b4fda530cb6c922ba7b8a5db634b6f4b4eb0a1d14025c7ca901d878c4fa5df"
+      "hash": "f15700eaeb59001f102d095ca6763ae8c829de934da8b7a3863a4cae60f1c969"
     },
-    "../plugins/logger/src/index.ts:49-55": {
+    "../plugins/logger/src/log-entry.ts:3-13": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "8d6b2921a7369b8ceae144afe47baa42f827ea40",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        49,
-        55
+        3,
+        13
       ],
-      "hash": "eb68dee2a0f1d8b09ef1f61d560bdacdaffaca6d8a518bd0730899f6a2f5d609"
+      "hash": "d1580e1f75174f054ad6d56b99924d5a89f9761b6172bae3c28fab51d1db9819"
     },
-    "../plugins/logger/src/index.ts:20-21": {
+    "../plugins/logger/src/log-entry.ts:24-48": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "8d6b2921a7369b8ceae144afe47baa42f827ea40",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        20,
-        21
+        24,
+        48
       ],
-      "hash": "221aa90329fc3b62e5c0936b1764f422c0a820348e257af92dedbd69c40e6b13"
+      "hash": "ac849d7042c29f8d36e7e96e0653c9438fb75b8ea63b03767182fa2c1d9ba396"
     },
-    "has ../plugins/logger/tests/apply.test.ts \"装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复\"": {
-      "kind": "has"
-    },
-    "../plugins/logger/src/index.ts:12-15": {
+    "../plugins/logger/src/query.ts:99-120": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        12,
-        15
+        99,
+        120
       ],
-      "hash": "99deb307e049c2ed4902ca0364e2652abd0a633534da5d92590faf968647e91c"
+      "hash": "01cd05f19fbcb1100ea675620eeb4c166acf1f23704dbe2c85805f832e384495"
     },
-    "../plugins/logger/src/index.ts:111-124": {
+    "../plugins/logger/src/query.ts:137-152": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        111,
-        124
+        137,
+        152
       ],
-      "hash": "aed7753ffbed9da991777799012df44374bfb867c5b6c0a11267c1a9d1c1c297"
+      "hash": "4bd35f971e9142026cbfc3ff0f407bf91a8e71155fb585cf6f2019b8ad3bb832"
     },
-    "../plugins/logger/src/index.ts:127-174": {
+    "../plugins/logger/src/query.ts:41-70": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "c0945d70368226de4a48da44744d2384d111f2ba",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        127,
-        174
+        41,
+        70
       ],
-      "hash": "6707bb2c39b67422f7bf64a28fa1754df2a09a78c573b48793da31ccd7cfbaef"
+      "hash": "fa42997ef6df2b51112fc2c63a6a07c2a11babb0c084d9e0b7e158bc52417110"
     },
-    "../plugins/logger/src/index.ts:176-189": {
+    "../plugins/logger/tests/apply.test.ts:93-105": {
       "kind": "git",
-      "blob": "37423f9bda31647ad30e7cb94296b85b8e157397",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "6e9783d8b47823ae63c867a73987fa44236c2c94",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
       "lines": [
-        176,
-        189
+        93,
+        105
       ],
-      "hash": "c4ad772783c77b8f3431f883f896481dd08d38347441cf4550431a0040ae69db"
+      "hash": "cde25513d0795fbfaa08c365e1eeb68b301add5128dfa991297b215f6e361ab6"
     },
-    "has ../plugins/logger/tests/apply.test.ts \"logger.backlog 带 minLevel、name 先筛，limit 再取筛完之后最近的几条\"": {
-      "kind": "has"
+    "../plugins/logger/tests/apply.test.ts:156-171": {
+      "kind": "git",
+      "blob": "6e9783d8b47823ae63c867a73987fa44236c2c94",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
+      "lines": [
+        156,
+        171
+      ],
+      "hash": "0cf9fab8066a40b285f1f9bafe5137129dc9ac23714a6a89c5a80697cdae61ac"
+    },
+    "../plugins/logger/tests/apply.test.ts:203-213": {
+      "kind": "git",
+      "blob": "6e9783d8b47823ae63c867a73987fa44236c2c94",
+      "commit": "184298135596fb39f1b792cfb3e87703f17da4be",
+      "lines": [
+        203,
+        213
+      ],
+      "hash": "aa689ccc58e3f82583cb4f1a6cead356ce443e2acdc7cb30e2b4c722888f06b6"
     }
   },
   "content/docs/seams/mcp-protocol.mdx": {
@@ -1540,43 +1561,10 @@
     "has ../plugins/data/src/owner.ts \"export const OWNER_FILE = '.owner.json'\"": {
       "kind": "has"
     },
-    "has ../plugins/logger/src/index.ts \"new GwbLogger(ctx, 'gwbLogger')\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"export const EVENT = 'gwb-logger'\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"export const BACKLOG_COMMAND = 'logger.backlog'\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"export const WHERE_COMMAND = 'logger.where'\"": {
-      "kind": "has"
-    },
     "has ../plugins/logger/src/index.ts \"export const inject = ['gwbCommands']\"": {
       "kind": "has"
     },
     "has ../plugins/logger/package.json \"\\\"@godcreator/gwb-commands\\\": \\\"workspace:^\\\"\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"const kernel = requireKernel(ctx)\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"loggerFactory.exporter(forwardingExporter)\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"for (const message of loggerFactory.buffer ?? [])\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"kernel.emit({ t: EVENT, line: entry })\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"logFile: path.join(kernel.dataDir, 'gwb.log')\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"const KERNEL_LOGGER_NAMES = new Set(['kernel', 'loader'])\"": {
-      "kind": "has"
-    },
-    "has ../plugins/logger/src/index.ts \"if (loggerName === 'renderer') return 'renderer'\"": {
       "kind": "has"
     },
     "has ../plugins/mcp/src/index.ts \"server.listen(port, '127.0.0.1', () => {\"": {
@@ -1784,6 +1772,18 @@
       "kind": "has"
     },
     "has ../plugins/data/package.json \"\\\"@godcreator/gwb-kernel-desktop\\\": \\\"^0.9.0\\\"\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/query.ts \"export const QUERY_COMMAND = 'logger.query'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"const logFile = path.join(requireKernel(ctx).dataDir, LOG_FILE_NAME)\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/index.ts \"const LOG_FILE_NAME = 'gwb.log'\"": {
+      "kind": "has"
+    },
+    "has ../plugins/logger/src/log-entry.ts \"const KEYS_IN_ORDER = 'ts,level,source,name,msg'\"": {
       "kind": "has"
     }
   }
