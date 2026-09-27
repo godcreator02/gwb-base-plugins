@@ -27,6 +27,21 @@ function lastNewlineBefore(buffer: Buffer, end: number): number {
   return end === 0 ? -1 : buffer.lastIndexOf(NEWLINE, end - 1)
 }
 
+/**
+ * 正在追加的文件末尾可能是内核还没写完的一行（内核一行只用一次 writeSync，下一次读时就完整了）：
+ * 回 `range` 里最后一个换行之后的位置，一个换行都没有就是 `range.start`
+ */
+export async function endOfLastCompleteLine(range: ByteRange): Promise<number> {
+  let unreadEnd = range.end
+  while (unreadEnd > range.start) {
+    const readStart = Math.max(range.start, unreadEnd - CHUNK_BYTES)
+    const lastNewline = (await readBytes(range, readStart, unreadEnd)).lastIndexOf(NEWLINE)
+    if (lastNewline !== -1) return readStart + lastNewline + 1
+    unreadEnd = readStart
+  }
+  return range.start
+}
+
 function rejectUnterminatedLastLine(range: ByteRange, bytesAfterLastNewline: Buffer): void {
   if (bytesAfterLastNewline.length === 0) return
   throw new Error(`${range.file} 的最后一行没有以换行结尾：${linePrefix(bytesAfterLastNewline.toString('utf8'))}`)

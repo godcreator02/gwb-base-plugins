@@ -25,7 +25,7 @@ const STEPS: { title: string; detail: string; lit: Part[]; flows: string[] }[] =
   },
   {
     title: '第 2 步：不给 after，从末尾往前读',
-    detail: '从 gwb.log 末尾按块往前读，逐行解析、按 minLevel / name / text 筛，凑够 limit 条（默认 2000）就停；gwb.log 不够就接着从 gwb.log.1 末尾往前读，不把整份文件读进内存。entries 从旧到新，cursor 是这时 gwb.log 的字节长度。',
+    detail: '从 gwb.log 末尾按块往前读，逐行解析、按 minLevel / name / text 筛，凑够 limit 条（默认 2000）就停；gwb.log 不够就接着从 gwb.log.1 末尾往前读，不把整份文件读进内存。entries 从旧到新，cursor 是这时 gwb.log 里最后一个完整行的末尾；末尾内核还没写完的半行不返回，下一次再读。',
     lit: ['current', 'rotated', 'query', 'caller'],
     flows: ['call', 'read', 'readCurrentBack', 'readRotatedBack'],
   },

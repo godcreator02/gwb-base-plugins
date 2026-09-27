@@ -18,6 +18,7 @@ description: 连接日志插件与内核写的日志文件、以及界面插件�
 - 插件、内核、页面 console 的日志都由内核写成 `<home>/gwb.log` 里的一行 JSON `{ ts, level, source, name, msg }`；写满 128 MB 改名成 `gwb.log.1`，只留这一份旧的
 - 不给 `after`：从 `gwb.log` 末尾按块往前读、逐行筛，凑够 `limit` 条就停，不够再接着读 `gwb.log.1`
 - 给 `after`：`gwb.log` 不比 `after` 小，只读 `after` 到末尾；比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部
+- `gwb.log` 末尾内核还没写完的半行不返回，`cursor` 停在它前面，下一次再读
 - 不是 JSON、五个键的顺序或类型不对的行直接报错，写明文件与行首
 </Diagram>
 
@@ -38,11 +39,13 @@ description: 连接日志插件与内核写的日志文件、以及界面插件�
 
 {/* ref file="../plugins/logger/src/log-entry.ts" lines="24-48" */}
 
-**两种读法**：不给 `after`，从 `gwb.log` 末尾往前读，不够再接着读 `gwb.log.1`，凑够 `limit` 条就停。给 `after`，只读那之后新写的；`gwb.log` 比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部；`after` 比两份文件都大，就不是这两份文件里的位置，直接报错。`cursor` 是打开 `gwb.log` 时它的长度，读的范围不超过它，之后新写的留给下一次：
+**两种读法**：不给 `after`，从 `gwb.log` 末尾往前读，不够再接着读 `gwb.log.1`，凑够 `limit` 条就停。给 `after`，只读那之后新写的；`gwb.log` 比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部；`after` 比两份文件都大，就不是这两份文件里的位置，直接报错。`cursor` 是打开 `gwb.log` 时它里面最后一个完整行的末尾，读的范围不超过它，之后新写的留给下一次；判断轮转也拿它和 `after` 比：
 
 {/* ref file="../plugins/logger/src/query.ts" lines="99-120" */}
 
 {/* ref file="../plugins/logger/src/query.ts" lines="137-152" */}
+
+{/* ref file="../plugins/logger/src/log-file-reader.ts" lines="30-43" */}
 
 **参数**：都可省。不是对象、有认不出的键、`limit` 不是正整数、`minLevel` 不是四个级别之一、`name` 或 `text` 不是非空字符串、`after` 不是非负整数，都直接报错：
 
@@ -56,13 +59,15 @@ description: 连接日志插件与内核写的日志文件、以及界面插件�
 
 - 只读 `gwb.log` 与 `gwb.log.1`，不写、不改名、不删
 - `entries` 从旧到新，是文件里原样的对象
-- `cursor` 是读完时 `gwb.log` 的字节长度；下一次带着它调，不漏也不重复
+- `cursor` 是读完时 `gwb.log` 里最后一个完整行末尾的字节位置；下一次带着它调，不漏也不重复
+- `gwb.log` 末尾没以换行结尾的那一段当作内核还没写完的行，不返回、不报错；`gwb.log.1` 不再有人写，它的末行没以换行结尾就报错
 - 坏行、坏参数直接报错，不跳过、不猜调用方的意思
 - 命令在插件卸载时注销
 
 **内核**保证（内核仓的约定）：
 
 - `gwb.log` 是 UTF-8，一行一个 JSON，以 `\n` 结尾，五个键固定、顺序固定
+- 一行只用一次 `writeSync` 写完：读的时候碰上的半行，下一次读时就完整了
 - 满 128 MB 改名成 `gwb.log.1`，只留一份旧的；改名之后新写的落进新的 `gwb.log`
 - 三个来源都写进这一份文件，`source` 由内核按 logger 名分
 
@@ -85,10 +90,12 @@ description: 连接日志插件与内核写的日志文件、以及界面插件�
 
 ## 测试
 
-`plugins/logger/tests/apply.test.ts` 在真 cordis 根上下文里测，内核与命令总线用替身，home 是临时目录，在里面造 `gwb.log` 与 `gwb.log.1`：命令的登记与注销、默认条数与顺序（跨 `gwb.log.1`、跨多个 64 KB 的块）、`minLevel` / `name` / `text` 筛选与 `limit`、`after` 只读新写的（含轮转过的情形）、坏行与没以换行结尾的末行报错、参数报错。窗格每秒带 `after` 取数，只能在隔离 home 里验证。
+`plugins/logger/tests/apply.test.ts` 在真 cordis 根上下文里测，内核与命令总线用替身，home 是临时目录，在里面造 `gwb.log` 与 `gwb.log.1`：命令的登记与注销、默认条数与顺序（跨 `gwb.log.1`、跨多个 64 KB 的块）、`minLevel` / `name` / `text` 筛选与 `limit`、`after` 只读新写的（含轮转过的情形、`gwb.log` 末尾有没写完的半行）、坏行与空行报错、`gwb.log.1` 末行没以换行结尾报错、参数报错。窗格每秒带 `after` 取数，只能在隔离 home 里验证。
 
 {/* ref file="../plugins/logger/tests/apply.test.ts" lines="93-105" */}
 
 {/* ref file="../plugins/logger/tests/apply.test.ts" lines="156-171" */}
 
-{/* ref file="../plugins/logger/tests/apply.test.ts" lines="203-213" */}
+{/* ref file="../plugins/logger/tests/apply.test.ts" lines="173-193" */}
+
+{/* ref file="../plugins/logger/tests/apply.test.ts" lines="233-243" */}

@@ -26,6 +26,7 @@
     "2026-09-26-command-effect-and-agent-catalog",
     "2026-09-27-read-command-success-at-debug",
     "2026-09-27-logger-reads-kernel-file",
+    "2026-09-27-logger-skip-unfinished-line",
     "2026-09-12-three-repos-split",
     "2026-09-13-http-door-takes-over",
     "2026-09-13-docs-ownership-split",

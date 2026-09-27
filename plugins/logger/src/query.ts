@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import type { FileHandle } from 'node:fs/promises'
 import { LEVELS_FROM_LOWEST, entryFromLine } from './log-entry.js'
 import type { LogEntry, LogLevel } from './log-entry.js'
-import { linesNewestFirst } from './log-file-reader.js'
+import { endOfLastCompleteLine, linesNewestFirst } from './log-file-reader.js'
 import type { ByteRange } from './log-file-reader.js'
 import { isRecord } from './vocab.js'
 
@@ -14,7 +14,7 @@ export const QUERY_USAGE =
   '参数 { limit?, minLevel?, name?, text?, after? }，都可省：limit 是正整数，只要筛完之后最近的几条，默认 2000；' +
   'minLevel 是 debug / info / warn / error，只要这一级及以上；name 是 logger 名，精确匹配（插件的 logger 名多是 gwb-<短名>）；' +
   'text 是非空字符串，在 name 与 msg 里找子串，不分大小写；after 是上一次回执里的 cursor，只取那之后新写的，不给就从文件末尾往前取。' +
-  '回 { file, cursor, entries }：file 是 gwb.log 的绝对路径；cursor 是读完时 gwb.log 的字节长度，下一次作 after 传回来；' +
+  '回 { file, cursor, entries }：file 是 gwb.log 的绝对路径；cursor 是读完时 gwb.log 里最后一个完整行末尾的字节位置（末尾内核还没写完的半行不返回，下一次再读），下一次作 after 传回来；' +
   'entries 是 [{ ts, level, source, name, msg }]，从旧到新，跨过轮转出的 gwb.log.1。agent 调时带上 limit'
 
 export interface LogQuery {
@@ -102,11 +102,11 @@ async function rotatedRangeAfterCursor(logFile: string, cursor: number, after: n
   try {
     rotated = await open(rotatedFile)
   } catch (err) {
-    throw new Error(`${logFile} 只有 ${cursor} 字节、比 after=${after} 小，说明轮转过，但 ${rotatedFile} 打不开`, { cause: err })
+    throw new Error(`${logFile} 的完整行只到第 ${cursor} 字节、比 after=${after} 小，说明轮转过，但 ${rotatedFile} 打不开`, { cause: err })
   }
   const rotatedSize = await sizeOf(rotated)
   if (after > rotatedSize) {
-    throw new Error(`after=${after} 比 ${logFile}（${cursor} 字节）与 ${rotatedFile}（${rotatedSize} 字节）都大，不是这两份日志文件里的位置`)
+    throw new Error(`after=${after} 比 ${logFile}（完整行到第 ${cursor} 字节）与 ${rotatedFile}（${rotatedSize} 字节）都大，不是这两份日志文件里的位置`)
   }
   return { file: rotatedFile, handle: rotated, start: after, end: rotatedSize }
 }
@@ -143,7 +143,7 @@ export async function queryLogFile(logFile: string, query: LogQuery): Promise<Lo
   }
   try {
     const current = await open(logFile)
-    const cursor = await sizeOf(current)
+    const cursor = await endOfLastCompleteLine({ file: logFile, handle: current, start: 0, end: await sizeOf(current) })
     const ranges = await rangesOldestFirst(logFile, current, cursor, query.after, open)
     return { file: logFile, cursor, entries: await newestMatchingEntries(ranges, query) }
   } finally {

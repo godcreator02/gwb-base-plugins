@@ -170,6 +170,36 @@ describe('logger.query 给 after：只取那之后新写的', () => {
     expect(after.cursor).toBe(fs.statSync(logFile).size)
   })
 
+  it('gwb.log 末尾有内核还没写完的半行：不返回它，cursor 停在它前面；写完之后下一次读到它', async () => {
+    const home = makeHome()
+    const logFile = path.join(home, 'gwb.log')
+    appendEntries(logFile, range(0, 3).map((i) => entry(i)))
+    const completeBytes = fs.statSync(logFile).size
+    const unfinishedLine = lineOf(entry(3))
+    const splitAt = 20
+    fs.appendFileSync(logFile, unfinishedLine.slice(0, splitAt))
+    const { query } = await bootLogger(home)
+
+    const first = await query()
+    expect(first.entries).toEqual(range(0, 3).map((i) => entry(i)))
+    expect(first.cursor).toBe(completeBytes)
+    expect(await query({ after: first.cursor })).toEqual({ file: logFile, cursor: completeBytes, entries: [] })
+
+    fs.appendFileSync(logFile, unfinishedLine.slice(splitAt))
+    appendEntries(logFile, [entry(4)])
+    const second = await query({ after: first.cursor })
+    expect(second.entries).toEqual(range(3, 5).map((i) => entry(i)))
+    expect(second.cursor).toBe(fs.statSync(logFile).size)
+  })
+
+  it('gwb.log 里只有没写完的半行：回空，cursor 是 0', async () => {
+    const home = makeHome()
+    const logFile = path.join(home, 'gwb.log')
+    fs.writeFileSync(logFile, lineOf(entry(0)).slice(0, 30))
+    const { query } = await bootLogger(home)
+    expect(await query()).toEqual({ file: logFile, cursor: 0, entries: [] })
+  })
+
   it('gwb.log 比 after 小、gwb.log.1 却不在：报错写明两份文件', async () => {
     const home = makeHome()
     const logFile = path.join(home, 'gwb.log')
@@ -228,13 +258,24 @@ describe('logger.query 读到坏行、找不到文件就报错', () => {
     await expect(query()).rejects.toThrow(logFile)
   })
 
-  it('最后一行没有换行结尾就报错', async () => {
+  it('空行也报错', async () => {
     const home = makeHome()
     const logFile = path.join(home, 'gwb.log')
     appendEntries(logFile, [entry(0)])
-    fs.appendFileSync(logFile, lineOf(entry(1)).trimEnd())
+    fs.appendFileSync(logFile, '\n')
+    appendEntries(logFile, [entry(1)])
     const { query } = await bootLogger(home)
-    await expect(query()).rejects.toThrow(/没有以换行结尾/)
+    await expect(query()).rejects.toThrow(`${logFile} 里有一行不是 JSON`)
+  })
+
+  it('gwb.log.1 不再有人写，它的末行没有以换行结尾就报错', async () => {
+    const home = makeHome()
+    const logFile = path.join(home, 'gwb.log')
+    appendEntries(`${logFile}.1`, [entry(0)])
+    fs.appendFileSync(`${logFile}.1`, lineOf(entry(1)).trimEnd())
+    appendEntries(logFile, [entry(2)])
+    const { query } = await bootLogger(home)
+    await expect(query()).rejects.toThrow(`${logFile}.1 的最后一行没有以换行结尾`)
   })
 
   it('gwb.log 不在就报错，写明路径', async () => {
