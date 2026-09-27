@@ -62,7 +62,7 @@ pnpm check
 devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills","plugins/settings","plugins/data","plugins/node-cli","plugins/py-cli","plugins/mcp"]}
 ```
 
-**各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里内核包的范围包含运行中的内核。每个包都写了团队源的 `publishConfig.registry`，peer 里内核包都是 `^0.9.0`；用到的本仓插件也写在 peer（`workspace:^`，发版时换成 `^<版本号>`）：
+**各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里内核包的范围包含运行中的内核。每个包都写了团队源的 `publishConfig.registry`，peer 里内核包都是 `^0.10.0`；用到的本仓插件也写在 peer（`workspace:^`，发版时换成 `^<版本号>`）：
 
 {/* ref file="../plugins/mcp/package.json" lines="30-47" */}
 

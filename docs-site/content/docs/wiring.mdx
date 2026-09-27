@@ -9,14 +9,14 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 几件本仓插件共同的事，不在各节重复：
 
-- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（此刻都是 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（此刻都是 `^0.10.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
 - **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、MCP 插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，说明书与两个命令行运行插件不用它
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
-{/* has file="../plugins/data/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.9.0&quot;" */}
+{/* has file="../plugins/data/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.10.0&quot;" */}
 
 ## @godcreator/gwb-commands
 
@@ -76,7 +76,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
 {/* has file="../plugins/data/src/index.ts" text="this.homeDir = requireKernel(ctx).dataDir" */}
 
@@ -129,7 +129,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbSettings` | `@godcreator/gwb-settings` | 必需（`export const inject`） | `workspace:^` | 声明并读取 `port` | 插件一直等待、不加载，没有入口 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | instructions 末尾的目录与 `index`、`search` 里的说明书清单；登记自带的说明书 | 入口照常开，说明书清单是空表 |
 | `gwbNodeCli` | `@godcreator/gwb-node-cli` | 局部注入 | `workspace:^`，标 `optional` | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 
 {/* has file="../plugins/mcp/src/index.ts" text="export const inject = ['gwbCommands', 'gwbSettings']" */}
 
@@ -318,7 +318,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | --- | --- | --- | --- | --- | --- |
 | `gwbCommands` | `@godcreator/gwb-commands` | 局部注入 | `workspace:^`，标 `optional` | 登记四条命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
 {/* has file="../plugins/settings/src/index.ts" text="this.ctx.inject(['gwbCommands'], (contextWithCommands) => {" */}
 
