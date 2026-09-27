@@ -40,7 +40,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 本仓插件的依赖这样写：
 
-- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份；日志插件不继承，peer 里却还写着
+- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份；日志插件不继承，不写
 - **本仓别的插件**：用到的写 peer（`workspace:^`，`devkit.release` 发版时换成 `^<版本号>`），只局部注入、缺了只少一部分功能的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
@@ -90,7 +90,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 插件在 peer 里写内核包
 
-内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。八个插件此刻都写 `^0.9.0`：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。日志插件读的是内核 0.10 起的 `gwb.log` 格式，写 `^0.10.0`；其余七个此刻写 `^0.9.0`，要跟到 0.10（`content/future/inbox/` 里的通知）：
 
 {/* ref file="../plugins/mcp/package.json" lines="30-36" */}
 

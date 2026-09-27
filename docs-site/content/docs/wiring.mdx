@@ -9,7 +9,7 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 几件八个插件共同的事，不在各节重复：
 
-- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（下限 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写，日志插件不继承、peer 里却还写着。为什么这样写见[关键设计](/docs/design)
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（日志插件 `^0.10.0`，其余 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件与日志插件不写。为什么这样写见[关键设计](/docs/design)
 - **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，其余三个插件不用它
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
@@ -114,7 +114,7 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | 登记 `logger.query` | 插件一直等待、不加载 |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | 算出 `<home>/gwb.log` 的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0`（读的是 0.10 起一行一个 JSON 的格式） | 算出 `<home>/gwb.log` 的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
 
 {/* has file="../plugins/logger/src/index.ts" text="export const inject = ['gwbCommands']" */}
 
