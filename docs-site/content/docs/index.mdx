@@ -32,9 +32,9 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 
 <Diagram name="seam-map" title="虚线框是本仓，连线是接缝，编号对应下面的表">
 - 本仓八个插件：MCP 入口 `gwb-mcp`、日志 `gwb-logger`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`
-- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、日志流）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；照报错手工处理归属记录的人（接缝 7）；cordis loader；子进程（Electron 以 node 模式运行、uv）
+- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线、写日志文件 `gwb.log`）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；照报错手工处理归属记录的人（接缝 7）；cordis loader；子进程（Electron 以 node 模式运行、uv）
 - 各插件都经接缝 1 登记自己的命令；图上只画命令总线到别的插件那一条
-- 实线接缝有代码接口；点线接缝 8 只靠约定
+- 实线接缝有代码接口；点线接缝 8、10 只靠约定
 </Diagram>
 
 一条接缝连接的两个模块可以各自替换：只要交换的东西不变，换掉其中一个，另一个不用改。每条接缝由什么测试保护，写在它自己那一页；左栏接缝页标题前的数字就是图上的编号。内核那边的接缝（插件加载、内核服务、IPC 通道、日志写进 `gwb.log`）在内核仓的文档站。
@@ -50,7 +50,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 7 | 数据归属 | 数据、设置 ↔ 手工处理归属的人 | `.owner.json` 与 `$owners`、拒绝时的报错；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方（插件管理 0.14 起不再调用） | [数据归属](/docs/seams/owners) |
 | 8 | 条目身份（约定） | 数据、设置、说明书、命令、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id 与包名；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 登记工具的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run`；回执 `CliRunResult`；python 的 venv | [命令行工具](/docs/seams/cli) |
-| 10 | 日志 | 日志 ↔ 内核日志流、日志窗格 | cordis 日志的 exporter 与缓冲、推给页面的事件、`logger.backlog` / `logger.where` | [日志](/docs/seams/log) |
+| 10 | 日志（约定） | 日志 ↔ 内核写的日志文件、日志窗格 | `gwb.log` 与 `gwb.log.1` 一行的格式、`logger.query` 的参数与回执、`cursor` 与 `after` | [日志](/docs/seams/log) |
 
 ## 插件
 
@@ -61,7 +61,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | `@godcreator/gwb-skills` | 说明书的登记表 | [gwb-skills](/docs/skills) |
 | `@godcreator/gwb-settings` | 各插件的设置 | [gwb-settings](/docs/settings) |
 | `@godcreator/gwb-data` | 各插件的数据目录与文档 | [gwb-data](/docs/data) |
-| `@godcreator/gwb-logger` | 收集日志，给日志窗格提供数据 | [gwb-logger](/docs/logger) |
+| `@godcreator/gwb-logger` | 读内核写的日志文件，给日志窗格与 agent 查日志 | [gwb-logger](/docs/logger) |
 | `@godcreator/gwb-node-cli` | 把 node 写的命令行工具变成命令 | [gwb-node-cli](/docs/node-cli) |
 | `@godcreator/gwb-py-cli` | 把 python 写的命令行工具变成命令 | [gwb-py-cli](/docs/py-cli) |
 

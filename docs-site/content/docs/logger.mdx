@@ -1,34 +1,30 @@
 ---
 title: gwb-logger · 日志
-description: gwb-logger 收集插件、内核、页面三个来源的日志，保留最近两千条，实时推给页面，并提供 logger.backlog 与 logger.where 两条命令；日志窗格在界面插件仓。本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
+description: gwb-logger 只读内核写的日志文件 gwb.log 与轮转出的 gwb.log.1，经命令 logger.query 按级别、logger 名、子串筛，取最近几条或某个位置之后新写的；日志窗格在界面插件仓。本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
-**本页回答**：日志插件有哪些功能；页面、agent 和日志窗格经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归内核或界面插件。包名 `@godcreator/gwb-logger`，源码目录 `plugins/logger/src`，入口文件 `index.ts`。
+**本页回答**：日志插件有哪些功能；日志窗格和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归内核或界面插件。包名 `@godcreator/gwb-logger`，源码目录 `plugins/logger/src`，入口文件 `index.ts`。
 
-日志插件没有界面。人在界面上看日志用的日志窗格在界面插件仓 gwb-ui-plugins 里，它从这个插件取数据。
+日志插件没有界面，也不收日志：日志由内核写进 `<home>/gwb.log`，日志插件只在有人调 `logger.query` 时读这份文件。人在界面上看日志用的日志窗格在界面插件仓 gwb-ui-plugins 里，它经这条命令取数据。
 
-<Diagram name="log-flow" title="日志从三个来源到日志插件、页面与日志窗格（分步）">
-- 插件（`ctx.logger('<名字>')`）、内核（`kernel`、`loader`）、页面 console（内核转成 `renderer`）的日志都经 cordis 的 `ctx.logger` 汇成一条流
-- 流上有三个接收方：内核的 exporter 写 stderr 与 `<home>/gwb.log`；cordis 自带的缓冲 `ctx.logger.buffer` 留 info 及以上；日志插件的 exporter 收全部（debug 也收）
-- 日志插件加载时先从 `ctx.logger.buffer` 补历史，再注册自己的 exporter
-- 每条新日志编 `seq`、分来源，存进 2000 条的缓冲，经 `gwbKernel.emit` 推 `{ t: 'gwb-logger', line }` 给页面
-- 界面插件仓的日志窗格先用 `window.gwb.on` 订阅，再调 `logger.backlog` 取历史，两段按 `seq` 合并
+<Diagram name="log-flow" title="内核写两份日志文件，logger.query 怎么读（分步）">
+- 插件、内核、页面 console 的日志都由内核写成 `<home>/gwb.log` 里的一行 JSON `{ ts, level, source, name, msg }`；写满 128 MB 改名成 `gwb.log.1`，只留这一份旧的
+- 不给 `after`：从 `gwb.log` 末尾按块往前读、逐行筛，凑够 `limit` 条就停，不够再接着读 `gwb.log.1`
+- 给 `after`：`gwb.log` 不比 `after` 小，只读 `after` 到末尾；比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部
+- 不是 JSON、五个键的顺序或类型不对的行直接报错，写明文件与行首
 </Diagram>
 
 ## 功能
 
-- **把三个来源的日志收到一处**：插件与 loader 的日志、内核自己的日志、页面 console（内核把它转成名为 `renderer` 的 cordis 日志），都经 cordis 的日志流来，插件在流上注册一个 exporter（级别设为 3，`debug` 也收）就全部收到；它是流上的第三个 exporter，前两个是 cordis 自带的缓冲和内核写 stderr 与 `gwb.log` 的那个
-- **给每条日志分来源、定级别**：logger 名是 `renderer` 的算页面，是 `kernel`、`loader` 的算内核，其余算插件；cordis 的 `success` 等级别算 `info`
-- **保留最近两千条**：足够查看启动以来的日志，又不至于占太多内存；插件加载之前已经产生的日志，从 cordis 自带的缓冲里补进来，先补再注册 exporter，两段不重叠；每条带从 1 起递增的序号 `seq`
-- **实时推给页面**：每收到一条，经内核的事件通道推给页面
-- **不打断别人写日志**：格式化失败时退回把参数逐个转成文本——exporter 抛错会打断写这条日志的那次调用
-- **两条命令**：`logger.backlog` 取缓冲里的日志，可以按级别、logger 名筛，只取最近几条；`logger.where` 报 home 目录与日志文件的路径；两条都标 `effect: 'read'`，插件卸载时注销。不带参数的 `logger.backlog` 回整个缓冲，日志窗格这样取；缓冲满了时经 MCP 入口远超单次返回的上限，所以 agent 调时要带 `limit`
-- **提供一个没有方法的服务 `gwbLogger`**：日志窗格按服务名等它出现，服务上刻意不放任何方法；`apply` 里先提供这个服务再做别的
-- **就绪时写一行 info**：写明补进了多少条历史；装了日志窗格的话，这一行会出现在窗格里，可以用来确认整条链路是通的
+- **按条件查日志文件**：`logger.query` 读内核写的 `gwb.log` 与轮转出的 `gwb.log.1`，按级别（这一级及以上）、logger 名（精确匹配）、子串（在 `name` 与 `msg` 里找，不分大小写）筛，回筛完之后最近的 `limit` 条，默认 2000
+- **只读新写的**：回执里的 `cursor` 是读完时 `gwb.log` 的字节长度，下一次作 `after` 传回来，就只读那之后新写的；中间轮转过也接得上
+- **倒着按块读**：从文件末尾往前一次读 64 KB，凑够条数就停，不把整份文件读进内存；按字节找换行再解码，块边界切在多字节字符中间也不会解错
+- **坏行、坏参数直接报错**：一行不是 JSON、五个键的顺序或类型对不上，报错写明是哪份文件、那一行开头几十个字符，不跳过；参数里有认不出的键、类型不对，也直接报错
+- 命令标 `effect: 'read'`，插件卸载时注销
 
-{/* ref file="../plugins/logger/src/index.ts" lines="100-125" */}
+{/* ref file="../plugins/logger/src/query.ts" lines="114-135" */}
 
-{/* ref file="../plugins/logger/src/index.ts" lines="49-55" */}
+{/* ref file="../plugins/logger/src/log-file-reader.ts" lines="35-65" */}
 
 ## 接口
 
@@ -36,24 +32,23 @@ description: gwb-logger 收集插件、内核、页面三个来源的日志，�
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 命令 `logger.backlog` | 参数 `{ limit?, minLevel?, name? }` 都可省：`minLevel`（`debug` / `info` / `warn` / `error`）只要这一级及以上，`name` 按 logger 名精确匹配，`limit`（正整数）在筛完之后取最近几条；认不出的键、类型不对直接报错。返回日志数组（副本），从旧到新；都不给就是整个缓冲，最多两千条 | [10 日志](/docs/seams/log) |
-| 命令 `logger.where` | 无参数，返回 `{ home, logFile }`，`logFile` 是内核写的 `<home>/gwb.log` | [10 日志](/docs/seams/log) |
-| 页面事件 `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出 | [10 日志](/docs/seams/log) |
-| 一条日志 `LogEntry` | `seq`、`ts`、`source`（`plugin` / `kernel` / `renderer`）、`level`（`error` / `warn` / `info` / `debug`）、`name`、`msg`；类型由本包导出 | [10 日志](/docs/seams/log) |
-| 服务 `ctx.gwbLogger` | 没有方法；日志窗格写 `inject: ['gwbLogger']` 只为等日志插件加载 | [10 日志](/docs/seams/log) |
+| 命令 `logger.query` | 参数 `{ limit?, minLevel?, name?, text?, after? }` 都可省：`limit` 是正整数，默认 2000；`minLevel` 是 `debug` / `info` / `warn` / `error`；`name` 精确匹配；`text` 是非空字符串；`after` 是非负整数，取上一次回执里的 `cursor`。回 `{ file, cursor, entries }`：`file` 是 `gwb.log` 的绝对路径，`cursor` 是读完时它的字节长度，`entries` 是文件里原样的对象，从旧到新 | [10 日志](/docs/seams/log) |
+| 一条日志 `LogEntry` | `ts`（ISO 时间字符串）、`level`、`source`（`kernel` / `plugin` / `renderer`）、`name`、`msg`，就是 `gwb.log` 一行的五个键，顺序由内核定；类型由本包导出，回执类型 `LogQueryResult` 也是 | [10 日志](/docs/seams/log) |
 
-{/* ref file="../plugins/logger/src/index.ts" lines="12-39" */}
+{/* ref file="../plugins/logger/src/query.ts" lines="9-32" */}
 
-**日志窗格怎么取**：先用 `window.gwb.on` 订阅实时事件，再调 `logger.backlog` 取历史，两段按 `seq` 拼接、去重。反过来先取历史再订阅，中间那一刻产生的日志会漏掉；按 `ts`、`name`、`msg` 拼字符串去重会把同一毫秒里两条一样的日志丢掉一条，所以用 `seq`。
+{/* ref file="../plugins/logger/src/log-entry.ts" lines="3-13" */}
+
+**agent 调时带上 `limit`**：两千条整个返回，会超过 MCP 入口单次返回的上限。
 
 ## 依赖
 
-注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（cordis 日志流上的第三个 exporter、推给页面的内核事件、写死的 `gwb.log` 文件名与 `kernel` / `loader` / `renderer` 三个来源名），见[插件之间怎么连](/docs/wiring#godcreatorgwb-logger)。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（写死的 `gwb.log` 文件名与 `.1` 后缀、一行的五个键），见[插件之间怎么连](/docs/wiring#godcreatorgwb-logger)。
 
 ## 不做的事
 
-- **不写日志文件**：`<home>/gwb.log` 与 stderr 由内核写，日志插件不在时人照样看得到日志
-- **不画窗格**：日志窗格在界面插件仓 gwb-ui-plugins，筛选、搜索、清屏都是窗格的事
-- **不保存缓冲**：两千条只在内存里，重启就清空；更早的日志去 `gwb.log` 找
-- **不改日志级别、收的时候不过滤**：`debug` 也进缓冲；日志插件只收，不管别的插件怎么写日志。按级别、名字筛只发生在 `logger.backlog` 取的时候
-- **服务 `gwbLogger` 上不放方法**：取数据走命令，推送走内核事件
+- **不写日志、不收日志**：`gwb.log` 与 stderr 由内核写；日志插件不在 cordis 的日志流上注册任何东西，它不在时日志照样写进文件（轨迹卡[日志插件只读内核写的文件](/trajectory/2026-09-27-logger-reads-kernel-file)）
+- **不在内存里留日志、不推给页面**：每次调用都现读文件；日志窗格要新日志，就带 `after` 再调一次
+- **不分来源**：`source` 由内核写进每一行，日志插件原样交出
+- **不画窗格**：日志窗格在界面插件仓 gwb-ui-plugins，怎么显示、怎么筛是窗格的事
+- **不提供服务**：只有一条命令，别的插件、页面、agent 都经命令总线调

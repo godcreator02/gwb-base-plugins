@@ -16,7 +16,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 | [skills](/docs/skills) | `@godcreator/gwb-skills` | `gwbSkills` | 收集插件自带的说明书 |
 | [settings](/docs/settings) | `@godcreator/gwb-settings` | `gwbSettings` | 设置 |
 | [data](/docs/data) | `@godcreator/gwb-data` | `gwbData` | 插件的数据目录 |
-| [logger](/docs/logger) | `@godcreator/gwb-logger` | `gwbLogger`（没有方法） | 收集日志、推给页面 |
+| [logger](/docs/logger) | `@godcreator/gwb-logger` | 无 | 查内核写的日志文件 |
 | [node-cli](/docs/node-cli) | `@godcreator/gwb-node-cli` | `gwbNodeCli` | 运行 node 命令行工具 |
 | [py-cli](/docs/py-cli) | `@godcreator/gwb-py-cli` | `gwbPyCli` | 运行 python 命令行工具 |
 
@@ -34,13 +34,13 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
-构建产物由 node 直接加载：七个插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的七个插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
+构建产物由 node 直接加载：七个插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
 
 {/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
 
 本仓插件的依赖这样写：
 
-- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的七个插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份
+- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份；日志插件不继承，peer 里却还写着
 - **本仓别的插件**：用到的写 peer（`workspace:^`，`devkit.release` 发版时换成 `^<版本号>`），只局部注入、缺了只少一部分功能的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）

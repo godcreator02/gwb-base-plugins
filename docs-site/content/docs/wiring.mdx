@@ -9,7 +9,7 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 几件八个插件共同的事，不在各节重复：
 
-- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（下限 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的七个插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（下限 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写，日志插件不继承、peer 里却还写着。为什么这样写见[关键设计](/docs/design)
 - **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，其余三个插件不用它
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
@@ -103,53 +103,38 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
-| 服务 | `gwbLogger` | 没有方法；日志窗格按服务名等它出现，出现就说明日志插件已加载 |
-| 命令 | `logger.backlog`、`logger.where` | 最近两千条日志；`{ home, logFile }` |
-| 内核事件 | `{ t: 'gwb-logger', line }` | 每条新日志经 `gwbKernel.emit` 推给页面，页面用 `window.gwb.on` 收，靠 `t` 认出；`line` 的形状是本包导出的 `LogEntry` |
+| 服务 | 无 | |
+| 命令 | `logger.query` | 读 `<home>/gwb.log` 与 `gwb.log.1`，回 `{ file, cursor, entries }`；`entries` 的形状是本包导出的 `LogEntry` |
+| 事件 | 无 | |
 
-{/* has file="../plugins/logger/src/index.ts" text="new GwbLogger(ctx, 'gwbLogger')" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="export const EVENT = 'gwb-logger'" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="export const BACKLOG_COMMAND = 'logger.backlog'" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="export const WHERE_COMMAND = 'logger.where'" */}
+{/* has file="../plugins/logger/src/query.ts" text="export const QUERY_COMMAND = 'logger.query'" */}
 
 ### 注入
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | 登记两条命令 | 插件一直等待、不加载 |
-| `gwbKernel` 的 `emit`、`dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | 推事件给页面；算 `logger.where` 回的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | 登记 `logger.query` | 插件一直等待、不加载 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.9.0` | 算出 `<home>/gwb.log` 的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
 
 {/* has file="../plugins/logger/src/index.ts" text="export const inject = ['gwbCommands']" */}
 
 {/* has file="../plugins/logger/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;workspace:^&quot;" */}
 
-{/* has file="../plugins/logger/src/index.ts" text="const kernel = requireKernel(ctx)" */}
+{/* has file="../plugins/logger/src/index.ts" text="const logFile = path.join(requireKernel(ctx).dataDir, LOG_FILE_NAME)" */}
+
+peer 里还写着 `cordis`，构建产物里已经没有对它的 import。
 
 ### 按名字调用与约定通道
 
 | 通道 | 对方 | 名字 | 用来做什么 |
 | --- | --- | --- | --- |
-| cordis 日志 | 内核的 cordis 实例 | `ctx.logger.exporter(…)`、`ctx.logger.buffer` | 注册日志流上的第三个 exporter（第一个是 cordis 自带的缓冲，第二个是内核写 stderr 与 `gwb.log` 的那个），加载时先从缓冲补读历史 |
-| 内核事件（`gwbKernel.emit` → `window.gwb.on`） | 界面插件仓 gwb-ui-plugins 的日志窗格（gwb-baseui） | `{ t: 'gwb-logger', line }` | 实时推送；窗格那边另写一份 `LogEntry` 的形状与 `'gwb-logger'` 这个字符串 |
-| 命令总线（被调） | 日志窗格 | `logger.backlog` | 窗格取历史，与实时事件按 `seq` 合并 |
-| 约定的文件名 | 内核 | `gwb.log` | `logger.where` 回的 `<home>/gwb.log` 是写死的名字，文件由内核写；内核改了文件名，这里回的路径指向不存在的文件、不报错 |
-| 约定的日志来源名 | 内核、cordis loader | `kernel`、`loader`、`renderer` | 按 logger 名分来源：`renderer` 算页面，`kernel`、`loader` 算内核；内核改名或新增名字，这边把它算成插件、不报错 |
+| 命令总线（被调） | 界面插件仓 gwb-ui-plugins 的日志窗格（gwb-baseui）、agent | `logger.query` | 窗格先取最近的日志，之后带上一次的 `cursor` 取新写的；窗格那边另写一份回执与 `LogEntry` 的形状 |
+| 约定的文件名 | 内核 | `gwb.log`、`gwb.log.1` | 写死的名字，文件由内核写、由内核轮转；内核改了文件名，`logger.query` 打不开文件，报错写明路径 |
+| 约定的一行格式 | 内核 | `{ ts, level, source, name, msg }` | 键与顺序由内核定；对不上的行直接报错 |
 
-{/* has file="../plugins/logger/src/index.ts" text="loggerFactory.exporter(forwardingExporter)" */}
+{/* has file="../plugins/logger/src/index.ts" text="const LOG_FILE_NAME = 'gwb.log'" */}
 
-{/* has file="../plugins/logger/src/index.ts" text="for (const message of loggerFactory.buffer ?? [])" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="kernel.emit({ t: EVENT, line: entry })" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="logFile: path.join(kernel.dataDir, 'gwb.log')" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="const KERNEL_LOGGER_NAMES = new Set(['kernel', 'loader'])" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="if (loggerName === 'renderer') return 'renderer'" */}
-
+{/* has file="../plugins/logger/src/log-entry.ts" text="const KEYS_IN_ORDER = 'ts,level,source,name,msg'" */}
 ## @godcreator/gwb-mcp
 
 ### 提供

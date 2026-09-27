@@ -61,7 +61,7 @@ export function CommandRun() {
 
         <Frame x={368} y={10} w={236} h={250} label="命令总线 gwbCommands" />
         <Box x={380} y={36} w={80} h={212} lines={['run', '(name, args,', 'context?)', '从不抛错']} tone={lit('run')} mono />
-        <Box x={474} y={36} w={118} h={212} lines={['命令表', 'skill.read', 'logger.backlog', 'mcp.info', '…']} tone={lit('table')} mono />
+        <Box x={474} y={36} w={118} h={212} lines={['命令表', 'skill.read', 'logger.query', 'mcp.info', '…']} tone={lit('table')} mono />
         <Arrow from={[460, 142]} to={[474, 142]} tone={state.step === 2 ? 'a' : undefined} />
 
         <Box x={630} y={112} w={120} h={60} lines={['处理函数', '登记方给的']} tone={lit('handler')} />

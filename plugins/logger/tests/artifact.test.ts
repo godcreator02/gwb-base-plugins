@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /**
- * 构建产物的检查：这个插件只有 node 侧（`dist/`，tsc 输出）；相对 import 带扩展名，包名 import 除 node 内置模块外只有 `cordis`。
+ * 构建产物的检查：这个插件只有 node 侧（`dist/`，tsc 输出）；相对 import 带扩展名，包名 import 只有 node 内置模块。
  * 日志窗格与它的构建产物检查在 gwb-baseui。没构建时整组跳过，这组检查不依赖构建。
  */
 
@@ -40,11 +40,11 @@ describe.skipIf(!built)('构建产物', () => {
     expect(bad).toEqual([])
   })
 
-  it('除了 node 内置模块与 cordis，一个包名 import 都没有——占位服务继承的 Service 要用宿主运行的那份 cordis', () => {
+  it('除了 node 内置模块，一个包名 import 都没有', () => {
     const bare: string[] = []
     for (const file of files) {
       for (const spec of specsIn(read(file), BARE)) {
-        if (!spec.startsWith('node:') && spec !== 'cordis') bare.push(`${file}: ${spec}`)
+        if (!spec.startsWith('node:')) bare.push(`${file}: ${spec}`)
       }
     }
     expect(bare).toEqual([])

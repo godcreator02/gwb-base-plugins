@@ -1,102 +1,94 @@
 ---
-title: 10 日志 gwbLogger
-description: 连接日志插件与内核的日志流、以及界面插件仓里的日志窗格；日志插件在 cordis 的 logger 上注册第三个 exporter（前两个是 cordis 自带的缓冲与内核的 exporter）、先补读 cordis 自带的缓冲，按 logger 名字把来源分成 plugin / kernel / renderer（靠约定），每条经 gwbKernel.emit 作为 t 为 gwb-logger 的事件推给页面，历史走 logger.backlog；空服务 gwbLogger 只表示「日志插件已加载」，LogEntry 的形状在窗格那边另写一份
+title: 10 日志 logger.query
+description: 连接日志插件与内核写的日志文件、以及界面插件仓里的日志窗格；内核把全部日志写成 <home>/gwb.log 里的一行 JSON（ts、level、source、name、msg），满 128 MB 改名成 gwb.log.1；日志插件只读这两份文件，经 logger.query 按条件取最近几条或某个位置之后新写的；日志窗格带上一次回执里的 cursor 反复调它取新日志
 ---
 
-**本页回答**：日志插件从哪收日志、怎么判断一条日志的来源；页面上的日志窗格怎么拿到历史与实时日志；一条日志的形状；日志插件、内核、日志窗格、写日志的插件各保证什么；哪些地方靠约定。日志怎么写进 `gwb.log` 由内核负责，见内核仓文档站的「日志」接缝。
+**本页回答**：日志插件从哪读日志、一行日志的形状；日志窗格与 agent 怎么取最近的日志、怎么只取新写的；轮转之后怎么接上；日志插件、内核、日志窗格、写日志的插件各保证什么；哪些地方靠约定。日志怎么写进 `gwb.log` 由内核负责，见内核仓文档站的「日志」接缝。
 
 ## 连接的模块
 
-- [日志插件](/docs/logger) `@godcreator/gwb-logger`：`inject` 里有 `gwbCommands`；提供空服务 `gwbLogger`，登记命令 `logger.backlog`、`logger.where`
-- 内核的日志流：内核、插件、页面 console 三个来源都经 cordis 的 `ctx.logger` 汇成一条流；cordis 创建日志服务时自己注册了第一个 exporter（缓冲 `ctx.logger.buffer`），内核注册了第二个、写 stderr 与 `gwb.log`，页面 console 被内核转成名字为 `renderer` 的日志
-- 日志窗格：界面插件仓里的一个窗格，经 `window.gwb.on` 收实时日志、经 `logger.backlog` 取历史
+- [日志插件](/docs/logger) `@godcreator/gwb-logger`：`inject` 里有 `gwbCommands`；登记命令 `logger.query`，读 `<home>/gwb.log` 与 `gwb.log.1`
+- 内核写的日志文件：内核、插件、页面 console 三个来源的日志都由内核写进 `<home>/gwb.log`，一行一个 JSON；满 128 MB 改名成 `gwb.log.1`，只留这一份旧的；stderr 另写一份文本，给终端看
+- 日志窗格：界面插件仓里的一个窗格，经命令总线调 `logger.query`
+- agent：经 MCP 入口调 `logger.query`
 
 ## 接口
 
-<Diagram name="log-flow" title="日志从三个来源到日志插件、页面与日志窗格（分步）">
-- 插件（`ctx.logger('<名字>')`）、内核（`kernel`、`loader`）、页面 console（内核转成 `renderer`）的日志都经 cordis 的 `ctx.logger` 汇成一条流
-- 流上有三个接收方：内核的 exporter 写 stderr 与 `<home>/gwb.log`；cordis 自带的缓冲 `ctx.logger.buffer` 留 info 及以上；日志插件的 exporter 收全部（debug 也收）
-- 日志插件加载时先从 `ctx.logger.buffer` 补历史，再注册自己的 exporter
-- 每条新日志编 `seq`、分来源，存进 2000 条的缓冲，经 `gwbKernel.emit` 推 `{ t: 'gwb-logger', line }` 给页面
-- 界面插件仓的日志窗格先用 `window.gwb.on` 订阅，再调 `logger.backlog` 取历史，两段按 `seq` 合并
+<Diagram name="log-flow" title="内核写两份日志文件，logger.query 怎么读（分步）">
+- 插件、内核、页面 console 的日志都由内核写成 `<home>/gwb.log` 里的一行 JSON `{ ts, level, source, name, msg }`；写满 128 MB 改名成 `gwb.log.1`，只留这一份旧的
+- 不给 `after`：从 `gwb.log` 末尾按块往前读、逐行筛，凑够 `limit` 条就停，不够再接着读 `gwb.log.1`
+- 给 `after`：`gwb.log` 不比 `after` 小，只读 `after` 到末尾；比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部
+- 不是 JSON、五个键的顺序或类型不对的行直接报错，写明文件与行首
 </Diagram>
 
-**事件记号与两条命令的名字**：
+**命令名、参数与回执**：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="12-15" */}
+{/* ref file="../plugins/logger/src/query.ts" lines="9-32" */}
 
-**一条日志的形状**：
+**一行日志的形状**：就是 `gwb.log` 里一行的五个键，顺序由内核定；日志插件原样交出，不加字段：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="29-39" */}
+{/* ref file="../plugins/logger/src/log-entry.ts" lines="3-13" */}
 
-- `seq`：日志插件从 1 开始编的号，唯一；去重与排序都用它
-- `ts`：毫秒时间戳，cordis 没给就用收到的时刻
-- `level`：cordis 的 `success` 等级别归入 `info`
-- `msg`：用 cordis 自己的 `Logger.format` 格式化后的正文
+- `ts`：ISO 8601 的 UTC 时间字符串，毫秒精度
+- `level`：cordis 的其余级别由内核记成 `info`
+- `source`：`kernel`（内核自己、cordis 的 loader 与 include）、`renderer`（页面 console）、`plugin`（其余），由内核按 logger 名分
+- `msg`：正文，可含换行（在 JSON 字符串里转义）
 
-**来源按 logger 名字分类**：`renderer` 是页面，`kernel`、`loader` 是内核，其余一律算插件：
+**逐行校验**：不是 JSON，或者五个键、顺序、值的类型有一样对不上，就直接报错，写明文件与行首几十个字符。文件读到一半对不上格式，多半是内核还在写旧的文本格式，或者文件被别的程序改过，跳过去只会让人以为那段时间没有日志：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="49-55" */}
+{/* ref file="../plugins/logger/src/log-entry.ts" lines="24-48" */}
 
-这张名单**靠约定**：`kernel` 与 `renderer` 两个名字由内核定，`loader` 是 cordis loader 自己的 logger 名；日志插件在 `KERNEL_LOGGER_NAMES` 里另写一份。内核改名或新增名字，这边会把它算成插件，不报错。
+**两种读法**：不给 `after`，从 `gwb.log` 末尾往前读，不够再接着读 `gwb.log.1`，凑够 `limit` 条就停。给 `after`，只读那之后新写的；`gwb.log` 比 `after` 小说明轮转过，先读 `gwb.log.1` 从 `after` 到末尾，再读新 `gwb.log` 全部；`after` 比两份文件都大，就不是这两份文件里的位置，直接报错。`cursor` 是打开 `gwb.log` 时它的长度，读的范围不超过它，之后新写的留给下一次：
 
-**日志插件的 exporter 是第三个**：级别设为 3（`debug` 也收），每收到一条就存进 2000 条的缓冲、再经 `gwbKernel.emit` 推给页面；注册之前的日志从 cordis 自带的缓冲 `ctx.logger.buffer`（info 及以上）补进来，先补再注册，两段不重叠：
+{/* ref file="../plugins/logger/src/query.ts" lines="99-120" */}
 
-{/* ref file="../plugins/logger/src/index.ts" lines="111-124" */}
+{/* ref file="../plugins/logger/src/query.ts" lines="137-152" */}
 
-**两条命令**：`logger.backlog` 回缓冲里日志的副本，从旧到新。参数 `{ limit?, minLevel?, name? }` 都可省：先按 `minLevel`（这一级及以上）与 `name`（logger 名精确匹配）筛，再由 `limit` 取筛完之后最近的几条；参数不是对象、有认不出的键、`limit` 不是正整数、`minLevel` 不是四个级别之一、`name` 是空串，都直接报错。不带参数回整个缓冲——日志窗格这样取；agent 经 MCP 入口调时要带 `limit`，两千条整个返回会超过单次返回的上限。`logger.where`（无参数）回 `{ home, logFile }`。两条都标 `effect: 'read'`：
+**参数**：都可省。不是对象、有认不出的键、`limit` 不是正整数、`minLevel` 不是四个级别之一、`name` 或 `text` 不是非空字符串、`after` 不是非负整数，都直接报错：
 
-{/* ref file="../plugins/logger/src/index.ts" lines="127-174" */}
+{/* ref file="../plugins/logger/src/query.ts" lines="41-70" */}
 
-{/* ref file="../plugins/logger/src/index.ts" lines="176-189" */}
-
-**空服务 `gwbLogger`**：没有方法。日志窗格用 `ctx.inject(['gwbLogger'], …)` 等它出现，出现就说明日志插件已加载、`logger.backlog` 可以调了。局部注入按服务名等待，少了这个服务，窗格会一直等下去、也不报错：
-
-{/* ref file="../plugins/logger/src/index.ts" lines="20-21" */}
-
-**窗格那边另写的一份**：日志窗格在浏览器里运行，不 import 日志插件的类型；`LogEntry` 的形状，以及 `'gwb-logger'`、`'logger.backlog'` 这几个字符串，都在界面插件仓的窗格代码里另写一份。这一份**靠约定**：写在本插件 `src/index.ts` 与界面插件仓的日志窗格代码两处。窗格收到认不出的条目会丢掉、不崩溃，所以这边改了形状，症状是窗格里少了日志、不报错。
+**窗格那边另写的一份**：日志窗格在浏览器里运行，不 import 日志插件的类型；一行日志的形状、`'logger.query'` 这个命令名、回执 `{ file, cursor, entries }` 的形状，都在界面插件仓的窗格代码里另写一份。这一份**靠约定**，这边改了形状，窗格那边的类型检查发现不了。
 
 ## 约定
 
 **日志插件**保证：
 
-- 缓冲里是工作台启动以来的日志，最多 2000 条，超出时从最早的开始丢
-- 每条日志都经 `gwbKernel.emit` 推一次 `{ t: 'gwb-logger', line: LogEntry }`，`line` 的形状如上
-- `seq` 单调递增、不重复
-- 先提供 `gwbLogger` 再做别的：窗格等的就是它
-- `gwbLogger` 上不放方法：取数据走命令、实时推送走内核的事件
-- 格式化失败时退回把参数逐个转成文本，不让 exporter 抛错（抛错会打断别人写日志的那次调用）
-- 两条命令在插件卸载时注销
+- 只读 `gwb.log` 与 `gwb.log.1`，不写、不改名、不删
+- `entries` 从旧到新，是文件里原样的对象
+- `cursor` 是读完时 `gwb.log` 的字节长度；下一次带着它调，不漏也不重复
+- 坏行、坏参数直接报错，不跳过、不猜调用方的意思
+- 命令在插件卸载时注销
 
 **内核**保证（内核仓的约定）：
 
-- 内核、插件、页面 console 三个来源都经 cordis 的 `ctx.logger`，页面 console 的名字是 `renderer`，内核自己的名字是 `kernel`
-- `gwbKernel.emit` 把载荷原样推给页面；窗口不在时丢掉，不补发
+- `gwb.log` 是 UTF-8，一行一个 JSON，以 `\n` 结尾，五个键固定、顺序固定
+- 满 128 MB 改名成 `gwb.log.1`，只留一份旧的；改名之后新写的落进新的 `gwb.log`
+- 三个来源都写进这一份文件，`source` 由内核按 logger 名分
 
 **日志窗格**保证：
 
-- 先订阅实时事件，再调 `logger.backlog` 取历史，两段按 `seq` 合并去重——反过来先取历史再订阅，中间那一刻的日志会漏掉
-- 只处理 `t === 'gwb-logger'` 的事件，认不出形状的条目丢掉
-- 在收日志的路径上不写 `console`：页面 console 会被内核转回日志流，再推回窗格，形成循环
+- 先不带 `after` 取一次，之后带上一次回执里的 `cursor` 取新写的
+- 可见时每秒调一次，不可见不调
+- 在收日志的路径上不写 `console`：页面 console 会被内核写回日志文件，再被窗格读到，形成循环
 
 **写日志的插件**保证：
 
-- 用 `ctx.logger('<自己的名字>')`，名字不用 `kernel`、`loader`、`renderer`，否则会被算成内核或页面
+- 用 `ctx.logger('<自己的名字>')`，名字不用 `kernel`、`loader`、`include`、`renderer`，否则会被内核算成内核或页面
 
 ## 不负责的事
 
-- 日志插件不写日志文件、不写 stderr：那是内核的 exporter
-- 日志插件不保存 2000 条以前的日志：更早的看 `logger.where` 报的 `gwb.log`
-- 日志插件收的时候不过滤、不按级别丢弃：`debug` 也进缓冲；`logger.backlog` 只在取的时候按参数筛，窗格里的筛选由窗格自己做
-- 日志插件不画窗格：窗格在界面插件仓
-- 内核不按插件区分日志：来源分类只在日志插件里做
+- 日志插件不写日志文件、不写 stderr、不在 cordis 的日志流上注册任何东西：那是内核的事
+- 日志插件不在内存里留日志、不推给页面：每次调用都现读文件
+- 日志插件不分来源：`source` 由内核写进每一行
+- 日志插件不画窗格：窗格在界面插件仓，窗格里的显示与筛选由窗格自己做
 
 ## 测试
 
-`plugins/logger/tests/source.test.ts` 测来源分类，`apply.test.ts` 在真 cordis 根上下文里（内核与命令总线用替身）测补读缓冲、推到页面、两千条上限、两条命令的登记与注销、`logger.backlog` 的筛选与参数报错；窗格按 `seq` 拼接历史与实时日志，只能在隔离 home 里验证。
+`plugins/logger/tests/apply.test.ts` 在真 cordis 根上下文里测，内核与命令总线用替身，home 是临时目录，在里面造 `gwb.log` 与 `gwb.log.1`：命令的登记与注销、默认条数与顺序（跨 `gwb.log.1`、跨多个 64 KB 的块）、`minLevel` / `name` / `text` 筛选与 `limit`、`after` 只读新写的（含轮转过的情形）、坏行与没以换行结尾的末行报错、参数报错。窗格每秒带 `after` 取数，只能在隔离 home 里验证。
 
-{/* has file="../plugins/logger/tests/source.test.ts" text="kernel 与 loader 是内核" */}
+{/* ref file="../plugins/logger/tests/apply.test.ts" lines="93-105" */}
 
-{/* has file="../plugins/logger/tests/apply.test.ts" text="装上之前的日志从 cordis 的缓冲补进 backlog，seq 从 1 起连续递增、不重复" */}
+{/* ref file="../plugins/logger/tests/apply.test.ts" lines="156-171" */}
 
-{/* has file="../plugins/logger/tests/apply.test.ts" text="logger.backlog 带 minLevel、name 先筛，limit 再取筛完之后最近的几条" */}
+{/* ref file="../plugins/logger/tests/apply.test.ts" lines="203-213" */}

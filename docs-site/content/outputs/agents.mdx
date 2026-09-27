@@ -11,7 +11,7 @@ description: 仓根 AGENTS.md 由这一页生成——每次会话都要知道�
 **这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。
 
-peer 里是内核包 `@godcreator/gwb-kernel-desktop`（八个插件都写）与 `cordis`（继承 cordis `Service` 的七个插件在构建产物里按值 import 它，MCP 插件不写）。
+peer 里是内核包 `@godcreator/gwb-kernel-desktop`（八个插件都写）与 `cordis`（继承 cordis `Service` 的插件在构建产物里按值 import 它，MCP 插件不写；日志插件不继承，peer 里却还写着）。
 MCP SDK 与 zod 写 dev，由 MCP 插件的 `build.ts` 打包进构建产物。
 
 ## 动手之前

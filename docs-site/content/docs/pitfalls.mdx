@@ -25,7 +25,7 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 {/* ref file="../plugins/logger/package.json" lines="27-39" */}
 
-继承 cordis `Service` 的七个插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
+继承 cordis `Service` 的插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 
 ### cordis 不给服务做版本校验
 

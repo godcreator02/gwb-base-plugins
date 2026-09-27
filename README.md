@@ -11,7 +11,7 @@ gwb 的**无界面基础插件仓**：八个插件，类型只从内核包 `@god
 | skills   | `@godcreator/gwb-skills`   | `ctx.gwbSkills`（说明书）                          |
 | settings | `@godcreator/gwb-settings` | `ctx.gwbSettings`（设置）                         |
 | data     | `@godcreator/gwb-data`     | `ctx.gwbData`（数据目录）                           |
-| logger   | `@godcreator/gwb-logger`   | `ctx.gwbLogger`（服务上没有方法；日志经两条命令取）             |
+| logger   | `@godcreator/gwb-logger`   | 无（只读内核写的日志文件，经命令 `logger.query` 取）            |
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli`（运行 node 命令行工具）               |
 | py-cli   | `@godcreator/gwb-py-cli`   | `ctx.gwbPyCli`（运行 python 命令行工具）               |
 

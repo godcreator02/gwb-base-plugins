@@ -54,10 +54,10 @@ export function SeamMap() {
       <SeamLine d="M520,376 H560 V492 H580" />
       <SeamLine d="M445,384 V470" byConvention />
       <SeamLine d="M280,314 V470" />
-      <SeamLine d="M280,130 V60" />
+      <SeamLine d="M280,130 V60" byConvention />
 
       <Box x={20} y={20} w={150} h={40} lines={['MCP 客户端', 'agent']} />
-      <Box x={230} y={20} w={220} h={40} lines={['内核', '转交页面的命令 · 日志流']} />
+      <Box x={230} y={20} w={220} h={40} lines={['内核', '转交页面的命令 · 写 gwb.log']} />
 
       <Box x={40} y={130} w={150} h={44} lines={['MCP 入口', 'gwb-mcp']} tone="a" />
       <Box x={205} y={130} w={150} h={44} lines={['日志', 'gwb-logger']} tone="a" />
@@ -83,7 +83,7 @@ export function SeamMap() {
       <Badge x={560} y={440} n={7} />
       <Badge x={445} y={440} n={8} byConvention />
       <Badge x={280} y={440} n={9} />
-      <Badge x={280} y={95} n={10} />
+      <Badge x={280} y={95} n={10} byConvention />
 
       <Note x={20} y={552}>虚线框是本仓；实线接缝有代码接口，点线接缝只靠约定；各插件都经接缝 1 登记命令，图上只画命令总线到别的插件那一条</Note>
     </svg>

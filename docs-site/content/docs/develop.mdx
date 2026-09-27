@@ -53,7 +53,7 @@ pnpm check
 
 {/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 按「已经就绪」的样子摆好（目录、出身记号、dist-info），守卫因此直接跳过、不启动 uv。" */}
 
-测试覆盖不到、只能在隔离 home 里实际运行验证的：loader 真的把调用方条目放在 fiber 上（数据目录、设置分区、说明书与命令的包名）、页面经内核调到命令、MCP 入口拿到运行中真的命令表与说明书清单、`bin/client.mjs`、electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv、日志窗格按 `seq` 拼接历史与实时日志。只有 node 部分的插件也可以不启动工作台、直接在 home 里用 node 建一个 cordis 上下文验证，注意事项见[遇到过的问题](/docs/pitfalls)。
+测试覆盖不到、只能在隔离 home 里实际运行验证的：loader 真的把调用方条目放在 fiber 上（数据目录、设置分区、说明书与命令的包名）、页面经内核调到命令、MCP 入口拿到运行中真的命令表与说明书清单、`bin/client.mjs`、electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv、日志窗格带 `after` 反复取新日志。只有 node 部分的插件也可以不启动工作台、直接在 home 里用 node 建一个 cordis 上下文验证，注意事项见[遇到过的问题](/docs/pitfalls)。
 
 ## 发版
 
