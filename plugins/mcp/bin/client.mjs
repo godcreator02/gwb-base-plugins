@@ -5,7 +5,7 @@
  *
  *   node client.mjs index                          # 取全部说明书与命令名（每个会话先调一次）
  *   node client.mjs search '{"prefix":"skill."}'   # 查用法；不给 JSON 就返回全部内容与用法
- *   node client.mjs run logger.where               # 按名字调用命令
+ *   node client.mjs run plugin-manager.list        # 按名字调用命令
  *   node client.mjs run skill.read '{"name":"mcp"}'
  *
  * 入口地址：--url 优先，其次环境变量 GWB_MCP_URL，缺省是 default home 的入口（2870 端口）。

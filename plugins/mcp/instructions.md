@@ -13,5 +13,5 @@ external 影响本机以外或打扰人（推送、发到远端、弹窗）。�
 这台工作台鼓励你在工作中改进它：修命令的 bug、改插件自带的 SKILL.md、加命令、加插件都不用问。
 发完新版本调 plugin-manager.update {"all":true}，再调 shell.reload；升到 mcp 插件自己时连接会断，
 重连后用 plugin-manager.list 核对。
-先问人再动手：改内核（gwb-kernel）；改 commands / data / skills / mcp / settings / logger / plugin-manager / shell
+先问人再动手：改内核（gwb-kernel）；改 commands / data / skills / mcp / settings / plugin-manager / shell
 这些给别的插件 inject 的服务（方法签名、命令名与参数、事件形状、依赖）；改 index / search / run 三个工具。
