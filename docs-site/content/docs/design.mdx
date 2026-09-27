@@ -30,7 +30,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 ## 插件的类型只从内核包取
 
-内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`、`GwbResult`。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
+内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`；`GwbResult` 从命令插件取。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
@@ -45,7 +45,7 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
 
-{/* ref file="../plugins/commands/package.json" lines="41-44" */}
+{/* ref file="../plugins/commands/package.json" lines="45-48" */}
 
 ## 插件之间只经服务和命令
 

@@ -79,8 +79,8 @@ importers:
   plugins/commands:
     dependencies:
       '@godcreator/gwb-kernel-desktop':
-        specifier: ^0.8.0
-        version: 0.8.0(cordis@4.0.0-rc.10)
+        specifier: ^0.8.1
+        version: 0.8.1(cordis@4.0.0-rc.10)
     devDependencies:
       '@cordisjs/plugin-loader':
         specifier: 1.0.0-rc.7
@@ -547,6 +547,11 @@ packages:
 
   '@godcreator/gwb-kernel-desktop@0.8.0':
     resolution: {integrity: sha512-FfV4D4zUgSje5wouONinEVwhie2jd01up0Ey/faSCTWtS/meVn4sN9gWIwglXVskzohU8u163fVeD2/Vf5cr4A==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-kernel-desktop/-/0.8.0/gwb-kernel-desktop-0.8.0.tgz}
+    peerDependencies:
+      cordis: 4.0.0-rc.10
+
+  '@godcreator/gwb-kernel-desktop@0.8.1':
+    resolution: {integrity: sha512-LCiYDB8m3AtBuyB9pEGgOsQntEuOiSLYqAub2RFlUjr9DDjXcu3tn4yVbyHCiY9oASHbyWEFTAilcbGopjzuhA==, tarball: https://git.tianshen02.online:28377/api/packages/godcreator/npm/%40godcreator%2Fgwb-kernel-desktop/-/0.8.1/gwb-kernel-desktop-0.8.1.tgz}
     peerDependencies:
       cordis: 4.0.0-rc.10
 
@@ -3196,6 +3201,14 @@ snapshots:
       - supports-color
 
   '@godcreator/gwb-kernel-desktop@0.8.0(cordis@4.0.0-rc.10)':
+    dependencies:
+      '@cordisjs/plugin-include': 1.1.0(@cordisjs/plugin-loader@1.0.0-rc.7)(cordis@4.0.0-rc.10)
+      '@cordisjs/plugin-loader': 1.0.0-rc.7(cordis@4.0.0-rc.10)
+      cordis: 4.0.0-rc.10(@cordisjs/plugin-include@1.1.0)(@cordisjs/plugin-loader@1.0.0-rc.7)
+    transitivePeerDependencies:
+      - node-addon-require-builtin
+
+  '@godcreator/gwb-kernel-desktop@0.8.1(cordis@4.0.0-rc.10)':
     dependencies:
       '@cordisjs/plugin-include': 1.1.0(@cordisjs/plugin-loader@1.0.0-rc.7)(cordis@4.0.0-rc.10)
       '@cordisjs/plugin-loader': 1.0.0-rc.7(cordis@4.0.0-rc.10)

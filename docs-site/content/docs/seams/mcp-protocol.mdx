@@ -25,17 +25,17 @@ description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行
 
 **三个工具**，写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="100-141" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" */}
 
 **HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamable HTTP transport，随响应关闭；initialize 返回的 instructions 在新建 server 时生成（内容见[命令表开给 agent](/docs/seams/agent-surface)），所以装卸插件后客户端重连一次就拿到新的目录；别的路径回 404，别的方法回 405（`allow: POST`）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="286-308" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="287-309" */}
 
 SDK 的 streamable HTTP 要求 POST 的 `Accept` 同时有 `application/json` 与 `text/event-stream`，只写前者回的是 406（`Not Acceptable: Client must accept both …`）。手工用 curl 或 `Invoke-WebRequest` 试入口时很容易只写前者，然后把 406 当成鉴权失败——鉴权失败是 401，并带一句原因。
 
 **三项检查**在派发任何请求之前做，任何一项不过都回 401，响应体是 `{ error: 'unauthorized', message }`，`message` 写明哪一项没过、token 去哪取：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="310-322" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="311-323" */}
 
 {/* ref file="../plugins/mcp/src/auth.ts" lines="136-162" */}
 
@@ -57,7 +57,7 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 
 只绑 127.0.0.1：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="332-345" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="333-346" */}
 
 **`runtime.json` 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始。不做原子写：读的一方本来就把读不出当成没有，内核下次启动会整份重写：
 
@@ -67,7 +67,7 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-83" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="436-450" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="437-451" */}
 
 **命令行客户端的地址与 token**：地址依次取 `--url`、环境变量 `GWB_MCP_URL`、`http://127.0.0.1:2870/mcp`；token 依次取 `--token`、环境变量 `GWB_MCP_TOKEN`，地址是 default 的缺省地址时再去读 default home 的凭据文件：
 

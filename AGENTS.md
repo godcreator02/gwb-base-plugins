@@ -1,7 +1,7 @@
 # gwb-base-plugins
 
 **gwb 的无界面基础插件仓**：八个插件 commands、mcp、skills、settings、data、logger、node-cli、py-cli，
-类型只从内核包（`@godcreator/gwb-kernel-desktop`）的包根取。插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，
+内核类型从内核包（`@godcreator/gwb-kernel-desktop`）取，命令回执类型从 commands 取。插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，
 界面插件（shell、theme、baseui）在 gwb-ui-plugins，内核在 gwb-kernel，改它们去那些仓。
 **这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。

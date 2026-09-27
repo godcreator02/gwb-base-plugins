@@ -9,8 +9,8 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 几件八个插件共同的事，不在各节重复：
 
-- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（`^0.8.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`、`GwbResult`；继承 cordis `Service` 的七个插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
-- **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；另外四个插件不用它
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（commands 下限 `^0.8.1`，其余 `^0.8.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的七个插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
+- **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，其余三个插件不用它
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
 
@@ -48,7 +48,8 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 | 通道 | 对方 | 名字 | 用来做什么 |
 | --- | --- | --- | --- |
 | loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 取登记方的包名，记成命令的 `plugin`；取不到时 `register` 抛错 |
-| 服务名（反方向：内核直接读） | 内核 gwb-kernel | `ctx.gwbCommands` 的 `run(command, args, { via: 'ui' })` | 页面经 `window.gwb.command` 发来的命令由内核交给它执行 |
+| 页面请求 | 内核请求通道 | `commands.run` | 本包登记处理器，校验请求载荷并固定 ui 来源，返回命令回执 |
+| 服务名（兼容：内核直接读） | 内核 gwb-kernel | `ctx.gwbCommands` 的 `run(command, args, { via: 'ui' })` | 页面经 `window.gwb.command` 发来的命令由内核交给它执行 |
 
 **内核那一条没有类型检查连起来**：内核不 import 本包，它在自己的 `apps/desktop/src/main.ts` 里私下给 `ctx.gwbCommands` 声明了一份只含 `run` 的类型，按服务名直接读。本包改了服务名 `gwbCommands`、`run` 的参数顺序或请求来源 `via` 的取值，内核照样编译通过，页面调命令时才出错。本仓这一侧的签名与来源取值：
 

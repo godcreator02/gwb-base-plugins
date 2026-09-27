@@ -14,6 +14,12 @@ const built = fs.existsSync(distDir)
 const ALLOWED_BARE = new Set(['cordis'])
 
 describe.skipIf(!built)('构建产物', () => {
+  it('浏览器客户端可在没有 Electron、Cordis 和 window 的环境导入，运行时没有其他模块依赖', async () => {
+    const { command } = await import('../dist/client.js')
+    expect(typeof command).toBe('function')
+    const client = fs.readFileSync(path.join(distDir, 'client.js'), 'utf8')
+    expect(client).not.toMatch(/(?:from|import)\s*['"]|import\s*\(/)
+  })
   const files = built ? fs.readdirSync(distDir).filter((f) => f.endsWith('.js')) : []
 
   it('有构建产物可查', () => {

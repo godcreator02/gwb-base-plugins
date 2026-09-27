@@ -13,14 +13,14 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 - **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错；命令记在哪个包名下由命令总线从调用方条目取，登记方写的 `plugin` 与之不同也抛错；`effect` 写了 `read` / `write` / `external` 以外的值、`hiddenFromAgents` 写了 `true` 以外的值也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
 - **命令带两个给 agent 看的标记**：`effect` 说明调它会动到什么——`read` 什么都不改（联网只读也算），`write` 改本机的文件、设置、数据或界面，`external` 影响本机以外或打扰人（推送、发到远端、发消息、弹窗或通知）；不写就是没标，agent 按 `write` 对待。`hiddenFromAgents: true` 表示只给页面调用，MCP 入口不列出、agent 调不到。两项都只原样存进命令表，命令总线自己不按它们做任何限制（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）
 - **同名命令后登记的生效**：同时写一条 warn，写明原来是哪个包、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
-- **按名字执行命令**：页面经 `window.gwb.command`（内核收下后交给命令总线）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
-- **转交请求来源**：内核带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
+- **按名字执行命令**：页面经本包 `./client` 的 `command`（通过内核请求通道交给本包处理器）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
+- **转交请求来源**：本包页面处理器带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在都回失败回执并写明原因
 - **列出全部命令**：每条带名字、一句话介绍、用法和登记方的包名，登记时写了 `effect`、`hiddenFromAgents` 的再带这两项
 - **写日志**：每次登记、执行都写一行；成功写 info，返回失败、抛错、找不到命令写 warn。异常都转成了回执，不写日志就查不到谁在什么时候调了哪条命令
 - **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么读、失败有哪几种、插件里怎么登记命令
 
-{/* ref file="../plugins/commands/src/index.ts" lines="75-82" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="79-86" */}
 
 ## 接口
 
@@ -30,7 +30,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 | --- | --- | --- |
 | 服务 `ctx.gwbCommands` 的 `register(def, handler)`、`run(name, args?, context?)` | 登记一条命令、拿回注销函数；按名字执行，返回 `Promise<GwbResult>`，不抛错 | [1 命令总线](/docs/seams/bus) |
 | 服务 `ctx.gwbCommands` 的 `list()` | 全部命令的 `{ name, description, usage, plugin, effect?, hiddenFromAgents? }`，后两项没写就没有；MCP 入口的 instructions 末尾的目录、`index`、`search` 从这里取，`run` 调之前也在这里查 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型在内核包 `@godcreator/gwb-kernel-desktop` 的包根 | [1 命令总线](/docs/seams/bus) |
+| 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型由本包的包根与 `./client` 导出，正本 `src/result.ts` | [1 命令总线](/docs/seams/bus) |
 | 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
 **服务的类型**由本包导出，用命令总线的插件 `import type { GwbCommands } from '@godcreator/gwb-commands'`（或 `import type {} from …`，让 `ctx.gwbCommands` 有类型）。`effect` 的三个值、一条命令的定义、请求来源、处理函数的签名：
@@ -56,17 +56,25 @@ export function apply(ctx: GwbContext) {
 
 `description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。`effect` 按调用的实际后果标（只读的命令标 `read`，agent 就能不读 `usage` 直接调）；页面专用、agent 调了没意义或有害的命令写 `hiddenFromAgents: true`。
 
-`GwbResult` 出现在本包导出的类型里，它来自内核包；内核包是每个插件的 peer，用命令总线类型的插件那里总解析得到，见[遇到过的问题](/docs/pitfalls)。
+页面入口与回执正本都归本包，内核的同名类型只作旧代码兼容。`./client` 不引用主进程入口，由页面消费方打包，不需要 importmap 单例。
+
+{/* ref file="../plugins/commands/src/client.ts" */}
+
+{/* ref file="../plugins/commands/src/result.ts" */}
+
+页面通道在服务初始化时登记并随插件卸载撤销。通道重复登记由内核拒绝；载荷里的来源字段不会覆盖 ui 来源：
+
+{/* ref file="../plugins/commands/src/page-request.ts" */}
 
 ## 依赖
 
-注入了哪些服务、peer 怎么写、缺了会怎样，以及内核怎样按服务名直接调它、用了哪些约定通道，见[插件之间怎么连](/docs/wiring#godcreatorgwb-commands)。
+注入了哪些服务、peer 怎么写、缺了会怎样，以及页面请求处理器怎样登记、旧内核兼容转交怎样调用它、用了哪些约定通道，见[插件之间怎么连](/docs/wiring#godcreatorgwb-commands)。
 
 ## 不做的事
 
 - **不登记任何命令**：表里每一条都是别的插件登记的，命令做什么由登记它的插件决定
 - **不校验参数、不给命令分权限**：参数由处理函数自己校验；登记时只检查命令的定义。`effect` 只是标签，`hiddenFromAgents` 由 MCP 入口执行，命令总线的 `run` 对两者一视同仁
-- **不按来源限制调用、不核实来源**：页面、agent、插件调的是同一个 `run`、同一张表；`via` 是内核与 MCP 入口自己写的，由处理函数决定用不用它
+- **不按来源限制调用、不核实来源**：页面、agent、插件调的是同一个 `run`、同一张表；`via` 是本包页面处理器（旧入口由内核）与 MCP 入口写的，由处理函数决定用不用它
 - **不决定命令怎么展示给 agent**：`index` / `search` 返回什么格式由 [MCP 入口](/docs/mcp)决定；命令不能登记成单独的 MCP 工具
 - **不运行命令行程序**：处理函数是普通的 JS 函数，在主进程里执行；启动子进程的是 [gwb-node-cli](/docs/node-cli) 与 [gwb-py-cli](/docs/py-cli)
 - **不给命令设时限**：`run` 一直等到处理函数返回

@@ -32,11 +32,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 说明书插件在或不在，由局部注入时的 effect 维护：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="199-208" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="200-209" */}
 
 **instructions、`index` 与 `search` 每次都重新读取**命令表与说明书清单，运行中新登记的命令下一次调用就在（instructions 是下一个请求）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="242-272" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-273" */}
 
 - instructions：`instructions.md` 全文，空一行接上目录——`你连上的是 home「<home>」（gwb-mcp <版本>）`、全部说明书的名字、对 agent 开放的命令取第一个点之前的前缀去重。只给名字不给描述：按日常使用的 default home 的规模，带上每份说明书的描述要六千字符左右，超过 Claude Code 的 2048 字符截断线；描述在 `index` 里
 - `index`：home 名、MCP 插件版本、`instructions.md` 全文（不带目录）、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述让清单变得很长
@@ -50,11 +50,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 **`run`**：先在 `gwbCommands.list()` 里找这条命令——不存在回 `isError` 的 `执行失败：没有这条命令：<命令名>。用 search {"q":"<关键词>"} 找名字，装卸过插件就重新调 index`，是 `hiddenFromAgents` 的回 `执行失败：命令 <命令名> 只给页面调用，不对 agent 开放`，两种都不执行、写一条 warn；再把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="223-240" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="224-241" */}
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="33-41" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="273-282" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="274-283" */}
 
 **返回的上限**：三个工具的结果都过一遍 `withinSizeLimit`，文本超过 `RESULT_CHAR_LIMIT`（40000 字符）就整个换成 `isError` 的说明，说明文字由各工具自己写（`run` 的那句写明命令已经执行完、去 `usage` 里找筛选或条数参数）。上限按 Claude Code 单次工具返回的上限（约 25000 token）定，超了客户端会把结果转存成文件：
 

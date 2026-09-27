@@ -23,17 +23,17 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 **服务**：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="19-30" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="20-31" */}
 
 **登记的写法**：带说明书的插件在包根放 `skills/`，从构建产物所在的 `dist/` 往上一级找到它，局部注入说明书服务后登记，注销放在局部上下文的 `effect` 里：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="37-38" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-41" */}
 
 {/* ref file="../plugins/settings/src/index.ts" lines="160-164" */}
 
 这个目录要列进包的 `files`，否则发布出去的包里没有它——包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」：
 
-{/* ref file="../plugins/commands/package.json" lines="18-22" */}
+{/* ref file="../plugins/commands/package.json" lines="22-26" */}
 
 **目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`：`name` 缺了用目录名；`description` 缺了照收并写 warn；折叠块（`>-`、`|`）取不到值，同样写 warn。每份收下的文件有上限：
 
@@ -43,15 +43,15 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 **登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删表里仍是自己那条记录的说明书，并登记到调用方的 `effect` 上：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="94-132" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="95-133" */}
 
 **读**：`read(name, file)` 只读登记时扫到的文件清单里的路径，不做路径拼接；读不到回 `undefined`：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="138-149" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="139-150" */}
 
 **两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省或空串都读 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」；两条都标 `effect: 'read'`：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="56-82" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="57-83" */}
 
 ## 约定
 

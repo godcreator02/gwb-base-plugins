@@ -1,5 +1,8 @@
 import { Service } from 'cordis'
-import type { GwbContext, GwbResult } from '@godcreator/gwb-kernel-desktop'
+import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
+import type { GwbResult } from './result.js'
+import { runPageCommand } from './page-request.js'
+export type { GwbResult } from './result.js'
 // 相对 import 必须带 .js：构建产物由 node 直接加载，ESM 不补扩展名
 import {
   checkedCommandDef,
@@ -48,6 +51,7 @@ export default class GwbCommandBus extends Service implements GwbCommands {
   }
 
   [Service.init](): void {
+    this.ctx.effect(() => (this.ctx as GwbContext).gwbKernel.handleRequest('commands.run', (payload) => runPageCommand(this.commandTable, payload)))
     this.ctx.logger(PLUGIN_NAME).info('命令总线就绪（ctx.gwbCommands）')
     this.registerOwnSkillsWheneverSkillsPluginIsLoaded()
   }

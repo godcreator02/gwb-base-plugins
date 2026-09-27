@@ -17,11 +17,11 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 这一条改由构建产物检查负责，同一组测试还检查构建产物里没有包名 import（node 内置模块除外；继承 cordis `Service` 的插件允许 `cordis`）。没构建时整组跳过，`pnpm check` 不依赖构建：
 
-{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="16-45" */}
+{/* ref file="../plugins/commands/tests/artifact.test.ts" lines="16-51" */}
 
 ### 类型从 peer 里的包取，不是插件的类型包写 dev
 
-`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，来自内核包。内核包是每个插件的 peer，用到的别的插件也写在 peer，插件仓里 pnpm 把它们装进各插件的 `node_modules`，这些类型总解析得到。类型引用到、又不是插件的包（`@types/node`）写 dev。少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
+`gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，由命令插件自己的 `src/result.ts` 定义。内核包是每个插件的 peer，用到的别的插件也写在 peer，插件仓里 pnpm 把它们装进各插件的 `node_modules`，这些类型总解析得到。类型引用到、又不是插件的包（`@types/node`）写 dev。少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
 
 {/* ref file="../plugins/logger/package.json" lines="27-39" */}
 
@@ -57,7 +57,7 @@ cordis 的服务只有一个字符串名字：注册记录里没有版本、没�
 
 cordis 给每个调用方派生一份 `Object.create(this)`，`#` 私有字段的内部槽不在原型链上，在派生对象上一读就抛错。本仓继承 `Service` 的插件，有私有字段的都用 TypeScript 的 `private`：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="40-42" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="43-45" */}
 
 ## 验证
 
@@ -95,7 +95,7 @@ error TS1127: Invalid character.
 
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="242-243" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-244" */}
 
 ### MCP SDK 的类型声明要 DOM 类型
 

@@ -13,13 +13,16 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 2. 取参数形状：`search {"prefix": "<命令名>"}` 或 `search {"plugin": "<包名>"}`，命中的那条命令的 `usage` 里写着参数形状，`effect` 写着调它会动到什么：`read` 只读，可以直接调；`write` 改本机的文件、设置、数据或界面；`external` 影响本机以外或打扰人（推送、发到远端、弹窗）；没有 `effect` 的按 `write` 对待，调之前读完 `usage`。
 3. 调用：
    - agent 经 MCP 入口：`run {"command": "<命令名>", "args": {…}}`
-   - 页面：`window.gwb.command("<命令名>", 参数)`
+   - 页面：从 `@godcreator/gwb-commands/client` 导入 `command`，调用 `command("<命令名>", 参数)`；窗格使用 shell 传入的 `host.call`
    - 插件：`await ctx.gwbCommands.run("<命令名>", 参数)`
 4. 照「读回执」一节取值。
 
 完成的判据：回执 `ok` 为 `true`，要的值已经从回执里取到。
 
 ## 读回执
+
+类型 `GwbResult` 从 `@godcreator/gwb-commands`（页面也可从 `./client`）取。客户端随消费方打包，不外置到 importmap。
+命令服务未登记时客户端回 `ok: false`；通信失败或畸形回执会 reject，调用方仍需处理异常。内核的 `window.gwb.command` 与 `GwbResult` 是旧代码兼容入口，新代码不使用。
 
 1. 先看 `ok`。`false` 就转到「命令失败了」一节。
 2. `ok` 为 `true`：值在 `data` 里，取值要往 `data` 里再走一层。

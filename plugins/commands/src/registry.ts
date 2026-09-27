@@ -1,4 +1,4 @@
-import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
+import type { GwbResult } from './result.js'
 
 /**
  * 调这条命令会动到什么。agent 靠它判断能不能直接调：
@@ -28,7 +28,7 @@ export interface GwbCommandDef {
 export type RegisteredCommandDef = Required<Pick<GwbCommandDef, 'name' | 'description' | 'usage' | 'plugin'>> &
   Pick<GwbCommandDef, 'effect' | 'hiddenFromAgents'>
 
-/** 请求从哪来：`ui` 是页面经内核转来的，`mcp` 是 agent 经 MCP 入口调的，`plugin` 是别的插件直接调的 */
+/** 请求从哪来：`ui` 是页面请求处理器标注的，`mcp` 是 agent 经 MCP 入口调的，`plugin` 是别的插件直接调的 */
 export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'
 
 /** 交给处理函数的第二个参数。命令总线只转交，不按来源限制谁能调什么 */
@@ -46,7 +46,7 @@ export interface GwbCommands {
    */
   register(def: GwbCommandDef, handler: GwbCommandHandler): () => void
   list(): RegisteredCommandDef[]
-  /** 内核转页面的命令时带 `{ via: 'ui' }`，MCP 入口带 `{ via: 'mcp' }`；插件直接调不带，处理函数收到的是 `plugin` */
+  /** 页面请求处理器（兼容入口由内核）带 `{ via: 'ui' }`，MCP 入口带 `{ via: 'mcp' }`；插件直接调不带，处理函数收到的是 `plugin` */
   run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>
 }
 

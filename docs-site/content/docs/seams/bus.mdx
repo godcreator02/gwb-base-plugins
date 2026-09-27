@@ -14,7 +14,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 ## 接口
 
-**服务的类型**由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核包里；回执类型 `GwbResult`（`{ ok: boolean, data?, error?: string }`）在内核包 `@godcreator/gwb-kernel-desktop` 的包根里：
+**服务的类型**由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核包里；回执类型 `GwbResult`（`{ ok: boolean, data?, error?: string }`）也由本包导出，正本是 `plugins/commands/src/result.ts`：
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="12-51" */}
 
@@ -27,7 +27,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文：包名从它 fiber 上 loader 放的条目取（见[条目身份](/docs/seams/entry-identity)），注销登记在调用方的 `effect` 上：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="62-82" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="66-86" */}
 
 定义在进表之前检查：`name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同、`effect` 不是 `read` / `write` / `external`、`hiddenFromAgents` 写了却不是 `true`，都抛错，错误文本写明哪个包、哪条命令、缺什么、该怎么写。`effect` 与 `hiddenFromAgents` 没写就不进表里那一条，写了原样存下：
 
@@ -51,7 +51,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 {/* ref file="../plugins/commands/src/registry.ts" lines="158-170" */}
 
-**请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由内核转页面的命令时带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
+**请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由本包页面请求处理器带上（兼容入口仍由内核带上），`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
 
 **列出**：`list()` 返回全部命令的 `{ name, description, usage, plugin }`，四项都是非空字符串，`plugin` 是登记方的完整包名；登记时写了 `effect`、`hiddenFromAgents` 的再带这两项。这两项是给 MCP 入口读的（见[命令表开给 agent](/docs/seams/agent-surface)），命令总线的 `run` 不看它们。
 

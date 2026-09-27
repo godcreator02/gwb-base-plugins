@@ -1,6 +1,6 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "author": {
     "name": "godcreator"
   },
@@ -9,6 +9,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
@@ -39,7 +43,7 @@
     "gwb-plugin"
   ],
   "peerDependencies": {
-    "@godcreator/gwb-kernel-desktop": "^0.8.0",
+    "@godcreator/gwb-kernel-desktop": "^0.8.1",
     "cordis": "^4.0.0-rc.10"
   },
   "publishConfig": {

@@ -26,7 +26,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="242-284" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-285" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="41-63" */}
 
@@ -60,7 +60,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 设置 `port`（数字，本插件自己的设置分区） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效 | [5 设置](/docs/seams/settings) |
 | 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="100-141" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" */}
 
 三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
 

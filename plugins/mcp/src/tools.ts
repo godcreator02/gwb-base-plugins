@@ -1,4 +1,4 @@
-import type { GwbResult } from '@godcreator/gwb-kernel-desktop'
+import type { GwbResult } from '@godcreator/gwb-commands'
 
 // 命令回执 → MCP 工具结果
 

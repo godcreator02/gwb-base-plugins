@@ -10,6 +10,8 @@ const CALLER_PACKAGE = '@t/caller'
 
 /** 一个 home 的最小复刻：真 cordis 加真 loader，插件按包名建成条目加载，fiber 上有 loader 放的条目 */
 interface LoaderHome {
+  requests: Map<string, (payload: unknown) => unknown>
+  busEntryId: string
   root: Context
   bus: GwbCommands
   /** cordis 写 error 级日志的地方：插件 apply 抛错、注销出错都记在这里 */
@@ -21,6 +23,14 @@ interface LoaderHome {
 
 async function bootLoaderHome(): Promise<LoaderHome> {
   const root = new Context()
+  const requests = new Map<string, (payload: unknown) => unknown>()
+  root.provide('gwbKernel', {
+    handleRequest(channel: string, handler: (payload: unknown) => unknown) {
+      if (requests.has(channel)) throw new Error(`duplicate ${channel}`)
+      requests.set(channel, handler)
+      return () => { requests.delete(channel) }
+    },
+  })
   const errors: Message[] = []
   root.logger.exporter({ export: (message) => void (message.type === 'error' && errors.push(message)) })
   await root.plugin(Loader, {})
@@ -39,14 +49,14 @@ async function bootLoaderHome(): Promise<LoaderHome> {
     await root.loader.await()
     return entryId
   }
-  await load(BUS_PACKAGE, GwbCommandBus)
+  const busEntryId = await load(BUS_PACKAGE, GwbCommandBus)
 
   let bus: GwbCommands | undefined
   await root.inject(['gwbCommands'], (ctx) => {
     bus = ctx.gwbCommands
   })
   if (bus === undefined) throw new Error('命令总线没有提供出来')
-  return { root, bus, errors, load, unload: (entryId) => root.loader.remove(entryId) }
+  return { root, bus, errors, load, requests, busEntryId, unload: (entryId) => root.loader.remove(entryId) }
 }
 
 /** 一个调用方插件：inject 命令总线，apply 里做 setup 交给它的事 */
@@ -164,6 +174,20 @@ describe('GwbCommandBus 从调用方取包名', () => {
 })
 
 describe('GwbCommandBus 跟着调用方注销', () => {
+  it('页面通道固定 ui 来源，拒绝非法请求；总线卸载撤销通道，再加载恢复', async () => {
+    const home = await bootLoaderHome()
+    await home.load(CALLER_PACKAGE, callerPlugin((ctx) => void ctx.gwbCommands!.register(commandDef('caller.source'), (args, source) => ({ args, source }))))
+    const request = home.requests.get('commands.run')!
+    expect(await request({ name: 'caller.source', args: 42, via: 'mcp' })).toEqual({ ok: true, data: { args: 42, source: { via: 'ui' } } })
+    expect(await request({ name: 42 })).toEqual({ ok: false, error: '命令名要是字符串' })
+    expect(await request({ name: 'missing' })).toEqual({ ok: false, error: '没有这条命令：missing' })
+    home.unload(home.busEntryId)
+    await home.root.loader.await()
+    expect(home.requests.has('commands.run')).toBe(false)
+    await home.load(BUS_PACKAGE, GwbCommandBus)
+    expect(home.requests.has('commands.run')).toBe(true)
+    expect(home.errors).toEqual([])
+  })
   it('调用方卸载后，它登记的命令自动注销', async () => {
     const home = await bootLoaderHome()
     const callerEntryId = await home.load(CALLER_PACKAGE, callerPlugin((ctx) => void ctx.gwbCommands!.register(commandDef('caller.ping'), () => 'pong')))
