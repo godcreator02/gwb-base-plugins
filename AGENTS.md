@@ -1,15 +1,15 @@
 # gwb-base-plugins
 
-**gwb 的无界面基础插件仓**：八个插件 commands、mcp、skills、settings、data、logger、node-cli、py-cli，
+**gwb 的无界面基础插件仓**：插件 commands、mcp、skills、settings、data、node-cli、py-cli，
 内核类型从内核包（`@godcreator/gwb-kernel-desktop`）取，命令回执类型从 commands 取。插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，
-界面插件（shell、theme、baseui）在 gwb-ui-plugins，内核在 gwb-kernel，改它们去那些仓。
+界面插件（shell、theme、baseui）在 gwb-ui-plugins，查日志的命令 `logger.query` 也由 baseui 登记，本仓没有日志插件；内核在 gwb-kernel，改它们去那些仓。
 **这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。
 仓根 `packages/shared-react`、`packages/tokens` 如果还在，是旧构建留下的未跟踪文件（没有 `package.json`），不是在用的包。
 
-peer 里是内核包 `@godcreator/gwb-kernel-desktop`（八个插件都写）与 `cordis`（继承 cordis `Service` 的插件在构建产物里按值 import 它，MCP 插件不写；日志插件不继承，peer 里却还写着）。
+peer 里是内核包 `@godcreator/gwb-kernel-desktop`（每个插件都写）与 `cordis`（继承 cordis `Service` 的插件在构建产物里按值 import 它，MCP 插件不写）。
 MCP SDK 与 zod 写 dev，由 MCP 插件的 `build.ts` 打包进构建产物。
 
-## 动手之前
+## 写代码之前
 
 写插件、在隔离 home 里验证读 skill「gwb-devkit」，升版本号、发版读 skill「gwb-release」，写文档读 skill「docfirst-docs」。
 
@@ -28,8 +28,8 @@ importmap、要么强制打包进来，并配上构建产物检查。
 
 文档站在 `docs-site/`，端口 4315（`pnpm --filter gwb-base-plugins-docs-site dev`）。现状区：
 
-* **入口页** `/docs`：接缝图，插件之间的十条接缝各有一页（`/docs/seams/…`）
-* **八个插件页**：每页写功能、接口（各属于哪条接缝）、不做的事
+* **入口页** `/docs`：接缝图，插件之间的每条接缝各有一页（`/docs/seams/…`）
+* **插件页**（每个插件一页）：每页写功能、接口（各属于哪条接缝）、不做的事
 * **插件之间怎么连** `/docs/wiring`：每个插件提供什么、注入了谁（必需还是局部注入、peer 怎么写）、按名字调用了哪些命令、用了哪些约定通道
 * **关键设计** `/docs/design`、**开发** `/docs/develop`（构建、检查、各插件的测试、发版时包的顺序）、**遇到过的问题** `/docs/pitfalls`
 

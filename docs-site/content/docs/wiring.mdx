@@ -1,16 +1,16 @@
 ---
 title: 插件之间怎么连
-description: 本仓八个插件各提供哪些服务、命令与事件；各注入了哪些服务、是必需还是局部注入、peer 怎么写、缺了会怎样；按名字调用了别的插件哪些命令，用了哪些约定通道（内核事件、cordis 日志、磁盘文件、环境变量、HTTP、子进程、loader 放在 fiber 上的条目）
+description: 本仓插件各提供哪些服务、命令与事件；各注入了哪些服务、是必需还是局部注入、peer 怎么写、缺了会怎样；按名字调用了别的插件哪些命令，用了哪些约定通道（内核的请求通道、磁盘文件、环境变量、HTTP、子进程、loader 放在 fiber 上的条目）
 ---
 
-**本页回答**：本仓插件提供哪些服务、命令与事件；注入了哪些服务、是必需还是局部注入、peer 怎么写；按名字调用了别家哪些命令、用了哪些约定通道。
+**本页回答**：本仓插件提供哪些服务、命令与事件；注入了哪些服务、是必需还是局部注入、peer 怎么写；按名字调用了别的插件哪些命令、用了哪些约定通道。
 
 每个插件一节，三张表：**提供**（别人能用它什么）、**注入**（它用 cordis 注入了谁的服务）、**按名字调用与约定通道**（没有类型检查连起来、只靠两边写同一个名字或同一个形状的连接）。第三张表里的连接没有类型检查，一边改了名字或形状，另一边多半要到运行时才出错，改之前先查这里。
 
-几件八个插件共同的事，不在各节重复：
+几件本仓插件共同的事，不在各节重复：
 
-- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（日志插件 `^0.10.0`，其余 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件与日志插件不写。为什么这样写见[关键设计](/docs/design)
-- **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、日志、MCP 四个插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，其余三个插件不用它
+- **peer 里都写内核包** `@godcreator/gwb-kernel-desktop`（此刻都是 `^0.9.0`），只 `import type` 它的 `GwbContext`、`GwbKernelApi`；命令回执 `GwbResult` 从 commands 取；继承 cordis `Service` 的插件另写 peer `cordis`（`^4.0.0-rc.10`），MCP 插件不写。为什么这样写见[关键设计](/docs/design)
+- **内核服务 `gwbKernel`** 由内核在根上下文上提供，不写进 `inject`。数据、设置、MCP 插件用它，各自在 `src/vocab.ts` 里写一份 `requireKernel` 取它，取不到就抛错「ctx.gwbKernel 不在」；commands 另用它登记页面请求处理器，说明书与两个命令行运行插件不用它
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
 
@@ -97,44 +97,6 @@ description: 本仓八个插件各提供哪些服务、命令与事件；各注�
 
 {/* has file="../plugins/data/src/owner.ts" text="export const OWNER_FILE = '.owner.json'" */}
 
-## @godcreator/gwb-logger
-
-### 提供
-
-| 类别 | 名字 | 说明 |
-| --- | --- | --- |
-| 服务 | 无 | |
-| 命令 | `logger.query` | 读 `<home>/gwb.log` 与 `gwb.log.1`，回 `{ file, cursor, entries }`；`entries` 的形状是本包导出的 `LogEntry` |
-| 事件 | 无 | |
-
-{/* has file="../plugins/logger/src/query.ts" text="export const QUERY_COMMAND = 'logger.query'" */}
-
-### 注入
-
-| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
-| --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | 登记 `logger.query` | 插件一直等待、不加载 |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0`（读的是 0.10 起一行一个 JSON 的格式） | 算出 `<home>/gwb.log` 的路径 | 加载时抛错「ctx.gwbKernel 不在」 |
-
-{/* has file="../plugins/logger/src/index.ts" text="export const inject = ['gwbCommands']" */}
-
-{/* has file="../plugins/logger/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;workspace:^&quot;" */}
-
-{/* has file="../plugins/logger/src/index.ts" text="const logFile = path.join(requireKernel(ctx).dataDir, LOG_FILE_NAME)" */}
-
-peer 里还写着 `cordis`，构建产物里已经没有对它的 import。
-
-### 按名字调用与约定通道
-
-| 通道 | 对方 | 名字 | 用来做什么 |
-| --- | --- | --- | --- |
-| 命令总线（被调） | 界面插件仓 gwb-ui-plugins 的日志窗格（gwb-baseui）、agent | `logger.query` | 窗格先取最近的日志，之后带上一次的 `cursor` 取新写的；窗格那边另写一份回执与 `LogEntry` 的形状 |
-| 约定的文件名 | 内核 | `gwb.log`、`gwb.log.1` | 写死的名字，文件由内核写、由内核轮转；内核改了文件名，`logger.query` 打不开文件，报错写明路径 |
-| 约定的一行格式 | 内核 | `{ ts, level, source, name, msg }` | 键与顺序由内核定；对不上的行直接报错 |
-
-{/* has file="../plugins/logger/src/index.ts" text="const LOG_FILE_NAME = 'gwb.log'" */}
-
-{/* has file="../plugins/logger/src/log-entry.ts" text="const KEYS_IN_ORDER = 'ts,level,source,name,msg'" */}
 ## @godcreator/gwb-mcp
 
 ### 提供

@@ -1,7 +1,7 @@
 # gwb-base-plugins
 
-gwb 的**无界面基础插件仓**：八个插件，类型只从内核包 `@godcreator/gwb-kernel-desktop` 的包根取，不依赖任何界面包。
-界面插件（shell / theme / baseui；令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins；
+gwb 的**无界面基础插件仓**：插件的类型只从内核包 `@godcreator/gwb-kernel-desktop` 的包根取，不依赖任何界面包。
+界面插件（shell / theme / baseui；令牌表随 shell 包发布，页面上的 react 由内核包提供）在界面插件仓 gwb-ui-plugins，查日志的命令 `logger.query` 也由 baseui 登记；
 插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，和 devkit 一起开发；内核在 gwb-kernel。
 
 | 插件       | 包名                         | 服务                                            |
@@ -11,7 +11,6 @@ gwb 的**无界面基础插件仓**：八个插件，类型只从内核包 `@god
 | skills   | `@godcreator/gwb-skills`   | `ctx.gwbSkills`（说明书）                          |
 | settings | `@godcreator/gwb-settings` | `ctx.gwbSettings`（设置）                         |
 | data     | `@godcreator/gwb-data`     | `ctx.gwbData`（数据目录）                           |
-| logger   | `@godcreator/gwb-logger`   | 无（只读内核写的日志文件，经命令 `logger.query` 取）            |
 | node-cli | `@godcreator/gwb-node-cli` | `ctx.gwbNodeCli`（运行 node 命令行工具）               |
 | py-cli   | `@godcreator/gwb-py-cli`   | `ctx.gwbPyCli`（运行 python 命令行工具）               |
 
@@ -38,6 +37,6 @@ pnpm doc            # docfirst check：被引用的代码变了会标黄
 pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
 ```
 
-入口页是插件之间的接缝图，十条接缝各一页；八个插件各一页；另有关键设计、开发、遇到过的问题三页。
+入口页是插件之间的接缝图，每条接缝一页；每个插件一页；另有关键设计、开发、遇到过的问题。
 
 这份 README 是生成文件，正本是 `docs-site/content/outputs/readme.mdx`。

@@ -23,7 +23,7 @@ TypeScript 的 `moduleResolution: nodenext` 能强制相对 import 带扩展名�
 
 `gwbCommands.run` 返回的是 `GwbResult`，它出现在命令插件**导出的类型**里，由命令插件自己的 `src/result.ts` 定义。内核包是每个插件的 peer，用到的别的插件也写在 peer，插件仓里 pnpm 把它们装进各插件的 `node_modules`，这些类型总解析得到。类型引用到、又不是插件的包（`@types/node`）写 dev。少列了，`skipLibCheck: true` 下那段类型不报错地变成 any，关掉 `skipLibCheck` 才报「找不到模块」；关掉 `skipLibCheck` 的类型检查既不在 `pnpm check` 里，也不在 `devkit.release` 的发版前检查里。
 
-{/* ref file="../plugins/logger/package.json" lines="27-38" */}
+{/* ref file="../plugins/skills/package.json" lines="27-39" */}
 
 继承 cordis `Service` 的插件在构建产物里按值 import `cordis`，所以 `cordis` 写 peer：必须和内核用同一份 cordis，两份的 `instanceof` 对不上。MCP 插件对 `cordis` 只 import 类型，不写 peer。
 

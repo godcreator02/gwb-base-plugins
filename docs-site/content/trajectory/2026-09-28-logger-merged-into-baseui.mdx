@@ -1,0 +1,33 @@
+---
+title: 日志插件并进基础界面，本仓删掉 gwb-logger
+born-at: 2026-09-28T00:24
+type: choice
+parent: [2026-09-12-three-repos-split]
+label: 日志并进界面
+domain: 插件
+---
+
+## 背景
+
+日志插件改成只读内核写的文件之后，只剩一条命令 `logger.query`（读 `<home>/gwb.log` 与 `gwb.log.1`），不提供服务、不收日志。它在界面上的调用方只有界面插件仓基础界面插件 `@godcreator/gwb-baseui` 里的日志窗格，窗格那边另写一份回执与一行日志的形状，两边靠约定保持一致。
+
+2026-09-28 用户：「gwblogger为什么还存在？塞进baseui呗」。
+
+## 结论与边界
+
+**采纳**：
+
+- `logger.query` 并进 `@godcreator/gwb-baseui`，改由它登记；命令名、参数与回执的形状不变（界面插件仓那边做）
+- 本仓删掉 `plugins/logger`，连同讲它的包页、「日志」接缝页与那张图；接缝图上去掉这个插件与那条接缝
+- 源上已发的 `@godcreator/gwb-logger` 各版本留着不动，不撤
+
+## 代价与遗留
+
+- 已装 gwb-logger 的 home 要由插件管理卸载它；它与新版 baseui 同时在时 `logger.query` 登记两次，命令总线按同名后登记的生效并告警
+- 只装基础插件、不装 baseui 的 home 没有 `logger.query`，agent 在那里查不到日志
+
+## 依据
+
+无证据：按用户定下的归属做的调整，没有另做测量。
+
+pivots-from:: [2026-09-27-logger-reads-kernel-file](2026-09-27-logger-reads-kernel-file.md)

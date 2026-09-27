@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  // 0.3 劈 core 后只剩 node 半——浏览器半（原 src/client 与它那份 tsconfig、@/ 别名）住 gwb-baseui
-  "include": ["src/index.ts"]
-}

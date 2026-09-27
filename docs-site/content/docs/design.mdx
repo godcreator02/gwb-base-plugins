@@ -1,13 +1,13 @@
 ---
 title: 关键设计
-description: 基础插件仓为什么这么切——只放无界面的插件、插件的类型只从内核包取、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
+description: 基础插件仓为什么这样划分——只放无界面的插件、插件的类型只从内核包取、插件之间只经服务和命令、命令总线是唯一的调用面、数据与设置按条目归属、兼容哪个内核由 peer 里内核包的范围声明；各自推出了什么、放弃了什么
 ---
 
 **本页回答**：这个仓里放什么、不放什么；插件之间怎么连接、为什么不直接 import 彼此的代码；为什么所有能力都登记成命令；数据与设置为什么按条目而不是按包归属；插件怎么声明自己兼容哪个内核；刻意不做哪些事。每个插件的功能在各自的页，插件之间约定了什么在各接缝页。
 
 ## 这个仓只放无界面的基础插件
 
-八个插件，都是 `cordis.yml` 里的普通条目，和别的插件一样装在 home 里、经插件管理升级、可以停用和卸载：
+本仓插件都是 `cordis.yml` 里的普通条目，和别的插件一样装在 home 里、经插件管理升级、可以停用和卸载：
 
 | 插件 | 包名 | 服务 | 做什么 |
 | --- | --- | --- | --- |
@@ -16,7 +16,6 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 | [skills](/docs/skills) | `@godcreator/gwb-skills` | `gwbSkills` | 收集插件自带的说明书 |
 | [settings](/docs/settings) | `@godcreator/gwb-settings` | `gwbSettings` | 设置 |
 | [data](/docs/data) | `@godcreator/gwb-data` | `gwbData` | 插件的数据目录 |
-| [logger](/docs/logger) | `@godcreator/gwb-logger` | 无 | 查内核写的日志文件 |
 | [node-cli](/docs/node-cli) | `@godcreator/gwb-node-cli` | `gwbNodeCli` | 运行 node 命令行工具 |
 | [py-cli](/docs/py-cli) | `@godcreator/gwb-py-cli` | `gwbPyCli` | 运行 python 命令行工具 |
 
@@ -24,23 +23,23 @@ description: 基础插件仓为什么这么切——只放无界面的插件、�
 
 - **内核**在内核仓 gwb-kernel：内核应用和安装包，一个插件也不带
 - **插件管理** `@godcreator/gwb-plugin-manager` 在生命周期插件仓 gwb-lifecycle-plugins：装插件、找插件、配包源都是它的命令
-- **有界面的插件**（外壳、主题、基础窗格）在界面插件仓 gwb-ui-plugins；日志窗格也在那里，从这个仓的日志插件取数据
+- **有界面的插件**（外壳、主题、基础窗格）在界面插件仓 gwb-ui-plugins；查日志的命令 `logger.query` 也由那边的基础界面插件 `@godcreator/gwb-baseui` 登记，本仓没有日志插件（轨迹卡[日志插件并进基础界面](/trajectory/2026-09-28-logger-merged-into-baseui)）
 
 这个仓的插件不依赖任何界面包：peer 里不写界面包，构建产物检查只放行名单里的包名，界面包的 import 进不来。
 
 ## 插件的类型只从内核包取
 
-内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`；`GwbResult` 从命令插件取。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的四个插件（数据、设置、日志、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
+内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`；`GwbResult` 从命令插件取。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的插件（数据、设置、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
 
 {/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
 
-构建产物由 node 直接加载：七个插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
+构建产物由 node 直接加载：MCP 插件以外的插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
 
 {/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
 
 本仓插件的依赖这样写：
 
-- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，八个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份；日志插件不继承，不写
+- **peer**：内核包 `@godcreator/gwb-kernel-desktop`，每个插件都写（见下面「插件在 peer 里写内核包」）；`cordis`，继承 `Service` 的插件在构建产物里按值 import 它，所以写，运行时必须和内核用同一份；MCP 插件不继承，不写
 - **本仓别的插件**：用到的写 peer（`workspace:^`，`devkit.release` 发版时换成 `^<版本号>`），只局部注入、缺了只少一部分功能的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
@@ -90,7 +89,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 插件在 peer 里写内核包
 
-内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。日志插件读的是内核 0.10 起的 `gwb.log` 格式，写 `^0.10.0`；其余七个此刻写 `^0.9.0`，要跟到 0.10（`content/future/inbox/` 里的通知）：
+内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻都写 `^0.9.0`，要跟到 0.10（`content/future/inbox/` 里的通知）：
 
 {/* ref file="../plugins/mcp/package.json" lines="30-36" */}
 
@@ -98,7 +97,7 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 ## 刻意不做的事
 
-- **只有 MCP 插件打包**：其余七个用 `tsc` 直接输出，构建产物由 node 加载；MCP 插件打包只为把生态外的两个库带进构建产物
+- **只有 MCP 插件打包**：其余插件用 `tsc` 直接输出，构建产物由 node 加载；MCP 插件打包只为把生态外的两个库带进构建产物
 - **不带界面**：界面在界面插件仓 gwb-ui-plugins
 - **不管插件的安装与条目**：在插件管理，生命周期插件仓 gwb-lifecycle-plugins
 - **不给命令分权限、不做沙箱**：插件和内核在同一个进程里，装插件就是授权；MCP 入口只绑 127.0.0.1、要 token

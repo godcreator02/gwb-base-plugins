@@ -12,7 +12,6 @@ import { CommandRun } from './diagrams/command-run'
 import { CommandUnregister } from './diagrams/command-unregister'
 import { DataLayout } from './diagrams/data-layout'
 import { EntryIdentity } from './diagrams/entry-identity'
-import { LogFlow } from './diagrams/log-flow'
 import { McpRequest } from './diagrams/mcp-request'
 import { McpTools } from './diagrams/mcp-tools'
 import { OwnerTransfer } from './diagrams/owner-transfer'
@@ -32,7 +31,6 @@ const drawings: Record<string, () => ReactNode> = {
   'data-layout': () => <DataLayout />,
   'owner-transfer': () => <OwnerTransfer />,
   'entry-identity': () => <EntryIdentity />,
-  'log-flow': () => <LogFlow />,
   'cli-run': () => <CliRun />,
   'py-cli-run': () => <PyCliRun />,
 }
