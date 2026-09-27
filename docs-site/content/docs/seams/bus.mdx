@@ -31,11 +31,11 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 定义在进表之前检查：`name`、`description`、`usage` 缺一项或为空串、`plugin` 写了却与取到的包名不同、`effect` 不是 `read` / `write` / `external`、`hiddenFromAgents` 写了却不是 `true`，都抛错，错误文本写明哪个包、哪条命令、缺什么、该怎么写。`effect` 与 `hiddenFromAgents` 没写就不进表里那一条，写了原样存下：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="82-110" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="83-111" */}
 
 同名时后登记的生效并写 warn；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="143-152" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="151-160" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志

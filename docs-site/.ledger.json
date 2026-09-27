@@ -657,7 +657,7 @@
     "../plugins/node-cli/src/index.ts:110-133": {
       "kind": "git",
       "blob": "0e2dc969bb662d97e249fd23b186df0cb2d544ef",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
       "lines": [
         110,
         133
@@ -666,53 +666,13 @@
     },
     "../plugins/commands/src/registry.ts:12-51": {
       "kind": "git",
-      "blob": "4518add3a4991d7980c9fa72dac59b8bb0ff0f47",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "blob": "778e8382a55227802090ec766a7acdf90618c663",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
       "lines": [
         12,
         51
       ],
       "hash": "8079e9d6a57ad934b86ef13abdf98e02f4f9a7f0f6240434e49c55b561dfc67f"
-    },
-    "../plugins/commands/src/registry.ts:82-110": {
-      "kind": "git",
-      "blob": "4518add3a4991d7980c9fa72dac59b8bb0ff0f47",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
-      "lines": [
-        82,
-        110
-      ],
-      "hash": "c40808799b1b3a01ee3c74a422e5d0a96eded6d627aa3ccb2efaf0453a2840c0"
-    },
-    "../plugins/commands/src/registry.ts:143-152": {
-      "kind": "git",
-      "blob": "4518add3a4991d7980c9fa72dac59b8bb0ff0f47",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
-      "lines": [
-        143,
-        152
-      ],
-      "hash": "63b86ca3b07a86a28e6b605432a6901d26a99f4ca6606c3ad800f42217ad78bd"
-    },
-    "../plugins/commands/src/registry.ts:120-137": {
-      "kind": "git",
-      "blob": "4518add3a4991d7980c9fa72dac59b8bb0ff0f47",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
-      "lines": [
-        120,
-        137
-      ],
-      "hash": "b05cadc232f4790e9755320129431ac98d7ce93ef50bb925aaf18a6b4fcb511f"
-    },
-    "../plugins/commands/src/registry.ts:158-170": {
-      "kind": "git",
-      "blob": "4518add3a4991d7980c9fa72dac59b8bb0ff0f47",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
-      "lines": [
-        158,
-        170
-      ],
-      "hash": "88331f68087f61bf67b096bb14f0e8d73e7dc02d34ae77de2973b1e90b8f80fe"
     },
     "has ../plugins/commands/tests/registry.test.ts \"effect 不是 read / write / external 就抛错，消息里列出能写的值\"": {
       "kind": "has"
@@ -720,12 +680,52 @@
     "../plugins/commands/src/index.ts:66-86": {
       "kind": "git",
       "blob": "d754efa1663258f9911443d17bba0d097bcd1a3a",
-      "commit": "e0b724bab72230a69069d04920afb4a83433a658",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
       "lines": [
         66,
         86
       ],
       "hash": "a9c16c8525ef262fd5fb0ed7f61206a91e34fb7473ebb9b2f83ee579de4e717e"
+    },
+    "../plugins/commands/src/registry.ts:83-111": {
+      "kind": "git",
+      "blob": "778e8382a55227802090ec766a7acdf90618c663",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
+      "lines": [
+        83,
+        111
+      ],
+      "hash": "c40808799b1b3a01ee3c74a422e5d0a96eded6d627aa3ccb2efaf0453a2840c0"
+    },
+    "../plugins/commands/src/registry.ts:151-160": {
+      "kind": "git",
+      "blob": "778e8382a55227802090ec766a7acdf90618c663",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
+      "lines": [
+        151,
+        160
+      ],
+      "hash": "63b86ca3b07a86a28e6b605432a6901d26a99f4ca6606c3ad800f42217ad78bd"
+    },
+    "../plugins/commands/src/registry.ts:121-145": {
+      "kind": "git",
+      "blob": "778e8382a55227802090ec766a7acdf90618c663",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
+      "lines": [
+        121,
+        145
+      ],
+      "hash": "2af0ba2187199f4ab5969c2bf17d5b1b5b9112419de2fb9ef703d97f24de7f5e"
+    },
+    "../plugins/commands/src/registry.ts:166-178": {
+      "kind": "git",
+      "blob": "778e8382a55227802090ec766a7acdf90618c663",
+      "commit": "2a7264147d878c454475d8c9ba4c8dcb2525d832",
+      "lines": [
+        166,
+        178
+      ],
+      "hash": "7c63eaa0adb8a084397378f69eca7198b5d04119b511d17fdfe8904a2cd40326"
     }
   },
   "content/docs/seams/cli.mdx": {
