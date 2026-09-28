@@ -1,0 +1,23 @@
+---
+title: '同一次命令失败被命令总线、MCP 入口、发起命令的插件各记一行 warn'
+description: '来源：总控台会话（日志去噪），2026-09-28'
+docfirst: none
+---
+
+## 现场
+
+default home 的 `gwb.log`（`%APPDATA%\gwb-kernel\homes\default\gwb.log`，2026-09-28 本地时间 00:07 起）里，agent 调一次 `devkit.dev` 失败，连着出三行 warn：
+
+- `gwb-devkit`：`devkit.dev 没成：这几条没加载成功…`（`gwb-lifecycle-plugins/plugins/devkit/src/index.ts:419`）
+- `gwb-commands`：`命令 devkit.dev 返回失败：这几条没加载成功…`（`plugins/commands/src/registry.ts` 的 `logReceiptOutcome`）
+- `gwb-mcp`：`agent 调了 devkit.dev：失败（这几条没加载成功…）`（`plugins/mcp/src/index.ts:220`）
+
+三行正文相同，只是前缀不同。同一天 `block-note.overview.read` 找不到命令时，命令总线也是连着两行「调用了不存在的命令」，随后调用方 `gwb-bn-papers` 再记一行同一个原因。
+
+## 期望
+
+一次失败只在一处记一行：要么由命令总线统一记（它看得到每个回执），调用方与 MCP 入口不再重复；要么由最外层真正处理这个失败的一方记，命令总线只在 debug 里记。需要三方一起定谁来记，定下后命令总线、MCP 入口与 devkit（在 `gwb-lifecycle-plugins`，那边另有一条同题反馈）一起改。
+
+## 影响
+
+warn 与 error 是日志里最该看的部分，重复三次让人以为出了三次错；按来源限速之类的机制以后要做时，也会把同一次失败算成三条。
