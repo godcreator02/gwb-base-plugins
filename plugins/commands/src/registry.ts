@@ -122,11 +122,10 @@ function isReceiptShaped(handlerResult: unknown): handlerResult is GwbResult {
   return handlerResult !== null && typeof handlerResult === 'object' && 'ok' in handlerResult
 }
 
-/** 只读命令的成功记 debug：窗格与页面会轮询它们，记成 info 会淹没真正改了东西的那几行 */
+/** 只读命令的成功不记：窗格与页面每秒都在轮询它们。其余命令的成功记 debug，内核默认不写进 gwb.log */
 function logSuccess(log: RegistryLog, def: RegisteredCommandDef): void {
-  const message = `命令 ${def.name} 执行完成`
-  if (def.effect === 'read') log.debug(message)
-  else log.info(message)
+  if (def.effect === 'read') return
+  log.debug(`命令 ${def.name} 执行完成`)
 }
 
 function logReceiptOutcome(log: RegistryLog, def: RegisteredCommandDef, receipt: GwbResult): void {

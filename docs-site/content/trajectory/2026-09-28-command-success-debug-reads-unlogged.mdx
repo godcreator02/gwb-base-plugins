@@ -1,0 +1,28 @@
+---
+title: 命令成功只记 debug，只读命令不记
+born-at: 2026-09-28T13:40
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 成功不记 info
+domain: 命令总线
+---
+
+## 背景
+
+只读命令降成 debug 之后，default home 的 `gwb.log` 在 2026-09-28 00:07 到 13:13（本地时间）这 13 个小时里仍有约 1.95 万行：debug 13846 行，基本都是只读命令的「执行完成」；info 5648 行，其中 2418 行是改东西的命令的「执行完成」（`shell.pane.sync`、`shell.layout.save` 这类拖一下窗格就出一行的）；warn 与 error 一共 58 行。日志窗格默认显示全部级别，开着时每秒一行「命令 logger.query 执行完成」。用户看了窗格里的日志：
+
+> 这个日志全都显示没有意义吧
+
+这一行只有命令名，没有调用方、参数、耗时，只说明「它被调用过」。对照成熟软件的做法：nginx 把每次请求记进单独的访问日志，健康检查这类轮询常用 `access_log off` 不记；VS Code 的命令服务执行命令时记在 trace 级，默认不写出来。用户选了推荐方案：
+
+> 按你推荐
+
+## 结论与边界
+
+只读命令执行成功不写日志；`write`、`external` 与没标 `effect` 的命令执行成功写 debug。登记写 info，返回失败、抛错、找不到命令写 warn，都不变。
+
+同时内核改成默认只把 info 及以上写进 `gwb.log`，按 logger 名打开 debug（环境变量 `GWB_DEBUG`，见内核仓的同日轨迹卡），所以改东西的命令的成功默认也不进文件；要查谁在什么时候调了哪条改东西的命令，启动时设 `GWB_DEBUG=gwb-commands`。只读命令连 debug 都不记：打开 `gwb-commands` 的 debug 排查时，窗格每秒一次的 `logger.query` 仍会刷屏。
+
+没改的：同一个失败被 devkit、命令总线、MCP 入口各记一行 warn（`devkit.dev` 失败一次出三行），这是三个插件之间谁来记的分工问题，写进了 inbox 另行讨论。
+
+supersedes:: [只读命令执行成功记 debug](2026-09-27-read-command-success-at-debug.md)
