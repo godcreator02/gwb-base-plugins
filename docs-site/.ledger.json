@@ -625,7 +625,7 @@
     "../plugins/node-cli/src/index.ts:110-133": {
       "kind": "git",
       "blob": "0e2dc969bb662d97e249fd23b186df0cb2d544ef",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
         110,
         133
@@ -634,8 +634,8 @@
     },
     "../plugins/commands/src/registry.ts:12-51": {
       "kind": "git",
-      "blob": "778e8382a55227802090ec766a7acdf90618c663",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "blob": "efd0dfa447c28ee5690d80067d3dc309d3687d89",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
         12,
         51
@@ -648,7 +648,7 @@
     "../plugins/commands/src/index.ts:66-86": {
       "kind": "git",
       "blob": "d754efa1663258f9911443d17bba0d097bcd1a3a",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
         66,
         86
@@ -657,41 +657,41 @@
     },
     "../plugins/commands/src/registry.ts:83-111": {
       "kind": "git",
-      "blob": "778e8382a55227802090ec766a7acdf90618c663",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "blob": "efd0dfa447c28ee5690d80067d3dc309d3687d89",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
         83,
         111
       ],
       "hash": "c40808799b1b3a01ee3c74a422e5d0a96eded6d627aa3ccb2efaf0453a2840c0"
     },
-    "../plugins/commands/src/registry.ts:151-160": {
+    "../plugins/commands/src/registry.ts:150-159": {
       "kind": "git",
-      "blob": "778e8382a55227802090ec766a7acdf90618c663",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "blob": "efd0dfa447c28ee5690d80067d3dc309d3687d89",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
-        151,
-        160
+        150,
+        159
       ],
       "hash": "63b86ca3b07a86a28e6b605432a6901d26a99f4ca6606c3ad800f42217ad78bd"
     },
-    "../plugins/commands/src/registry.ts:121-145": {
+    "../plugins/commands/src/registry.ts:121-144": {
       "kind": "git",
-      "blob": "778e8382a55227802090ec766a7acdf90618c663",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "blob": "efd0dfa447c28ee5690d80067d3dc309d3687d89",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
         121,
-        145
+        144
       ],
-      "hash": "2af0ba2187199f4ab5969c2bf17d5b1b5b9112419de2fb9ef703d97f24de7f5e"
+      "hash": "5895f1ee11cfc4c66594859c67175bd9fcd5ed3f28512f9db8729f14718510f7"
     },
-    "../plugins/commands/src/registry.ts:166-178": {
+    "../plugins/commands/src/registry.ts:165-177": {
       "kind": "git",
-      "blob": "778e8382a55227802090ec766a7acdf90618c663",
-      "commit": "347b4326cdcf5432db09c3005f4092f85af034b3",
+      "blob": "efd0dfa447c28ee5690d80067d3dc309d3687d89",
+      "commit": "d4722294ea738a8f581b55c382933310f7b0e172",
       "lines": [
-        166,
-        178
+        165,
+        177
       ],
       "hash": "7c63eaa0adb8a084397378f69eca7198b5d04119b511d17fdfe8904a2cd40326"
     }

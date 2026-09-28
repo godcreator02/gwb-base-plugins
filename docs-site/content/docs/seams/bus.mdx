@@ -35,7 +35,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 同名时后登记的生效并写 warn；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="151-160" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="150-159" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
@@ -47,9 +47,9 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **执行**：`run(name, args?, context?)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="121-145" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="121-144" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="166-178" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="165-177" */}
 
 **请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由本包页面请求处理器带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
 
