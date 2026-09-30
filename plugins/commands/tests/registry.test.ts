@@ -7,11 +7,11 @@ const silent: RegistryLog = { debug: noop, info: noop, warn: noop }
 
 /** 检查过的定义：命令表只收这种 */
 function registeredDef(name: string, plugin = '@t/p'): RegisteredCommandDef {
-  return { name, description: '试', usage: '无参数', plugin }
+  return { name, description: '试', usage: '无参数', plugin, effect: 'write' }
 }
 
 describe('checkedCommandDef', () => {
-  const complete: GwbCommandDef = { name: 'a.b', description: '一句话', usage: '参数 { n }' }
+  const complete: GwbCommandDef = { name: 'a.b', description: '一句话', usage: '参数 { n }', effect: 'read' }
 
   it('plugin 不给就填调用方的包名', () => {
     expect(checkedCommandDef('@t/caller', complete)).toEqual({ ...complete, plugin: '@t/caller' })
@@ -34,17 +34,23 @@ describe('checkedCommandDef', () => {
     expect(() => checkedCommandDef('@t/caller', def)).toThrow(message)
   })
 
-  it('effect 与 hiddenFromAgents 写了就原样留下，没写就没有这两项', () => {
+  it('effect 原样留下；hiddenFromAgents 写了就原样留下，没写就没有这一项', () => {
     const marked = checkedCommandDef('@t/caller', { ...complete, effect: 'external', hiddenFromAgents: true })
     expect(marked).toEqual({ ...complete, plugin: '@t/caller', effect: 'external', hiddenFromAgents: true })
     const unmarked = checkedCommandDef('@t/caller', complete)
-    expect('effect' in unmarked).toBe(false)
+    expect(unmarked.effect).toBe('read')
     expect('hiddenFromAgents' in unmarked).toBe(false)
+  })
+
+  it('没写 effect 就抛错，消息写明包、命令、三个值各是什么意思', () => {
+    const { effect: _omitted, ...withoutEffect } = complete
+    expect(() => checkedCommandDef('@t/caller', withoutEffect as GwbCommandDef)).toThrow(/@t\/caller 的命令 a\.b 缺 effect.*'read'.*'write'.*'external'/)
   })
 
   it('effect 不是 read / write / external 就抛错，消息里列出能写的值', () => {
     const def = { ...complete, effect: 'readonly' } as unknown as GwbCommandDef
     expect(() => checkedCommandDef('@t/caller', def)).toThrow(/a\.b 的 effect.*readonly.*read \/ write \/ external/)
+    expect(() => checkedCommandDef('@t/caller', def)).not.toThrow(/不写/)
   })
 
   it('hiddenFromAgents 只收 true', () => {
@@ -114,11 +120,11 @@ describe('createRegistry', () => {
 
   it('list 返回登记过的命令', () => {
     const cli = createRegistry(silent)
-    cli.register({ name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1' }, noop)
+    cli.register({ name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1', effect: 'read' }, noop)
     cli.register(registeredDef('y', '@t/p2'), noop)
     expect(cli.list()).toEqual([
-      { name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1' },
-      { name: 'y', description: '试', usage: '无参数', plugin: '@t/p2' },
+      { name: 'x', description: '甲', usage: '参数 { n }', plugin: '@t/p1', effect: 'read' },
+      { name: 'y', description: '试', usage: '无参数', plugin: '@t/p2', effect: 'write' },
     ])
   })
 
@@ -143,17 +149,15 @@ describe('createRegistry', () => {
     expect(log.warn.mock.calls.map((c) => String(c[0]))).toEqual(['命令 peek.sad 返回失败：读失败了'])
   })
 
-  it('改东西的与没标 effect 的命令执行成功写 debug，不写 info', async () => {
+  it('改东西的命令（effect 是 write 或 external）执行成功写 debug，不写 info', async () => {
     const log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn() }
     const cli = createRegistry(log)
     cli.register({ ...registeredDef('change'), effect: 'write' }, () => 1)
     cli.register({ ...registeredDef('notify'), effect: 'external' }, () => ({ ok: true }))
-    cli.register(registeredDef('unmarked'), () => 1)
     await cli.run('change', undefined)
     await cli.run('notify', undefined)
-    await cli.run('unmarked', undefined)
     const debugs = log.debug.mock.calls.map((c) => String(c[0]))
-    expect(debugs).toEqual(['命令 change 执行完成', '命令 notify 执行完成', '命令 unmarked 执行完成'])
+    expect(debugs).toEqual(['命令 change 执行完成', '命令 notify 执行完成'])
     expect(log.info.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('执行完成'))).toEqual([])
   })
 

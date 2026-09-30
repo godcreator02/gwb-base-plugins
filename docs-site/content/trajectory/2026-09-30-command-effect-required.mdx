@@ -1,0 +1,30 @@
+---
+title: 命令的 effect 改成必填，没写就登记失败
+born-at: 2026-09-30T23:00
+type: choice
+parent: [2026-09-13-base-plugins]
+label: effect 必填
+domain: 命令总线
+---
+
+## 背景
+
+2026-09-26 给命令定义加 `effect` 时它是可选的，没写的命令 agent 按 `write` 对待，由各插件仓自己补标。到 2026-09-30，
+用户决定所有插件仓一起把登记的命令都标上 `effect`，并要求命令总线把它改成必填：可选意味着新写的命令照样可以不标，
+agent 看到「没标」只能当成 `write`，读不出它实际是只读还是会推送。
+
+## 结论与边界
+
+- `GwbCommandDef.effect` 改成必填，命令表里的每条都带 `effect`。登记时没写就抛错，错误文本写明哪个包、哪条命令、
+  三个值各是什么意思；插件在 `apply` 里登记的，插件加载失败。写了三个值以外的照旧抛错
+- 两个命令行运行插件的 spec（`NodeCliSpec`、`PyCliSpec`）的 `effect` 跟着改成必填，原样带进总线命令，没写由命令总线拒收
+- MCP 入口的 `search` 每条命中的命令都带 `effect`；instructions 与工具说明里删掉「没标的按 write 对待」
+- 按参数可能做几种事的命令取最重的那一种：`external` > `write` > `read`
+- gwb-commands 这一版是破坏性版本（0.6.0）；gwb-node-cli、gwb-py-cli 的 spec 类型也变了，下游登记命令行工具的插件要补写 `effect`
+
+## 代价与遗留
+
+- 下游插件仓要在升到这一版之前把自己登记的命令全部标上，否则装上新的命令总线后插件加载失败
+- 命令成功时写不写日志不再有「没标」这一档：只读的不写，其余写 debug
+
+pivots-from:: [命令标副作用、只给页面调用的命令对 agent 隐藏，instructions 带上这个 home 的目录，工具返回设上限](2026-09-26-command-effect-and-agent-catalog.md)

@@ -10,7 +10,7 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 ## 调一条命令
 
 1. 在 MCP 入口 `index` 的 `commands` 里找到命令名，命令按登记它的插件包名分组。
-2. 取参数形状：`search {"prefix": "<命令名>"}` 或 `search {"plugin": "<包名>"}`，命中的那条命令的 `usage` 里写着参数形状，`effect` 写着调它会动到什么：`read` 只读，可以直接调；`write` 改本机的文件、设置、数据或界面；`external` 影响本机以外或打扰人（推送、发到远端、弹窗）；没有 `effect` 的按 `write` 对待，调之前读完 `usage`。
+2. 取参数形状：`search {"prefix": "<命令名>"}` 或 `search {"plugin": "<包名>"}`，命中的那条命令的 `usage` 里写着参数形状，`effect` 写着调它会动到什么：`read` 只读，可以直接调；`write` 改本机的文件、设置、数据或界面；`external` 影响本机以外或打扰人（推送、发到远端、弹窗）。每条命令都有 `effect`；`write` 与 `external` 的调之前读完 `usage`。
 3. 调用：
    - agent 经 MCP 入口：`run {"command": "<命令名>", "args": {…}}`
    - 页面：从 `@godcreator/gwb-commands/client` 导入 `command`，调用 `command("<命令名>", 参数)`；窗格使用 shell 传入的 `host.call`
@@ -53,21 +53,21 @@ description: 调命令、读回执、命令失败、装卸插件后命令对不�
 ## 在插件里登记命令
 
 1. 声明依赖：命令是插件的必需部分，写 `export const inject = ['gwbCommands']`；可有可无，用 `ctx.inject(['gwbCommands'], (ctx) => { … })` 局部注入。
-2. 调 `ctx.gwbCommands.register(def, handler)`，`def` 三项必写、都是非空字符串：
+2. 调 `ctx.gwbCommands.register(def, handler)`，`def` 四项必写：
    - `name`：`<插件短名>.<动作>`，登记前用 `search {"q": "<名字>"}` 确认没有重名（同名时后登记的生效并写告警）
    - `description`：一句话说命令做什么，出现在 `index` 里
    - `usage`：参数形状与注意事项，无参数写「无参数」，只在 `search` 命中时返回
+   - `effect`：调它会动到什么，三个值选一个——`'read'`（什么都不改，联网只读也算）、`'write'`（改本机的文件、设置、数据或界面，开窗格、开窗口也算）、`'external'`（影响本机以外或打扰人：推送、发到远端、发消息、调会把数据发给外部服务的接口、弹窗或通知）。按调用的实际后果标；按参数可能做几种事的取最重的那种（`external` > `write` > `read`），拿不准就标严的那个。没写 `register` 当场抛错，插件加载失败
 
-   `plugin` 不用写：命令总线从调用方的 cordis 条目取包名。写了就必须是本插件的包名。
+   前三项是非空字符串。`plugin` 不用写：命令总线从调用方的 cordis 条目取包名。写了就必须是本插件的包名。
 
    再写两个可选项：
-   - `effect`：`'read'`（什么都不改，联网只读也算）、`'write'`（改本机的文件、设置、数据或界面）、`'external'`（影响本机以外或打扰人：推送、发到远端、发消息、弹窗或通知）。按调用的实际后果标，拿不准就标严的那个；不写 agent 按 `write` 对待
    - `hiddenFromAgents: true`：只给页面调用的命令（页面推数据、同步界面状态这类）写它，MCP 入口不列出、agent 调不到；页面与别的插件照常调
    - 返回可能很长的命令（列表、日志）在参数里提供筛选或条数，经 MCP 入口超过 40000 字符的返回 agent 拿不到
 3. 写 `handler`：自己校验参数，不对就抛错，错误文本写清要什么形状；返回普通值，总线把它包进 `data`。只有要让字段出现在回执顶层时，才返回带 `ok` 的对象。`handler` 的第二个参数是 `{ via }`：请求来自页面是 `ui`，来自 MCP 入口是 `mcp`，别的插件直接调是 `plugin`；要按来源记录或区分行为时读它，总线不按它限制谁能调。
-4. 注销：`register` 把注销登记在调用方的 `effect` 上，插件卸载时命令自动注销，直接调用即可；返回的注销函数只在要提前注销时用。
+4. 注销：`register` 把注销登记在调用方的 `ctx.effect` 上，插件卸载时命令自动注销，直接调用即可；返回的注销函数只在要提前注销时用。
 
-`register` 当场抛错、命令不进表的情况：三项里缺一项或为空串；`plugin` 与本插件的包名不同；`effect` 不是 `read` / `write` / `external`；`hiddenFromAgents` 写了 `true` 以外的值；调用方不是经 `cordis.yml` 加载的插件，取不到包名。错误文本写明哪个包、哪条命令、缺什么。
+`register` 当场抛错、命令不进表的情况：`name`、`description`、`usage` 里缺一项或为空串；没写 `effect`，或写的不是 `read` / `write` / `external`；`plugin` 与本插件的包名不同；`hiddenFromAgents` 写了 `true` 以外的值；调用方不是经 `cordis.yml` 加载的插件，取不到包名。错误文本写明哪个包、哪条命令、缺什么。
 
 完成的判据：重新加载插件后，`search {"prefix": "<命令名>"}` 命中这条命令、带着标的 `effect`，`run` 它回 `ok: true`；标了 `hiddenFromAgents` 的，判据换成 `index` 里没有它、页面调得通；停用插件后 `index` 里没有它。
 

@@ -65,7 +65,7 @@ function callerPlugin(setup: (ctx: GwbContext) => void): Plugin {
 }
 
 function commandDef(name: string, overrides: Partial<GwbCommandDef> = {}): GwbCommandDef {
-  return { name, description: '试', usage: '无参数', ...overrides }
+  return { name, description: '试', usage: '无参数', effect: 'read', ...overrides }
 }
 
 const names = (bus: GwbCommands): string[] => bus.list().map((c) => c.name)
@@ -87,7 +87,7 @@ describe('GwbCommandBus 从调用方取包名', () => {
   it('plugin 不给就填调用方的包名，list 里是完整包名', async () => {
     const home = await bootLoaderHome()
     await home.load(CALLER_PACKAGE, callerPlugin((ctx) => void ctx.gwbCommands!.register(commandDef('caller.ping'), () => 'pong')))
-    expect(home.bus.list()).toEqual([{ name: 'caller.ping', description: '试', usage: '无参数', plugin: CALLER_PACKAGE }])
+    expect(home.bus.list()).toEqual([{ name: 'caller.ping', description: '试', usage: '无参数', plugin: CALLER_PACKAGE, effect: 'read' }])
     expect(await home.bus.run('caller.ping')).toEqual({ ok: true, data: 'pong' })
   })
 
@@ -112,6 +112,15 @@ describe('GwbCommandBus 从调用方取包名', () => {
     await home.load(CALLER_PACKAGE, caller.plugin)
     expect(String(caller.thrown())).toContain(CALLER_PACKAGE)
     expect(String(caller.thrown())).toContain('usage')
+    expect(names(home.bus)).toEqual([])
+  })
+
+  it('没写 effect 时在服务这一层就被拒，消息里带包名与命令名，命令不进表', async () => {
+    const home = await bootLoaderHome()
+    const { effect: _omitted, ...withoutEffect } = commandDef('caller.unmarked')
+    const caller = capturingErrorOf((ctx) => void ctx.gwbCommands!.register(withoutEffect as GwbCommandDef, () => 1))
+    await home.load(CALLER_PACKAGE, caller.plugin)
+    expect(String(caller.thrown())).toContain(`${CALLER_PACKAGE} 的命令 caller.unmarked 缺 effect`)
     expect(names(home.bus)).toEqual([])
   })
 

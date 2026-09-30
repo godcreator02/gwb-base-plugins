@@ -13,7 +13,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令。MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里（轨迹卡[三个工具](/trajectory/2026-09-14-three-tool-face)、[MCP 复位](/trajectory/2026-09-14-mcp-returns)）
 - **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
 - **instructions 带上这个 home 的目录**：initialize 返回的 instructions 是 `instructions.md` 接上一段目录——当前 home 名与本插件版本、全部说明书的名字、对 agent 开放的命令按第一个点之前的前缀去重后的列表。Claude Code 延迟加载 MCP 工具、不调工具时工具描述不进上下文，agent 连上时只看得到 instructions，目录让它知道这个 home 有什么、该去 `index` / `search` 找什么。每个请求新建 server 时重新生成；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了写一条 warn（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）
-- **把命令的 `effect` 交给 agent、藏起只给页面调用的命令**：`search` 命中的命令行带 `effect`（没标就没有这一项），也能按 `effect` 筛；`hiddenFromAgents` 的命令 `index`、`search` 与 instructions 的目录都不列，`run` 直接拒绝、不执行
+- **把命令的 `effect` 交给 agent、藏起只给页面调用的命令**：`search` 命中的每一条命令都带 `effect`，也能按 `effect` 筛；`hiddenFromAgents` 的命令 `index`、`search` 与 instructions 的目录都不列，`run` 直接拒绝、不执行
 - **`run` 先查命令表**：命令不存在回 `isError`，文本告诉 agent 用 `search {"q":…}` 找名字、装卸过插件就重新调 `index`；存在才交给命令总线
 - **单次返回有上限**：三个工具的返回超过 40000 字符就不交回原文，换成 `isError` 的文本说明怎么缩小范围（`search` 加条件、`index` 改按插件 `search`、`run` 带上命令自己的筛选或条数参数）；`run` 的那句写明命令已经执行完，免得 agent 重调一条会改东西的命令。上限按 Claude Code 单次工具返回的上限定，超了会被客户端转存成文件
 - **把回执翻译成 MCP 工具结果**：命令失败回带 `isError` 的文本，不是协议错误，连接不断；命令行工具的回执与处理函数自己返回的带 `ok` 的对象原样转成文本；有的客户端把对象参数序列化成 JSON 字符串再发，`run` 收到字符串先试着解析
@@ -49,7 +49,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 端点 `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP；请求头 `Authorization: Bearer <token>`（也认只写 token 本身），`Host`、`Origin` 只认本机回环地址；别的路径 404，非 POST 405 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | initialize 返回的 `instructions` | 包根 `instructions.md`（加载时读一次）接上这个 home 的目录：home 名与本插件版本、全部说明书名、对 agent 开放的命令前缀；每个请求重新生成 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 工具 `index` | 无参数；`home`、`version`（本插件的版本）、`instructions`（`instructions.md` 全文，不带目录）、`skills`（名字、包名、描述，描述超过 200 字才截）、`commands`（按包名分组、只有命令名，不含 `hiddenFromAgents` 的）、`hint`（下一步去哪查） | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| 工具 `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（子串，不分大小写）、`effect?`（`read` / `write` / `external`，别的值在协议层被拒；给了就不回说明书）；命中的命令带 `usage`，标了 `effect` 的再带 `effect`，不含 `hiddenFromAgents` 的；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 工具 `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（子串，不分大小写）、`effect?`（`read` / `write` / `external`，别的值在协议层被拒；给了就不回说明书）；命中的命令带 `usage` 与 `effect`，不含 `hiddenFromAgents` 的；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 工具 `run` | `command`、`args?`；命令不存在或是 `hiddenFromAgents` 的，不执行、回 `isError` 的文本；回执转成文本，命令失败回 `isError` 的文本 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 三个工具的返回上限 | 超过 40000 字符不交回原文，回 `isError` 的文本说明怎么缩小范围 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 命令 `mcp.info` | 无参数，返回 `{ url, port, mcpServers, auth }`：`mcpServers` 是可以照抄进客户端配置的片段，带 `Authorization` 请求头与当前 token，只读不换，标 `effect: 'read'`。**回执里是明文 token，会进调用方的会话记录** | [2 MCP 协议](/docs/seams/mcp-protocol) |
@@ -64,7 +64,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 
 三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
 
-instructions 是每个会话的固定开销。测试按日常使用的 default home 的规模（33 份说明书、28 个命令前缀）生成一份，检查它不超过 `INSTRUCTIONS_CHAR_BUDGET`（2000 字符），并且「只有三个工具」「总是带条件」「没标的按 write 对待」几句还在；home 再装多了、超出预算，运行时只写 warn，不截断：
+instructions 是每个会话的固定开销。测试按日常使用的 default home 的规模（33 份说明书、28 个命令前缀）生成一份，检查它不超过 `INSTRUCTIONS_CHAR_BUDGET`（2000 字符），并且「只有三个工具」「总是带条件」「每条命令都标了 effect」几句还在；home 再装多了、超出预算，运行时只写 warn，不截断：
 
 {/* has file="../plugins/mcp/tests/server.test.ts" text="expect(text.length).toBeLessThanOrEqual(INSTRUCTIONS_CHAR_BUDGET)" */}
 

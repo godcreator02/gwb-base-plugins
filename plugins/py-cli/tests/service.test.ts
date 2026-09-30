@@ -42,7 +42,7 @@ function layOutReadyVenv(): void {
 }
 
 interface RegisteredCommand {
-  def: { name: string; description?: string; usage?: string; plugin: string }
+  def: { name: string; description?: string; usage?: string; plugin: string; effect: string }
   handler: (args?: unknown) => unknown
 }
 
@@ -87,7 +87,7 @@ async function caller(root: Context, pkg: string | null): Promise<{ pyCli: GwbPy
   return { pyCli, fiber }
 }
 
-const toolSpec = (extra: Partial<PyCliSpec> = {}): PyCliSpec => ({ name: 'tool.run', packageRoot, ...DIST, command: 'tool', args: ['-e', REPORTER], ...extra })
+const toolSpec = (extra: Partial<PyCliSpec> = {}): PyCliSpec => ({ name: 'tool.run', packageRoot, ...DIST, command: 'tool', effect: 'read', args: ['-e', REPORTER], ...extra })
 type Report = { argv: string[]; cwd: string; utf8: string; io: string; extra?: string }
 const reportOf = (outcome: unknown): Report => JSON.parse((outcome as CliRunResult).stdout.text) as Report
 const textsOf = (logs: Message[], type: string): string[] => logs.filter((m) => m.type === type).map((m) => m.args.map(String).join(' '))
@@ -127,7 +127,7 @@ describe('GwbPyCli 服务', () => {
       },
     ])
     const busCommand = bus.list().find((c) => c.name === 'tool.run')!
-    expect(busCommand).toMatchObject({ plugin: '@t/gwb-tool', description: '一个工具' })
+    expect(busCommand).toMatchObject({ plugin: '@t/gwb-tool', description: '一个工具', effect: 'read' })
     expect(busCommand.usage).toContain('缺省是包根下的 py/ 目录')
     expect(runCommand('py-cli.list')).toEqual(pyCli.list())
     await bootstrapLogged(logs, 'tool.run')

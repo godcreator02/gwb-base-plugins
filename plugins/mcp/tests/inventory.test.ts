@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex, buildSearch, clampDescription, homeCatalog, type CommandView, type SkillView } from '../src/inventory.js'
 
 const CMDS: CommandView[] = [
-  { name: 'skill.list', plugin: '@godcreator/gwb-skills', description: '此刻挂着的 skill', usage: '无参数' },
-  { name: 'skill.read', plugin: '@godcreator/gwb-skills', description: '读一份 skill 的正文', usage: '参数 { name, file? }' },
-  { name: 'py-cli.bootstrap', plugin: '@godcreator/gwb-py-cli', description: '给一条 python CLI 建 venv', usage: 'venv 建在消费方件的包根下。参数 { entryId }' },
-  { name: 'devkit.home.list', plugin: '@godcreator/gwb-devkit', description: '列出全部测试 home', usage: '无参数' },
+  { name: 'skill.list', plugin: '@godcreator/gwb-skills', description: '此刻挂着的 skill', usage: '无参数', effect: 'read' },
+  { name: 'skill.read', plugin: '@godcreator/gwb-skills', description: '读一份 skill 的正文', usage: '参数 { name, file? }', effect: 'read' },
+  { name: 'py-cli.bootstrap', plugin: '@godcreator/gwb-py-cli', description: '给一条 python CLI 建 venv', usage: 'venv 建在消费方件的包根下。参数 { entryId }', effect: 'write' },
+  { name: 'devkit.home.list', plugin: '@godcreator/gwb-devkit', description: '列出全部测试 home', usage: '无参数', effect: 'read' },
 ]
 
 const SKILLS: SkillView[] = [
@@ -59,7 +59,7 @@ describe('buildIndex：index 的返回（三层查询的第一层）', () => {
   it('大小上限：现实规模（20 个插件 × 各 6 条命令 + 26 份说明书、description 写满，按实测 default 换算）≤ 18KB（UTF-8 字节）', () => {
     const commands: CommandView[] = []
     for (let p = 0; p < 20; p++) {
-      for (let c = 0; c < 6; c++) commands.push({ name: `pkg${p}.command.number${c}.read`, plugin: `@godcreator/gwb-pkg${p}`, description: '', usage: '' })
+      for (let c = 0; c < 6; c++) commands.push({ name: `pkg${p}.command.number${c}.read`, plugin: `@godcreator/gwb-pkg${p}`, description: '', usage: '', effect: 'read' })
     }
     const doc = buildIndex({
       home: 'default',
@@ -106,13 +106,14 @@ describe('buildSearch：按条件过滤与不带参数返回全部', () => {
       plugin: '@godcreator/gwb-skills',
       description: '读一份 skill 的正文',
       usage: '参数 { name, file? }',
+      effect: 'read',
     })
     expect(doc.skills).toHaveLength(2)
     expect(doc.skills[0]).toHaveProperty('description')
   })
 
   it('旧版注册表（没有 usage）不报错——当作空串', () => {
-    const doc = buildSearch({ commands: [{ name: 'a', plugin: 'p', description: '老' }] })
+    const doc = buildSearch({ commands: [{ name: 'a', plugin: 'p', description: '老', effect: 'read' }] })
     expect(doc.commands[0]!.usage).toBe('')
   })
 
@@ -149,25 +150,16 @@ describe('buildSearch：按条件过滤与不带参数返回全部', () => {
     expect(byName.commands.map((c) => c.name)).toEqual(['skill.read'])
   })
 
-  it('effect 只留标了这一种的命令，没标的不算；给了 effect 就不回说明书；命中的行带 effect', () => {
-    const marked: CommandView[] = [
-      { ...CMDS[0]!, effect: 'read' },
-      { ...CMDS[1]!, effect: 'read' },
-      { ...CMDS[2]!, effect: 'write' },
-      CMDS[3]!,
-    ]
-    const doc = buildSearch({ commands: marked, skills: SKILLS, query: { effect: 'read' } })
-    expect(doc.commands.map((c) => [c.name, c.effect])).toEqual([
-      ['skill.list', 'read'],
-      ['skill.read', 'read'],
-    ])
+  it('effect 只留是这一种的命令；给了 effect 就不回说明书；命中的每一行都带 effect', () => {
+    const doc = buildSearch({ commands: CMDS, skills: SKILLS, query: { effect: 'write' } })
+    expect(doc.commands.map((c) => [c.name, c.effect])).toEqual([['py-cli.bootstrap', 'write']])
     expect(doc.skills).toEqual([])
-    const unmarkedRow = buildSearch({ commands: marked, query: { prefix: 'devkit.' } }).commands[0]!
-    expect('effect' in unmarkedRow).toBe(false)
+    const everyRow = buildSearch({ commands: CMDS }).commands
+    expect(everyRow.map((c) => c.effect)).toEqual(['read', 'read', 'write', 'read'])
   })
 
   it('只给页面调用的命令 index 与 search 都不列', () => {
-    const withHidden: CommandView[] = [...CMDS, { name: 'skill.sync', plugin: '@godcreator/gwb-skills', description: '页面推数据', hiddenFromAgents: true }]
+    const withHidden: CommandView[] = [...CMDS, { name: 'skill.sync', plugin: '@godcreator/gwb-skills', description: '页面推数据', effect: 'write', hiddenFromAgents: true }]
     expect(buildIndex({ home: 'd', version: '1', commands: withHidden }).commands[0]).toEqual({ plugin: '@godcreator/gwb-skills', names: ['skill.list', 'skill.read'] })
     expect(buildSearch({ commands: withHidden, query: { prefix: 'skill.' } }).commands.map((c) => c.name)).toEqual(['skill.list', 'skill.read'])
   })

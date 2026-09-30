@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 interface RegisteredCommand {
-  def: { name: string; description?: string; usage?: string; plugin: string; effect?: 'read' | 'write' | 'external'; hiddenFromAgents?: true }
+  def: { name: string; description?: string; usage?: string; plugin: string; effect: 'read' | 'write' | 'external'; hiddenFromAgents?: true }
   handler: (args: unknown, context: { via: string }) => unknown
 }
 
@@ -176,7 +176,7 @@ describe('MCP 插件装上之后', () => {
 
   it('经 MCP 协议：工具是 index / search / run；run 调到命令总线并写一条 agent 调用日志；index 带 home 名与按插件分组的命令', async () => {
     const booted = await bootMcp('side')
-    booted.bus.register({ name: 'demo.echo', plugin: '@t/demo', description: '回声' }, (args) => args)
+    booted.bus.register({ name: 'demo.echo', plugin: '@t/demo', description: '回声', effect: 'read' }, (args) => args)
     const client = await mcpClient(await connectionOf(booted))
     expect((await client.listTools()).tools.map((t) => t.name).sort()).toEqual(['index', 'run', 'search'])
 
@@ -194,7 +194,7 @@ describe('MCP 插件装上之后', () => {
     expect(index.home).toBe('side')
     expect(index.commands).toContainEqual({ plugin: '@t/demo', names: ['demo.echo'] })
 
-    booted.bus.register({ name: 'demo.via', plugin: '@t/demo', description: '回请求来源' }, (_args, context) => context.via)
+    booted.bus.register({ name: 'demo.via', plugin: '@t/demo', description: '回请求来源', effect: 'read' }, (_args, context) => context.via)
     const via = await client.callTool({ name: 'run', arguments: { command: 'demo.via' } })
     expect(JSON.parse((via.content as { text: string }[])[0]!.text)).toEqual({ ok: true, data: 'mcp' })
     await client.close()
@@ -203,8 +203,8 @@ describe('MCP 插件装上之后', () => {
 
   it('instructions 末尾带这台 home 的目录：home 名、命令前缀；只给页面调用的命令不进前缀', async () => {
     const booted = await bootMcp('side')
-    booted.bus.register({ name: 'demo.echo', plugin: '@t/demo', description: '回声' }, (args) => args)
-    booted.bus.register({ name: 'pageonly.sync', plugin: '@t/page', description: '页面专用', hiddenFromAgents: true }, () => null)
+    booted.bus.register({ name: 'demo.echo', plugin: '@t/demo', description: '回声', effect: 'read' }, (args) => args)
+    booted.bus.register({ name: 'pageonly.sync', plugin: '@t/page', description: '页面专用', effect: 'write', hiddenFromAgents: true }, () => null)
     const client = await mcpClient(await connectionOf(booted))
     const instructions = client.getInstructions() ?? ''
     expect(instructions).toContain('MCP 工具只有 index / search / run 三个')
@@ -218,7 +218,7 @@ describe('MCP 插件装上之后', () => {
   it('只给页面调用的命令：index、search 不列，run 拒绝且不执行；页面照常调得到', async () => {
     const booted = await bootMcp('side')
     let ranTimes = 0
-    booted.bus.register({ name: 'demo.sync', plugin: '@t/demo', description: '页面推数据', hiddenFromAgents: true }, () => {
+    booted.bus.register({ name: 'demo.sync', plugin: '@t/demo', description: '页面推数据', effect: 'write', hiddenFromAgents: true }, () => {
       ranTimes += 1
       return null
     })

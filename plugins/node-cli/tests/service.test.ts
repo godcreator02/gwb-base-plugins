@@ -24,7 +24,7 @@ afterEach(() => {
 })
 
 interface RegisteredCommand {
-  def: { name: string; description?: string; usage?: string; plugin: string }
+  def: { name: string; description?: string; usage?: string; plugin: string; effect: string }
   handler: (args?: unknown) => unknown
 }
 
@@ -69,7 +69,7 @@ async function caller(root: Context, pkg: string | null): Promise<{ nodeCli: Gwb
   return { nodeCli, fiber }
 }
 
-const spec = (extra: Partial<NodeCliSpec> = {}): NodeCliSpec => ({ name: 'hello.run', entry, ...extra })
+const spec = (extra: Partial<NodeCliSpec> = {}): NodeCliSpec => ({ name: 'hello.run', entry, effect: 'read', ...extra })
 const reportOf = (outcome: unknown): { argv: string[]; cwd: string; asNode: string; extra?: string } =>
   JSON.parse((outcome as CliRunResult).stdout.text) as { argv: string[]; cwd: string; asNode: string; extra?: string }
 
@@ -92,6 +92,7 @@ describe('GwbNodeCli 服务', () => {
     expect(busCommand.plugin).toBe('@t/gwb-hello')
     expect(busCommand.description).toBe('打个招呼')
     expect(busCommand.usage).toContain('参数 { args?: string[], cwd?: string }')
+    expect(busCommand.effect).toBe('read')
     expect(runCommand('node-cli.list')).toEqual(nodeCli.list())
   })
 

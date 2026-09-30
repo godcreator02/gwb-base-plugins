@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createRegistry, normalize, DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from '../src/registry.js'
 
 const ROOT = path.resolve('/tmp/some-plugin')
-const BASE = { packageRoot: ROOT, distName: 'thing', version: '1.0.0', command: 'thing' }
+const BASE = { packageRoot: ROOT, distName: 'thing', version: '1.0.0', command: 'thing', effect: 'read' as const }
 
 describe('收窄一条 spec', () => {
   it('该填的填上：描述空着、参数空表、超时给默认值', () => {
@@ -44,7 +44,7 @@ describe('收窄一条 spec', () => {
   })
 
   it('command 与 module 一个都不给,不收', () => {
-    expect(() => normalize('gwb-foo', { name: 'foo.run', packageRoot: ROOT, distName: 'x', version: '1' })).toThrow(
+    expect(() => normalize('gwb-foo', { name: 'foo.run', packageRoot: ROOT, distName: 'x', version: '1', effect: 'read' })).toThrow(
       /command（\[project\.scripts\] 里的入口点名）或 module/,
     )
   })
@@ -54,7 +54,7 @@ describe('收窄一条 spec', () => {
   })
 
   it('module 形态收得下', () => {
-    const r = normalize('gwb-foo', { name: 'foo.run', packageRoot: ROOT, distName: 'x', version: '1', module: 'x.cli' })
+    const r = normalize('gwb-foo', { name: 'foo.run', packageRoot: ROOT, distName: 'x', version: '1', effect: 'read', module: 'x.cli' })
     expect(r).toMatchObject({ module: 'x.cli', command: undefined })
   })
 

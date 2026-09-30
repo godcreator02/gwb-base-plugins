@@ -27,8 +27,7 @@ export interface CommandView {
   description: string
   /** 用法：参数形状与注意事项。没有时当空串 */
   usage?: string
-  /** 没标就没有这一项 */
-  effect?: CommandEffect
+  effect: CommandEffect
   /** 只给页面调用的命令：index、search 不列，run 拒绝 */
   hiddenFromAgents?: true
 }
@@ -132,17 +131,17 @@ export interface SearchQuery {
   prefix?: string
   /** 在名字、一句话介绍或用法里找子串，不分大小写 */
   q?: string
-  /** 只要标了这一种 effect 的命令；没标的不算。对说明书不适用，给了它就不回说明书 */
+  /** 只要 effect 是这一种的命令。对说明书不适用，给了它就不回说明书 */
   effect?: CommandEffect
 }
 
-/** `search` 返回的一条命令：`effect` 没标就没有这一项 */
+/** `search` 返回的一条命令 */
 export interface SearchCommandRow {
   name: string
   plugin: string
   description: string
   usage: string
-  effect?: CommandEffect
+  effect: CommandEffect
 }
 
 /** `search` 的返回：命中的命令总带 usage；filter 写明这次按什么筛的 */
@@ -184,9 +183,7 @@ function skillMatches(skill: SkillView, query: SearchQuery): boolean {
 }
 
 function searchRowOf(command: CommandView): SearchCommandRow {
-  const row: SearchCommandRow = { name: command.name, plugin: command.plugin, description: command.description, usage: command.usage ?? '' }
-  if (command.effect !== undefined) row.effect = command.effect
-  return row
+  return { name: command.name, plugin: command.plugin, description: command.description, usage: command.usage ?? '', effect: command.effect }
 }
 
 /** 生成 search 的返回 */

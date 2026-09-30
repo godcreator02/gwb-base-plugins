@@ -18,15 +18,15 @@ export interface GwbCommandDef {
   usage: string
   /** 登记方的包名。不给由服务从调用方取；给了必须与调用方的包名相同 */
   plugin?: string
-  /** 调它会动到什么；MCP 入口的 search 带出这一项。不写就是没标，agent 按 write 对待 */
-  effect?: GwbCommandEffect
+  /** 调它会动到什么，必填；MCP 入口的 search 带出这一项 */
+  effect: GwbCommandEffect
   /** 只给页面调用：MCP 入口不列出、agent 调不到。页面与别的插件照常调 */
   hiddenFromAgents?: true
 }
 
-/** 命令表里存的样子：`plugin` 是登记方的完整包名；`effect`、`hiddenFromAgents` 没写就没有这一项 */
-export type RegisteredCommandDef = Required<Pick<GwbCommandDef, 'name' | 'description' | 'usage' | 'plugin'>> &
-  Pick<GwbCommandDef, 'effect' | 'hiddenFromAgents'>
+/** 命令表里存的样子：`plugin` 是登记方的完整包名；`hiddenFromAgents` 没写就没有这一项 */
+export type RegisteredCommandDef = Required<Pick<GwbCommandDef, 'name' | 'description' | 'usage' | 'plugin' | 'effect'>> &
+  Pick<GwbCommandDef, 'hiddenFromAgents'>
 
 /** 请求从哪来：`ui` 是页面请求处理器标注的，`mcp` 是 agent 经 MCP 入口调的，`plugin` 是别的插件直接调的 */
 export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'
@@ -41,7 +41,7 @@ export type GwbCommandHandler = (args: unknown, context: GwbCommandContext) => u
 /** 命令总线对外的接口。插件之间的契约，放在提供方这个包里 */
 export interface GwbCommands {
   /**
-   * 登记一条命令，返回注销函数。name、description、usage 缺一或为空串、plugin 与调用方的包名不同都直接抛错。
+   * 登记一条命令，返回注销函数。name、description、usage 缺一或为空串、没写 effect、plugin 与调用方的包名不同都直接抛错。
    * 调用方卸载会自动注销；注销函数重复调用无副作用
    */
   register(def: GwbCommandDef, handler: GwbCommandHandler): () => void
@@ -80,6 +80,9 @@ const HOW_TO_WRITE_REQUIRED_TEXT = {
   usage: '写参数形状与注意事项，无参数的命令写「无参数」',
 } as const
 
+const EFFECT_MEANINGS =
+  "'read' 什么都不改（联网只读也算），'write' 改本机的文件、设置、数据或界面，'external' 影响本机以外或打扰人（推送、发到远端、发消息、弹窗或通知）"
+
 /**
  * 登记方传来的定义是外部输入：逐项检查，不合规抛错并写明哪个包、哪条命令、缺什么、该怎么写。
  * `callerPackage` 是服务从调用方取到的包名，`plugin` 不给就用它
@@ -98,14 +101,16 @@ export function checkedCommandDef(callerPackage: string, def: GwbCommandDef): Re
       `包 ${callerPackage} 的命令 ${def.name} 的 plugin 写的是「${String(def.plugin)}」，与调用方的包名 ${callerPackage} 不同：删掉 plugin，或写成 ${callerPackage}`,
     )
   }
-  if (def.effect !== undefined && !COMMAND_EFFECTS.includes(def.effect)) {
-    throw new Error(`包 ${callerPackage} 的命令 ${def.name} 的 effect 写的是「${String(def.effect)}」：只能是 ${COMMAND_EFFECTS.join(' / ')}，或者不写`)
+  if (def.effect === undefined) {
+    throw new Error(`包 ${callerPackage} 的命令 ${def.name} 缺 effect：effect 必填，按调用的实际后果写 ${EFFECT_MEANINGS}`)
+  }
+  if (!COMMAND_EFFECTS.includes(def.effect)) {
+    throw new Error(`包 ${callerPackage} 的命令 ${def.name} 的 effect 写的是「${String(def.effect)}」：只能是 ${COMMAND_EFFECTS.join(' / ')}，${EFFECT_MEANINGS}`)
   }
   if (def.hiddenFromAgents !== undefined && def.hiddenFromAgents !== true) {
     throw new Error(`包 ${callerPackage} 的命令 ${def.name} 的 hiddenFromAgents 写的是「${String(def.hiddenFromAgents)}」：只能是 true，或者不写`)
   }
-  const checked: RegisteredCommandDef = { name: def.name, description: def.description, usage: def.usage, plugin: callerPackage }
-  if (def.effect !== undefined) checked.effect = def.effect
+  const checked: RegisteredCommandDef = { name: def.name, description: def.description, usage: def.usage, plugin: callerPackage, effect: def.effect }
   if (def.hiddenFromAgents === true) checked.hiddenFromAgents = true
   return checked
 }

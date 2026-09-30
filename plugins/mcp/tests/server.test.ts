@@ -99,13 +99,13 @@ describe('MCP 工具只有三个', () => {
     const prefixes =
       'logger skill node-cli docs-site settings mcp gitea deepseek pdf2md py-cli plugin-manager paper-fetch docfirst cgm-alert shell theme unit-folder windows-backup dsh vscode devkit collab block-note bn-comment bn-journal bn-papers bn-props bn-query'.split(' ')
     const skills: SkillView[] = skillNames.map((name) => ({ name, description: '', plugin: '@t/p' }))
-    const commands: CommandView[] = prefixes.map((prefix) => ({ name: `${prefix}.x`, plugin: '@t/p', description: '' }))
+    const commands: CommandView[] = prefixes.map((prefix) => ({ name: `${prefix}.x`, plugin: '@t/p', description: '', effect: 'read' }))
     const text = buildInstructions({ home: 'default', version: '0.11.0', commands, skills })
     // Claude Code 超过 2048 字符就静默截断（issue #81268,官方不修）
     expect(text.length).toBeLessThanOrEqual(INSTRUCTIONS_CHAR_BUDGET)
     expect(text).toContain('MCP 工具只有 index / search / run 三个')
     expect(text).toContain('总是带条件')
-    expect(text).toContain('没标的按 write 对待')
+    expect(text).toContain('每条命令都标了 effect')
     expect(text).toContain('bn-query')
   })
 })

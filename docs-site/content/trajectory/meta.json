@@ -29,6 +29,7 @@
     "2026-09-27-logger-skip-unfinished-line",
     "2026-09-28-logger-merged-into-baseui",
     "2026-09-28-command-success-debug-reads-unlogged",
+    "2026-09-30-command-effect-required",
     "2026-09-12-three-repos-split",
     "2026-09-13-http-door-takes-over",
     "2026-09-13-docs-ownership-split",

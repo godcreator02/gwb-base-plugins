@@ -114,13 +114,13 @@ export function registerTools(server: McpServer, handlers: ToolHandlers): void {
     'search',
     {
       description:
-        '按条件找命令与说明书，命中的命令带 usage（参数形状）与 effect（read 只读 / write 改本机 / external 影响本机以外，没标的按 write 对待）。' +
+        '按条件找命令与说明书，命中的命令带 usage（参数形状）与 effect（read 只读 / write 改本机 / external 影响本机以外；每条命令都有）。' +
         '总是带条件：不带就是全部，会超过单次返回的上限。条件之间是「并且」。',
       inputSchema: {
         plugin: z.string().optional().describe('插件包名，精确匹配，命令与说明书一起过滤'),
         prefix: z.string().optional().describe('命令名前缀，如 "skill."；只给它时说明书只返回名字与所属插件'),
         q: z.string().optional().describe('在名字、一句话介绍或用法里找子串，不分大小写'),
-        effect: z.enum(COMMAND_EFFECTS as [CommandEffect, ...CommandEffect[]]).optional().describe('只要标了这种 effect 的命令，给了就不回说明书'),
+        effect: z.enum(COMMAND_EFFECTS as [CommandEffect, ...CommandEffect[]]).optional().describe('只要 effect 是这一种的命令，给了就不回说明书'),
       },
     },
     async (raw) => handlers.search(searchQueryFrom(raw)),

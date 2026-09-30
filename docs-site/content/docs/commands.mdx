@@ -10,13 +10,13 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 ## 功能
 
 - **登记命令**：插件把一个处理函数登记成一条命令，拿回注销函数；登记方卸载时命令自动注销，不用包 `ctx.effect`。服务方法里的 `this.ctx` 是调用方的上下文，注销就登记在它的 `effect` 上——这是命令总线继承 cordis `Service` 而不是 `ctx.provide` 一个普通对象的原因（轨迹卡[命令总线改成继承 cordis Service](/trajectory/2026-09-24-commands-bus-as-service)）
-- **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错；命令记在哪个包名下由命令总线从调用方条目取，登记方写的 `plugin` 与之不同也抛错；`effect` 写了 `read` / `write` / `external` 以外的值、`hiddenFromAgents` 写了 `true` 以外的值也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
-- **命令带两个给 agent 看的标记**：`effect` 说明调它会动到什么——`read` 什么都不改（联网只读也算），`write` 改本机的文件、设置、数据或界面，`external` 影响本机以外或打扰人（推送、发到远端、发消息、弹窗或通知）；不写就是没标，agent 按 `write` 对待。`hiddenFromAgents: true` 表示只给页面调用，MCP 入口不列出、agent 调不到。两项都只原样存进命令表，命令总线自己不按它们做任何限制（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）
+- **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错，没写 `effect` 也抛错，错误文本写明三个值各是什么意思；命令记在哪个包名下由命令总线从调用方条目取，登记方写的 `plugin` 与之不同也抛错；`effect` 写了 `read` / `write` / `external` 以外的值、`hiddenFromAgents` 写了 `true` 以外的值也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
+- **命令带两个给 agent 看的标记**：`effect` 说明调它会动到什么——`read` 什么都不改（联网只读也算），`write` 改本机的文件、设置、数据或界面，`external` 影响本机以外或打扰人（推送、发到远端、发消息、弹窗或通知），必填，按参数可能做几种事的取最重的那种（`external` > `write` > `read`）。`hiddenFromAgents: true` 表示只给页面调用，MCP 入口不列出、agent 调不到。两项都只原样存进命令表，命令总线自己不按它们做任何限制（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)、[effect 改成必填](/trajectory/2026-09-30-command-effect-required)）
 - **同名命令后登记的生效**：同时写一条 warn，写明原来是哪个包、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
 - **按名字执行命令**：页面经本包 `./client` 的 `command`（通过内核请求通道交给本包处理器）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
 - **转交请求来源**：本包页面处理器带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在都回失败回执并写明原因
-- **列出全部命令**：每条带名字、一句话介绍、用法和登记方的包名，登记时写了 `effect`、`hiddenFromAgents` 的再带这两项
+- **列出全部命令**：每条带名字、一句话介绍、用法、登记方的包名和 `effect`，登记时写了 `hiddenFromAgents` 的再带这一项
 - **写日志**：登记写 info；返回失败、抛错、找不到命令写 warn；只读命令（`effect: 'read'`）执行成功不写，其余命令执行成功写 debug。内核默认不把 debug 写进 `gwb.log`，要查谁在什么时候调了哪条改东西的命令，启动时设环境变量 `GWB_DEBUG=gwb-commands`（[命令成功只记 debug，只读命令不记](/trajectory/2026-09-28-command-success-debug-reads-unlogged)）
 - **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么读、失败有哪几种、插件里怎么登记命令
 
@@ -29,7 +29,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | 服务 `ctx.gwbCommands` 的 `register(def, handler)`、`run(name, args?, context?)` | 登记一条命令、拿回注销函数；按名字执行，返回 `Promise<GwbResult>`，不抛错 | [1 命令总线](/docs/seams/bus) |
-| 服务 `ctx.gwbCommands` 的 `list()` | 全部命令的 `{ name, description, usage, plugin, effect?, hiddenFromAgents? }`，后两项没写就没有；MCP 入口的 instructions 末尾的目录、`index`、`search` 从这里取，`run` 调之前也在这里查 | [3 命令表开给 agent](/docs/seams/agent-surface) |
+| 服务 `ctx.gwbCommands` 的 `list()` | 全部命令的 `{ name, description, usage, plugin, effect, hiddenFromAgents? }`，`hiddenFromAgents` 没写就没有；MCP 入口的 instructions 末尾的目录、`index`、`search` 从这里取，`run` 调之前也在这里查 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 回执 `GwbResult` | `{ ok: true, data }` 或 `{ ok: false, error }`；处理函数自己返回带 `ok` 的对象时原样交回。类型由本包的包根与 `./client` 导出，正本 `src/result.ts` | [1 命令总线](/docs/seams/bus) |
 | 说明书 `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
@@ -48,13 +48,13 @@ export const inject = ['gwbCommands']
 
 export function apply(ctx: GwbContext) {
   ctx.gwbCommands.register(
-    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }' },
+    { name: 'mine.hello', description: '回一句话', usage: '参数 { n }', effect: 'read' },
     (args, { via }) => ({ got: args, via }),
   )
 }
 ```
 
-`description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。`effect` 按调用的实际后果标（只读的命令标 `read`，agent 就能不读 `usage` 直接调）；页面专用、agent 调了没意义或有害的命令写 `hiddenFromAgents: true`。
+`description` 与 `usage` 分开写：`description` 是一句话，出现在 MCP 入口 `index` 的清单里；`usage` 写参数形状与注意事项，只在 `search` 命中时返回，无参数的写「无参数」——空着的话 agent 分不清是没有参数还是忘了写。`effect` 必填，按调用的实际后果标（只读的命令标 `read`，agent 就能不读 `usage` 直接调）；页面专用、agent 调了没意义或有害的命令写 `hiddenFromAgents: true`。
 
 页面入口与回执正本都归本包，内核不定义或重导出命令类型。`./client` 不引用主进程入口，由页面消费方打包，不需要 importmap 单例。
 

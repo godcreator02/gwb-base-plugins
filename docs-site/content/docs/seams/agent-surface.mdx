@@ -28,7 +28,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 {/* has file="../plugins/mcp/src/inventory.ts" text="export type CommandEffect = 'read' | 'write' | 'external'" */}
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="23-75" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="23-74" */}
 
 说明书插件在或不在，由局部注入时的 effect 维护：
 
@@ -40,7 +40,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 - instructions：`instructions.md` 全文，空一行接上目录——`你连上的是 home「<home>」（gwb-mcp <版本>）`、全部说明书的名字、对 agent 开放的命令取第一个点之前的前缀去重。只给名字不给描述：按日常使用的 default home 的规模，带上每份说明书的描述要六千字符左右，超过 Claude Code 的 2048 字符截断线；描述在 `index` 里
 - `index`：home 名、MCP 插件版本、`instructions.md` 全文（不带目录）、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述让清单变得很长
-- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，只给它时说明书只回名字与包名；`q` 在命令的名字、description、usage 里找子串，在说明书的名字、description 里找；`effect` 只留标了这一种的命令，没标的不算，给了它就不回说明书；多个条件同时满足；命中的命令总带 `usage`，标了 `effect` 的再带 `effect`；不带参数返回全部，带了条件时返回里多一个 `filter` 写明这次按什么筛的
+- `search`：`plugin` 精确匹配包名，命令与说明书一起筛；`prefix` 只筛命令名，只给它时说明书只回名字与包名；`q` 在命令的名字、description、usage 里找子串，在说明书的名字、description 里找；`effect` 只留是这一种的命令，给了它就不回说明书；多个条件同时满足；命中的命令总带 `usage` 与 `effect`；不带参数返回全部，带了条件时返回里多一个 `filter` 写明这次按什么筛的
 - 标了 `hiddenFromAgents` 的命令三处都不出现
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
@@ -103,7 +103,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 **命令插件**保证：
 
-- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`，四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名；`effect` 只会是 `read` / `write` / `external` 或没有，`hiddenFromAgents` 只会是 `true` 或没有
+- `list()` 的每条都带 `name`、`plugin`、`description`、`usage`、`effect`，前四项都是非空字符串，`plugin` 是命令总线从登记方条目取的完整包名；`effect` 只会是 `read` / `write` / `external`，`hiddenFromAgents` 只会是 `true` 或没有
 - `run()` 不抛错，回执形状见[命令总线](/docs/seams/bus)
 
 **说明书插件**保证：
@@ -113,7 +113,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 **登记命令、说明书的插件**保证：
 
 - 命令的 `description` 与说明书的 description 都写成一句话（触发条件），参数形状写进 `usage`
-- 命令按调用的实际后果标 `effect`；返回可能很大的命令在 `usage` 里提供筛选或条数参数，不然 agent 经 MCP 入口永远拿不到结果
+- 命令都标 `effect`，按调用的实际后果标；返回可能很大的命令在 `usage` 里提供筛选或条数参数，不然 agent 经 MCP 入口永远拿不到结果
 - 处理函数自己返回带 `ok` 的对象时，不和标准回执的三个键混用
 
 ## 不负责的事
