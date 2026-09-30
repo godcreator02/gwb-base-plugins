@@ -7,8 +7,8 @@ import { buildInstructions, INSTRUCTIONS_CHAR_BUDGET, loadInstructions, type Com
 import { textResult } from '../src/tools.js'
 
 /**
- * 「MCP 工具只有三个」的守卫：经内存传输连一对真的 server/client，按协议往返——
- * 谁想加第四个工具，这条先失败，逼出升 major 版本的讨论。
+ * 检查「MCP 工具只有三个」：经内存传输连一对真的 server/client，按协议往返——
+ * 谁想加第四个工具，这条先失败，要先讨论升 major 版本。
  */
 
 /** 记录调用情况的替身处理函数 */
@@ -93,9 +93,9 @@ describe('MCP 工具只有三个', () => {
   })
 
   it('instructions 是每个会话的固定开销——按日常 home 的规模接上目录也不超长,「只有三个工具」「总是带条件」「effect」几句还在', () => {
-    // 规模照 2026-09-26 的 default home：33 份说明书、28 个命令前缀,名字取当天的原样
+    // 规模照 2026-09-26 的 default home：33 份说明书、28 个命令前缀
     const skillNames =
-      'eli5 matt-pocock onboard gwb-commands gwb-settings gwb-node-cli docs-site mcp gitea deepseek pdf2md gwb-plugin-manager gwb-py-cli paper-fetch docfirst docfirst-docs docs-governance parallel-by-module spec-grill trajectory gwb-shell unit-folder dsh dsh-orchestrate vscode gwb-devkit gwb-release block-note bn-comment bn-journal bn-papers bn-props bn-query'.split(' ')
+      'eli5 matt-pocock onboard gwb-commands gwb-settings gwb-node-cli docs-site mcp gitea deepseek pdf2md gwb-plugin-manager gwb-py-cli paper-fetch docs-writing collab paper-into-notes parallel-by-module spec-grill trajectory gwb-shell unit-folder dsh dsh-orchestrate vscode gwb-devkit gwb-release block-note bn-comment bn-journal bn-papers bn-props bn-query'.split(' ')
     const prefixes =
       'logger skill node-cli docs-site settings mcp gitea deepseek pdf2md py-cli plugin-manager paper-fetch docfirst cgm-alert shell theme unit-folder windows-backup dsh vscode devkit collab block-note bn-comment bn-journal bn-papers bn-props bn-query'.split(' ')
     const skills: SkillView[] = skillNames.map((name) => ({ name, description: '', plugin: '@t/p' }))
