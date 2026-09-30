@@ -44,9 +44,9 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 - 标了 `hiddenFromAgents` 的命令三处都不出现
 - 说明书的 `files` 不进任何一个工具的返回：附件路径由 SKILL.md 正文自己提到，读附件用 `skill.read {name, file}`
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="41-63" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="40-62" */}
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="192-212" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="189-209" */}
 
 **`run`**：先在 `gwbCommands.list()` 里找这条命令——不存在回 `isError` 的 `执行失败：没有这条命令：<命令名>。用 search {"q":"<关键词>"} 找名字，装卸过插件就重新调 index`，是 `hiddenFromAgents` 的回 `执行失败：命令 <命令名> 只给页面调用，不对 agent 开放`，两种都不执行、写一条 warn；再把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
 
