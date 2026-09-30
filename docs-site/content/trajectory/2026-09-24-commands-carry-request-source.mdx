@@ -2,7 +2,7 @@
 title: 命令总线把请求来源转交给处理函数
 born-at: 2026-09-24T18:00
 type: choice
-parent: [2026-09-24-commands-bus-as-service]
+parent: [2026-09-13-base-plugins]
 label: 请求来源
 domain: 命令
 ---
@@ -28,3 +28,5 @@ domain: 命令
 - 来源是调用方自己写的，别的插件也能写 `{ via: 'ui' }` 冒充界面；它只用来记录与筛选，不用来授权
 - 加的是可选参数，旧的调用方与处理函数不改也照常工作，所以只升补丁版本；内核与 MCP 插件要各自升级才会带上来源，
   升级之前处理函数收到的都是 `plugin`
+
+pivots-from:: [命令总线改成继承 cordis Service](2026-09-24-commands-bus-as-service.mdx)

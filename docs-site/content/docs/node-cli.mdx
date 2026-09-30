@@ -20,9 +20,9 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 - **启动与结束都写日志**：成功写 info，启动失败写 error，超时或非零退出写 warn 并带上 stderr 的尾部
 - **带一份说明书 `gwb-node-cli`**：给 agent 讲怎么传参数、回执怎么读、长输出去哪找
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="135-147" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="135-147" hash="f2f7e061994e" blob="0e2dc969bb66" */}
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" hash="add67b05394a" blob="0e2dc969bb66" */}
 
 ## 接口
 
@@ -46,11 +46,11 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 | 输出全量文件 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log`，路径在回执的 `spillPath`；写不了时照样给尾部，只是没有 `spillPath` | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-node-cli` | 包根 `skills/gwb-node-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-38" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-38" hash="405503cf86f1" blob="a229bb3851ae" */}
 
-{/* ref file="../plugins/node-cli/src/run.ts" lines="12-30" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="12-30" hash="c5e76e0ad61b" blob="602e71c697f9" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="export const LIST_COMMAND = 'node-cli.list'" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="17-17" hash="1b05c3194245" blob="0e2dc969bb66" */}
 
 插件自己算出 js 的绝对路径再登记：
 

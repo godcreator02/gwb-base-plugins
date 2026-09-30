@@ -1,6 +1,6 @@
 ---
 title: README（仓根正本）
-description: 仓根 README.md 由这一页生成——改这里，运行 docfirst render，一起提交
+description: 仓根 README.md 由这一页生成——改这里，运行 pnpm doc:render，一起提交
 ---
 
 # gwb-base-plugins
@@ -39,9 +39,10 @@ pnpm doc            # docfirst check：被引用的代码变了会标黄
 文档站在 `docs-site/`：
 
 ```powershell
-pnpm --filter gwb-base-plugins-docs-site dev   # http://localhost:4315
+pnpm --filter gwb-base-plugins-docs-site build
+pnpm --filter gwb-base-plugins-docs-site start   # http://127.0.0.1:4315
 ```
 
 入口页是插件之间的接缝图，每条接缝一页；每个插件一页；另有关键设计、开发、遇到过的问题。
 
-这份 README 是生成文件，正本是 `docs-site/content/outputs/readme.mdx`。
+这份 README 是生成文件，正本是 `docs-site/content/docs/outputs/readme.mdx`。

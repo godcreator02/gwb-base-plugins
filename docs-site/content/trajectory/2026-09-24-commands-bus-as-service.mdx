@@ -2,7 +2,7 @@
 title: 命令总线改成继承 cordis Service
 born-at: 2026-09-24T10:45
 type: choice
-parent: [2026-09-24-commands-back-to-base]
+parent: [2026-09-13-base-plugins]
 label: 命令总线继承 Service
 domain: 插件
 ---
@@ -31,3 +31,5 @@ domain: 插件
 - 构建产物里多了 `import { Service } from 'cordis'`，`cordis` 写 peer，构建产物检查放行 `cordis`
 - 模块不再导出 `name` 与 `apply`，改成默认导出服务类；loader 取 `default`，`cordis.yml` 里的条目不用改
 - 新增 `tests/service.test.ts`，用真实的 cordis 上下文检查卸载后自动注销与包两层 effect 的情况
+
+pivots-from:: [命令插件回到基础插件仓](2026-09-24-commands-back-to-base.mdx)

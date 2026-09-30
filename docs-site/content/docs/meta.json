@@ -13,6 +13,7 @@
     "settings",
     "data",
     "node-cli",
-    "py-cli"
+    "py-cli",
+    "outputs"
   ]
 }

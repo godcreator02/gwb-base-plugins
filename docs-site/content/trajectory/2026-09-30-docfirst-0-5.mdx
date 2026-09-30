@@ -1,0 +1,30 @@
+---
+title: 文档站从 docfirst 0.2.4 升到 0.5.2
+born-at: 2026-09-30T23:40
+type: choice
+parent: [2026-09-13-base-plugins]
+label: docfirst 0.5
+domain: 文档站
+---
+
+## 背景
+
+这个站一直停在 docfirst-workflow 0.2.4：记录存在 `.ledger.json`，六个区（现状、轨迹、交接、未来、生成正本、反馈）各有集合与路由，
+钉名字的 `has` 记号有 128 处，轨迹卡的 `parent` 写的是上一张卡。0.5 起记录写在记号自己身上、只认行段与目录树两种记号、
+`content/` 下只有 `trajectory/` 与 `future/` 两个固定名字、一个卡目录只有一张根卡。
+
+## 结论与边界
+
+- 先装 0.3.1 用它的 `migrate-ledger` 把记录簿写进记号、删掉 `.ledger.json`，再升 0.5.2；`@godcreator/docfirst-trajectory` 删掉，
+  卡的 schema、关系边插件、星轨盘都从 `@godcreator/docfirst-workflow` 的 `./fumadocs`、`./fumadocs/trajectory` 取
+- 生成正本挪进现状区 `content/docs/outputs/`；交接区只有一页导读、反馈区的两页里没有条目，三处都删掉，不另建 `future/spec/`
+- `has` 记号按原来钉的文字改成行段：钉测试名的钉整条测试，其余钉那一行
+- 轨迹卡的 `parent` 全部改成根卡；原来的父卡还没有关系行指向它的，在正文末尾补一行 `pivots-from::` 指过去，保留从哪张卡长出来的线索
+- 接线只换 docfirst 相关的部分：集合仍写在 `source.config.ts`，带侧栏的路由仍在 `(zones)` 这个路由组里，侧栏从六个根节点减成三个（带 `$id`）；
+  整页星轨盘、名册名单 `registry.ts` 与核对脚本 `scripts/verify-roster.mjs` 照新站模板加上。没有换成模板里的 fumadocs-mdx macro 写法：
+  那要连 fumadocs 版本、next 配置一起换，和这次升级无关
+- 站目录加上 `doc`、`doc:confirm`、`doc:render` 脚本，删掉 `dev`；看站只用 build 再 start
+
+## 代价与遗留
+
+- 补的那些 `pivots-from::` 只说明「从那张卡来」，不区分当时是转向还是细化

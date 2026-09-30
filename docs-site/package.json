@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "gwb-base-plugins 的文档站：件的实现取舍与撞过的墙，钉在件自己的代码上",
+  "description": "gwb-base-plugins 的文档站：插件的实现取舍与遇到过的问题，钉在插件自己的代码上",
   "scripts": {
-    "dev": "next dev -p 4315",
     "build": "next build",
-    "start": "next start -p 4315",
-    "docfirst": "docfirst"
+    "start": "next start -p 4315 -H 127.0.0.1",
+    "docfirst": "docfirst",
+    "doc": "docfirst check",
+    "doc:confirm": "docfirst confirm",
+    "doc:render": "docfirst render",
+    "verify:roster": "node scripts/verify-roster.mjs"
   },
   "dependencies": {
     "fumadocs-core": "16.15.1",
@@ -19,8 +22,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@godcreator/docfirst-trajectory": "0.1.1",
-    "@godcreator/docfirst-workflow": "0.2.4",
+    "@godcreator/docfirst-workflow": "0.5.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.2.0",

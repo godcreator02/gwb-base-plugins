@@ -2,7 +2,7 @@
 title: 命令定义改在登记时检查，plugin 改由命令总线从调用方取
 born-at: 2026-09-24T17:20
 type: choice
-parent: [2026-09-24-commands-bus-as-service]
+parent: [2026-09-13-base-plugins]
 label: 登记时查定义
 domain: 插件
 ---
@@ -34,3 +34,5 @@ repo-kit 退役，这条检查要换个地方。在测试守卫里查有两个�
 - node-cli、py-cli 必须和命令插件一起升级：旧版运行插件配新命令总线时，转登记的命令全部被拒
 - 经 node-cli / py-cli 登记、没写 `description` 的工具，原来照常登记，现在 `register` 抛错
 - 命令插件的测试多了开发依赖 `@cordisjs/plugin-loader`，版本跟着仓里的 cordis 走
+
+pivots-from:: [命令总线改成继承 cordis Service](2026-09-24-commands-bus-as-service.mdx)

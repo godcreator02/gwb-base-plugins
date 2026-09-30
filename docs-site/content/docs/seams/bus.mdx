@@ -16,7 +16,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **服务的类型**由命令插件导出（`import type { GwbCommands } from '@godcreator/gwb-commands'`），不在内核包里；回执类型 `GwbResult`（`{ ok: boolean, data?, error?: string }`）也由本包导出，正本是 `plugins/commands/src/result.ts`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="12-51" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="12-51" hash="996961a4aa6d" blob="f4cb027fdc62" */}
 
 <Diagram name="command-run" title="一条命令从调用方到处理函数、回执原路返回（分步）">
 - 三类调用方：页面调本包的 `./client`，本包请求处理器交给 `run` 并带上 `{ via: 'ui' }`；agent 调 MCP 入口的 `run` 工具，MCP 入口交给 `run` 并带上 `{ via: 'mcp' }`；别的插件直接调 `ctx.gwbCommands.run`，不带来源
@@ -27,15 +27,15 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **登记**：`register(def, handler)` 返回注销函数。服务方法里的 `this.ctx` 是调用方的上下文：包名从它 fiber 上 loader 放的条目取（见[条目身份](/docs/seams/entry-identity)），注销登记在调用方的 `effect` 上：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="66-86" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="66-86" hash="a9c16c8525ef" blob="d754efa16632" */}
 
 定义在进表之前检查：`name`、`description`、`usage` 缺一项或为空串、没写 `effect` 或写的不是 `read` / `write` / `external`、`plugin` 写了却与取到的包名不同、`hiddenFromAgents` 写了却不是 `true`，都抛错，错误文本写明哪个包、哪条命令、缺什么、该怎么写（缺 `effect` 时写明三个值各是什么意思）。`effect` 原样存下；`hiddenFromAgents` 没写就不进表里那一条：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="86-116" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="86-116" hash="c2cde227f7f3" blob="f4cb027fdc62" */}
 
 同名时后登记的生效并写 warn；注销函数先确认表里还是自己那条记录才删：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="155-164" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="155-164" hash="63b86ca3b07a" blob="f4cb027fdc62" */}
 
 <Diagram name="command-unregister" title="两个插件先后登记同名命令、再先后卸载（分步）">
 - 左边是插件 A（`@scope/a`）与插件 B（`@scope/b`），各自的 effect 上登记着注销函数；右边是命令表里 `mine.hello` 此刻指向谁，以及这一步写的日志
@@ -47,9 +47,9 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **执行**：`run(name, args?, context?)` 返回 `Promise<GwbResult>`。处理函数返回带 `ok` 键的对象就原样返回，这个对象里 `ok` 以外的字段（比如命令行运行插件回执里的 `stdout`、`exitCode`）和 `ok` 在同一层；返回别的值包成 `{ ok: true, data: 值 }`；处理函数抛错、命令不存在都回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="126-149" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="126-149" hash="5895f1ee11cf" blob="f4cb027fdc62" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="170-182" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="170-182" hash="7c63eaa0adb8" blob="f4cb027fdc62" */}
 
 **请求来源**：`run` 的第三个参数 `{ via }` 原样成为处理函数的第二个参数。`via` 只有三个值：`ui` 由本包页面请求处理器带上，`mcp` 由 MCP 入口带上，别的插件直接调时不带，处理函数收到 `plugin`。
 
@@ -57,7 +57,7 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 **命令行运行插件的登记**：两个运行插件经调用方的上下文取总线（`this.ctx.get('gwbCommands')`），所以总线认出的登记方是调用方而不是运行插件；登记方在 spec 里写的 `effect` 原样带进总线命令的定义；总线拒收时运行插件撤掉自己表里那条，把错抛给调用方：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="110-133" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-133" hash="7361b4ea343a" blob="0e2dc969bb66" */}
 
 ## 约定
 
@@ -100,10 +100,10 @@ description: 连接命令插件与所有登记、调用命令的一方；交换�
 
 登记、执行、注销的规则由 `plugins/commands/tests/registry.test.ts` 直接测命令表，取包名与跟着调用方注销由 `service.test.ts` 在真 cordis 加真 loader 上测；MCP 入口带 `{ via: 'mcp' }` 由 `plugins/mcp/tests/apply.test.ts` 经真的 MCP 协议测，页面经内核调到命令只能在隔离 home 里验证。
 
-{/* has file="../plugins/commands/tests/registry.test.ts" text="处理函数返回带 ok 的对象就原样返回，否则包成 data" */}
+{/* ref file="../plugins/commands/tests/registry.test.ts" lines="97-103" hash="f028404fccfd" blob="00e1d4e2de59" */}
 
-{/* has file="../plugins/commands/tests/service.test.ts" text="调用方卸载后，它登记的命令自动注销" */}
+{/* ref file="../plugins/commands/tests/service.test.ts" lines="200-208" hash="bd5394d97c32" blob="8ce55c6dd236" */}
 
-{/* has file="../plugins/commands/tests/registry.test.ts" text="effect 不是 read / write / external 就抛错，消息里列出能写的值" */}
+{/* ref file="../plugins/commands/tests/registry.test.ts" lines="50-54" hash="7d1ae631a4a5" blob="00e1d4e2de59" */}
 
-{/* has file="../plugins/commands/tests/registry.test.ts" text="没写 effect 就抛错，消息写明包、命令、三个值各是什么意思" */}
+{/* ref file="../plugins/commands/tests/registry.test.ts" lines="45-48" hash="b780cdb2b788" blob="00e1d4e2de59" */}

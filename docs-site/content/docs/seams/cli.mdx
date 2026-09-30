@@ -32,55 +32,55 @@ description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件�
 
 **node 那边的服务与登记参数**：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="42-53" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="42-53" hash="2ea1a2d4b5ac" blob="0e2dc969bb66" */}
 
-{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-38" */}
+{/* ref file="../plugins/node-cli/src/registry.ts" lines="10-38" hash="405503cf86f1" blob="a229bb3851ae" */}
 
 **python 那边的服务与登记参数**：`command`（`[project.scripts]` 里的入口点名）与 `module`（`python -m` 的模块名）二选一；多一个 `ensureReady`：
 
-{/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="58-77" hash="c478b759c2ff" blob="2a9461710ace" */}
 
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="10-39" */}
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="10-39" hash="f994b0ecda09" blob="bc2f18ea5b98" */}
 
 **总线参数**：登记的命令经总线调用时，参数给一个数组就是追加参数（逐项转成字符串），给 `{ args?, cwd? }` 也认，别的当成没有参数；`cwd` 原样带出、交给后面的校验：
 
-{/* ref file="../plugins/node-cli/src/invoke.ts" lines="12-24" */}
+{/* ref file="../plugins/node-cli/src/invoke.ts" lines="12-24" hash="de9d594f12fe" blob="cc40faad0aea" */}
 
 按次给的 `cwd` 必须是存在的目录的绝对路径，不合规时不启动子进程，回 `{ ok: false, error }`：
 
-{/* ref file="../plugins/node-cli/src/invoke.ts" lines="28-41" */}
+{/* ref file="../plugins/node-cli/src/invoke.ts" lines="28-41" hash="a63f7d51a8a6" blob="cc40faad0aea" */}
 
 **总线命令经调用方的上下文登记**：spec 里的 `description`、`usage`、`effect` 原样写进总线命令的定义，`effect` 的取值由命令总线检查（见[命令总线](/docs/seams/bus)）。运行插件用 `this.ctx.get('gwbCommands')` 取总线。命令总线从取它的那个上下文认登记方；经运行插件自己的上下文（`inject` 过 `gwbCommands` 的那份）取的话，总线认出的是运行插件，与写进去的调用方包名对不上，登记被拒；调用方又不一定 `inject` 了 `gwbCommands`，直接读 `ctx.gwbCommands` 会抛错，而 `get` 不查 `inject`：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="110-123" hash="20999a7d1c4c" blob="0e2dc969bb66" */}
 
 **怎么启动 node 子进程**：可执行文件一律是 `process.execPath`，也就是工作台进程的 electron.exe，所以加上 `ELECTRON_RUN_AS_NODE=1` 让它以 node 模式运行；工作目录依次取按次给的、登记时给的、`entry` 所在目录：
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="25-26" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="25-26" hash="36b09cae27d6" blob="0e2dc969bb66" */}
 
-{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="169-181" hash="add67b05394a" blob="0e2dc969bb66" */}
 
 **怎么启动 python 子进程**：每次运行前先检查 venv（`<packageRoot>/py/.venv`）；可执行文件是 venv 里 `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，工作目录缺省是 `<packageRoot>/py`，环境变量加上 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8`：
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="23-33" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="23-33" hash="567e43d80162" blob="a9b52d1d43a5" */}
 
 venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `uv sync`；uv 从 PATH 找，找不到回 `{ ready: false, reason }`：
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="107-125" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="107-125" hash="29f492218966" blob="a9b52d1d43a5" */}
 
 **回执**：退出码 0 且没超时才算 `ok`；输出只在内存里留最后 64,000 字节，超过时全量写进系统临时目录的文件，路径放在 `spillPath`——出错原因常常在被截掉的那头：
 
-{/* ref file="../plugins/node-cli/src/run.ts" lines="9-30" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="9-30" hash="d3d0a576e801" blob="602e71c697f9" */}
 
 **超时**：缺省 60 秒，上限是 Node 定时器能表示的最大值。超时后在 Windows 上用 `taskkill /T /F` 结束整个进程树，别的平台只结束直接子进程。Windows 上 `proc.kill()` 只结束直接子进程，孙进程会留下来、占住目录，父进程结束后再用 taskkill 也找不到它们，所以不先发 SIGTERM，直接整个进程树强制结束：
 
-{/* ref file="../plugins/node-cli/src/run.ts" lines="107-130" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="107-130" hash="89a6ba1ce046" blob="602e71c697f9" */}
 
 **两份相同的执行代码**：`run.ts`（启动、收输出、超时）与 `invoke.ts`（总线参数、`cwd` 校验）在两个运行插件里各有一份，除开头那一行注释外逐字相同。插件之间要共享运行时代码只能做成一个包（构建用 tsc、不打包，跨包的相对 import 发布之后就断了），两个使用方不值得单开一个包。这两份**靠约定**保持一致：约定写在两份文件开头的注释里，node 那份是正本；没有测试比较两份。MCP 插件还按 `CliRunResult` 的键名认这种回执（见[命令表开给 agent](/docs/seams/agent-surface)）。
 
-{/* has file="../plugins/node-cli/src/run.ts" text="是这份的副本，一字不差" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="7-7" hash="de49d9cb504c" blob="602e71c697f9" */}
 
-{/* has file="../plugins/py-cli/src/run.ts" text="是这份的正本，一字不差" */}
+{/* ref file="../plugins/py-cli/src/run.ts" lines="7-7" hash="9f03954a0428" blob="1a27502507df" */}
 
 ## 约定
 
@@ -129,6 +129,6 @@ venv 缺了、不是这个包根建的、装的不是登记的版本，就调 `u
 
 两个运行插件各自的 `registry.test.ts`、`invoke.test.ts`、`run.test.ts`（真进程）、`service.test.ts`（真 cordis 上下文）测登记校验、参数、启动与超时、经调用方上下文登记，python 那边的 `bootstrap.test.ts` 测 venv 检查的判断；electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv，只能在隔离 home 里验证。
 
-{/* has file="../plugins/node-cli/tests/run.test.ts" text="输出超过上限只留尾部，全量写进临时文件并给出路径" */}
+{/* ref file="../plugins/node-cli/tests/run.test.ts" lines="65-74" hash="6c62e8700f7e" blob="798492d498b0" */}
 
-{/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 没就绪、也建不起来时 run 抛错，并写 warn" */}
+{/* ref file="../plugins/py-cli/tests/service.test.ts" lines="193-213" hash="6322e340d979" blob="c1998bafae1a" */}

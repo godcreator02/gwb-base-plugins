@@ -31,11 +31,11 @@ description: 基础插件仓为什么这样划分——只放无界面的插件�
 
 内核包 `@godcreator/gwb-kernel-desktop` 的包根只导出类型，是内核对插件的契约；插件从它 `import type`：`GwbContext`、`GwbKernelApi`；`GwbResult` 从命令插件取。包根的运行时入口一加载就启动 Electron 应用，所以只能 `import type`，构建产物里不出现它。要用内核服务 `gwbKernel` 的插件（数据、设置、MCP 入口）各自在 `src/vocab.ts` 里写一份十几行的 `requireKernel`，不从别的包取运行时代码：
 
-{/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
+{/* ref file="../plugins/data/src/vocab.ts" lines="4-4" hash="651553fc9ee3" blob="0de33dfd9790" */}
 
 构建产物由 node 直接加载：MCP 插件以外的插件用 `tsc` 直接输出，MCP 插件用 esbuild 把 MCP SDK 与 zod 打包进 `dist/index.js`（类型声明仍由 `tsc` 输出）。所以有两条硬要求，都由各插件的构建产物测试检查：**相对 import 必须带 `.js`**；**构建产物里的包名 import 只能是 node 内置模块与 `cordis`**，只有继承 cordis `Service` 的插件留着 `cordis`。为什么不能用 `nodenext` 让 TypeScript 检查扩展名，见[遇到过的问题](/docs/pitfalls)。
 
-{/* ref file="../plugins/mcp/build.ts" lines="16-28" */}
+{/* ref file="../plugins/mcp/build.ts" lines="16-28" hash="604c7d9dd800" blob="d1c03d3af923" */}
 
 本仓插件的依赖这样写：
 
@@ -44,7 +44,7 @@ description: 基础插件仓为什么这样划分——只放无界面的插件�
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
 
-{/* ref file="../plugins/commands/package.json" lines="45-48" */}
+{/* ref file="../plugins/commands/package.json" lines="45-48" hash="f8d3f419cdae" blob="90da31caec7b" */}
 
 ## 插件之间只经服务和命令
 
@@ -91,9 +91,9 @@ cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；
 
 内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻都写 `^0.10.0`：
 
-{/* ref file="../plugins/mcp/package.json" lines="30-36" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-36" hash="76984e5cc8e9" blob="3e9388ae86bc" */}
 
-{/* ref file="../plugins/data/package.json" lines="27-30" */}
+{/* ref file="../plugins/data/package.json" lines="27-30" hash="f8d3f419cdae" blob="43fea79452c2" */}
 
 ## 刻意不做的事
 

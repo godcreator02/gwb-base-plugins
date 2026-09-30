@@ -23,35 +23,35 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 **服务**：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="20-31" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="20-31" hash="4f46de1f84f5" blob="f1c99ed4fc6a" */}
 
 **登记的写法**：带说明书的插件在包根放 `skills/`，从构建产物所在的 `dist/` 往上一级找到它，局部注入说明书服务后登记，注销放在局部上下文的 `effect` 里：
 
-{/* ref file="../plugins/commands/src/index.ts" lines="40-41" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="40-41" hash="ad63ef54ee4f" blob="d754efa16632" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="160-164" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="160-164" hash="87ed568be72e" blob="60b4b86caaae" */}
 
 这个目录要列进包的 `files`，否则发布出去的包里没有它——包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」：
 
-{/* ref file="../plugins/commands/package.json" lines="22-26" */}
+{/* ref file="../plugins/commands/package.json" lines="22-26" hash="17cd10117409" blob="90da31caec7b" */}
 
 **目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`：`name` 缺了用目录名；`description` 缺了照收并写 warn；折叠块（`>-`、`|`）取不到值，同样写 warn。每份收下的文件有上限：
 
-{/* ref file="../plugins/skills/src/collect.ts" lines="6-13" */}
+{/* ref file="../plugins/skills/src/collect.ts" lines="6-13" hash="9a8e2a4a2b31" blob="95333fdc150e" */}
 
 只收文本，agent 读二进制文件只会得到乱码；单个文件 512KB，再大的一份 agent 读一遍就占满上下文；往下三层、最多 64 个文件，防止误把一整棵目录树交进来。超限、读不出、缺 SKILL.md 的都写 warn，写明是哪一份。
 
 **登记**：身份取自调用方条目的包名，写进每份说明书的 `plugin`；名字已被别的包占住时这一份不登记、写 warn；注销函数只删表里仍是自己那条记录的说明书，并登记到调用方的 `effect` 上：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="95-133" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="95-133" hash="363aea043720" blob="f1c99ed4fc6a" */}
 
 **读**：`read(name, file)` 只读登记时扫到的文件清单里的路径，不做路径拼接；读不到回 `undefined`：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="139-150" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="139-150" hash="204f00be4947" blob="f1c99ed4fc6a" */}
 
 **两条命令**：`skill.list`（无参数）回 `{ count, skills }`；`skill.read`（`{ name, file? }`，`file` 缺省或空串都读 `SKILL.md`）回 `{ name, file, text }`，读不到回 `{ ok: false, error }`，不区分「没这份说明书」与「没这个文件」；两条都标 `effect: 'read'`：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="57-83" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="57-83" hash="cb673f31f051" blob="f1c99ed4fc6a" */}
 
 ## 约定
 
@@ -83,6 +83,6 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 `plugins/skills/tests/collect.test.ts` 在临时目录里测扫描与 frontmatter，`service.test.ts` 在真 cordis 上下文里测身份、同名先登记的保留、注销、只读清单里的文件与两条命令；loader 真的把调用方的包名放在 fiber 上，只能在隔离 home 里验证。
 
-{/* has file="../plugins/skills/tests/service.test.ts" text="同名说明书先到先得：后来的那份不收并写 warn" */}
+{/* ref file="../plugins/skills/tests/service.test.ts" lines="142-150" hash="8ad750e379fb" blob="eaaa4dc2f102" */}
 
-{/* has file="../plugins/skills/tests/collect.test.ts" text="缺 description 照样收,但必须报一句——静默丢了 agent 就永远不读它" */}
+{/* ref file="../plugins/skills/tests/collect.test.ts" lines="89-95" hash="9825c62f844d" blob="3e0cb92c24a5" */}

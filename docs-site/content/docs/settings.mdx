@@ -24,9 +24,9 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 - **条目没写 id 时提醒**：声明时发现条目 id 是 loader 生成的随机串，写一条 warn
 - **带一份说明书 `gwb-settings`**：给 agent 讲四条命令的参数、分区是什么、secret 项怎么取值
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" hash="aea5ba430ddb" blob="1e814c5ab1d9" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="103-113" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="103-113" hash="c86edfc2eba9" blob="60b4b86caaae" */}
 
 ## 接口
 
@@ -51,13 +51,13 @@ description: gwb-settings 让插件声明自己的设置项，值写在 <home>/s
 
 服务与声明的类型由本包导出（`GwbSettingsApi`、`SettingDef` 等，`import type {} from '@godcreator/gwb-settings'` 让 `ctx.gwbSettings` 有类型）；`type` 有五种，只用来给界面挑控件：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="42-56" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="42-56" hash="c0041d2db773" blob="60b4b86caaae" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="cf8e7494038a" blob="1e814c5ab1d9" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="export const ALL_COMMAND = 'settings.all'" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="37-37" hash="c017557656be" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/paths.ts" text="export const OWNERS_KEY = '$owners'" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="9-9" hash="ba1e488b6f1d" blob="fa8c33f0a6bd" */}
 
 声明一项：
 

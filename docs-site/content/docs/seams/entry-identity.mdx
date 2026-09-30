@@ -23,21 +23,21 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 **身份从哪取**：这些插件都继承 cordis 的 `Service`，方法里 `this.ctx` 是调用方的上下文，`this.ctx.fiber.entry` 就是调用方在 `cordis.yml` 里的那条条目。调用方在 `ctx.inject`、`ctx.plugin` 里建的子上下文也带着同一个条目：loader 给每个新 fiber 放条目时，从父上下文顺着原型链读条目记号，读到的就是外层插件那条，所以不用沿 `fiber.parent` 往上找。`entry` 是 loader 放上去的，不在 cordis 的类型里，按运行时的形状取：
 
-{/* ref file="../plugins/data/src/index.ts" lines="46-56" */}
+{/* ref file="../plugins/data/src/index.ts" lines="46-56" hash="f0a0b1396a50" blob="cc9bc17278e7" */}
 
 设置插件的写法相同：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="166-176" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="166-176" hash="bfd644c59e2b" blob="60b4b86caaae" */}
 
 说明书插件、命令插件与两个命令行运行插件只取包名：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="85-93" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="85-93" hash="96714ed3245c" blob="f1c99ed4fc6a" */}
 
-{/* ref file="../plugins/commands/src/index.ts" lines="66-77" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="66-77" hash="7a9c0577708d" blob="d754efa16632" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="ctx.gwbNodeCli 只能在经 cordis.yml 加载的插件里用" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="105-105" hash="83b58f734757" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/py-cli/src/index.ts" text="ctx.gwbPyCli 只能在经 cordis.yml 加载的插件里用" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="159-159" hash="393b4d36df39" blob="2a9461710ace" */}
 
 | 字段 | 例子 | 谁用 |
 | --- | --- | --- |
@@ -48,19 +48,19 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 **条目 id → 目录名 / 分区名**：只取末段；超过两段抛错（嵌套分组之后不同分组下的同名末段会算成同一个名字）；每一段都要 kebab-case，字符集里没有点号，`.` 与 `..` 进不来。冒号不进名字——它在 Windows 上是保留字符，`home` 那段又是内核的常量。数据插件的版本：
 
-{/* ref file="../plugins/data/src/paths.ts" lines="26-50" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="26-50" hash="db726e09858d" blob="8c9afd1a7ef1" */}
 
 设置插件的版本：
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="42-66" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="42-66" hash="55a26433cfd5" blob="fa8c33f0a6bd" */}
 
 这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则相同，两处注释互相指着对方。十几行纯逻辑不值得为它开一个共享包；代价是改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，两边的归属记录也记在不同的名字下（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
 
 **随机 id**：条目没在 `cordis.yml` 里写 `id` 时，loader 给一个 8 位十六进制的随机 id，每次启动都变。两个插件各有一份相同的 `looksRandom`，认出来只写 warn——条目本来能正常运行，不抛错；手写一个正好 8 位十六进制的 id 会多一条 warn：
 
-{/* has file="../plugins/data/src/paths.ts" text="const RANDOM_ID = /^[0-9a-f]{8}$/" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="9-9" hash="cfcbd83d0878" blob="8c9afd1a7ef1" */}
 
-{/* has file="../plugins/settings/src/paths.ts" text="const RANDOM_ID = /^[0-9a-f]{8}$/" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="17-17" hash="cfcbd83d0878" blob="fa8c33f0a6bd" */}
 
 ## 约定
 
@@ -91,6 +91,6 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 两份算法各由 `plugins/data/tests/paths.test.ts`、`plugins/settings/tests/paths.test.ts` 按同一套规则测，没有测试把两份放在一起比；命令插件的 `service.test.ts` 用真 loader 证明嵌套上下文里取到的是外层条目的包名，其余插件的测试由调用方自己往 fiber 上放 `entry`。
 
-{/* has file="../plugins/commands/tests/service.test.ts" text="在 ctx.plugin 装的子插件里登记也取得到调用方的包名，再套一层 inject 也一样" */}
+{/* ref file="../plugins/commands/tests/service.test.ts" lines="141-158" hash="220471389d98" blob="8ce55c6dd236" */}
 
-{/* has file="../plugins/settings/tests/paths.test.ts" text="超过两段当场抛——group 嵌套之后同名末段会撞进同一个分区" */}
+{/* ref file="../plugins/settings/tests/paths.test.ts" lines="54-56" hash="e275b23e2ae5" blob="5ad294737a81" */}

@@ -23,9 +23,9 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 - **时限、输出截断、同名处理、日志**：和 node 命令行运行插件一样；工作目录缺省是 `<包根>/py`
 - **带一份说明书 `gwb-py-cli`**：给 agent 讲第一次运行为什么慢、venv 怎么重建、回执与 node 的异同
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="61-72" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="61-72" hash="30a2bf6638af" blob="a9b52d1d43a5" */}
 
-{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="138-167" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="138-167" hash="184885785b14" blob="a9b52d1d43a5" */}
 
 ## 接口
 
@@ -47,11 +47,11 @@ description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登
 | venv 目录 `<包根>/py/.venv` 与其中的 `.gwb-built-for` | venv 建成后把包根写进 `.gwb-built-for`；记号缺失或指着别的包根，就当 venv 不是这里的、重建 | [9 命令行工具](/docs/seams/cli) |
 | 说明书 `gwb-py-cli` | 包根 `skills/gwb-py-cli/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/py-cli/src/registry.ts" lines="10-39" */}
+{/* ref file="../plugins/py-cli/src/registry.ts" lines="10-39" hash="f994b0ecda09" blob="bc2f18ea5b98" */}
 
-{/* has file="../plugins/py-cli/src/index.ts" text="export const LIST_COMMAND = 'py-cli.list'" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="20-20" hash="918d2bc32571" blob="2a9461710ace" */}
 
-{/* has file="../plugins/py-cli/src/bootstrap.ts" text="export const STAMP_NAME = '.gwb-built-for'" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="11-11" hash="3c30d65392e6" blob="a9b52d1d43a5" */}
 
 `command: 'x'` 运行 `<venv>/Scripts/x.exe`（`[project.scripts]` 生成的入口程序），`module: 'x.cli'` 运行 `<venv>/Scripts/python.exe -m x.cli`。
 

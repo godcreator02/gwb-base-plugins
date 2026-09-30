@@ -17,9 +17,9 @@ description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目�
 - **条目没写 id 时提醒**：条目 id 是 loader 生成的 8 位随机十六进制时，写一条 warn（这种 id 每次启动都变，数据每次启动都会新建一份），每条条目只写一次
 - **名字写错当场报错**：文档名与条目 id 的每一段都必须是 kebab-case，条目 id 超过两段抛错
 
-{/* ref file="../plugins/data/src/index.ts" lines="58-76" */}
+{/* ref file="../plugins/data/src/index.ts" lines="58-76" hash="48eff9e90087" blob="cc9bc17278e7" */}
 
-{/* ref file="../plugins/data/src/store.ts" lines="56-62" */}
+{/* ref file="../plugins/data/src/store.ts" lines="56-62" hash="29e7a75737d2" blob="825d68ce27e0" */}
 
 ## 接口
 
@@ -41,7 +41,7 @@ description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目�
 
 服务的类型由本包导出（`GwbDataApi`，`import type {} from '@godcreator/gwb-data'` 让 `ctx.gwbData` 有类型）：
 
-{/* ref file="../plugins/data/src/index.ts" lines="16-28" */}
+{/* ref file="../plugins/data/src/index.ts" lines="16-28" hash="c87d3e6cc3f6" blob="cc9bc17278e7" */}
 
 用它的插件写 `export const inject = ['gwbData']`，之后：
 

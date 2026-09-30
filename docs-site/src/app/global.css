@@ -8,6 +8,15 @@ html {
   scrollbar-gutter: stable;
 }
 
+.note {
+  border: 1px solid rgba(86, 182, 232, 0.4);
+  border-left: 3px solid rgba(86, 182, 232, 0.7);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 18px 0;
+  font-size: 14px;
+}
+
 /* 示意图（Diagram 组件）：两种强调色区分两组东西，深浅主题各一套 */
 :root {
   --diagram-a: hsl(210, 80%, 45%);

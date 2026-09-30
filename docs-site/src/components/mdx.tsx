@@ -1,23 +1,34 @@
 /**
- * MDX 组件的 React 表。docfirst.config.mjs 声明生成 markdown 时每个组件变成什么文字，这里给站上渲染用的组件。
- * 先用 fumadocs 的默认组件，再加上文件树与示意图，最后把 pre 换成格式包里会显示引用状态的那个。
+ * 名册里给人看的那一半：docfirst.config.mjs 里声明机读规则表，这里给 React 表。
+ * 表的类型由 registry.ts 的名单限定：少一个编译不过，多一个也编译不过。
+ * 跟机读规则表是否一致，由 scripts/verify-roster.mjs 两边核对。
+ * 先放 fumadocs 的默认表，再把 pre 换成 @godcreator/docfirst-workflow/fumadocs/pre 里会画状态点的 DocfirstPre。
  */
 import defaultMdxComponents from 'fumadocs-ui/mdx'
 import { File, Files, Folder } from 'fumadocs-ui/components/files'
 import type { MDXComponents } from 'mdx/types'
+import type { ReactNode } from 'react'
 import { DocfirstPre } from '@godcreator/docfirst-workflow/fumadocs/pre'
 import { Diagram } from './diagram'
+import type { ComponentName } from './registry'
 
-type Loose = MDXComponents[string]
+export function Note({ children }: { children?: ReactNode }) {
+  return <div className="note">{children}</div>
+}
 
-export function getMDXComponents(components: MDXComponents = {}): MDXComponents {
+const table: Record<ComponentName, MDXComponents[string]> = {
+  Note,
+  Files: Files as MDXComponents[string],
+  Folder: Folder as MDXComponents[string],
+  File: File as MDXComponents[string],
+  Diagram: Diagram as MDXComponents[string],
+}
+
+export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
     ...components,
-    Files: Files as Loose,
-    Folder: Folder as Loose,
-    File: File as Loose,
-    Diagram: Diagram as Loose,
+    ...table,
     pre: DocfirstPre as unknown as NonNullable<MDXComponents['pre']>,
   }
 }

@@ -1,33 +1,26 @@
 /**
- * 六区合一棵侧栏树：每区一个 `root: true` 的根节（侧栏分区），URL 仍是六个基座
- * （/docs、/trajectory、/spec、/future、/outputs、/feedback，路由各走各的 loader）。
- * base-ui 版的 Root 只有单槽 fallback，多树切换不稳，根节分区是正路。
- * 区内的顺序由各区 content/<区>/meta.json 定；content 下任何子目录 meta.json
- * 都不许带 `root: true`——侧栏根切换只认这里这六个根。
+ * 三个区合成一棵侧栏树：每个区一个 `root: true` 的根节点（侧栏分区），URL 仍按区分前缀，路由各用各的 loader。
+ * base-ui 版的 Root 只有一个 fallback 槽，多棵树切换不稳定，所以用根节点分区。
+ * 区内的顺序由各区 content/<区>/meta.json 定；content 下任何子目录的 meta.json 都不许带 `root: true`。
  */
-import { source, sourceFeedback, sourceFuture, sourceOutputs, sourceSpec, sourceTrajectory } from './source'
+import { source, sourceFuture, sourceTrajectory } from './source'
 import type { Node, Root } from 'fumadocs-core/page-tree'
 
-function zone(name: string, root: Root): Node {
-  return {
-    type: 'folder',
-    name,
-    root: true,
-    defaultOpen: true,
-    children: root.children,
-  }
+/**
+ * 每个区必须带唯一的 $id：fumadocs 给侧栏的区切换下拉找「这个根节点对应哪个选项」时，除了比对象本身还比 $id，
+ * 都没有 $id 的话 undefined === undefined 成立，三个区都会对上第一个选项
+ */
+function zone(id: string, name: string, root: Root): Node {
+  return { $id: `zone:${id}`, type: 'folder', name, root: true, defaultOpen: true, children: root.children }
 }
 
 export function zoneTree(): Root {
   return {
     name: 'gwb-base-plugins',
     children: [
-      zone('现状', source.getPageTree()),
-      zone('轨迹', sourceTrajectory.getPageTree()),
-      zone('交接', sourceSpec.getPageTree()),
-      zone('未来', sourceFuture.getPageTree()),
-      zone('生成正本', sourceOutputs.getPageTree()),
-      zone('反馈', sourceFeedback.getPageTree()),
+      zone('docs', '现状', source.getPageTree()),
+      zone('trajectory', '轨迹', sourceTrajectory.getPageTree()),
+      zone('future', '未来', sourceFuture.getPageTree()),
     ],
   }
 }

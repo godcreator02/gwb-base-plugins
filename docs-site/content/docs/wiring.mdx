@@ -14,9 +14,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 - **本仓别的插件写 peer** `workspace:^`（`devkit.release` 发版时换成 `^<版本号>`），只局部注入的在 `peerDependenciesMeta` 标 `optional`；代码只 `import type` 它们，构建产物里没有它们
 - **loader 放在 fiber 上的条目** `fiber.entry`（`id`、`options.name`）不在 cordis 的类型里，提供服务的插件按运行时形状取，用它认出调用方是哪条条目、哪个包。细节见[条目身份](/docs/seams/entry-identity)
 
-{/* has file="../plugins/data/src/vocab.ts" text="export function requireKernel(ctx: Pick<GwbContext, 'gwbKernel'>): GwbKernelApi {" */}
+{/* ref file="../plugins/data/src/vocab.ts" lines="4-4" hash="651553fc9ee3" blob="0de33dfd9790" */}
 
-{/* has file="../plugins/data/package.json" text="&quot;@godcreator/gwb-kernel-desktop&quot;: &quot;^0.10.0&quot;" */}
+{/* ref file="../plugins/data/package.json" lines="28-28" hash="5c8ad9cb296d" blob="43fea79452c2" */}
 
 ## @godcreator/gwb-commands
 
@@ -29,7 +29,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `gwb-commands` | 包根 `skills/gwb-commands/`，交给说明书插件登记 |
 | 事件 | 无 | |
 
-{/* has file="../plugins/commands/src/index.ts" text="super(ctx, 'gwbCommands')" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="48-48" hash="fd0a9cb16d6f" blob="d754efa16632" */}
 
 ### 注入
 
@@ -39,9 +39,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 说明书插件反过来依赖命令插件，这边再写 peer，工作区里就有了依赖环，pnpm 12 的 `pnpm -r` 遇到依赖环直接报错退出（轨迹卡[拆掉 commands ↔ skills 的包依赖环](/trajectory/2026-09-17-break-commands-skills-cycle)）。代价是 `register` 的签名两边各写一份，说明书插件改了签名，这边的类型检查发现不了。
 
-{/* has file="../plugins/commands/src/index.ts" text="this.ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="60-60" hash="aed85aebe511" blob="d754efa16632" */}
 
-{/* has file="../plugins/commands/src/index.ts" text="interface SkillDirectoryRegistrar {" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="34-34" hash="867546d7b9b3" blob="d754efa16632" */}
 
 ### 按名字调用与约定通道
 
@@ -53,11 +53,11 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 **内核那一条没有类型检查连起来**：内核不 import 本包，它在自己的 `apps/desktop/src/main.ts` 里私下给 `ctx.gwbCommands` 声明了一份只含 `run` 的类型，按服务名直接读。本包改了服务名 `gwbCommands`、`run` 的参数顺序或请求来源 `via` 的取值，内核照样编译通过，页面调命令时才出错。本仓这一侧的签名与来源取值：
 
-{/* has file="../plugins/commands/src/registry.ts" text="run(name: string, args?: unknown, context?: GwbCommandContext): Promise<GwbResult>" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="50-50" hash="db929af88097" blob="f4cb027fdc62" */}
 
-{/* has file="../plugins/commands/src/registry.ts" text="export type GwbRequestSource = 'ui' | 'mcp' | 'plugin'" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="32-32" hash="5df118691565" blob="f4cb027fdc62" */}
 
-{/* has file="../plugins/commands/src/index.ts" text="const packageName = fiber.entry?.options?.name" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="72-72" hash="132c3f462054" blob="d754efa16632" */}
 
 ## @godcreator/gwb-data
 
@@ -70,7 +70,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 事件 | 无 | |
 | 磁盘目录 | `<home>/data/<条目 id 末段>/` | 每条条目一个；文档是其中的 `<文档名>.json`，归属记在 `.owner.json` |
 
-{/* has file="../plugins/data/src/index.ts" text="super(ctx, 'gwbData')" */}
+{/* ref file="../plugins/data/src/index.ts" lines="40-40" hash="15659140af57" blob="cc9bc17278e7" */}
 
 ### 注入
 
@@ -78,7 +78,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | --- | --- | --- | --- | --- | --- |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出 `<home>/data` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
-{/* has file="../plugins/data/src/index.ts" text="this.homeDir = requireKernel(ctx).dataDir" */}
+{/* ref file="../plugins/data/src/index.ts" lines="41-41" hash="c136a66b31a6" blob="cc9bc17278e7" */}
 
 ### 按名字调用与约定通道
 
@@ -89,13 +89,13 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 磁盘文件 | 手工处理归属的人 | `.owner.json`（`{ "pkg": "<包名>" }`） | 包名对不上时报错写明目录，由人改名、删掉或改里面的包名 |
 | 同一套算法的另一份 | gwb-settings 的 `entrySection` | `entryDirName` | 条目 id 转目录名；两份必须给出同一个答案，改一处要改另一处 |
 
-{/* has file="../plugins/data/src/index.ts" text="entry?: { id?: unknown; options?: { name?: unknown } }" */}
+{/* ref file="../plugins/data/src/index.ts" lines="48-48" hash="401706f1b352" blob="cc9bc17278e7" */}
 
-{/* has file="../plugins/data/src/paths.ts" text="return path.join(dataDir, 'data')" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="58-58" hash="3e5e56b13cdf" blob="8c9afd1a7ef1" */}
 
-{/* has file="../plugins/data/src/paths.ts" text="与 gwb-settings 的 `entrySection` 是同一套算法的两份" */}
+{/* ref file="../plugins/data/src/paths.ts" lines="44-44" hash="0a3d161baf85" blob="8c9afd1a7ef1" */}
 
-{/* has file="../plugins/data/src/owner.ts" text="export const OWNER_FILE = '.owner.json'" */}
+{/* ref file="../plugins/data/src/owner.ts" lines="6-6" hash="71d9de91d7be" blob="35b771a926f0" */}
 
 ## @godcreator/gwb-mcp
 
@@ -111,15 +111,15 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `mcp` | 包根 `skills/mcp/` |
 | 事件 | 无 | |
 
-{/* has file="../plugins/mcp/src/index.ts" text="server.listen(port, '127.0.0.1', () => {" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="340-340" hash="4fd5e3cb14f8" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.info'," */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="409-409" hash="112b0a57db65" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.token'," */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="430-430" hash="3bf60d28cbd2" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="name: 'mcp.client'," */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="470-470" hash="f5d0b1b18826" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="const PORT_KEY = 'port'" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="56-56" hash="c21f7788ec5d" blob="22353857ab33" */}
 
 ### 注入
 
@@ -131,19 +131,19 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbNodeCli` | `@godcreator/gwb-node-cli` | 局部注入 | `workspace:^`，标 `optional` | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 
-{/* has file="../plugins/mcp/src/index.ts" text="export const inject = ['gwbCommands', 'gwbSettings']" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="45-45" hash="64c548c04fe0" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="202-202" hash="aac8a93ae71a" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="ctx.inject(['gwbNodeCli'], (contextWithNodeCli: Context) => {" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="468-468" hash="a231dc65db0f" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="ctx.gwbSettings.define({" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="170-170" hash="bc14cade2cca" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="const home = homeNameOf(requireKernel(ctx).dataDir)" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="488-488" hash="ed9811971c1a" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/package.json" text="&quot;@godcreator/gwb-settings&quot;: &quot;workspace:^&quot;" */}
+{/* ref file="../plugins/mcp/package.json" lines="34-34" hash="d63cedfbc3d3" blob="3e9388ae86bc" */}
 
-{/* has file="../plugins/mcp/package.json" text="&quot;@godcreator/gwb-node-cli&quot;: {" */}
+{/* ref file="../plugins/mcp/package.json" lines="38-38" hash="a28d3b1d2565" blob="3e9388ae86bc" */}
 
 ### 按名字调用与约定通道
 
@@ -158,33 +158,33 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 照内核规则另写的 home 路径 | 内核 | `bin/client.mjs` 里的 `<APPDATA>/gwb-kernel/homes/<home>` | 命令行客户端缺省去读 default home 的凭据文件，路径照内核的规则另写一份；内核改了规则，这里读不到 token、请求收到 401 |
 | 环境变量 | `mcp.client` 的调用方 | `GWB_MCP_URL`、`GWB_MCP_TOKEN` | 命令行客户端的入口地址与 token，优先级低于 `--url`、`--token` |
 
-{/* has file="../plugins/mcp/src/index.ts" text="const result = await commandBus.run(command, coerceArgs(rawArgs), { via: 'mcp' })" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="280-280" hash="67d4d671e46a" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="读说明书是 run skill.read" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="8-8" hash="32d99f0ad42b" blob="8fb0b8ec4002" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="plugin-manager.update" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
 
-{/* has file="../plugins/mcp/instructions.md" text="再调 shell.reload" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
 
-{/* has file="../plugins/mcp/src/inventory.ts" text="装了哪些插件问 plugin-manager.list" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="16-16" hash="f8442195a0f7" blob="f020b75c2b13" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="474-474" hash="95921038316f" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/tools.ts" text="'stdout' in value && 'exitCode' in value" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="69-69" hash="9ef9805f8bdc" blob="b881ae1796a2" */}
 
-{/* has file="../plugins/mcp/src/runtime.ts" text="export const RUNTIME_FILE = 'runtime.json'" */}
+{/* ref file="../plugins/mcp/src/runtime.ts" lines="8-8" hash="87c262b284e0" blob="5e93263b1024" */}
 
-{/* has file="../plugins/mcp/src/index.ts" text="writeRuntimeMcp(requireKernel(ctx).dataDir, { port, url: endpointUrl(port) })" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="368-368" hash="bf324ece4e84" blob="22353857ab33" */}
 
-{/* has file="../plugins/mcp/src/auth.ts" text="export const SECRET_DIR = 'mcp'" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="9-9" hash="4455435854ed" blob="0e1ae6b5535b" */}
 
-{/* has file="../plugins/mcp/src/auth.ts" text="export const SECRET_FILE = 'secret.json'" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="11-11" hash="cf2d89f7023d" blob="0e1ae6b5535b" */}
 
-{/* has file="../plugins/mcp/bin/client.mjs" text="path.join(roaming, 'gwb-kernel', 'homes', home, 'mcp', 'secret.json')" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="45-45" hash="ec22e792a080" blob="99034c89f758" */}
 
-{/* has file="../plugins/mcp/bin/client.mjs" text="let url = process.env.GWB_MCP_URL ?? DEFAULT_URL" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="76-76" hash="f1b1ad49fa4f" blob="99034c89f758" */}
 
-{/* has file="../plugins/mcp/bin/client.mjs" text="process.env.GWB_MCP_TOKEN !== undefined" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="79-79" hash="3a51075e0cea" blob="99034c89f758" */}
 
 ## @godcreator/gwb-node-cli
 
@@ -199,9 +199,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `gwb-node-cli` | 包根 `skills/gwb-node-cli/` |
 | 事件 | 无 | |
 
-{/* has file="../plugins/node-cli/src/index.ts" text="super(ctx, 'gwbNodeCli')" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="67-67" hash="6bcaa9cd8266" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="export const LIST_COMMAND = 'node-cli.list'" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="17-17" hash="1b05c3194245" blob="0e2dc969bb66" */}
 
 ### 注入
 
@@ -210,11 +210,11 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `node-cli.list`；把登记的工具替登记方登记成命令 | 服务 `gwbNodeCli` 不提供，插件一直等待 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
 
-{/* has file="../plugins/node-cli/src/index.ts" text="static inject = ['gwbCommands']" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="56-56" hash="a929b23854d9" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="95-95" hash="f5c4d2e215b9" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/package.json" text="&quot;@godcreator/gwb-skills&quot;: {" */}
+{/* ref file="../plugins/node-cli/package.json" lines="35-35" hash="7432c01dd675" blob="772983ba2833" */}
 
 ### 按名字调用与约定通道
 
@@ -227,15 +227,15 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 磁盘文件 | 调用方 | 系统临时目录下的 `gwb-cli-out-<随机串>.log`、`gwb-cli-err-<随机串>.log` | 输出超过 64,000 字节时写全量，路径在回执的 `spillPath` |
 | 同一份代码的副本 | gwb-py-cli | `src/run.ts`、`src/invoke.ts` | 两边除开头一行注释外逐字相同，本包这份是正本 |
 
-{/* has file="../plugins/node-cli/src/index.ts" text="const commandBusSeenByCaller = this.ctx.get('gwbCommands')" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="115-115" hash="5dcb545e108a" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="const ELECTRON_AS_NODE = { ELECTRON_RUN_AS_NODE: '1' }" */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="26-26" hash="a7e464d4f9f1" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/src/index.ts" text="command: process.execPath," */}
+{/* ref file="../plugins/node-cli/src/index.ts" lines="172-172" hash="0ae010f06b78" blob="0e2dc969bb66" */}
 
-{/* has file="../plugins/node-cli/src/run.ts" text="spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="121-121" hash="d539626e5277" blob="602e71c697f9" */}
 
-{/* has file="../plugins/node-cli/src/run.ts" text="path.join(os.tmpdir(), `gwb-cli-" */}
+{/* ref file="../plugins/node-cli/src/run.ts" lines="80-80" hash="01e666d2afa9" blob="602e71c697f9" */}
 
 ## @godcreator/gwb-py-cli
 
@@ -250,9 +250,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `gwb-py-cli` | 包根 `skills/gwb-py-cli/` |
 | 事件 | 无 | |
 
-{/* has file="../plugins/py-cli/src/index.ts" text="super(ctx, 'gwbPyCli')" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="93-93" hash="0ae8403a56ae" blob="2a9461710ace" */}
 
-{/* has file="../plugins/py-cli/src/index.ts" text="export const LIST_COMMAND = 'py-cli.list'" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="20-20" hash="918d2bc32571" blob="2a9461710ace" */}
 
 ### 注入
 
@@ -261,11 +261,11 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `py-cli.list`；把登记的工具替登记方登记成命令 | 服务 `gwbPyCli` 不提供，插件一直等待 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，运行插件照常加载 |
 
-{/* has file="../plugins/py-cli/src/index.ts" text="static inject = ['gwbCommands']" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="80-80" hash="a929b23854d9" blob="2a9461710ace" */}
 
-{/* has file="../plugins/py-cli/src/index.ts" text="this.providerContext.inject(['gwbSkills'], (contextWithSkills) => {" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="121-121" hash="f5c4d2e215b9" blob="2a9461710ace" */}
 
-{/* has file="../plugins/py-cli/package.json" text="&quot;@godcreator/gwb-skills&quot;: {" */}
+{/* ref file="../plugins/py-cli/package.json" lines="35-35" hash="7432c01dd675" blob="028563ca161b" */}
 
 ### 按名字调用与约定通道
 
@@ -278,17 +278,17 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 子进程 | venv 里的程序 | `Scripts/<command>.exe` 或 `Scripts/python.exe -m <module>`，环境变量 `PYTHONUTF8=1`、`PYTHONIOENCODING=utf-8` | 运行登记的工具，中文输出不乱码 |
 | 子进程、磁盘文件 | Windows 的 `taskkill`、系统临时目录 | 与 node 命令行运行插件相同 | `src/run.ts` 是那边的副本 |
 
-{/* has file="../plugins/py-cli/src/index.ts" text="const commandBusSeenByCaller = this.ctx.get('gwbCommands')" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="169-169" hash="5dcb545e108a" blob="2a9461710ace" */}
 
-{/* has file="../plugins/py-cli/src/bootstrap.ts" text="const projectDir = path.join(packageRoot, 'py')" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="24-24" hash="ea7045edb526" blob="a9b52d1d43a5" */}
 
-{/* has file="../plugins/py-cli/src/bootstrap.ts" text="const venvDir = path.join(projectDir, '.venv')" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="25-25" hash="68936ae01056" blob="a9b52d1d43a5" */}
 
-{/* has file="../plugins/py-cli/src/bootstrap.ts" text="export const STAMP_NAME = '.gwb-built-for'" */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="11-11" hash="3c30d65392e6" blob="a9b52d1d43a5" */}
 
-{/* has file="../plugins/py-cli/src/bootstrap.ts" text="args: ['sync', '--frozen', '--no-dev', '--inexact', '--project', paths.projectDir]," */}
+{/* ref file="../plugins/py-cli/src/bootstrap.ts" lines="111-111" hash="b3d24b1f6e22" blob="a9b52d1d43a5" */}
 
-{/* has file="../plugins/py-cli/src/index.ts" text="const PY_ENV = { PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' }" */}
+{/* ref file="../plugins/py-cli/src/index.ts" lines="29-29" hash="0282d6b10880" blob="2a9461710ace" */}
 
 ## @godcreator/gwb-settings
 
@@ -302,15 +302,15 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `gwb-settings` | 包根 `skills/gwb-settings/` |
 | 事件 | 无 | |
 
-{/* has file="../plugins/settings/src/index.ts" text="super(ctx, 'gwbSettings')" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="104-104" hash="a6a99e330b2c" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="export const ALL_COMMAND = 'settings.all'" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="37-37" hash="c017557656be" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="export const GET_COMMAND = 'settings.get'" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="38-38" hash="24286dde7edf" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="export const SET_COMMAND = 'settings.set'" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="39-39" hash="cddf7086965c" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="export const DELETE_COMMAND = 'settings.delete'" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="40-40" hash="c01f98809a7e" blob="60b4b86caaae" */}
 
 ### 注入
 
@@ -320,13 +320,13 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
-{/* has file="../plugins/settings/src/index.ts" text="this.ctx.inject(['gwbCommands'], (contextWithCommands) => {" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="124-124" hash="2bd78485cc1b" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="this.ctx.inject(['gwbSkills'], (contextWithSkills) => {" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="161-161" hash="aed85aebe511" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/package.json" text="&quot;@godcreator/gwb-commands&quot;: {" */}
+{/* ref file="../plugins/settings/package.json" lines="35-35" hash="2546cd7382e6" blob="46c93f1ea68b" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="this.settingsFile = homeFile(requireKernel(ctx).dataDir)" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="108-108" hash="f25e479f27e8" blob="60b4b86caaae" */}
 
 ### 按名字调用与约定通道
 
@@ -339,15 +339,15 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 **四条命令就是设置的权限边界**：命令按 `{ section, key }` 定位、不认调用方身份，这是有意的——页面不是插件，没有条目身份可取，设置界面要能改所有插件的设置。所以拿得到命令总线的一方（任何插件、页面、带着 token 的 agent）能读写全部设置，`settings.get` 对 secret 项也回明文；服务那一侧按调用方身份分区，只防插件写错，不防别的插件有意去读。
 
-{/* has file="../plugins/settings/src/index.ts" text="命令按位置定位，不看调用方身份：页面不是插件，没有身份可取" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="63-63" hash="dfe38b9fe841" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/index.ts" text="entry?: { id?: unknown; options?: { name?: unknown } }" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="168-168" hash="401706f1b352" blob="60b4b86caaae" */}
 
-{/* has file="../plugins/settings/src/paths.ts" text="const HOME_FILE = 'settings.json'" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="11-11" hash="e5b24ce07055" blob="fa8c33f0a6bd" */}
 
-{/* has file="../plugins/settings/src/paths.ts" text="export const SHARED_SECTION = '*'" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="6-6" hash="15ca1d217a82" blob="fa8c33f0a6bd" */}
 
-{/* has file="../plugins/settings/src/paths.ts" text="export const OWNERS_KEY = '$owners'" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="9-9" hash="ba1e488b6f1d" blob="fa8c33f0a6bd" */}
 
 ## @godcreator/gwb-skills
 
@@ -360,11 +360,11 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | 无 | 包根没有 `skills/` |
 | 事件 | 无 | |
 
-{/* has file="../plugins/skills/src/index.ts" text="super(ctx, 'gwbSkills')" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="44-44" hash="3ca433772e7d" blob="f1c99ed4fc6a" */}
 
-{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_LIST_COMMAND = 'skill.list'" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="14-14" hash="5dbf3374a7ce" blob="f1c99ed4fc6a" */}
 
-{/* has file="../plugins/skills/src/index.ts" text="export const SKILL_READ_COMMAND = 'skill.read'" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="15-15" hash="531f85c3aac7" blob="f1c99ed4fc6a" */}
 
 ### 注入
 
@@ -372,9 +372,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | --- | --- | --- | --- | --- | --- |
 | `gwbCommands` | `@godcreator/gwb-commands` | 必需（服务类上的 `static inject`） | `workspace:^` | 登记 `skill.list`、`skill.read` | 服务 `gwbSkills` 不提供，插件一直等待 |
 
-{/* has file="../plugins/skills/src/index.ts" text="static inject = ['gwbCommands']" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="38-38" hash="a929b23854d9" blob="f1c99ed4fc6a" */}
 
-{/* has file="../plugins/skills/package.json" text="&quot;@godcreator/gwb-commands&quot;: &quot;workspace:^&quot;" */}
+{/* ref file="../plugins/skills/package.json" lines="28-28" hash="a4aed4a348a8" blob="cc66e816984d" */}
 
 ### 按名字调用与约定通道
 
@@ -383,6 +383,6 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 认出登记方的包名，记成说明书的 `plugin`；取不到时 `register` 抛错 |
 | 登记方插件的包目录 | 登记方插件 | 登记方传入的目录（约定是自己包根的 `skills/`），下面每个带 `SKILL.md` 的子目录是一份 | 登记时扫一遍定下文件清单，读正文时每次从磁盘读；这个目录要列进登记方 `package.json` 的 `files` |
 
-{/* has file="../plugins/skills/src/index.ts" text="const name = fiber?.entry?.options?.name" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="88-88" hash="e7332278a599" blob="f1c99ed4fc6a" */}
 
-{/* has file="../plugins/skills/src/collect.ts" text="export const SKILL_ENTRY = 'SKILL.md'" */}
+{/* ref file="../plugins/skills/src/collect.ts" lines="13-13" hash="1a4723d1f14c" blob="95333fdc150e" */}

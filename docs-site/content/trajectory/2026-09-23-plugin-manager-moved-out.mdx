@@ -2,7 +2,7 @@
 title: plugin-manager 迁往内核仓
 born-at: 2026-09-23T08:40
 type: choice
-parent: [2026-09-23-plugin-sources-split]
+parent: [2026-09-13-base-plugins]
 label: 管理插件迁出
 domain: 插件
 ---
@@ -27,3 +27,5 @@ plugin-manager 原样搬进内核仓 gwb-kernel 的 `plugins/plugin-manager/`：
 
 - 这个仓的插件（mcp、data、settings）的说明与代码里仍然提到 `plugin-manager.*` 命令，命令名不变，不用改
 - 在这个仓的历史里查 plugin-manager 的旧提交，要看 2026-09-23 之前的记录
+
+pivots-from:: [找插件与配包源从 plugin-manager 拆出，成为 gwb-plugin-sources](2026-09-23-plugin-sources-split.mdx)

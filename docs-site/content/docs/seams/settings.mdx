@@ -22,31 +22,31 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **服务**：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="42-56" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="42-56" hash="c0041d2db773" blob="60b4b86caaae" */}
 
 `owners()` 与 `transferOwner()` 此刻没有调用方（插件管理 0.14 起不再调用），见[数据归属](/docs/seams/owners)。
 
 **一项设置的声明**：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="cf8e7494038a" blob="1e814c5ab1d9" */}
 
 **分区由调用方条目定**：四个方法都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="166-176" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="166-176" hash="bfd644c59e2b" blob="60b4b86caaae" */}
 
 **公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找调用方声明过的项，没有就读公共区，别的插件不用 `define` 也读得到；都没有回 `undefined` 并写 warn：
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="5-6" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="5-6" hash="99fe8ed8bd0e" blob="fa8c33f0a6bd" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" hash="aea5ba430ddb" blob="1e814c5ab1d9" */}
 
 **四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取；`settings.all` 与 `settings.get` 标 `effect: 'read'`，`settings.set` 与 `settings.delete` 标 `write`：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="58-71" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="58-71" hash="1802484c68ae" blob="60b4b86caaae" */}
 
 `settings.all` 可以只取一个分区；分区不存在时报错并列出现有的分区，免得调用方把「没有这个分区」当成「这个分区没有设置」：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="73-92" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="73-92" hash="c7a316f0c1f6" blob="60b4b86caaae" */}
 
 | 命令 | 参数 | 回执 |
 | --- | --- | --- |
@@ -59,11 +59,11 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 **secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）——按真实长度生成掩码等于把长度也泄露出去：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="115-121" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="115-121" hash="64912377c35d" blob="1e814c5ab1d9" */}
 
 **存储**：`<home>/settings.json`，和 `cordis.yml` 在同一个目录，一个 home 一份。顶层是 `$owners` 和各分区；分区下是设置名到 `{ title, type, description, value }` 的表。整份替换，先写同目录的临时文件再改名；同一个文件的写入按发起顺序排队，写入内容在发起时就序列化好：
 
-{/* ref file="../plugins/settings/src/store.ts" lines="38-78" */}
+{/* ref file="../plugins/settings/src/store.ts" lines="38-78" hash="9ce09b780c43" blob="747545bd0671" */}
 
 ## 约定
 
@@ -105,8 +105,8 @@ description: 连接设置插件与声明设置项的插件、以及按位置读�
 
 `plugins/settings/tests/registry.test.ts` 测读的顺序、公共区、secret 掩码与归属，`store.test.ts` 测同一个文件的写入排队，`service.test.ts` 在真 cordis 上下文里测服务这一层与四条命令；loader 真的把调用方的条目放在 fiber 上，只能在隔离 home 里验证。
 
-{/* has file="../plugins/settings/tests/registry.test.ts" text="all：不出现明文，回「是 secret ＋ 设没设过 ＋ 定长掩码」三格" */}
+{/* ref file="../plugins/settings/tests/registry.test.ts" lines="300-312" hash="66cb841e032a" blob="7621c4fd9996" */}
 
-{/* has file="../plugins/settings/tests/service.test.ts" text="按位置读写删：settings.get 对 secret 项也回明文，settings.all 不回" */}
+{/* ref file="../plugins/settings/tests/service.test.ts" lines="222-231" hash="a7e842a4b3fc" blob="f5692ce36f6e" */}
 
-{/* has file="../plugins/settings/tests/service.test.ts" text="settings.all 带 section 只回那个分区；分区不存在、参数认不出都报错" */}
+{/* ref file="../plugins/settings/tests/service.test.ts" lines="233-241" hash="20ee361e389d" blob="f5692ce36f6e" */}

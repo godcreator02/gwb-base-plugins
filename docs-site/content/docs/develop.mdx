@@ -16,7 +16,7 @@ pnpm build
 
 `pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`，构建前先清空它：`files` 白名单整个带上 `dist/`，删掉或改了名的源文件，上一次构建留下的产物不清掉就跟着发出去。MCP 插件以外的插件先用 `node -e` 删掉 `dist/`、再用 `tsc -p tsconfig.json`，MCP 插件的 `build.ts` 先删掉 `dist/`、再用 esbuild 打包出 `dist/index.js`，之后用 `tsc --emitDeclarationOnly` 输出类型声明。每个包的 `prepublishOnly` 都是 `pnpm build`：`pnpm check` 不构建，少了这一步会把上一版的 `dist` 原样发出去。
 
-{/* ref file="../package.json" lines="5-13" */}
+{/* ref file="../package.json" lines="5-14" hash="4b9ac6e5a702" blob="fe3b21d9da1c" */}
 
 pnpm 工作区是 `plugins/*` 与 `docs-site`。仓根 `packages/` 下如果还有 `shared-react`、`tokens`，是旧构建留下的未跟踪文件、没有 `package.json`，不在工作区里。
 
@@ -28,9 +28,9 @@ pnpm check
 
 依次是类型检查（仓根 `tsc --noEmit` 检查各插件的 `tests/` 与 `build.ts`，再对每个包 `pnpm -r typecheck`）、`oxlint`（带类型信息，警告也算失败）、`vitest`（`plugins/*/tests` 与 `packages/*/tests`）。
 
-各插件的**构建产物检查**（`tests/artifact.test.ts`）查相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块，且只有一个打包好的 `index.js`）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再跑一次 `pnpm check`，这组才真的检查了。
+各插件的**构建产物检查**（`tests/artifact.test.ts`）查相对 import 带 `.js`、包名 import 只有 node 内置模块与 `cordis`（MCP 插件只有 node 内置模块，且只有一个打包好的 `index.js`）。没构建时整组跳过，所以改了代码要 `pnpm build` 之后再运行一次 `pnpm check`，这组才真的检查了。
 
-文档检查 `pnpm doc`、`pnpm doc:confirm <页…>` 的脚本写在仓根，不在 `docs-site`；确认只点名自己改的页。
+文档检查 `pnpm doc`、`pnpm doc:confirm`、`pnpm doc:render` 在仓根与 `docs-site` 里都能运行。改了被钉的代码，同一个提交里先 `pnpm doc:confirm` 做机械写回，逐条复核剩下的黄灯，论断还成立再 `pnpm doc:confirm <页…> --accept`，只点名自己改的页。
 
 ## 测试
 
@@ -48,9 +48,9 @@ pnpm check
 | node-cli | `registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | 登记校验；总线参数与 `cwd` 校验；真 node 子进程的退出码、参数不经 shell、超时、长输出写临时文件；服务登记成总线命令、经调用方上下文取总线、总线拒收时从登记表里删掉那条 |
 | py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务测试预先建好已就绪的 venv 目录、记号与 dist-info，用当前 node 的拷贝当入口程序，不启动 uv |
 
-{/* has file="../plugins/commands/tests/service.test.ts" text="一个 home 的最小复刻：真 cordis 加真 loader，插件按包名建成条目加载，fiber 上有 loader 放的条目" */}
+{/* ref file="../plugins/commands/tests/service.test.ts" lines="11-11" hash="436203d2800b" blob="8ce55c6dd236" */}
 
-{/* has file="../plugins/py-cli/tests/service.test.ts" text="venv 按「已经就绪」的样子摆好（目录、出身记号、dist-info），守卫因此直接跳过、不启动 uv。" */}
+{/* ref file="../plugins/py-cli/tests/service.test.ts" lines="10-10" hash="9a96f4250e95" blob="c1998bafae1a" */}
 
 测试覆盖不到、只能在隔离 home 里实际运行验证的：loader 真的把调用方条目放在 fiber 上（数据目录、设置分区、说明书与命令的包名）、页面经内核调到命令、MCP 入口拿到运行中真的命令表与说明书清单、`bin/client.mjs`、electron.exe 以 node 模式运行、`taskkill` 结束孙进程、`uv sync` 真的建出 venv。只有 node 部分的插件也可以不启动工作台、直接在 home 里用 node 建一个 cordis 上下文验证，注意事项见[遇到过的问题](/docs/pitfalls)。
 
@@ -64,6 +64,6 @@ devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plu
 
 **各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里内核包的范围包含运行中的内核。每个包都写了团队源的 `publishConfig.registry`，peer 里内核包都是 `^0.10.0`；用到的本仓插件也写在 peer（`workspace:^`，发版时换成 `^<版本号>`）：
 
-{/* ref file="../plugins/mcp/package.json" lines="30-47" */}
+{/* ref file="../plugins/mcp/package.json" lines="30-47" hash="766cea4eae54" blob="3e9388ae86bc" */}
 
-{/* ref file="../plugins/settings/package.json" lines="28-44" */}
+{/* ref file="../plugins/settings/package.json" lines="28-44" hash="87063988d2fc" blob="46c93f1ea68b" */}

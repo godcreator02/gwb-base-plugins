@@ -9,7 +9,8 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "doc": "pnpm --filter gwb-base-plugins-docs-site exec docfirst check",
-    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec docfirst confirm"
+    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec docfirst confirm",
+    "doc:render": "pnpm --filter gwb-base-plugins-docs-site exec docfirst render"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

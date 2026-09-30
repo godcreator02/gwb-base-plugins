@@ -24,13 +24,13 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - **连接信息与 token 用命令取**：`mcp.info`、`mcp.token`；另带一个零依赖的命令行客户端，登记成 `mcp.client`，没有 MCP 客户端的环境也能调
 - **带一份说明书 `mcp`**：连接配置、为什么只有三个工具、工作台没启动时怎么办
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" */}
+{/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" hash="4bc7e47ca53e" blob="65e4dd6cd78c" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="243-285" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-285" hash="5546474d270c" blob="22353857ab33" */}
 
-{/* ref file="../plugins/mcp/src/inventory.ts" lines="40-62" */}
+{/* ref file="../plugins/mcp/src/inventory.ts" lines="40-62" hash="bdfdb5afd76b" blob="f020b75c2b13" */}
 
-{/* ref file="../plugins/mcp/src/tools.ts" lines="20-31" */}
+{/* ref file="../plugins/mcp/src/tools.ts" lines="20-31" hash="abdb7cb61557" blob="b881ae1796a2" */}
 
 ## 接口
 
@@ -60,13 +60,13 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 设置 `port`（数字，本插件自己的设置分区） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效 | [5 设置](/docs/seams/settings) |
 | 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" hash="643035e06d7a" blob="22353857ab33" */}
 
 三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
 
 instructions 是每个会话的固定开销。测试按日常使用的 default home 的规模（33 份说明书、28 个命令前缀）生成一份，检查它不超过 `INSTRUCTIONS_CHAR_BUDGET`（2000 字符），并且「只有三个工具」「总是带条件」「每条命令都标了 effect」几句还在；home 再装多了、超出预算，运行时只写 warn，不截断：
 
-{/* has file="../plugins/mcp/tests/server.test.ts" text="expect(text.length).toBeLessThanOrEqual(INSTRUCTIONS_CHAR_BUDGET)" */}
+{/* ref file="../plugins/mcp/tests/server.test.ts" lines="105-105" hash="4a691318e2ce" blob="d291c7ccd288" */}
 
 ## 依赖
 

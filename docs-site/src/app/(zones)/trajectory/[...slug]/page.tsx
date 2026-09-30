@@ -4,7 +4,7 @@ import { getMDXComponents } from '@/components/mdx'
 import { notFound } from 'next/navigation'
 
 // 卡页：标题下一行元信息（born-at、type、domain、parent 链到父卡页）。
-// slug 必选——/trajectory 那个根本站没有入口页（星轨盘未接），轨迹区只有卡页。
+// slug 必选：空 slug 是另一个路由组 (trajectory-disk) 里的整页星轨盘，轨迹区的 meta.json 第一条链到盘。
 export default async function Page({ params }: { params: Promise<{ slug: string[] }> }) {
   const { slug } = await params
   const page = sourceTrajectory.getPage(slug)
@@ -33,6 +33,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string[
           ) : null}
         </div>
       ) : null}
+      <div style={{ fontSize: 13, margin: '0 0 16px' }}>
+        <a href="/trajectory">← 回到盘</a>
+      </div>
       <DocsBody>
         <MDX components={getMDXComponents()} />
       </DocsBody>
@@ -40,7 +43,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string[
   )
 }
 
-// 只出卡，不出空 slug——/trajectory 那个根没有页
 export function generateStaticParams() {
   return sourceTrajectory.generateParams().filter((p) => p.slug.length > 0)
 }

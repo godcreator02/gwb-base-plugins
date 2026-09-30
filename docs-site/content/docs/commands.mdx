@@ -20,7 +20,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 - **写日志**：登记写 info；返回失败、抛错、找不到命令写 warn；只读命令（`effect: 'read'`）执行成功不写，其余命令执行成功写 debug。内核默认不把 debug 写进 `gwb.log`，要查谁在什么时候调了哪条改东西的命令，启动时设环境变量 `GWB_DEBUG=gwb-commands`（[命令成功只记 debug，只读命令不记](/trajectory/2026-09-28-command-success-debug-reads-unlogged)）
 - **带一份说明书 `gwb-commands`**：给 agent 讲回执怎么读、失败有哪几种、插件里怎么登记命令
 
-{/* ref file="../plugins/commands/src/index.ts" lines="79-86" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="79-86" hash="23e8550c79b8" blob="d754efa16632" */}
 
 ## 接口
 
@@ -35,11 +35,11 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 **服务的类型**由本包导出，用命令总线的插件 `import type { GwbCommands } from '@godcreator/gwb-commands'`（或 `import type {} from …`，让 `ctx.gwbCommands` 有类型）。`effect` 的三个值、一条命令的定义、请求来源、处理函数的签名：
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="3-10" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="3-10" hash="0143ca951fe7" blob="f4cb027fdc62" */}
 
-{/* ref file="../plugins/commands/src/registry.ts" lines="12-51" */}
+{/* ref file="../plugins/commands/src/registry.ts" lines="12-51" hash="996961a4aa6d" blob="f4cb027fdc62" */}
 
-{/* has file="../plugins/commands/src/index.ts" text="export default class GwbCommandBus extends Service implements GwbCommands {" */}
+{/* ref file="../plugins/commands/src/index.ts" lines="43-43" hash="4d114eb82885" blob="d754efa16632" */}
 
 用它的插件把 `gwbCommands` 写进 `export const inject`；命令对这个插件可有可无时，改用 `ctx.inject(['gwbCommands'], …)` 局部注入。登记一条命令的写法：
 
@@ -58,13 +58,13 @@ export function apply(ctx: GwbContext) {
 
 页面入口与回执正本都归本包，内核不定义或重导出命令类型。`./client` 不引用主进程入口，由页面消费方打包，不需要 importmap 单例。
 
-{/* ref file="../plugins/commands/src/client.ts" */}
+{/* ref file="../plugins/commands/src/client.ts" hash="541efdc75b08" blob="8719df3061c5" */}
 
-{/* ref file="../plugins/commands/src/result.ts" */}
+{/* ref file="../plugins/commands/src/result.ts" hash="83f4735f4357" blob="2da150bfbc01" */}
 
 页面通道在服务初始化时登记并随插件卸载撤销。通道重复登记由内核拒绝；载荷里的来源字段不会覆盖 ui 来源：
 
-{/* ref file="../plugins/commands/src/page-request.ts" */}
+{/* ref file="../plugins/commands/src/page-request.ts" hash="a5975ac8219a" blob="c4cc0a66e660" */}
 
 ## 依赖
 

@@ -17,9 +17,9 @@ description: gwb-skills 收集插件自带的说明书（给 agent 读的 SKILL.
 - **扫描有上限、超出就报**：只收 `.md`、`.txt`、`.json`、`.yml`、`.yaml`，单个文件 512KB，往下三层，一份最多 64 个文件；超出的、读不了的、缺 `SKILL.md` 的逐条写 warn，不悄悄丢掉
 - **frontmatter 取不到 `description` 也报**：只认单行 `key: value`，折叠写法（`>-`、`|`）取不到值；没有描述照样登记，同时写一条 warn——没有描述的说明书 agent 不会去读，比整份不收好查。`name` 没写用目录名
 
-{/* ref file="../plugins/skills/src/collect.ts" lines="6-13" */}
+{/* ref file="../plugins/skills/src/collect.ts" lines="6-13" hash="9a8e2a4a2b31" blob="95333fdc150e" */}
 
-{/* ref file="../plugins/skills/src/index.ts" lines="95-115" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="95-115" hash="26a02f3bc80b" blob="f1c99ed4fc6a" */}
 
 ## 接口
 
@@ -34,9 +34,9 @@ description: gwb-skills 收集插件自带的说明书（给 agent 读的 SKILL.
 
 服务的类型与一份说明书交出去的形状由本包导出（`GwbSkillsApi`、`GwbSkill`）；交出去的那份不带本机路径，`files` 里 `SKILL.md` 恒在第一位：
 
-{/* ref file="../plugins/skills/src/index.ts" lines="20-31" */}
+{/* ref file="../plugins/skills/src/index.ts" lines="20-31" hash="4f46de1f84f5" blob="f1c99ed4fc6a" */}
 
-{/* ref file="../plugins/skills/src/collect.ts" lines="15-25" */}
+{/* ref file="../plugins/skills/src/collect.ts" lines="15-25" hash="50c59ef27a86" blob="95333fdc150e" */}
 
 插件登记说明书的写法，用局部注入，没装说明书插件的 home 里这个插件照常加载：
 
