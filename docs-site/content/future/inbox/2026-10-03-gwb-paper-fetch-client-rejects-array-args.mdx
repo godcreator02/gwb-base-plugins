@@ -1,0 +1,15 @@
+---
+title: 命令行客户端 bin/client.mjs 的 run 不收数组参数，node-cli 那类命令调不了
+description: 来源：gwb-paper-fetch 仓迁老论文库的会话（2026-10-03）
+---
+
+**碰到什么**：`node <gwb-mcp>/bin/client.mjs run paper-fetch.files '["install-pdf","<slug>","<pdf>"]'` 直接报参数错误、打印用法，一个请求都没发。
+`client.mjs` 的 `run` 要求 JSON 参数是对象（`parseAction` 里 `Array.isArray(value)` 就拒，第 133 行附近），可是 node-cli 登记的命令（`paper-fetch.files`、`paper-fetch.dl` 这类）参数本来就是数组；
+同一条命令经 MCP 的 `run` 工具传数组是通的。
+
+**期望**：`run` 的 JSON 参数照 MCP 的 `run` 工具一样收对象或数组（形状由命令自己校验），客户端只拒不是合法 JSON 的。
+
+**证据**：同一次迁移里，经 MCP 工具 `run paper-fetch.files ["install-pdf", …]` 成功收进 `pdf/paper.pdf`；经 `client.mjs` 调同一条，30 篇全部只打印用法。
+那个会话为此另写了一个直接发 JSON-RPC 的小脚本绕过去。
+
+**觉得该改哪儿**：`plugins/mcp/bin/client.mjs` 的 `parseAction`，以及说明书 `mcp` 的「从命令行调命令」里写明数组参数也可以。
