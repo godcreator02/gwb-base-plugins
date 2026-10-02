@@ -15,3 +15,5 @@ external 影响本机以外或打扰人（推送、发到远端、弹窗）。�
 重连后用 plugin-manager.list 核对。
 先问人再动手：改内核（gwb-kernel）；改 commands / data / skills / mcp / settings / plugin-manager / shell
 这些给别的插件 inject 的服务（方法签名、命令名与参数、事件形状、依赖）；改 index / search / run 三个工具。
+
+目录里有说明书 zcode 时：能写清范围的活（批量迁移、批量改代码）可以派给本机的 ZCode 去做、省自己的额度，先读 zcode。

@@ -12,7 +12,8 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - **开一个 MCP 入口**：`http://127.0.0.1:<端口>/mcp`，只收 POST，无状态：每个请求新建一个 MCP server 和一条 transport，响应结束就关闭
 - **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令。MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里（轨迹卡[三个工具](/trajectory/2026-09-14-three-tool-face)、[MCP 复位](/trajectory/2026-09-14-mcp-returns)）
 - **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
-- **instructions 带上这个 home 的目录**：initialize 返回的 instructions 是 `instructions.md` 接上一段目录——当前 home 名与本插件版本、全部说明书的名字、对 agent 开放的命令按第一个点之前的前缀去重后的列表。Claude Code 延迟加载 MCP 工具、不调工具时工具描述不进上下文，agent 连上时只看得到 instructions，目录让它知道这个 home 有什么、该去 `index` / `search` 找什么。每个请求新建 server 时重新生成；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了写一条 warn（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）
+- **instructions 带上这个 home 的目录**：initialize 返回的 instructions 是 `instructions.md` 接上一段目录——当前 home 名与本插件版本、全部说明书的名字、对 agent 开放的命令按第一个点之前的前缀去重后的列表。Claude Code 延迟加载 MCP 工具、不调工具时工具描述不进上下文，agent 连上时只看得到 instructions，目录让它知道这个 home 有什么、该去 `index` / `search` 找什么。每个请求新建 server 时重新生成；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了写一条 warn（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）。
+  目录只有说明书的名字，agent 不知道什么时候该去读的，`instructions.md` 末尾写死一句指路，现在只有一句：目录里有 `zcode` 时，能写清范围的活可以派给本机的 ZCode 做（轨迹卡[instructions 里写死 zcode 的指路](/trajectory/2026-10-02-zcode-pointer-in-instructions)）
 - **把命令的 `effect` 交给 agent、藏起只给页面调用的命令**：`search` 命中的每一条命令都带 `effect`，也能按 `effect` 筛；`hiddenFromAgents` 的命令 `index`、`search` 与 instructions 的目录都不列，`run` 直接拒绝、不执行
 - **`run` 先查命令表**：命令不存在回 `isError`，文本告诉 agent 用 `search {"q":…}` 找名字、装卸过插件就重新调 `index`；存在才交给命令总线
 - **单次返回有上限**：三个工具的返回超过 40000 字符就不交回原文，换成 `isError` 的文本说明怎么缩小范围（`search` 加条件、`index` 改按插件 `search`、`run` 带上命令自己的筛选或条数参数）；`run` 的那句写明命令已经执行完，免得 agent 重调一条会改东西的命令。上限按 Claude Code 单次工具返回的上限定，超了会被客户端转存成文件

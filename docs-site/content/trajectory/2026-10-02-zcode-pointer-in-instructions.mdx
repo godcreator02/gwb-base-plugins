@@ -1,0 +1,21 @@
+---
+born-at: 2026-10-02T19:58
+type: choice
+parent: [2026-09-13-base-plugins]
+label: zcode 指路
+domain: MCP 入口
+---
+
+## 背景
+
+新插件 `@godcreator/gwb-zcode`（`evew5-gwbapps/gwb-zcode`）能把活派给本机的 ZCode 去做、省 agent 自己的额度，配套说明书 `zcode`。instructions 末尾的目录只列说明书名字，
+agent 连上时看不到描述，想不到「这件事可以交给 ZCode」，也就不会去读它。用户说：「加，应该是gwb的instruction里加一个指路吧」。
+
+两种做法摆给用户：在 `instructions.md` 里写死一句；或者让说明书的 frontmatter 可选写一句给入口的指路，由 gwb-skills 读出、gwb-mcp 拼进目录（动三个包，眼下只有 zcode 一个使用者）。用户选了写死。
+
+## 结论与边界
+
+`plugins/mcp/instructions.md` 末尾加一句「目录里有说明书 zcode 时：能写清范围的活（批量迁移、批量改代码）可以派给本机的 ZCode 去做、省自己的额度，先读 zcode。」
+带上「目录里有 zcode 时」这个条件，没装 gwb-zcode 的 home 看到也会跳过。gwb-mcp 0.11.6 → 0.11.7。
+
+instructions 有 2000 字符的预算（Claude Code 超过 2048 字符不提示地截断），default 上加完约 1660 字符。以后再有插件要往这里加指路、写死的句子多到挤预算时，再考虑做成说明书里的字段。
