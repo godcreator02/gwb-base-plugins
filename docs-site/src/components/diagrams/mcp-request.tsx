@@ -14,14 +14,14 @@ const STEPS: { title: string; detail: string; lit: Part[]; flows: string[]; refu
   { title: '全貌', detail: 'MCP 插件自己开一个 node:http 服务，只绑 127.0.0.1，只收 POST /mcp；工具只有 index、search、run 三个。', lit: [], flows: [] },
   {
     title: '第 1 步：加载时准备好端口与 token',
-    detail: '从设置插件读 port（default 是 2870，被占就不开入口）；读或生成 <home>/mcp/secret.json；绑定成功后把 { port, url } 写进 runtime.json 的 mcp 项。',
+    detail: '从设置插件读 port（default 是 2870，被占就不开入口）与本 home 的 token；主 token 和临时 token 表由 settings 存进 credentials.json；绑定后把 { port, url } 写进 runtime.json 的 mcp 项。',
     lit: ['settings', 'listen', 'secret', 'runtime'],
     flows: ['settings'],
   },
   { title: '第 2 步：客户端发请求', detail: '客户端向 http://127.0.0.1:<端口>/mcp 发 POST，请求头带 Authorization: Bearer <token>。', lit: ['client', 'gate'], flows: ['in'] },
   {
     title: '第 3 步：三项检查',
-    detail: 'token、Host、Origin 三项在处理请求之前检查。任何一项不过，回 401 { error: \'unauthorized\', message }，写一条 warn，工具一次都不会被调用。',
+    detail: '每次请求重新检查主 token 或未过期、未撤销的临时 token，再检查 Host、Origin。任一项不过回 401，工具不会执行。临时 token 的权限与主 token 相同，只限制时间。',
     lit: ['gate', 'secret'],
     flows: ['refuse'],
     refused: true,
@@ -68,12 +68,12 @@ export function McpRequest() {
         </Note>
 
         <Box x={192} y={240} w={112} h={60} lines={['监听', '127.0.0.1:<端口>']} tone={lit('listen')} mono />
-        <Box x={314} y={240} w={116} h={60} lines={['凭据文件', 'mcp/secret.json']} tone={lit('secret')} mono />
+        <Box x={314} y={240} w={116} h={60} lines={['settings 保管', '主 / 临时 token']} tone={lit('secret')} />
         <Box x={440} y={240} w={106} h={60} lines={['runtime.json', 'mcp 项']} tone={lit('runtime')} mono />
 
         <Box x={590} y={96} w={160} h={52} lines={['命令总线', 'list() · run()']} tone={lit('bus')} mono />
         <Box x={590} y={166} w={160} h={52} lines={['说明书插件', 'list()（可以不在）']} tone={lit('skills')} mono />
-        <Box x={10} y={240} w={140} h={60} lines={['设置插件', 'port 设置项']} tone={lit('settings')} />
+        <Box x={10} y={240} w={140} h={60} lines={['设置插件', 'port · 凭据']} tone={lit('settings')} />
 
         <Arrow from={[150, 132]} to={[192, 132]} label="POST /mcp" tone={flowing('in') ? 'a' : undefined} flow={flowing('in')} />
         {flowing('refuse') && <Arrow from={[192, 160]} to={[150, 160]} label="401" labelAt="below" tone="b" flow />}

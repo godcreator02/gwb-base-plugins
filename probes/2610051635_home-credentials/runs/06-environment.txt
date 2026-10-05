@@ -1,0 +1,20 @@
+2026-10-05 final validation
+Windows; Node v24.14.1; kernel 0.10.1
+Base commit: 2bf862f7fa11333d599a843eefdd12f8d5a71434 + this change's source and docs
+Target: settings-credentials-2610051627
+  settings 0.3.11-dev.20261005165042
+  mcp 0.11.8-dev.20261005165042
+  baseui 0.1.27-dev.20261005164921
+Source: settings-credentials-source-2610051640
+  settings 0.3.11-dev.20261005164123
+  mcp 0.11.8-dev.20261005164123
+
+Final target devkit installs: all expected package versions active; no new errors.
+Final two-home run: 25 checks passed (05-final.txt).
+Base repo: pnpm check = 39 files / 530 tests passed; typecheck and lint passed.
+UI repo: pnpm check = 42 files / 584 tests passed; typecheck and lint passed.
+Both plugin builds and docs builds passed. Base docs: 76 pages; docfirst check exit 0.
+Local reveal/hide UI verified without outputting value; final footer shows both settings.json and credentials.json.
+
+An initial concurrent docs build held the Next build lock; devkit aborted before installing anything. Retried after that build completed, and final installation passed.
+No version numbers or dependencies were changed in source; devkit generated temporary package versions. No publish/default-home update performed.

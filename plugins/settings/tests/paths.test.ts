@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertKey,
   assertSection,
+  credentialsFile,
   entrySection,
   homeFile,
   looksRandom,
@@ -83,6 +84,11 @@ describe('落点', () => {
 
   it('settings.json 跟 cordis.yml 并排——home 自持全部配置', () => {
     expect(homeFile(dataDir)).toBe(path.join(dataDir, 'settings.json'))
+  })
+
+  it('credentials.json 属于指定 home，不落到全机共享位置', () => {
+    expect(credentialsFile(dataDir)).toBe(path.join(dataDir, 'credentials.json'))
+    expect(credentialsFile(path.join(dataDir, '..', 'test-home'))).toBe(path.join(dataDir, '..', 'test-home', 'credentials.json'))
   })
 })
 

@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-settings",
-  "version": "0.3.10",
+  "version": "0.4.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "设置：插件声明自己有哪些设置项，值写进 <home>/settings.json；shared 项写进公共区；secret 项在 settings.all 的回执里只回是否已设置、不回值（文件里仍是明文，要取值按位置调 settings.get）。服务 gwbSettings；skill 1 份；命令 4 条。",
+  "description": "设置与凭据：每个 home 的普通设置与声明存在 settings.json，secret 明文存在 credentials.json；凭据可不回显地查状态、复制、导入、生成，插件内部照常取用，本地界面可查看。服务 gwbSettings；skill 1 份。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

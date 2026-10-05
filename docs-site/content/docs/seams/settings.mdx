@@ -1,112 +1,86 @@
 ---
 title: 5 设置 gwbSettings
-description: 连接设置插件与声明设置项的插件、以及按位置读写设置的界面、agent 与别的插件；交换的是服务 ctx.gwbSettings 的 define / get / set / delete（分区由调用方条目定）、公共区 *，和四条按位置读写的命令 settings.all / get / set / delete，值都存在 <home>/settings.json。设置插件保证 settings.all 不回 secret 项的值、写文件是原子的；声明方保证先 define 再读写
+description: 服务按插件条目分区；settings 命令只操作普通设置，credentials 命令管理凭据。每个 home 分文件保管，插件内部继续取用。
 ---
 
-**本页回答**：插件怎么声明、读写自己的设置；插件之间怎么共享凭据；界面和 agent 怎么看到、改到全部设置；值存在哪；设置插件、声明设置的插件、按位置读写的界面与插件各保证什么。设置插件的功能见 [gwb-settings](/docs/settings)，分区归属见[数据归属](/docs/seams/owners)。
+**本页回答**：插件怎样读写、页面和 AI 怎样管理凭据，以及两份文件写入中断后怎样恢复。分区归属见[数据归属](/docs/seams/owners)。
 
 ## 连接的模块
 
-- [设置插件](/docs/settings) `@godcreator/gwb-settings`：提供服务 `ctx.gwbSettings`；有命令总线时登记四条 `settings.*` 命令（局部注入，没有命令总线时服务照样完整）
-- 声明设置项的插件：写 `inject: ['gwbSettings']`。本仓的 MCP 插件用它声明端口，别的仓里的插件用它存地址、凭据等配置
-- 按位置读写的一方：编辑设置的界面、经 MCP 入口的 agent、要读另一个插件分区里凭据的插件
+- 设置插件提供 `ctx.gwbSettings`；命令总线是局部注入，服务不依赖命令入口。
+- 声明设置的插件通过服务操作自身分区，MCP 插件也用它保存端口、主 token 和临时 token 表。
+- 页面与 agent 按分区、键管理；需要跨插件取用凭据的受信插件可内部调用 credentials.reveal。
 
 ## 接口
 
-<Diagram name="settings-layout" title="settings.json 按条目分区，服务与命令各读写哪一块">
-- 右边是 `<home>/settings.json` 的顶层：`$owners`（分区名 → 包名）、每条条目一个分区（条目 `home:mcp` 的分区叫 `mcp`）、公共区 `*`
-- 插件经服务 `ctx.gwbSettings` 的 `define` / `get` / `set` / `delete` 只给 `key`，分区由设置插件从调用方条目算出
-- 别的插件 `get` 一项自己没声明的设置时读公共区，`shared: true` 的项在那里
-- 页面与 agent 经 `settings.all` / `get` / `set` / `delete` 四条命令按 `{ section, key }` 读写任意分区；`settings.all` 里 secret 项只给 `isSet` 与掩码，`settings.get` 回明文
+<Diagram name="settings-layout" title="每个 home 的普通设置与凭据，分别经过哪些入口">
+- settings.json 保存普通值、设置声明和 $owners；credentials.json 保存同一分区与键的明文 secret
+- 插件服务从调用方条目确定分区，未声明的 key 读当前 home 公共区
+- settings.* 只操作普通设置；credentials.* 管凭据，list/status 不回值；插件服务 get 仍可取凭据原文
+- credentials.copy/import/generate 直接在本机完成操作，不把旧值或新值交给 AI
 </Diagram>
 
-**服务**：
+**服务**保持 `define/get/set/delete` 的用法。同步 get 先找自己声明的项，没有保存值回 default；自己没声明的 key 读公共区 `*`。set/delete 只能操作自己声明的项：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="42-56" hash="c0041d2db773" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="06d41c33cd26" blob="0dcb9862f136" */}
 
-`owners()` 与 `transferOwner()` 此刻没有调用方（插件管理 0.14 起不再调用），见[数据归属](/docs/seams/owners)。
+`shared:true` 只表示本 home 内公共设置；不表示与别的 home 共用文件或同步值。条目要用固定 id，分区取 id 末段，名称规则见 `plugins/settings/src/paths.ts`。
 
-**一项设置的声明**：
+**命令**按位置定位，使用当前 home 的服务；普通设置与凭据分开编排：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="cf8e7494038a" blob="1e814c5ab1d9" */}
-
-**分区由调用方条目定**：四个方法都只收短的 `key`，落到哪个分区由服务从调用方的条目上取——分区名是条目 id 的末段，取法见[条目身份](/docs/seams/entry-identity)：
-
-{/* ref file="../plugins/settings/src/index.ts" lines="166-176" hash="bfd644c59e2b" blob="60b4b86caaae" */}
-
-**公共区**：声明时写 `shared: true` 的项存进分区 `*`。`get` 先找调用方声明过的项，没有就读公共区，别的插件不用 `define` 也读得到；都没有回 `undefined` 并写 warn：
-
-{/* ref file="../plugins/settings/src/paths.ts" lines="5-6" hash="99fe8ed8bd0e" blob="fa8c33f0a6bd" */}
-
-{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" hash="aea5ba430ddb" blob="1e814c5ab1d9" */}
-
-**四条命令**按 `{ section, key }` 定位，不经身份——页面不是插件，没有身份可取；`settings.all` 与 `settings.get` 标 `effect: 'read'`，`settings.set` 与 `settings.delete` 标 `write`：
-
-{/* ref file="../plugins/settings/src/index.ts" lines="58-71" hash="1802484c68ae" blob="60b4b86caaae" */}
-
-`settings.all` 可以只取一个分区；分区不存在时报错并列出现有的分区，免得调用方把「没有这个分区」当成「这个分区没有设置」：
-
-{/* ref file="../plugins/settings/src/index.ts" lines="73-92" hash="c7a316f0c1f6" blob="60b4b86caaae" */}
-
-| 命令 | 参数 | 回执 |
+| 对象 | 查询入口 | 写入与清除 |
 | --- | --- | --- |
-| `settings.all` | `{ section? }`，不给就是全部分区；认不出的键、`section` 为空串或不存在都报错 | 设置项，每行带位置、`title`、`type`、`description`、`value`、`live`（此刻有没有插件声明它）；`live` 且声明了默认值的行再带 `default` |
-| `settings.get` | `{ section, key }` | 那一项存下的值，**secret 项也回明文**；没设过回 `undefined`，不回落到 `default` |
-| `settings.set` | `{ section, key, value }` | `{ ok: true }` |
-| `settings.delete` | `{ section, key }` | `{ ok: true }`；只删值，声明还在 |
+| 普通设置 | settings.all/get | settings.set/delete |
+| 凭据 | credentials.list/status；本地查看用 credentials.reveal | credentials.copy/import/generate/delete；本地输入用 credentials.set |
 
-删值和写值一样按位置：删条目的界面要能顺手把那个插件的设置值删干净。
+`settings.all {section?}` 只列普通设置，`settings.get` 回保存值，未保存回 undefined，经 MCP 翻译为 null，不回默认值。`settings.get/set/delete` 对任何来源的 secret 目标都报错并指向 `credentials.*`，插件内部按位置调用也遵守这一条。
 
-**secret 掩码**：`settings.all` 里 `type` 是 `secret` 的行不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长的 `mask`（`••••`）——按真实长度生成掩码等于把长度也泄露出去：
+`credentials.list {section?}` 只列凭据，沿用 SettingView 的分区、声明和 live 字段；不带 value/default，只有 secret、isSet 与已保存时的定长掩码。`credentials.status {section,key}` 返回 `{section,key,type,secret:true,isSet,live}`；目标不存在回 null，普通设置目标报错。isSet 是存储状态，不是账号认证结果。
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="115-121" hash="64912377c35d" blob="1e814c5ab1d9" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
 
-**存储**：`<home>/settings.json`，和 `cordis.yml` 在同一个目录，一个 home 一份。顶层是 `$owners` 和各分区；分区下是设置名到 `{ title, type, description, value }` 的表。整份替换，先写同目录的临时文件再改名；同一个文件的写入按发起顺序排队，写入内容在发起时就序列化好：
+**不回显的写操作**：
 
-{/* ref file="../plugins/settings/src/store.ts" lines="38-78" hash="9ce09b780c43" blob="747545bd0671" */}
+| 命令 | 来源与目标 | 结果 |
+| --- | --- | --- |
+| credentials.copy | from 为 section/key 与可选同级 home 名；to 是当前 home 的 section/key；两端都必须是 secret | 目标配置状态；来源不改，复制后独立 |
+| credentials.import | from 为绝对 file、text/json 格式、JSON 字段 path；to 是当前 home 的 section/key | 目标配置状态；来源只读 |
+| credentials.generate | to 是当前 home 的 section/key，可给随机字节数 | 目标配置状态；只生成随机值 |
+| credentials.delete | section/key 指向凭据；可清理已停用插件的遗留值 | 目标配置状态，保留定义、不回值 |
+
+copy/import/generate 的目标必须仍由已启用插件声明，已有值需 `overwrite:true`。导入文件上限 1 MiB，最终值必须是非空字符串；text 只去掉一个末尾换行。随机字节数为 16—128，默认 32，编码是 base64url。参数与校验的正本：
+
+{/* ref file="../plugins/settings/src/credentials.ts" lines="46-86" hash="42f163f92a7d" blob="5025d14fd831" */}
+
+## 存储与恢复
+
+每个 home 自己保管两份文件，没有自动继承。settings.json 保留 `$owners`、分区与元信息，secret 的 value 单独放进 credentials.json。凭据文件顶层为 version 与 sections，槽按 section/key 对齐。旧 settings.json 里的 secret.value 在下一次成功持久化时迁出。
+
+读取时凭据槽优先于旧 settings 值；槽存在但没有 value 是删除记录。即使中断时普通设置文件还留着旧值，也不会把已删除凭据恢复出来；缺少元信息的凭据槽强制按 secret 对待，不能被普通列表回显：
+
+{/* ref file="../plugins/settings/src/store.ts" lines="91-113" hash="08c21668a79e" blob="69d6fedc9da6" */}
+
+每次持久化先写 credentials.json，再写 settings.json。每个文件都以同目录临时文件加 rename 原子替换，**两份文件不是一个事务**。同一进程内的写入排队，不承诺多个进程同时写同一个 home 的文件锁：
+
+{/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
+
+凭据文件损坏或无法读取会报错；旧 settings 文件解析失败时可暂时按空设置读取，但后续写入会重新严格检查、拒绝覆盖。错误不附文件内容或解析片段。操作失败后服务按可读取的磁盘事实恢复该项，调用方应重新查状态，不把失败等同于完全没有落盘。
 
 ## 约定
 
-**设置插件**保证：
+**设置插件**同时提供 settings 与 credentials 两组命令，负责分区、文件存储、状态回执与不回显的本机转交。`credentials.set {section,key,value}` 只接受字符串，`credentials.reveal {section,key}` 返回保存值；两条标记 hiddenFromAgents，处理函数只允许明确的 ui/plugin 来源。综合设置页合并普通设置与凭据列表展示。插件服务的分区限制防止误用，不是进程隔离。
 
-- 服务的每个方法都绑定到调用方的条目：插件报不出别人的身份，读写不到别人分区里的项（公共区除外）
-- `get` 是同步的：构造时同步读完 `settings.json`，插件一拿到服务就能读
-- 声明过的项没设过值时 `get` 回声明里的 `default`；没声明过的 key 读公共区，公共区也没有就回 `undefined` 并写 warn
-- 插件加载着时，代码里声明的 `title`、`type`、`description` 覆盖文件里那份，值不动；插件停了文件里的项还在，`settings.all` 里 `live` 为 `false`
-- `settings.all` 不交出 secret 项的明文和默认值；`settings.get` 与服务的 `get` 照旧回明文
-- 日志里永远不写设置的值
-- 写文件是原子的；同一个文件的多次写入按发起顺序写进文件；写失败写一条 warn 并把异常抛给调用方
-- 同一条目重复声明同一项，后声明的生效并写 warn；注销只删自己那份，注销函数登记到调用方的 `effect` 上
+**声明方**先 define 再 set/delete，固定条目 id，普通值自行校验；secret 写入只接受字符串。不要把内部取到的值拼进业务回执、日志或异常。认证、签发、过期与撤销由业务插件负责。
 
-**声明设置的插件**保证：
-
-- 先 `define` 再 `set` / `delete`：没声明过就调 `set` / `delete` 会抛错
-- 设置名用 kebab-case，`title` 不为空
-- 条目在 `cordis.yml` 里手写 `id`：随机 id 每次启动都变，设置会对不上
-- 插件的配置一律经 `define` 声明，不用 `cordis.yml` 条目里的 `config`
-- 读到的值自己校验类型：`type` 只用来给界面挑控件，设置插件不做运行时校验
-- 要给别的插件共享的凭据才写 `shared: true`
-
-**按位置读写的界面、插件与经 MCP 入口的 agent**保证：
-
-- 知道自己要的 `section` 与 `key`：`section` 是声明方条目 id 的末段，或者公共区 `*`- 判断 secret 项有没有设过值时看 `isSet`，不看 `value`；只要判断配没配就不调 `settings.get`，它回的明文会进调用方的记录
-- 写的值照那一行的 `type` 给
+**管理方**明确目标 home、section、key 与用途，使用复制或导入完成已有凭据的转交，不先读取明文。跨 home 复制相同第三方 token 后，本地修改独立，但服务端撤销仍可能影响全部副本。
 
 ## 不负责的事
 
-- 设置插件不校验值的类型，也不检查 `settings.set` 写的位置有没有插件声明过
-- 设置插件不加密：`settings.json` 里 secret 项也是明文
-- 设置插件不是安全边界：名字校验只防误写，插件本来就能直接改这个文件
-- 设置插件不提供跨 home 的设置：要共享就复制文件
-- 设置插件不画界面
-- 声明方不负责别的插件读不读它公共区里的项
+- 不加密文件，不保证凭据对同用户本机程序不可见。
+- 不自动选择其他 home 的凭据，也不持续同步复制结果。
+- 不提供第三方 token 签发或认证成功保证；credentials.generate 只是随机值生成。
+- 不画界面、不保存插件业务数据。
 
 ## 测试
 
-`plugins/settings/tests/registry.test.ts` 测读的顺序、公共区、secret 掩码与归属，`store.test.ts` 测同一个文件的写入排队，`service.test.ts` 在真 cordis 上下文里测服务这一层与四条命令；loader 真的把调用方的条目放在 fiber 上，只能在隔离 home 里验证。
-
-{/* ref file="../plugins/settings/tests/registry.test.ts" lines="300-312" hash="66cb841e032a" blob="7621c4fd9996" */}
-
-{/* ref file="../plugins/settings/tests/service.test.ts" lines="222-231" hash="a7e842a4b3fc" blob="f5692ce36f6e" */}
-
-{/* ref file="../plugins/settings/tests/service.test.ts" lines="233-241" hash="20ee361e389d" blob="f5692ce36f6e" */}
+`plugins/settings/tests/registry.test.ts` 覆盖分区、状态与掩码；`service.test.ts` 覆盖调用来源、凭据命令和覆盖检查；`store.test.ts` 覆盖迁移、删除记录、损坏保护与写入顺序。真实 loader 身份与本地眼睛按钮由隔离 home 联合验证。

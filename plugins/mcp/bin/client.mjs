@@ -9,9 +9,8 @@
  *   node client.mjs run skill.read '{"name":"mcp"}'
  *
  * 入口地址：--url 优先，其次环境变量 GWB_MCP_URL，缺省是 default home 的入口（2870 端口）。
- * token：--token 优先，其次环境变量 GWB_MCP_TOKEN，**缺省直接读 default home 的
- * 凭据文件**——default home 的端口与凭据文件位置都是固定的，所以加了鉴权之后，
- * 「什么参数都不给就能用」仍然成立。隔离 home 的端口与 token 都不是契约，用那两个参数显式给。
+ * token：--token 优先，其次环境变量 GWB_MCP_TOKEN，否则在本机内部读当前 home 的
+ * credentials.json。--home 指定独立 home 并从 runtime.json 取入口地址，不用把 token 放进参数。
  *
  * MCP 入口是无状态的 streamableHTTP：每条 POST 都新建一对 server+transport，没有会话要
  * 维持；但协议握手照样做全（initialize → initialized → tools/call），所以这个脚本对
@@ -24,6 +23,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const DEFAULT_URL = 'http://127.0.0.1:2870/mcp'
 const PROTOCOL_VERSION = '2025-06-18'
@@ -31,36 +31,53 @@ const PROTOCOL_VERSION = '2025-06-18'
 const DEFAULT_TIMEOUT_MS = 130_000
 
 /**
- * default home 的凭据文件。**两段路径分开写**：home 目录由内核按平台决定（这里是
- * `%APPDATA%\gwb-kernel\homes\<home>`），`mcp/secret.json` 这一段由 MCP 插件决定。
- * 两段都不是这个脚本能推断的，所以只作缺省值：哪一段不对，就退回到要求显式给 token
+ * 各平台内核默认的 home 根。只接受 home 名，凭据永不跨 home 回退。
  */
-function defaultSecretFile(home) {
+function homeDirectory(home) {
   const roaming =
     process.platform === 'win32'
       ? process.env.APPDATA
       : process.platform === 'darwin'
         ? path.join(os.homedir(), 'Library', 'Application Support')
         : (process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), '.config'))
-  return roaming === undefined ? undefined : path.join(roaming, 'gwb-kernel', 'homes', home, 'mcp', 'secret.json')
+  return roaming === undefined ? undefined : path.join(roaming, 'gwb-kernel', 'homes', home)
 }
 
 /**
  * 从凭据文件取 token。**取不到不算错**：读不了就当没给，请求照常发出，
  * 由 MCP 入口返回的 401 说明原因——那句话写清了 token 该从哪来，比这个脚本自己写一句准确
  */
-function readSecret(file) {
+export function readHomeToken(directory) {
   try {
-    const doc = JSON.parse(fs.readFileSync(file, 'utf8'))
-    return typeof doc?.token === 'string' && doc.token !== '' ? doc.token : undefined
+    const doc = JSON.parse(fs.readFileSync(path.join(directory, 'credentials.json'), 'utf8'))
+    if (doc?.version !== 1) return undefined
+    const slot = doc?.sections?.mcp?.token
+    return typeof slot?.value === 'string' && slot.value !== '' ? slot.value : undefined
+  } catch (error) {
+    // 损坏或读不到现有凭据时不回退旧文件；只有尚未创建文件才兼容旧版。
+    if (error?.code !== 'ENOENT') return undefined
+  }
+  try {
+    const legacy = JSON.parse(fs.readFileSync(path.join(directory, 'mcp', 'secret.json'), 'utf8'))
+    return typeof legacy?.token === 'string' && legacy.token !== '' ? legacy.token : undefined
   } catch {
     return undefined
   }
 }
 
+export function readHomeUrl(directory, home) {
+  if (home === 'default') return DEFAULT_URL
+  try {
+    const doc = JSON.parse(fs.readFileSync(path.join(directory, 'runtime.json'), 'utf8'))
+    const url = new URL(doc?.mcp?.url)
+    if (url.protocol === 'http:' && url.hostname === '127.0.0.1' && url.pathname === '/mcp' && url.username === '' && url.password === '' && url.search === '' && url.hash === '') return url.href
+  } catch { /* 不把 runtime 文本或异常摘录带到输出 */ }
+  return undefined
+}
+
 /** token 的三个来源，按优先级：命令行 > 环境变量 > default home 的凭据文件 */
 
-const HELP = `用法：node client.mjs [--url <入口地址>] [--token <token>] [--timeout <毫秒>] <动作> [参数]
+const HELP = `用法：node client.mjs [--home <home名>] [--url <入口地址>] [--token <token>] [--timeout <毫秒>] <动作> [参数]
 
 动作：
   index                      取全部说明书与命令名（无参数，约两千 token）
@@ -68,12 +85,14 @@ const HELP = `用法：node client.mjs [--url <入口地址>] [--token <token>] 
   run <命令名> [<JSON 参数>]   按名字调用命令；命令失败返回 isError 文本，照常往下读
 
 入口地址：--url > 环境变量 GWB_MCP_URL > ${DEFAULT_URL}（default home 固定用 2870 端口）
-token：--token > 环境变量 GWB_MCP_TOKEN > default home 的凭据文件（mcp/secret.json，自动读）
-其他 home：地址与 token 都显式给（端口看 devkit.home.list 回执里的 mcp 字段，token 在那个 home 的凭据文件里）`
+token：--token > 环境变量 GWB_MCP_TOKEN > 当前 home 的 credentials.json（本机内部自动读）
+其他 home：--home <名字> 自动读取该 home 的 runtime.json 和凭据；不继承 default 凭据
+显式 --url 与 home 的地址不同，不自动发送该 home 的凭据`
 
 /** 解命令行。--url / --token / --timeout 收开关，剩下的第一个非开关词是动作 */
 function parseArgv(argv) {
-  let url = process.env.GWB_MCP_URL ?? DEFAULT_URL
+  let url = process.env.GWB_MCP_URL
+  let home = 'default'
   let timeoutMs = DEFAULT_TIMEOUT_MS
   // 空串当没给：`--token ""` 与「设了个空环境变量」都不该让自动读凭据文件失效
   let token = process.env.GWB_MCP_TOKEN !== undefined && process.env.GWB_MCP_TOKEN !== '' ? process.env.GWB_MCP_TOKEN : undefined
@@ -81,7 +100,10 @@ function parseArgv(argv) {
   const rest = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
-    if (a === '--url') {
+    if (a === '--home') {
+      home = argv[++i]
+      if (typeof home !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(home)) failArg('--home 后面得跟 home 名，不能是路径')
+    } else if (a === '--url') {
       url = argv[++i]
       if (url === undefined) failArg('--url 后面得跟地址')
     } else if (a === '--token') {
@@ -99,10 +121,12 @@ function parseArgv(argv) {
       rest.push(a)
     }
   }
-  // 自动读凭据文件只对 default home 的入口成立——别的 home 的端口是随机的，这个脚本无从知道
-  if (!tokenGiven && url === DEFAULT_URL) {
-    const file = defaultSecretFile('default')
-    if (file !== undefined) token = readSecret(file)
+  const directory = homeDirectory(home)
+  const homeUrl = directory === undefined ? (home === 'default' ? DEFAULT_URL : undefined) : readHomeUrl(directory, home)
+  url ??= homeUrl
+  if (url === undefined) failArg('这个 home 的 MCP 入口地址尚未就绪，先启动该 home')
+  if (!tokenGiven && url === homeUrl && directory !== undefined) {
+    token = readHomeToken(directory)
   }
   return { url, timeoutMs, token, action: rest[0], args: rest.slice(1) }
 }
@@ -135,7 +159,7 @@ function parseJsonArg(text, what) {
     }
     return value
   } catch {
-    failArg(`${what}得是 JSON 对象，收到的是：${text}`)
+    failArg(`${what}得是 JSON 对象`)
   }
 }
 
@@ -236,7 +260,19 @@ async function main() {
   if (result?.isError === true) process.exitCode = 1
 }
 
-main().catch((err) => {
-  process.stderr.write(`${String(err)}\n`)
-  process.exitCode = 1
-})
+function isMainModule() {
+  if (process.argv[1] === undefined) return false
+  try {
+    // pnpm 的包目录是符号链接：argv 保留入口路径，import.meta.url 通常已经解析到真实路径。
+    return fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(process.argv[1])
+  } catch {
+    return false
+  }
+}
+
+if (isMainModule()) {
+  main().catch((err) => {
+    process.stderr.write(`${String(err)}\n`)
+    process.exitCode = 1
+  })
+}

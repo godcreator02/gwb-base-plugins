@@ -1,75 +1,61 @@
 ---
 name: gwb-settings
-description: 读设置、改设置、查凭据配没配、在插件里声明设置项时读。
+description: 读改设置、查凭据状态、不回显地复制导入生成凭据、在插件里声明设置项时读。
 ---
 
-# 设置
+# 设置与凭据
 
-设置项由插件声明，一个 home 的全部值存在 `<home>/settings.json` 一份文件里，按分区存放。四条命令 `settings.all`、`settings.get`、`settings.set`、`settings.delete` 按「分区 + 键」定位，能读写任何分区。
+每个 home 独立保存：普通值与声明在 `<home>/settings.json`，secret 值以明文放在 `<home>/credentials.json`。不继承 default，不自动读取别的 home。插件内部照常取用凭据；日常管理用不回显的命令完成，凭据不必经过聊天。
 
-## 找到一项设置的位置
+## 找到设置位置
 
-1. 调 `settings.all`，回执 `data` 是设置项的数组。知道是哪个插件的设置时带上分区：`settings.all {"section": "<分区>"}`（分区是那个插件条目 id 的末段，`shared` 项是 `*`），只回这个分区；分区不存在会报错并列出现有的分区。不带参数回全部分区，插件多的 home 上很长。
-2. 按 `title`、`description`、`key` 找到要的那一行，记下它的 `section` 与 `key`。
-3. 看这一行的 `live`：`false` 表示此刻没有插件声明它（插件停用或卸载了），改了也没有插件读。
+1. 普通设置调 `settings.all`，凭据调 `credentials.list`；知道插件时带 `{"section":"<分区>"}`，避免取全部条目。分区是插件条目 id 的末段，`shared` 项是 `*`。
+2. 按 `title`、`description`、`key` 找到目标，记下 `section` 与 `key`。`live:false` 表示插件此刻没有声明它。
+3. 读普通项用 `settings.get`；没保存值时 MCP 回 `null`，声明中的 `default` 在 `settings.all` 那行。凭据查 `credentials.status`；`settings.get/set/delete` 遇到 secret 会报错并指向凭据命令。
 
-完成的判据：拿到了 `section` 与 `key`，并且这一行 `live` 为 `true`。
+完成的判据：位置与用途明确；要写凭据的目标是 `live:true`、`type:"secret"`。
 
-## 读一项
+## 管理凭据
 
-1. 先完成「找到一项设置的位置」。
-2. 调 `settings.get {"section": "…", "key": "…"}`，值在回执的 `data` 里；secret 项也回明文。
-3. `data` 是 `null`：这一项没设过值，生效的是 `settings.all` 那一行的 `default`（`settings.get` 只回存下的值，不回 `default`）。
+先用 `search {"prefix":"credentials."}` 查当前用法。已经授权的凭据配置、复制、生成和使用，可以由工具在本机内部完成，不要为每个内部读取步骤再次索要同意，也不要先把旧凭据读进会话。
 
-完成的判据：拿到了值，或确认没设过值并知道生效的默认值。
-
-## 查凭据配没配
-
-1. 在 `settings.all` 里找到那一行，它带 `secret: true`。
-2. 读 `isSet`：`true` 是设过值。secret 行没有 `value` 和 `default`；`mask` 是定长的 `••••`，推不出真值的长度。
-
-只要判断配没配，用 `isSet`；`settings.get` 回的明文会进会话记录。
-
-完成的判据：读到了这一行的 `isSet`。
-
-## 改一项
-
-1. 先完成「找到一项设置的位置」。
-2. 调 `settings.get` 记下旧值：日志只记「哪一项已写」，不记值，改错了只能靠这份旧值恢复。
-3. 调 `settings.set {"section": "…", "key": "…", "value": …}`，立即写进文件。`value` 的类型照那一行的 `type` 给：`string`、`number`、`boolean`，`secret` 给字符串，`string-list` 给字符串数组。设置插件不校验类型，类型给错了，读它的插件读到的就是错的值。
-4. 要删掉值、回到默认值：调 `settings.delete {"section": "…", "key": "…"}`，声明留着。
-5. 看这一行的 `description`：写了「改了要重启才生效」的（比如 MCP 入口的 `port`），告诉人要重启这个 home。
-
-完成的判据：对同一位置调 `settings.get`，`data` 是新值（`delete` 之后是 `null`）。
-
-## 在插件里声明设置项
-
-1. 声明依赖：`export const inject = ['gwbSettings']`，或 `ctx.inject(['gwbSettings'], …)` 局部注入。
-2. 在 `apply` 里调 `ctx.gwbSettings.define({ key, title, type, description?, default?, shared? })`：
-   - `key` 用 kebab-case，`title` 不能为空
-   - 改了要重启才生效的，写进 `description`
-   - `shared: true` 的项写进公共区 `*`，别的插件不用声明就能用 `get` 读到（跨插件共享凭据用这个）
-3. 读写：`ctx.gwbSettings.get(key)` 同步返回，没有值时回 `default`；自己没声明过的 `key` 去公共区 `*` 找。`set(key, value)`、`delete(key)` 只能动自己声明过的项。读到的值自己校验类型。
-4. 给 `cordis.yml` 里本插件那条条目写固定的 `id`：分区名取条目 id 的末段（`home:logger` 的分区是 `logger`），没写 `id` 时 id 每次启动都变，设置就对不上了。
-5. `define` 抛错「设置分区 X 归 Y」：两个包算出了同一个条目 id，这个分区的设置不能给本插件用。给本插件的条目换一个 `id`；或者由人手工处理：先关掉工作台（它开着时会用内存里的内容覆盖手改的文件），在 `<home>/settings.json` 里把分区 X 改名或删掉，同时删掉顶层 `$owners` 里的 X 一项；确认是同一个插件改了包名、要接着用这些设置，就只把 `$owners` 里的 X 改成新包名。工作台上没有转移归属的命令。
-
-完成的判据：`settings.all` 里有一行 `section` 是本条目 id 的末段（`shared` 项是 `*`）、`key` 是这一项，`live` 为 `true`。
-
-## 规矩
-
-- 插件的配置一律用 `gwbSettings.define` 声明，`cordis.yml` 的条目上只写 `id`：生命周期插件仓 `gwb-lifecycle-plugins` 的 `docs-site/content/docs/rules/services.mdx`
-
-## `settings.all` 一行的字段
-
-| 字段 | 含义 |
+| 要做什么 | 使用的命令 |
 | --- | --- |
-| `section` | 分区：声明它的条目 id 的末段，公共区是 `*` |
-| `key` | 设置名 |
-| `title`、`description` | 声明方写的标题与说明 |
-| `type` | `string`、`number`、`boolean`、`secret`、`string-list`（字符串数组） |
-| `value` | 存下的值；没设过就没有这一项；secret 行没有 |
-| `default` | 声明方给的默认值；只有 `live` 且声明了默认值的行带，secret 行没有 |
-| `live` | 此刻有没有插件声明它 |
-| `secret`、`isSet`、`mask` | 只有 secret 行带：`secret: true`；`isSet` 是否设过值；设过值时才有 `mask: "••••"` |
+| 查是否配置 | `credentials.status {section,key}`，或 `credentials.list` 的 `isSet` |
+| 复制已有凭据 | `credentials.copy {from:{home?,section,key},to:{section,key},overwrite?}` |
+| 从指定本机文件导入 | `credentials.import {from:{file,format:"text"\|"json",path?},to:{section,key},overwrite?}` |
+| 生成随机值并保存 | `credentials.generate {to:{section,key},bytes?,overwrite?}` |
+| 清除值 | `credentials.delete {section,key}` |
 
-文件顶层的 `$owners`（分区名 → 包名）记每个分区归哪个包，四条命令不读写它。
+复制、导入、生成只返回目标状态，目标必须是当前 home 已启用插件声明的 secret；已有值需显式 `overwrite:true`。复制来源只读，`from.home` 不给就是当前 home，给了只能是同级 home 名。**在哪个 home 调用，就写哪个 home**；复制后各自配置、修改不同步。同一个远端 token 被复制两份后，服务端撤销仍会同时影响两边。
+
+导入的 `file` 必须是绝对路径。JSON 用 `path` 字段数组精确选中字符串；text 去掉一个末尾换行。不要先读取文件正文再把密钥填进工具参数。人首次输入可用本地设置界面；`credentials.set {section,key,value}` 与眼睛按钮的 `credentials.reveal {section,key}` 只供本地界面和插件使用，隐藏于 agent 清单，MCP 不能调用。
+
+`credentials.generate` **只生成随机字符串**，不签发第三方 token，也不赋予有效期。临时 MCP 凭据用 MCP 插件的 `mcp.client.issue` 签发，客户端接线读 `onboard` 说明书；其他服务的签发与撤销由对应插件处理。
+
+完成的判据：目标 `isSet` 符合预期，再通过使用它的插件做认证检查。`isSet:true` 只代表保存过值，不能当成认证成功。
+
+## 修改普通设置
+
+1. 按位置调 `settings.set {section,key,value}`；按声明类型给值：`string`、`number`、`boolean`、`string-list`。清除普通设置用 `settings.delete {section,key}`。
+2. 删除值后声明保留，插件内部 `get` 回到 `default`。
+3. `description` 写了重启生效的，完成后重启指定 home。
+
+完成的判据：普通项 `settings.get` 回新值，或删除后回 `null`；凭据只查状态并做业务验证。
+
+## 在插件里声明与取用
+
+1. 注入 `gwbSettings`，在 `apply` 中 `define({key,title,type,description?,default?,shared?})`；key 用 kebab-case，title 不为空。
+2. `get(key)` 同步取值，没有值时回 `default`；没声明过的 key 去公共区 `*` 找。`set`、`delete` 只能操作自己声明过的项。普通值由消费插件校验类型。
+3. secret 仍声明 `type:'secret'`，服务内部 `get/set/delete` 保持取值与读写能力，写入只接受字符串。插件不用另管文件或引用；跨插件按位置取用走内部 `credentials.reveal`，`settings.get` 对插件来源也拒绝 secret。不要把取到的值拼进回执、异常或日志。
+4. 只需要本 home 内共享的项才写 `shared:true`；它不代表跨 home 共享。
+5. `cordis.yml` 条目写固定 `id`，分区取 id 末段。分区归属冲突时先停止该 home，再核对 `settings.json` 顶层 `$owners`；迁移分区要同时处理两份文件中的对应分区，不能只移动普通设置。
+
+完成的判据：普通设置在 `settings.all`、凭据在 `credentials.list` 有目标行且 `live:true`，插件能使用它；MCP 的凭据命令只拿状态。
+
+## 存储边界
+
+- 旧 `settings.json` 中的 secret 值在下次成功持久化时迁入 `credentials.json`。
+- 两个文件各自原子替换，**不是跨文件事务**。先写凭据，再写元信息；删除记录阻止中断后旧凭据复活。文件损坏时报错并保留，不能当成空文件覆盖。
+- 磁盘没有加密；同用户本机代码仍可读文件。这套机制避免日常工具流程回显凭据，不提供本机代码隔离。
+- 插件配置一律通过 `define`，不使用 `cordis.yml` 条目的 `config`；其他业务数据用 gwb-data。

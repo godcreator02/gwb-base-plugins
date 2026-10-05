@@ -1,14 +1,9 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   allowedHosts,
   allowedOrigins,
   bearerIn,
   gateRequest,
-  loadOrCreateToken,
-  rotateToken,
   SECRET_DIR,
   SECRET_FILE,
   TOKEN_ENV,
@@ -17,29 +12,7 @@ import {
 } from '../src/auth.js'
 import { credentialNote } from '../src/index.js'
 
-/**
- * 这道门的判据守卫。
- *
- * 三件事最该钉住，它们各自的坏法在别处看不见：
- *
- * 1. **token 落盘且重启不换**——0.4 摘鉴权的理由是「跟着重启换新，逼人反复翻日志捞」。
- *    哪天有人把生成挪到内存里，症状是「所有人都突然连不上」，而测试全绿
- * 2. **判据在派发之前**——顺序错了（先建 server 再判）功能上看不出区别，
- *    但「拒绝」就只是一句日志，不是一道墙
- * 3. **坏文件先留证再换**——静默覆盖之后，那次损坏的原始字节就永远查不到了
- */
-
-const made: string[] = []
-
-function tempHome(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gwb-mcp-auth-'))
-  made.push(dir)
-  return dir
-}
-
-afterEach(() => {
-  for (const dir of made.splice(0)) fs.rmSync(dir, { recursive: true, force: true })
-})
+// 这里只测请求鉴权；凭据生成、迁移、持久化与轮换由 credentials/apply 测试覆盖。
 
 /** 一次判据调用的默认入参：全合法，各用例只坏自己关心的那一格 */
 function gateInput(over: Partial<Parameters<typeof gateRequest>[0]> = {}): Parameters<typeof gateRequest>[0] {
@@ -51,62 +24,7 @@ function gateInput(over: Partial<Parameters<typeof gateRequest>[0]> = {}): Param
   }
 }
 
-describe('凭据文件', () => {
-  it('第一次取:现生成一份、落盘、再取还是同一份（重启不换就是这条）', () => {
-    const home = tempHome()
-    const first = loadOrCreateToken(home)
-    expect(first.created).toBe(true)
-    expect(first.regenerated).toBe(false)
-    expect(first.token.length).toBeGreaterThanOrEqual(16)
-    expect(first.file).toBe(path.join(home, SECRET_DIR, SECRET_FILE))
-
-    // 同一个 home 再取一次＝模拟重启：必须原样拿到同一份
-    const again = loadOrCreateToken(home)
-    expect(again.token).toBe(first.token)
-    expect(again.created).toBe(false)
-  })
-
-  it('两个 home 的 token 不一样——凭据是 home 级的身份，不是进程级的', () => {
-    expect(loadOrCreateToken(tempHome()).token).not.toBe(loadOrCreateToken(tempHome()).token)
-  })
-
-  it('文件在但读不出 token:坏的先另存一份,再换新的', () => {
-    const home = tempHome()
-    const file = path.join(home, SECRET_DIR, SECRET_FILE)
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, '{"token": ')
-
-    const out = loadOrCreateToken(home)
-    expect(out.regenerated).toBe(true)
-    expect(out.created).toBe(false)
-
-    const broken = fs.readdirSync(path.dirname(file)).filter((name) => name.includes('.broken-'))
-    expect(broken).toHaveLength(1)
-    const kept = broken[0]
-    if (kept === undefined) throw new Error('没留下 .broken-* 那份')
-    expect(fs.readFileSync(path.join(path.dirname(file), kept), 'utf8')).toBe('{"token": ')
-  })
-
-  it('空文件不算坏:不留下没意义的 .broken-*', () => {
-    const home = tempHome()
-    const file = path.join(home, SECRET_DIR, SECRET_FILE)
-    fs.mkdirSync(path.dirname(file), { recursive: true })
-    fs.writeFileSync(file, '')
-
-    const out = loadOrCreateToken(home)
-    expect(out.created).toBe(true)
-    expect(out.regenerated).toBe(false)
-    expect(fs.readdirSync(path.dirname(file)).some((name) => name.includes('.broken-'))).toBe(false)
-  })
-
-  it('换发:回新的一份,旧的那份读不出来了', () => {
-    const home = tempHome()
-    const before = loadOrCreateToken(home).token
-    const after = rotateToken(home)
-    expect(after.token).not.toBe(before)
-    expect(loadOrCreateToken(home).token).toBe(after.token)
-  })
-
+describe('凭据位置与协议常量', () => {
   it('常量是契约:客户端与环境变量认的就是这几个名字', () => {
     expect(SECRET_FILE).toBe('secret.json')
     expect(SECRET_DIR).toBe('mcp')
@@ -216,39 +134,13 @@ describe('允许名单', () => {
   })
 })
 
-describe('换发之后的判据当场换新', () => {
-  it('rotate 之后旧 token 立刻不认、新的立刻认——「回执报了新号、门还认旧的」那条回归', () => {
-    const home = tempHome()
-    const first = loadOrCreateToken(home).token
-    const rotated = rotateToken(home).token
-
-    // 旧 token 打不过（这一条就是隔离 home 验机抓到的那个缺陷：只写文件不回写的话，旧 token 照样过）
-    expect(
-      gateRequest({
-        headers: { [TOKEN_HEADER]: `${TOKEN_SCHEME} ${first}`, host: '127.0.0.1:2870' },
-        token: rotated,
-        port: 2870,
-      })?.refused,
-    ).toContain('对不上')
-
-    // 新 token 直接过
-    expect(
-      gateRequest({
-        headers: { [TOKEN_HEADER]: `${TOKEN_SCHEME} ${rotated}`, host: '127.0.0.1:2870' },
-        token: rotated,
-        port: 2870,
-      }),
-    ).toBeUndefined()
-  })
-})
-
 describe('credentialNote', () => {
   it('带文件时把文件路径一起指出来——拒绝路径上唯一的指路', () => {
-    expect(credentialNote('/h/mcp/secret.json')).toContain('/h/mcp/secret.json')
-    expect(credentialNote('/h/mcp/secret.json')).toContain('mcp.token')
+    expect(credentialNote('/h/credentials.json')).toContain('/h/credentials.json')
+    expect(credentialNote('/h/credentials.json')).toContain('mcp.token')
   })
 
   it('凭据取不出来时也要给一条路,不能只留个空指引', () => {
-    expect(credentialNote(undefined)).toBe('token 取法见 mcp.token 命令')
+    expect(credentialNote(undefined)).toContain('onboard')
   })
 })

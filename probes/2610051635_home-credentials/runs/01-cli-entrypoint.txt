@@ -1,0 +1,8 @@
+2026-10-05 16:35 Windows; Node v24.14.1
+Base commit: 2bf862f7fa11333d599a843eefdd12f8d5a71434 + uncommitted home-credentials implementation
+Home: settings-credentials-2610051627
+settings 0.3.11-dev.20261005163404; mcp 0.11.8-dev.20261005163404; baseui 0.1.27-dev.20261005163438
+Command: node probes/2610051635_home-credentials/verify.mjs settings-credentials-2610051627
+Exit 1: Unexpected end of JSON input
+Cause: client.mjs entrypoint guard compared import.meta.url (real path) with process.argv[1] (pnpm symlink path); CLI exited 0 without running main.
+No credential value was printed. Add symlink CLI execution regression and resolve argv path before comparison.

@@ -9,6 +9,7 @@ export const SHARED_SECTION = '*'
 export const OWNERS_KEY = '$owners'
 
 const HOME_FILE = 'settings.json'
+const CREDENTIALS_FILE = 'credentials.json'
 
 /** 设置名与条目 id 的每一段。字符集里没有点号，`.` 与 `..` 进不来；gwb-data 拿同一套字符集当目录名 */
 const KEY_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
@@ -68,6 +69,11 @@ export function entrySection(entryId: string): string {
 /** `<home>/settings.json`，和 cordis.yml 并排 */
 export function homeFile(dataDir: string): string {
   return path.join(dataDir, HOME_FILE)
+}
+
+/** 每个 home 自己保管凭据明文，不回退读取别的 home */
+export function credentialsFile(dataDir: string): string {
+  return path.join(dataDir, CREDENTIALS_FILE)
 }
 
 /** 只看末段：前面那段是 loader 拼上的父条目 id */

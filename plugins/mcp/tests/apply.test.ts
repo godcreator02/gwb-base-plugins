@@ -56,6 +56,7 @@ function fakeSettings(values: Record<string, unknown>) {
       return () => {}
     },
     get: (key: string) => values[key],
+    async set(key: string, value: unknown) { values[key] = value },
   }
 }
 
@@ -125,21 +126,28 @@ const textsOf = (logs: Message[], type: string): string[] => logs.filter((m) => 
 describe('MCP 插件装上之后', () => {
   it('声明 port 设置：非 default home 缺省 0；登记 mcp.info 与 mcp.token，插件包名写在 plugin 上', async () => {
     const booted = await bootMcp('side')
-    expect(booted.settings.defined).toEqual([expect.objectContaining({ key: 'port', title: 'MCP 端口', type: 'number', default: 0 })])
+    expect(booted.settings.defined).toEqual([
+      expect.objectContaining({ key: 'port', title: 'MCP 端口', type: 'number', default: 0 }),
+      expect.objectContaining({ key: 'token', type: 'secret' }),
+      expect.objectContaining({ key: 'client-tokens', type: 'secret' }),
+    ])
     expect(booted.bus.list().map((c) => [c.name, c.plugin])).toEqual([
       ['mcp.info', '@godcreator/gwb-mcp'],
       ['mcp.token', '@godcreator/gwb-mcp'],
+      ['mcp.client.list', '@godcreator/gwb-mcp'],
+      ['mcp.client.issue', '@godcreator/gwb-mcp'],
+      ['mcp.client.revoke', '@godcreator/gwb-mcp'],
     ])
     await booted.mcpFiber.dispose()
   })
 
-  it('第一次装上生成 token 并写进 <home>/mcp/secret.json；mcp.info 回 url、端口与带 token 的 mcpServers 片段', async () => {
+  it('第一次装上生成 token 并交给 settings；插件内部 mcp.info 保留连接片段', async () => {
     const booted = await bootMcp('side')
     const connection = await connectionOf(booted)
     expect(connection.port).toBeGreaterThan(0)
     expect(connection.url).toBe(`http://127.0.0.1:${connection.port}/mcp`)
-    const secret = JSON.parse(fs.readFileSync(path.join(booted.home, 'mcp', 'secret.json'), 'utf8')) as { token: string }
-    expect(secret.token).toBe(connection.token)
+    expect(booted.settings.get('token')).toBe(connection.token)
+    expect(fs.existsSync(path.join(booted.home, 'mcp', 'secret.json'))).toBe(false)
     await booted.mcpFiber.dispose()
   })
 
@@ -158,7 +166,7 @@ describe('MCP 插件装上之后', () => {
     const { port, token } = await connectionOf(booted)
     const noToken = await rawRequest(port, {})
     expect(noToken.status).toBe(401)
-    expect(noToken.body).toContain('token 取法见 mcp.token 命令')
+    expect(noToken.body).toContain('onboard')
     expect((await rawRequest(port, { headers: { authorization: 'Bearer wrong-token-wrong-token' } })).status).toBe(401)
     expect((await rawRequest(port, { headers: { authorization: `Bearer ${token}`, host: `evil.example:${port}` } })).status).toBe(401)
     expect(textsOf(booted.logs, 'warn').filter((t) => t.startsWith('拒绝了一条请求'))).toHaveLength(3)
@@ -275,6 +283,47 @@ describe('MCP 插件装上之后', () => {
     expect(newToken).not.toBe(before.token)
     expect((await rawRequest(before.port, { headers: { authorization: `Bearer ${before.token}` } })).status).toBe(401)
     expect((await rawRequest(before.port, { method: 'GET', headers: { authorization: `Bearer ${newToken}` } })).status).toBe(405)
+    await booted.mcpFiber.dispose()
+  })
+
+  it('MCP 与 UI 读info/token均不回凭据；签发临时凭据可以认证并按id撤销', async () => {
+    const booted = await bootMcp('side')
+    const main = await connectionOf(booted)
+    const client = await mcpClient(main)
+    for (const name of ['mcp.info', 'mcp.token']) {
+      const result = await client.callTool({ name: 'run', arguments: { command: name } })
+      expect(JSON.stringify(result)).not.toContain(main.token)
+      expect(JSON.stringify(await booted.bus.run(name, undefined, { via: 'ui' }))).not.toContain(main.token)
+    }
+    const installed = await client.callTool({ name: 'run', arguments: { command: 'mcp.client.issue', args: { expiresInSeconds: 60 } } })
+    const receipt = JSON.parse((installed.content as { text: string }[])[0]!.text)
+    const tokens = JSON.parse(booted.settings.get('client-tokens') as string) as { id: string; token: string }[]
+    const temporary = `Bearer ${tokens.find((row) => row.id === receipt.data.id)!.token}`
+    expect(JSON.stringify(installed)).not.toContain(temporary.slice(7))
+    expect(JSON.stringify(installed)).not.toContain(main.token)
+    expect((await rawRequest(main.port, { method: 'GET', headers: { authorization: temporary } })).status).toBe(405)
+    await client.callTool({ name: 'run', arguments: { command: 'mcp.client.revoke', args: { id: receipt.data.id } } })
+    expect((await rawRequest(main.port, { method: 'GET', headers: { authorization: temporary } })).status).toBe(401)
+    expect((await rawRequest(main.port, { method: 'GET', headers: { authorization: `Bearer ${main.token}` } })).status).toBe(405)
+    expect(JSON.stringify(booted.logs)).not.toContain(main.token)
+    expect(JSON.stringify(booted.logs)).not.toContain(temporary.slice(7))
+    await client.close()
+    await booted.mcpFiber.dispose()
+  })
+
+  it('settings运行中更新主凭据和临时凭据后，下一条HTTP请求即用新值', async () => {
+    const booted = await bootMcp('side')
+    const main = await connectionOf(booted)
+    const replacement = 'replacement-main-abcdefghijklmnop'
+    const temporary = 'replacement-client-abcdefghijklmnop'
+    await booted.settings.set('token', replacement)
+    const request = (token: string) => rawRequest(main.port, { method: 'GET', headers: { authorization: `Bearer ${token}` } })
+    expect((await request(main.token)).status).toBe(401)
+    expect((await request(replacement)).status).toBe(405)
+    await booted.settings.set('client-tokens', JSON.stringify([{ id: 'test', token: temporary, expiresAt: Date.now() + 60_000 }]))
+    expect((await request(temporary)).status).toBe(405)
+    await booted.settings.set('client-tokens', '[]')
+    expect((await request(temporary)).status).toBe(401)
     await booted.mcpFiber.dispose()
   })
 

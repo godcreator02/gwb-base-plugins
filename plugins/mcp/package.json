@@ -1,10 +1,10 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.11.7",
+  "version": "0.12.0",
   "author": {
     "name": "godcreator"
   },
-  "description": "MCP 入口：把命令总线提供给 agent——工具只有 index / search / run 三个（加一个工具是 major 变更），无状态 streamableHTTP、要 Authorization token（每个 home 一份、写在磁盘上、重启不换），default 固定用 2870 端口；index 只列说明书与命令名，装了哪些插件问 plugin-manager.list。另带一个零依赖的命令行客户端（mcp.client），给没有 MCP 客户端的环境用。服务无；skill 1 份；命令 3 条。",
+  "description": "MCP 入口：工具只有 index / search / run 三个，无状态 streamableHTTP、凭据由每个 home 独立保管，default 固定用 2870 端口。支持不回显的临时凭据签发、到期检查与撤销，客户端接线由 onboard skill 编排；自带零依赖命令行客户端，--home 读取对应入口与凭据。服务无；skill 1 份；命令 6 条。",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

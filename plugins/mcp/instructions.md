@@ -10,6 +10,9 @@ effect 说明命令会动到什么：read 只读，可以直接调；write 改�
 external 影响本机以外或打扰人（推送、发到远端、弹窗）。每条命令都标了 effect；write 与 external 的调之前先读 usage。
 命令失败、返回超过 40000 字符，都回 isError 的文本并写明怎么办，连接不断。
 
+普通设置用 settings.*；凭据由每个 home 的 settings 插件保管，查状态、复制、导入、生成用 credentials.*，配置 MCP 客户端读 onboard 说明书。
+已授权的操作由工具内部取用凭据，不需要先读明文；具体用法先读 gwb-settings / mcp 说明书。
+
 这台工作台鼓励你在工作中改进它：修命令的 bug、改插件自带的 SKILL.md、加命令、加插件都不用问。
 发完新版本调 plugin-manager.update {"all":true}，再调 shell.reload；升到 mcp 插件自己时连接会断，
 重连后用 plugin-manager.list 核对。

@@ -1,6 +1,6 @@
 ---
 title: 2 MCP 协议 /mcp
-description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行客户端 bin/client.mjs）；交换的是 127.0.0.1 上的 HTTP 路径 /mcp——只收 POST、无状态、工具固定为 index / search / run，请求要带 Bearer token 并通过 Host / Origin 检查。MCP 插件保证 default 固定 2870 端口、token 每个 home 一份且重启不换、绑定成功后把端口写进 runtime.json 的 mcp 项；客户端保证带对 token 与 Host、工作台重启后重连
+description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行客户端 bin/client.mjs）；交换的是 127.0.0.1 上的 HTTP 路径 /mcp——只收 POST、无状态、工具固定为 index / search / run，请求要带 Bearer token 并通过 Host / Origin 检查。MCP 插件保证 default 固定 2870 端口、主凭据每个 home 一份且重启不换，临时凭据可到期或单独撤销、绑定成功后把端口写进 runtime.json 的 mcp 项；客户端保证带对 token 与 Host、工作台重启后重连
 ---
 
 **本页回答**：外部 MCP 客户端怎么连上一个 home 的 MCP 入口；请求要过哪几项检查、每项防什么；端口、token 从哪来、写在哪；MCP 插件、客户端、随包的命令行客户端各保证什么。工具返回的内容从哪来、回执怎么翻译见[命令表开给 agent](/docs/seams/agent-surface)，MCP 插件的功能见 [gwb-mcp](/docs/mcp)。
@@ -8,38 +8,38 @@ description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行
 ## 连接的模块
 
 - [MCP 插件](/docs/mcp) `@godcreator/gwb-mcp`：在 `apply` 里自己开一个 `node:http` 服务，绑 127.0.0.1
-- MCP 客户端：Claude Code、zcode 等 agent 客户端，照 `mcp.info` / `mcp.token` 给的配置片段连
+- MCP 客户端：按 onboard skill 合并本地客户端配置后重连，文件格式不由 MCP 插件维护
 - 随包的命令行客户端 `plugins/mcp/bin/client.mjs`：零依赖的单文件脚本，按协议握手后调一个工具；装了 node 命令行运行插件时还登记成命令 `mcp.client`
 
-端口来自 MCP 插件自己在设置插件里声明的 `port`（见[设置](/docs/seams/settings)）；`runtime.json` 的其余字段由内核写。
+端口、主凭据、临时凭据表来自 MCP 插件在 settings 里声明的 `port`、`token`、`client-tokens`；后两项是 secret，明文落在本 home 的 `credentials.json`（见[设置](/docs/seams/settings)）。`runtime.json` 的其余字段由内核写。
 
 ## 接口
 
 <Diagram name="mcp-request" title="MCP 客户端连 MCP 入口的一次请求（分步）">
-- 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
+- 加载时：从 settings 读端口与凭据，迁入旧凭据或生成主凭据；持久化成功后才删旧文件。只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
 - 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
-- token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
+- 每次请求从 settings 读取当前主凭据和临时凭据表，确认 token 有效、未到期且未撤销，再检查 Host、Origin；任何一项不过回 401，工具一次都不会被调用
 - 通过的请求新建一个 McpServer 和一条 transport，instructions 在这时按当前的命令表与说明书清单生成，再登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
 - `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 先在 `list()` 里查到命令、确认不是只给页面调用的，再交给命令总线的 `run()`；返回超过 40000 字符换成 `isError` 的说明；响应结束时 server 与 transport 一起关闭
 </Diagram>
 
 **三个工具**，写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" hash="643035e06d7a" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="102-143" hash="643035e06d7a" blob="1f9a4ca3fe38" */}
 
 **HTTP 路径**：只有 `/mcp`，只收 POST。每个请求新建一个 MCP server 和一条无状态的 streamable HTTP transport，随响应关闭；initialize 返回的 instructions 在新建 server 时生成（内容见[命令表开给 agent](/docs/seams/agent-surface)），所以装卸插件后客户端重连一次就拿到新的目录；别的路径回 404，别的方法回 405（`allow: POST`）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="287-309" hash="5c1a70f3ab62" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="287-309" hash="5c1a70f3ab62" blob="1f9a4ca3fe38" */}
 
 SDK 的 streamable HTTP 要求 POST 的 `Accept` 同时有 `application/json` 与 `text/event-stream`，只写前者回的是 406（`Not Acceptable: Client must accept both …`）。手工用 curl 或 `Invoke-WebRequest` 试入口时很容易只写前者，然后把 406 当成鉴权失败——鉴权失败是 401，并带一句原因。
 
 **三项检查**在派发任何请求之前做，任何一项不过都回 401，响应体是 `{ error: 'unauthorized', message }`，`message` 写明哪一项没过、token 去哪取：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="311-323" hash="bfce089cfcc7" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="310-336" hash="69c89e0a0e31" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="136-162" hash="e41f84367f06" blob="0e1ae6b5535b" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="72-98" hash="1b09b8bd6280" blob="86e3b0c050ec" */}
 
-- token：请求头 `Authorization: Bearer <token>`，也认只写 token 本身；比较前两边各过一遍 SHA-256，长度不同也不抛
+- token：请求头 `Authorization: Bearer <token>`，也认只写 token 本身；匹配当前主凭据，或临时表中尚未到期的凭据。每次请求重新检查，撤销从临时表移除。比较前两边各过一遍 SHA-256，长度不同也不抛
 - Host：只认 `127.0.0.1:<端口>` 与 `localhost:<端口>`，端口是实际绑定的那个
 - Origin：不带就放行（命令行工具、脚本、MCP 客户端都不带）；带了只认 `http://127.0.0.1:<端口>` 与 `http://localhost:<端口>`，`null` 不认
 
@@ -47,9 +47,9 @@ SDK 的 streamable HTTP 要求 POST 的 `Accept` 同时有 `application/json` �
 
 Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRebindingProtection` / `allowedHosts` / `allowedOrigins`：锁定的 SDK（1.30.0）里 `enableDnsRebindingProtection` 标着 deprecated，而且它缺省关闭、不开就整段不检查；自己写十来行，还能把拒绝原因写进日志。
 
-**凭据文件**：token 存在 `<home>/mcp/secret.json`（`{ "token": "…" }`，32 字节随机、base64url），第一次启动时生成，之后重启不换；文件认不出时先改名成 `secret.json.broken-<时间戳>` 留着，再生成新的；取不出来时入口照开、所有请求一律 401：
+**凭据保管**：settings 的 `token` 与 `client-tokens` 是 secret 项；临时表以 JSON 字符串保存，每条有编号、token 和到期时间。主凭据是 32 字节随机数的 base64url，首次启动生成，重启不换。启动仍能读旧 `<home>/mcp/secret.json`，迁入 settings 并确认持久化成功后才删旧文件；坏文件或持久化失败会使凭据不可用，不静默换发。settings 对两个文件分别原子写，跨文件不是事务，恢复语义见[设置](/docs/seams/settings)。
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="8-20" hash="262b152e7df3" blob="0e1ae6b5535b" */}
+{/* ref file="../plugins/mcp/src/credentials.ts" lines="30-66" hash="fd658bf082ba" blob="6c45cbb2667a" */}
 
 **端口**：设置项 `port`，缺省按 home 名给——home 名是 `gwbKernel.dataDir` 的最后一段。default 固定 2870，被占就不开入口；其余 home 缺省由系统分配，设置里显式给了端口而被占时改用系统分配的端口：
 
@@ -57,36 +57,50 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 
 只绑 127.0.0.1：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="333-346" hash="65e06d276e74" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="339-352" hash="65e06d276e74" blob="1f9a4ca3fe38" */}
 
 **`runtime.json` 的 `mcp` 项**：绑定成功之后读出 `<home>/runtime.json`、只改 `mcp` 这一项（`{ port, url }`）、其余字段原样写回；文件读不出就从空对象开始。不做原子写：读的一方本来就把读不出当成没有，内核下次启动会整份重写：
 
 {/* ref file="../plugins/mcp/src/runtime.ts" lines="16-26" hash="bbd776e3ce86" blob="5e93263b1024" */}
 
-**两条命令**：回执里的 `mcpServers` 是同一个形状的片段，键是 `gwb`，值是 `{ type: 'http', url, headers: { Authorization: 'Bearer <token>' } }`，照抄进客户端配置就能连。`mcp.info` 回 `{ url, port, mcpServers, auth }`，只读不换；`mcp.token` 回 `{ token, file, rotated, mcpServers }`，参数 `{ "rotate": true }` 生成一份新 token 并立刻生效。两条回执都带明文 token，会进调用方的会话记录。入口没在监听、或凭据文件取不出来时，两条都回 `ok: false` 并写明原因：
+**状态与轮换**：`mcp.info` 经 MCP / 页面回 `{url,port,auth:{configured}}`；`mcp.token` 无参数查状态，`{rotate:true}` 轮换主凭据，回 `{configured,rotated}`。旧主凭据立刻失效，独立临时凭据继续有效。受信插件内部调用保留原来的明文兼容回执；agent 配置客户端读 onboard 说明书。
 
-{/* ref file="../plugins/mcp/src/endpoint.ts" lines="54-83" hash="acf3ecfac412" blob="65e4dd6cd78c" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="412-469" hash="117ded3895e5" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="437-451" hash="7a8245d9bdd9" blob="22353857ab33" */}
+**临时凭据**：
 
-**命令行客户端的地址与 token**：地址依次取 `--url`、环境变量 `GWB_MCP_URL`、`http://127.0.0.1:2870/mcp`；token 依次取 `--token`、环境变量 `GWB_MCP_TOKEN`，地址是 default 的缺省地址时再去读 default home 的凭据文件：
+| 命令 | 输入 | 结果与保证 |
+| --- | --- | --- |
+| `mcp.client.issue` | `{expiresInSeconds}` | 签发独立临时凭据，只回 `{id,expiresAt}` |
+| `mcp.client.list` | 无 | `[{id,expiresAt,expired}]`，不回 token |
+| `mcp.client.revoke` | `{id}` | `{id,revoked}`，不存在为 false，不删除客户端配置文件 |
 
-{/* ref file="../plugins/mcp/bin/client.mjs" lines="102-106" hash="e7d6f16ebfde" blob="99034c89f758" */}
+有效期 `expiresInSeconds` 必须是 1 到 31536000 的整数。入口每次请求检查临时凭据到期状态；权限与主凭据相同，只限制使用时间，主凭据轮换不会撤销它。凭据值由 settings 保存，签发回执只提供编号与到期时间。
 
-凭据文件的位置是脚本自己拼的：
+客户端接线由 onboard skill 编排：在本地进程按编号读凭据并合并目标配置，失败恢复原文件并撤销本次签发的编号。MCP 不感知客户端文件路径或格式。
 
-{/* ref file="../plugins/mcp/bin/client.mjs" lines="38-46" hash="e2b4a903477a" blob="99034c89f758" */}
+{/* ref file="../plugins/mcp/src/credentials.ts" lines="7-21" hash="0545291b5556" blob="6c45cbb2667a" */}
 
-这一段**靠约定**：home 目录的位置（Windows 上是 `%APPDATA%\gwb-kernel\homes\<home>`）由内核决定；`mcp/secret.json` 这段相对路径写在 `auth.ts` 的 `SECRET_DIR` / `SECRET_FILE` 与这个脚本两处。脚本不 import 插件代码（它要能单独复制出去用），任何一处改了，脚本读不到 token，请求收到 401。
+{/* ref file="../plugins/mcp/src/credentials.ts" lines="81-99" hash="7e20101ff084" blob="6c45cbb2667a" */}
+
+**命令行客户端**：`--home <名字>` 默认 default，按平台 home 路径读该 home 的 `runtime.json` 地址与 `credentials.json` 的 MCP 主凭据槽；default 固定使用 2870。只有新凭据文件尚不存在时兼容同 home 的旧 `mcp/secret.json`；新文件存在但缺少槽位、槽位是删除记录或文件损坏时不回退旧值。
+
+地址优先用 `--url`、`GWB_MCP_URL`，否则用选定 home 的地址。token 优先用 `--token`、`GWB_MCP_TOKEN`；没有显式 token 且地址与该 home 相同时才自动取该 home 的凭据，避免把它发给另一个入口。
+
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="36-84" hash="d69af419603c" blob="c4f891f6b6cf" */}
+
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="93-132" hash="8d05f6b6396e" blob="33bdde6b10f1" */}
+
+这部分靠文件约定连接：脚本保持零依赖，不 import 插件代码。home 路径由内核决定，凭据格式由 settings 决定，MCP 分区与键由本插件决定；改变这些约定时必须同时适配脚本。
 
 ## 约定
 
 **MCP 插件**保证：
 
-- 工具恰好是 `index`、`search`、`run` 三个；加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状是 major
+- 工具恰好是 `index`、`search`、`run` 三个；协议变更与版本规则按 `gwb-release` 说明书判断
 - 每个请求都先过 token、Host、Origin 三项检查，任何一项不过回 401 并写一条 warn，处理函数一次都不会被调用
 - 凭据文件取不出来（磁盘满、目录不可写）时照样开端口，但所有请求一律 401，不退回成不检查
-- token 每个 home 一份、重启不换；`mcp.token {"rotate":true}` 之后旧 token 立刻失效、新 token 立刻可用
+- 主凭据每个 home 一份、重启不换；`mcp.token {"rotate":true}` 之后旧主凭据立刻失效、新主凭据立刻可用；独立临时凭据继续按自己的期限和撤销状态生效
 - default home 只用设置里的端口（缺省 2870），被占就不开入口、写一条 error，不改用别的端口——连着 default 的会话把这个地址写进了配置，换端口等于把这些会话交给占着端口的那个 home
 - 只在绑定成功之后写 `runtime.json` 的 `mcp` 项，写失败只写一条 warn、入口照常服务；只改自己那一项；进程退出时不删，记录可能过时，由读的一方核对
 - 不发清单变更通知：连接是无状态的，工具清单也不会变。构造 server 时声明 `tools.listChanged: false`，SDK 的 `registerTool` 会把它改成 `true`，客户端在 initialize 里看到的是 `true`
@@ -109,13 +123,14 @@ Host 与 Origin 由本插件自己判断，不用 SDK transport 的 `enableDnsRe
 - MCP 插件不做命令级的权限控制：token 对的请求能调命令表里每一条没标 `hiddenFromAgents` 的命令，包括往 home 里装插件；`effect` 不拦调用
 - MCP 插件不保持会话、不推送通知
 - MCP 插件不监听 127.0.0.1 以外的地址，不提供 HTTPS
-- MCP 插件不替客户端写配置：`mcp.info` / `mcp.token` 只给片段
-- 命令行客户端不负责找非 default home 的端口与 token：要用 `--url`、`--token` 显式给
+- 客户端配置写入只支持 JSON 的 `mcpServers`，不处理任意客户端格式
+- 状态回执不含凭据，但本机有磁盘权限的代码仍能读明文文件；这不是加密或本机代码沙箱
+- `configured` 只说明有凭据，不能代替客户端重连与 `index` 验证
 
 ## 测试
 
-`plugins/mcp/tests/auth.test.ts`、`endpoint.test.ts`、`runtime.test.ts` 测三项检查、端口的决定与 `runtime.json` 的读改写，`server.test.ts` 用内存传输确认工具恰好三个，`apply.test.ts` 用真的 HTTP 请求与 SDK 客户端测端口绑定、三种 401、404 与 405、换 token 立刻生效、default 端口被占时不开；命令行客户端没有单元测试，只能在隔离 home 里验证。
+`plugins/mcp/tests/auth.test.ts`、`endpoint.test.ts`、`runtime.test.ts` 测请求检查、端口与运行记录；`credentials.test.ts` 测迁移、配置写入与临时凭据；`client.test.ts` 测按 home 读取、删除记录与握手。`server.test.ts` 用内存传输确认工具恰好三个，`apply.test.ts` 用真实 HTTP 与 SDK 客户端验证入口行为，隔离 home 联调验证真实连接。
 
 {/* ref file="../plugins/mcp/tests/server.test.ts" lines="54-59" hash="956d7963284b" blob="d291c7ccd288" */}
 
-{/* ref file="../plugins/mcp/tests/apply.test.ts" lines="309-323" hash="2c66ddf0ee0c" blob="5d60cbfb0572" */}
+{/* ref file="../plugins/mcp/tests/apply.test.ts" lines="358-372" hash="2c66ddf0ee0c" blob="8c4311924ff1" */}

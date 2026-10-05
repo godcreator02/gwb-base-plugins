@@ -290,8 +290,7 @@ describe('户主：分区归哪个包', () => {
 
 /**
  * 枚举口那道门：`settings.all` 交出去的那一份**不带 secret 的明文**。
- * 真值（服务面 `get` 与按位置直读的 `read`＝`settings.get` 命令）照旧拿得到——
- * 收的是枚举，不是取用。
+ * 服务面 `get` 与受信插件使用的 `read` 保持取值；MCP 和 UI 的 get 走不含值的 status。
  */
 describe('secret 行不回明文', () => {
   /** 测试里的假凭据。**假值**——这一组断的就是「它不出现」 */
@@ -380,14 +379,71 @@ describe('secret 行不回明文', () => {
     expect('isSet' in list!).toBe(false)
   })
 
-  it('按位取用照旧拿得到真值：服务面 get 与 read（settings.get 那条路）', () => {
+  it('插件内部按位取用照旧拿得到真值：服务面 get 与 read', () => {
     const { reg } = fresh()
     reg.define(alice, { key: 'api-key', title: 'API Key', type: 'secret' })
     const slot = reg.locate(alice, 'api-key')!
     reg.put(slot, FAKE)
     expect(reg.get(alice, 'api-key')).toBe(FAKE)
     expect(reg.read(slot)).toBe(FAKE)
-    // 底层的落盘那份也不动：收的只是命令面那一份
+    // 内存表完整保留值；store 在落盘时拆成普通设置与凭据两份。
     expect(reg.file()).toEqual({ alice: { 'api-key': { title: 'API Key', type: 'secret', value: FAKE } } })
+  })
+})
+
+describe('凭据状态与类型边界', () => {
+  const fake = 'fake-status-secret'
+  const slot = { section: 'alice', key: 'token' }
+
+  it('status 只报告已保存与声明状态，不回值、默认值或描述', () => {
+    const { reg } = fresh()
+    const off = reg.define(alice, { key: 'token', title: '令牌', type: 'secret', description: '测试', default: fake })
+    expect(reg.status(slot)).toEqual({ ...slot, type: 'secret', secret: true, isSet: false, live: true })
+    reg.put(slot, fake)
+    expect(reg.status(slot)).toEqual({ ...slot, type: 'secret', secret: true, isSet: true, live: true })
+    expect(JSON.stringify(reg.status(slot))).not.toContain(fake)
+    off()
+    expect(reg.status(slot)).toMatchObject({ secret: true, isSet: true, live: false })
+    reg.drop(slot)
+    expect(reg.status(slot)).toMatchObject({ secret: true, isSet: false, live: false })
+  })
+
+  it('未知项没有状态，普通项也可以查状态且不返回值', () => {
+    const { reg } = fresh()
+    expect(reg.status(slot)).toBeUndefined()
+    reg.define(alice, { key: 'level', title: '级别', type: 'string' })
+    reg.put({ section: 'alice', key: 'level' }, 'debug')
+    expect(reg.status({ section: 'alice', key: 'level' })).toEqual({ section: 'alice', key: 'level', type: 'string', secret: false, isSet: true, live: true })
+  })
+
+  it('已保存的 secret 不能由新声明降为普通项，拒绝后值仍被隐藏', () => {
+    const { reg } = fresh()
+    reg.load({ alice: { token: { title: '令牌', type: 'secret', value: fake } } }, {})
+    expect(() => reg.define(alice, { key: 'token', title: '普通', type: 'string' })).toThrow('凭据项不能改成普通设置')
+    expect(reg.status(slot)).toEqual({ ...slot, type: 'secret', secret: true, isSet: true, live: false })
+    expect(reg.locate(alice, 'token')).toBeUndefined()
+    expect(reg.owners()).toEqual({})
+    expect(JSON.stringify(reg.all())).not.toContain(fake)
+    expect(reg.read(slot)).toBe(fake)
+  })
+
+  it('清除值后仍是凭据项，重复声明失败不替换原有有效声明', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'token', title: '令牌', type: 'secret', default: fake })
+    reg.put(slot, 'fake-saved')
+    reg.drop(slot)
+    expect(() => reg.define(alice, { key: 'token', title: '普通', type: 'string', default: 'unsafe-default' })).toThrow('凭据项不能改成普通设置')
+    expect(reg.get(alice, 'token')).toBe(fake)
+    expect(reg.status(slot)).toMatchObject({ secret: true, isSet: false, live: true })
+    expect(JSON.stringify(reg.all())).not.toContain(fake)
+  })
+
+  it('shared 凭据也不能被另一插件用普通声明降级', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'token', title: '令牌', type: 'secret', shared: true })
+    reg.put({ section: '*', key: 'token' }, fake)
+    expect(() => reg.define(bob, { key: 'token', title: '普通', type: 'string', shared: true })).toThrow('凭据项不能改成普通设置')
+    expect(reg.get(bob, 'token')).toBe(fake)
+    expect(JSON.stringify(reg.all())).not.toContain(fake)
   })
 })

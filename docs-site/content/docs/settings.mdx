@@ -1,88 +1,63 @@
 ---
-title: gwb-settings · 设置
-description: gwb-settings 让插件声明自己的设置项，值写在 <home>/settings.json 一份文件里，按条目分区，shared 项进公共区 *；settings.all 不回 secret 项的值。本页讲它的功能、接口与所属接缝（服务、四条命令、settings.json）、依赖与缺了会怎样，以及哪些事不归它做
+title: gwb-settings · 设置与凭据
+description: 插件声明设置项；每个 home 独立保存普通设置与明文凭据。插件内部照常取用，页面与 agent 通过不回显的接口管理凭据。
 ---
 
-**本页回答**：设置插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；值写在哪、怎么分区、读的时候按什么顺序找；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-settings`，源码目录 `plugins/settings/src`，入口文件 `index.ts`。
+**本页回答**：设置与凭据存在哪、插件怎样使用、AI 怎样完成配置而不经手明文。包名 `@godcreator/gwb-settings`，入口是 `plugins/settings/src/index.ts`。
 
-插件声明「我有一项叫 `level` 的设置，标题是这个、类型是那个」，值写到哪由设置插件决定。一个 home 的全部设置在 `<home>/settings.json` 一份文件里，和 `cordis.yml` 在同一个目录。
+每个 home 有自己的 `settings.json` 与 `credentials.json`，不继承 default。前者存普通值、设置声明与分区归属，后者存 secret 的明文值；插件继续声明 `type:'secret'` 并经服务取用。
 
 ## 功能
 
-- **插件声明设置项**：给 `key`（kebab-case）、`title`、`type`，可选 `shared`、`description`、`default`；插件卸载时声明自动撤销
-- **按条目分区**：值写在调用方条目 id 的末段那个分区里，同一个包的两条条目各存各的；`shared: true` 的项写进公共区 `*`
-- **认得出调用方**：服务从调用方的上下文里认出条目，插件只能读写自己声明的项，报不出别人的身份
-- **读的顺序**：调用方声明过这一项，回它的值，没有值回 `default`；没声明过，去公共区 `*` 找——一个插件把 token 声明进公共区，别的插件不用声明就读得到；都没有回 `undefined` 并写一条 warn
-- **只写自己声明过的项**：`set`、`delete` 没声明就抛错——写一项谁也不认识的设置进文件，出了问题没人查得到
-- **页面与 agent 用命令读写**：四条命令按「分区 + 键」定位，不认调用方身份；`settings.all` 可以只取一个分区，插件装得多的 home 上 agent 不用一次拿回全部设置。`settings.all`、`settings.get` 标 `effect: 'read'`，`settings.set`、`settings.delete` 标 `write`
-- **列出全部设置时不给 secret 项的值**：`settings.all` 里 secret 项只说设没设过，带定长掩码；要值按位置用 `settings.get` 取，回明文（轨迹卡[凭据掩码](/trajectory/2026-09-20-secret-mask)）
-- **分区记着归哪个包**：文件顶层的 `$owners` 记每个分区归哪个包，包名对不上的声明直接抛错，报错写明由人关掉工作台后在 `settings.json` 里怎么手工处理；服务上的 `owners`、`transferOwner` 能列出和改写归属，插件管理 0.14 起不再调用，此刻没有调用方
-- **声明写进文件，加载着时以代码为准**：`title`、`type`、`description` 写进 `settings.json`，插件停用后界面上仍看得到这一项；插件加载着时以代码里的声明为准，值不动。同一个条目重复声明同一个键，后声明的生效并写 warn
-- **读文件在构造函数里同步做完**：`Service` 在构造时就提供了服务，构造一返回，别的插件就可能加载并调用同步的 `get`；异步读的话那一刻表还是空的
-- **写入是原子的**：先写同目录的临时文件再改名，临时文件名带随机后缀；同一个文件的多次写入按发起顺序一次一个，后发起的那次最后写进文件（轨迹卡[写入排队](/trajectory/2026-09-24-serialize-file-writes)）；写失败写一条 warn、异常照样抛给调用方。同一轮里的多次 `define` 合并成一次写文件，否则每个插件加载时各写一次；合并写入还没开始时有别的写入，那次合并写入取消，因为每次写的都是整张表
-- **值不写进日志**：日志里只有「哪一项已写、已删」
-- **条目没写 id 时提醒**：声明时发现条目 id 是 loader 生成的随机串，写一条 warn
-- **带一份说明书 `gwb-settings`**：给 agent 讲四条命令的参数、分区是什么、secret 项怎么取值
+- **按条目分区**：分区是调用方条目 id 的末段；同一个包的两条条目各存各的。`shared:true` 进入当前 home 的公共区 `*`，不跨 home。
+- **声明与取值**：`define` 给出 key、title、type 和可选说明、默认值；服务 `get` 先找自己声明的项，没有保存值时回 default；没声明过的 key 去公共区找。普通值由消费方校验，写入 secret 必须是字符串。
+- **按对象选择命令**：`settings.all/get/set/delete` 只处理普通设置；`credentials.list/status` 只查凭据的配置情况。设置命令遇到 secret 会明确报错，不随调用来源改变 get 的返回含义。
+- **凭据管理在本机完成**：`credentials.copy`、`credentials.import`、`credentials.generate` 只返回目标状态。目标必须是已启用插件声明的 secret；覆盖已有值要显式 `overwrite:true`。跨 home 复制只读取点名的来源，只写当前 home。本地界面输入与查看分别用隐藏命令 `credentials.set/reveal`，两条均拒绝 MCP 来源。
+- **分区归属与声明持续保存**：`settings.json` 顶层 `$owners` 记包名，避免另一包误用旧分区。插件卸载只撤销运行中的声明，文件里的元信息仍可列出，`live:false`。
+- **同步读取、排队持久化**：构造时读完两份文件，插件加载时即可同步 `get`；同一服务实例的写操作排队，同一轮 define 合并落盘。日志不记录值。
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="245-255" hash="aea5ba430ddb" blob="1e814c5ab1d9" */}
+凭据命令、来源区分与内部服务接口的正本：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="103-113" hash="c86edfc2eba9" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="06d41c33cd26" blob="0dcb9862f136" */}
+
+{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
 
 ## 接口
 
-每条接缝上交换什么、各方保证什么，写在接缝页；本节只列设置插件提供了哪些接口。
-
-<Diagram name="settings-layout" title="settings.json 按条目分区，服务与命令各读写哪一块">
-- 右边是 `<home>/settings.json` 的顶层：`$owners`（分区名 → 包名）、每条条目一个分区（条目 `home:mcp` 的分区叫 `mcp`）、公共区 `*`
-- 插件经服务 `ctx.gwbSettings` 的 `define` / `get` / `set` / `delete` 只给 `key`，分区由设置插件从调用方条目算出
-- 别的插件 `get` 一项自己没声明的设置时读公共区，`shared: true` 的项在那里
-- 页面与 agent 经 `settings.all` / `get` / `set` / `delete` 四条命令按 `{ section, key }` 读写任意分区；`settings.all` 里 secret 项只给 `isSet` 与掩码，`settings.get` 回明文
+<Diagram name="settings-layout" title="每个 home 的普通设置与凭据，分别经过哪些入口">
+- settings.json 保存分区归属、设置声明与普通值；credentials.json 保存对应分区与键的 secret 明文
+- 插件服务只给 key，设置插件从调用方条目确定分区；没声明的 key 读当前 home 公共区
+- settings.* 只操作普通设置；credentials.* 管凭据，list/status 不回值；插件服务 get 仍可取凭据原文
+- credentials.copy/import/generate 在本机保存凭据后只返回状态；显式跨 home 复制后，两边独立配置
 </Diagram>
 
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
-| 服务 `ctx.gwbSettings` 的 `define(def)`、`get(key)`、`set(key, value)`、`delete(key)` | 声明一项；同步读；写并写入文件；抹掉值（声明还在，`get` 回到 `default`） | [5 设置](/docs/seams/settings) |
-| 服务 `ctx.gwbSettings` 的 `owners()`、`transferOwner(id, pkg)` | 各分区归哪个包；把一个分区改归另一个包。此刻没有调用方 | [7 数据归属](/docs/seams/owners) |
-| 命令 `settings.all` | 参数 `{ section? }`：给了只回那一个分区，分区不存在报错并列出现有的分区，认不出的键报错；不给返回全部设置项，每行带 `section`、`key`、`title`、`type`、`description`、`value`、`live`（此刻还有插件声明它吗）、`default`（只有 `live` 的项带）；secret 项不带 `value` 与 `default`，改带 `secret: true`、`isSet`，设过值时再带定长掩码 `mask: '••••'` | [5 设置](/docs/seams/settings) |
-| 命令 `settings.get`、`settings.set`、`settings.delete` | 参数 `{ section, key }`，`set` 另加 `value`；`get` 对 secret 项也回明文，没设过回 `undefined`，不回落到 `default` | [5 设置](/docs/seams/settings) |
-| 文件 `<home>/settings.json` | 顶层 `$owners`（分区名 → 包名），其余每个键是一个分区：条目 id 的末段，或公共区 `*`；分区下是设置名 → `{ title, type, description, value }` | [5 设置](/docs/seams/settings) |
-| 分区名 | 调用方条目 id 的末段，`home:logger` 得 `logger`；超过两段、有段不是 kebab-case 就抛错；条目不能叫 `*` | [8 条目身份](/docs/seams/entry-identity) |
-| 说明书 `gwb-settings` | 包根 `skills/gwb-settings/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+| 服务 `define/get/set/delete` | 声明、同步读、写入、删除值；声明仍保留，get 可回默认值 | [5 设置](/docs/seams/settings) |
+| 服务 `owners/transferOwner` | 列分区归属、转移归属；此刻没有消费方 | [7 数据归属](/docs/seams/owners) |
+| `settings.all/get/set/delete` | 只列出、读取、写入或清除普通设置 | [5 设置](/docs/seams/settings) |
+| `credentials.list/status` | 只列出凭据或查配置状态；`isSet` 不代表认证成功 | [5 设置](/docs/seams/settings) |
+| `credentials.copy/import/generate/delete` | 复制、文件导入、生成随机字符串或清除凭据；不返回值 | [5 设置](/docs/seams/settings) |
+| `credentials.set/reveal` | 仅本地页面与受信插件输入、查看保存值，标记 hiddenFromAgents，拒绝 MCP 来源 | [5 设置](/docs/seams/settings) |
+| `<home>/settings.json` | `$owners`、各分区的声明与普通值 | [5 设置](/docs/seams/settings) |
+| `<home>/credentials.json` | 按分区和键保存明文 secret，与普通设置在同一 home | [5 设置](/docs/seams/settings) |
+| 分区名 | 调用方条目 id 的末段，如 home:mcp 得 mcp；公共区是 `*` | [8 条目身份](/docs/seams/entry-identity) |
+| 说明书 `gwb-settings` | 随包登记的操作步骤与完成判据 | [4 说明书](/docs/seams/skills) |
 
-服务与声明的类型由本包导出（`GwbSettingsApi`、`SettingDef` 等，`import type {} from '@godcreator/gwb-settings'` 让 `ctx.gwbSettings` 有类型）；`type` 有五种，只用来给界面挑控件：
+声明类型与文件路径：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="42-56" hash="c0041d2db773" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="19147e03b9b0" blob="96e9afba8421" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="cf8e7494038a" blob="1e814c5ab1d9" */}
-
-{/* ref file="../plugins/settings/src/index.ts" lines="37-37" hash="c017557656be" blob="60b4b86caaae" */}
-
-{/* ref file="../plugins/settings/src/paths.ts" lines="9-9" hash="ba1e488b6f1d" blob="fa8c33f0a6bd" */}
-
-声明一项：
-
-```ts
-export const inject = ['gwbSettings']
-
-export function apply(ctx: GwbContext) {
-  ctx.gwbSettings.define({ key: 'level', title: '日志级别', type: 'string', default: 'info' })
-  const level = ctx.gwbSettings.get('level')
-}
-```
-
-插件的配置一律用 `define` 声明，不收 `cordis.yml` 里条目的 `config`。
+{/* ref file="../plugins/settings/src/paths.ts" lines="70-77" hash="f2b5d2df6495" blob="bfe7369e3f7c" */}
 
 ## 依赖
 
-注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（各插件共用的 `settings.json`、按位置读写任意分区的四条命令这条权限边界、和数据插件各存一份的条目 id 算法），见[插件之间怎么连](/docs/wiring#godcreatorgwb-settings)。
+命令总线与说明书服务局部注入；没有命令总线，插件服务仍可使用，只是页面与 agent 没有设置命令。必需的 home 位置取自内核 `gwbKernel.dataDir`。完整接线见[插件之间怎么连](/docs/wiring#godcreatorgwb-settings)。
 
 ## 不做的事
 
-- **没有跨 home 的设置**：一个 home 一份 `settings.json`，要在几个 home 之间共享就复制文件
-- **不做运行时类型校验**：`type` 只给界面挑控件，读的一方自己判断值对不对（[gwb-mcp](/docs/mcp) 的端口设置就是这样）
-- **不加密**：文件里是明文；`settings.all` 不回 secret 项的值，`settings.get` 与服务的 `get` 照旧回明文
-- **命令不认身份**：四条命令按分区与键定位，能读写任何分区；服务按调用方身份分区
-- **不是安全边界**：名字校验只防误写，插件本来就能直接改这个文件
-- **不画设置界面**：界面由别的插件用这四条命令做
-- **不写数据文件**：插件的其他数据在 [gwb-data](/docs/data)
-- **不删分区**：条目删掉后它的设置留在文件里，由调用 `settings.delete` 的一方清理
+- **不加密、不隔离本机代码**：文件是明文，受信插件可内部读取；隐藏回执用于避免日常 AI 流程暴露凭据。
+- **不把生成随机值当服务端签发**：有效期、认证和撤销由使用凭据的业务插件负责。
+- **不自动跨 home 共享**：必须显式复制；不继承 default，不回退读取其他 home。
+- **不承诺两文件事务**：每份文件原子替换，先写凭据再写元信息，删除记录防止中断后旧值复活；损坏文件不覆盖。恢复规则见[设置接缝](/docs/seams/settings)。
+- **不画设置界面、不存业务数据**：界面归 UI 插件，其他业务数据归 gwb-data。

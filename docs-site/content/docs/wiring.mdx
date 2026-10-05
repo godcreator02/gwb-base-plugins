@@ -106,40 +106,40 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 服务 | 无 | 在 `apply` 里自己启动 `node:http` |
 | HTTP 端点 | `POST http://127.0.0.1:<端口>/mcp` | 无状态 streamable HTTP，要 `Authorization: Bearer <token>`；default 固定 2870 端口 |
 | MCP 工具 | `index`、`search`、`run` | 只有这三个，加一个是 major 级协议变更 |
-| 命令 | `mcp.info`、`mcp.token`、`mcp.client` | 连接信息；取或换 token；`mcp.client` 经 `gwbNodeCli` 登记，node 命令行运行插件不在时没有这条 |
-| 设置项 | `port` | 在本插件自己的设置分区里 |
+| 命令 | `mcp.info`、`mcp.token`、`mcp.client.issue`、`mcp.client.list`、`mcp.client.revoke`、`mcp.client` | 连接状态、轮换主凭据、签发、列出与撤销临时凭据；普通页面与 MCP 不回明文。`mcp.client` 经 `gwbNodeCli` 登记，node 命令行运行插件不在时没有这条 |
+| 设置项 | `port`、`token`、`client-tokens` | 在本插件自己的设置分区里；后两项为 secret，由 settings 保管 |
 | 说明书 | `mcp` | 包根 `skills/mcp/` |
 | 事件 | 无 | |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="340-340" hash="4fd5e3cb14f8" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="346-346" hash="4fd5e3cb14f8" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="409-409" hash="112b0a57db65" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="415-415" hash="112b0a57db65" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="430-430" hash="3bf60d28cbd2" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="437-437" hash="3bf60d28cbd2" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="470-470" hash="f5d0b1b18826" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="508-508" hash="f5d0b1b18826" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="56-56" hash="c21f7788ec5d" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="57-57" hash="c21f7788ec5d" blob="1f9a4ca3fe38" */}
 
 ### 注入
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | `list()` 给 instructions 末尾的目录、`index`、`search`，`run` 执行前也用它查命令；`run()` 给 `run`；登记 `mcp.info`、`mcp.token` | 插件一直等待、不加载，没有入口 |
-| `gwbSettings` | `@godcreator/gwb-settings` | 必需（`export const inject`） | `workspace:^` | 声明并读取 `port` | 插件一直等待、不加载，没有入口 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 必需（`export const inject`） | `workspace:^` | `list()` 给 instructions 末尾的目录、`index`、`search`，`run` 执行前也用它查命令；`run()` 给 `run`；登记连接与凭据管理命令 | 插件一直等待、不加载，没有入口 |
+| `gwbSettings` | `@godcreator/gwb-settings` | 必需（`export const inject`） | `workspace:^` | 声明并读取 `port`，读写主凭据及临时凭据表；鉴权每次读取当前值 | 插件一直等待、不加载，没有入口 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | instructions 末尾的目录与 `index`、`search` 里的说明书清单；登记自带的说明书 | 入口照常开，说明书清单是空表 |
 | `gwbNodeCli` | `@godcreator/gwb-node-cli` | 局部注入 | `workspace:^`，标 `optional` | 把 `bin/client.mjs` 登记成 `mcp.client` | 入口照常开，没有 `mcp.client` |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | home 名（目录的最后一段）、凭据文件与 `runtime.json` 的位置 | 加载时抛错「ctx.gwbKernel 不在」 |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="45-45" hash="64c548c04fe0" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="46-46" hash="64c548c04fe0" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="202-202" hash="aac8a93ae71a" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="202-202" hash="aac8a93ae71a" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="468-468" hash="a231dc65db0f" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="506-506" hash="a231dc65db0f" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="170-170" hash="bc14cade2cca" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="171-171" hash="bc14cade2cca" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="488-488" hash="ed9811971c1a" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="526-526" hash="ed9811971c1a" blob="1f9a4ca3fe38" */}
 
 {/* ref file="../plugins/mcp/package.json" lines="34-34" hash="d63cedfbc3d3" blob="3e9388ae86bc" */}
 
@@ -154,37 +154,42 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 回执形状 | gwb-node-cli、gwb-py-cli | 同时有 `stdout` 与 `exitCode` 的 `CliRunResult` | 认出命令行工具的回执、不按标准回执拆；形状在 `tools.ts` 里另写一份 `CliRunResultView`，那两个包改了键名这边发现不了 |
 | HTTP | MCP 客户端（agent、`bin/client.mjs`） | `127.0.0.1:<端口>/mcp`，只认本机回环地址的 `Host`、`Origin` | 唯一的对外入口 |
 | 磁盘文件（与内核共写） | 内核、读它的程序 | `<home>/runtime.json` 的 `mcp` 项 `{ port, url }` | 内核启动时整份写入 `pid`、`startedAt` 等；本插件绑定端口成功后读出整份、只改 `mcp` 一项再写回，不是原子写 |
-| 磁盘文件 | MCP 客户端、`bin/client.mjs` | `<home>/mcp/secret.json` | 存 token，每个 home 一份、重启不换 |
-| 照内核规则另写的 home 路径 | 内核 | `bin/client.mjs` 里的 `<APPDATA>/gwb-kernel/homes/<home>` | 命令行客户端缺省去读 default home 的凭据文件，路径照内核的规则另写一份；内核改了规则，这里读不到 token、请求收到 401 |
+| 磁盘文件（只读） | settings、`bin/client.mjs` | `<home>/credentials.json` 的 `sections.mcp.token.value` | CLI 在本机内部取值；MCP 插件运行时通过 settings 服务取值，不直接写文件 |
+| 旧文件迁移 | 旧版 MCP | `<home>/mcp/secret.json` | 启动时迁入 settings，持久化成功后才删除旧文件；CLI 兼容尚未迁移的 home，已存在的删除记录或损坏凭据文件不回退旧值 |
+| 照内核规则另写的 home 路径 | 内核 | `bin/client.mjs` 里的 `<APPDATA>/gwb-kernel/homes/<home>` | `--home` 指定目标，从它的 runtime 与 credentials 读取；不给才选 default，不继承另一 home 的凭据。显式 URL 不同于该 home 的地址时不自动发送凭据 |
 | 环境变量 | `mcp.client` 的调用方 | `GWB_MCP_URL`、`GWB_MCP_TOKEN` | 命令行客户端的入口地址与 token，优先级低于 `--url`、`--token` |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="280-280" hash="67d4d671e46a" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="280-280" hash="67d4d671e46a" blob="1f9a4ca3fe38" */}
 
 {/* ref file="../plugins/mcp/instructions.md" lines="8-8" hash="32d99f0ad42b" blob="8fb0b8ec4002" */}
 
-{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="17-17" hash="6b81efaaeefb" blob="60229c66ab01" */}
 
-{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="17-17" hash="6b81efaaeefb" blob="60229c66ab01" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="16-16" hash="f8442195a0f7" blob="f020b75c2b13" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="474-474" hash="95921038316f" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="505-517" hash="0a1c303fb649" blob="1f9a4ca3fe38" */}
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="69-69" hash="9ef9805f8bdc" blob="b881ae1796a2" */}
 
 {/* ref file="../plugins/mcp/src/runtime.ts" lines="8-8" hash="87c262b284e0" blob="5e93263b1024" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="368-368" hash="bf324ece4e84" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="374-374" hash="bf324ece4e84" blob="1f9a4ca3fe38" */}
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="9-9" hash="4455435854ed" blob="0e1ae6b5535b" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="6-6" hash="4455435854ed" blob="86e3b0c050ec" */}
 
-{/* ref file="../plugins/mcp/src/auth.ts" lines="11-11" hash="cf2d89f7023d" blob="0e1ae6b5535b" */}
+{/* ref file="../plugins/mcp/src/auth.ts" lines="8-8" hash="cf2d89f7023d" blob="86e3b0c050ec" */}
 
-{/* ref file="../plugins/mcp/bin/client.mjs" lines="45-45" hash="ec22e792a080" blob="99034c89f758" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="36-65" hash="150cdd87fc26" blob="c4f891f6b6cf" */}
 
-{/* ref file="../plugins/mcp/bin/client.mjs" lines="76-76" hash="f1b1ad49fa4f" blob="99034c89f758" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="93-132" hash="8d05f6b6396e" blob="33bdde6b10f1" */}
 
-{/* ref file="../plugins/mcp/bin/client.mjs" lines="79-79" hash="3a51075e0cea" blob="99034c89f758" */}
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="98-98" hash="3a51075e0cea" blob="33bdde6b10f1" */}
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="472-504" hash="4d22c9b138b1" blob="1f9a4ca3fe38" */}
+
+{/* ref file="../plugins/mcp/src/credentials.ts" lines="47-66" hash="ee3c5fabe2d8" blob="6c45cbb2667a" */}
 
 ## @godcreator/gwb-node-cli
 
@@ -297,57 +302,64 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
 | 服务 | `gwbSettings` | `define(def)`、`get(key)`、`set(key, value)`、`delete(key)`；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方。类型 `GwbSettingsApi`、`SettingDef` 由本包导出 |
-| 命令 | `settings.all`、`settings.get`、`settings.set`、`settings.delete` | 按 `{ section, key }` 读写 |
-| 磁盘文件 | `<home>/settings.json` | 一个 home 一份，各插件共用 |
+| 普通设置命令 | `settings.all/get/set/delete` | 按位置列出、读取、写入或清除普通设置；secret 目标对所有来源拒绝 |
+| 凭据命令 | `credentials.list/status/copy/import/generate/delete` | 按位置查询状态、复制、导入、生成或清除凭据，不返回原文 |
+| 本地凭据命令 | `credentials.set/reveal` | 本地输入、查看按钮与受信插件按位置读写，标 `hiddenFromAgents`，只允许 ui/plugin 来源 |
+| 磁盘文件 | `<home>/settings.json`、`<home>/credentials.json` | 每个 home 各自一套，分别存普通设置及声明、secret 明文值 |
 | 说明书 | `gwb-settings` | 包根 `skills/gwb-settings/` |
 | 事件 | 无 | |
 
-{/* ref file="../plugins/settings/src/index.ts" lines="104-104" hash="a6a99e330b2c" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="124-124" hash="a6a99e330b2c" blob="0dcb9862f136" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="37-37" hash="c017557656be" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="40-40" hash="c017557656be" blob="04067e9e02ce" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="38-38" hash="24286dde7edf" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="41-41" hash="24286dde7edf" blob="04067e9e02ce" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="39-39" hash="cddf7086965c" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="42-42" hash="cddf7086965c" blob="04067e9e02ce" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="40-40" hash="c01f98809a7e" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="43-43" hash="c01f98809a7e" blob="04067e9e02ce" */}
 
 ### 注入
 
 | 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
 | --- | --- | --- | --- | --- | --- |
-| `gwbCommands` | `@godcreator/gwb-commands` | 局部注入 | `workspace:^`，标 `optional` | 登记四条命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
+| `gwbCommands` | `@godcreator/gwb-commands` | 局部注入 | `workspace:^`，标 `optional` | 登记设置与凭据操作命令 | 服务照常提供，别的插件照样读写；页面与 agent 调不到设置 |
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
-| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出 `<home>/settings.json` | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
+| `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出本 home 的 settings 与 credentials 文件 | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
-{/* ref file="../plugins/settings/src/index.ts" lines="124-124" hash="2bd78485cc1b" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="144-144" hash="2bd78485cc1b" blob="0dcb9862f136" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="161-161" hash="aed85aebe511" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="247-247" hash="aed85aebe511" blob="0dcb9862f136" */}
 
 {/* ref file="../plugins/settings/package.json" lines="35-35" hash="2546cd7382e6" blob="46c93f1ea68b" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="108-108" hash="f25e479f27e8" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="128-128" hash="f25e479f27e8" blob="0dcb9862f136" */}
 
 ### 按名字调用与约定通道
 
 | 通道 | 对方 | 名字 | 用来做什么 |
 | --- | --- | --- | --- |
 | loader 的 `fiber.entry` | cordis loader | `entry.id`、`entry.options.name` | 条目 id 的末段定分区，包名记归属；服务按它分区，插件只能读写自己声明的项 |
-| 磁盘文件（各插件共用一份） | 声明过设置的每个插件、设置界面、手工处理归属的人 | `<home>/settings.json`：每条条目一个分区（条目 id 末段）、`shared` 项进公共区 `*`、顶层 `$owners` 记分区归哪个包 | 所有插件的设置写在同一个文件里，按分区隔开 |
-| 命令总线（被调） | 页面、agent、任何插件 | `settings.get`、`settings.set`、`settings.delete` 的 `{ section, key }` | 按位置读写**任意分区**，不看调用方身份 |
+| 磁盘文件（本 home 内共用） | 声明设置的插件、设置界面、手工处理归属的人 | `settings.json` 每条条目一个分区、`shared` 项进 `*`、`$owners` 记归属；`credentials.json` 以同一分区与键保存 secret | settings 管理两份文件；先保存凭据再保存元信息，删除记录防止中断后恢复旧值 |
+| 命令总线（被调） | 页面、agent、任何插件 | `settings.*` / `credentials.*` 的 `{ section, key }` 或 `from/to` | 按对象选命令、按位置操作；credentials.copy/import/generate 目标须为 live secret |
+| 指定来源文件 | 当前用户指定的文件、同级另一 home | `credentials.import.from.file`、`credentials.copy.from.home` | 只读来源，写当前 home；显式复制后独立，不隐式查询 default |
 | 同一套算法的另一份 | gwb-data 的 `entryDirName` | `entrySection` | 条目 id 转分区名；两份必须给出同一个答案 |
 
-**四条命令就是设置的权限边界**：命令按 `{ section, key }` 定位、不认调用方身份，这是有意的——页面不是插件，没有条目身份可取，设置界面要能改所有插件的设置。所以拿得到命令总线的一方（任何插件、页面、带着 token 的 agent）能读写全部设置，`settings.get` 对 secret 项也回明文；服务那一侧按调用方身份分区，只防插件写错，不防别的插件有意去读。
+**对象与来源各管一件事**：settings 命令只管理普通设置，credentials 命令只管理凭据；命令按位置可操作不同分区，综合界面合并两种列表。命令总线固定的 `via` 只用于限制 `credentials.set/reveal` 的本地输入与查看。插件服务内部 `get` 保持原来的取值契约；跨插件按位置取用改走内部 `credentials.reveal`。这些约定减少常规工具回显，不构成本机文件访问的安全隔离；插件和具有本机执行能力的调试工具仍能访问宿主文件。
 
-{/* ref file="../plugins/settings/src/index.ts" lines="63-63" hash="dfe38b9fe841" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="74-74" hash="dfe38b9fe841" blob="0dcb9862f136" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="168-168" hash="401706f1b352" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="254-254" hash="401706f1b352" blob="0dcb9862f136" */}
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="11-11" hash="e5b24ce07055" blob="fa8c33f0a6bd" */}
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="6-6" hash="15ca1d217a82" blob="fa8c33f0a6bd" */}
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="9-9" hash="ba1e488b6f1d" blob="fa8c33f0a6bd" */}
+
+{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
+
+{/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
 
 ## @godcreator/gwb-skills
 

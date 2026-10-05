@@ -12,14 +12,17 @@ import {
   type SettingsOwners,
   type SettingsRegistry,
   type SettingView,
+  type SettingStatus,
   type Slot,
 } from './registry.js'
 import { readSettings, writeSettings } from './store.js'
+import { assertWritableCredential, copyArgs, credentialSlot, generateArgs, generateCredential, importArgs, readCopiedCredential, readImportedCredential } from './credentials.js'
 
 export type {
   SettingDef,
   SettingType,
   SettingView,
+  SettingStatus,
   SettingsFile,
   SettingsOwners,
   Slot,
@@ -38,6 +41,14 @@ export const ALL_COMMAND = 'settings.all'
 export const GET_COMMAND = 'settings.get'
 export const SET_COMMAND = 'settings.set'
 export const DELETE_COMMAND = 'settings.delete'
+export const CREDENTIALS_LIST_COMMAND = 'credentials.list'
+export const CREDENTIALS_STATUS_COMMAND = 'credentials.status'
+export const CREDENTIALS_SET_COMMAND = 'credentials.set'
+export const CREDENTIALS_DELETE_COMMAND = 'credentials.delete'
+export const CREDENTIALS_COPY_COMMAND = 'credentials.copy'
+export const CREDENTIALS_IMPORT_COMMAND = 'credentials.import'
+export const CREDENTIALS_GENERATE_COMMAND = 'credentials.generate'
+export const CREDENTIALS_REVEAL_COMMAND = 'credentials.reveal'
 
 /** 调用方拿到的接口。写 `inject: ['gwbSettings']` 才有 */
 export interface GwbSettingsApi {
@@ -72,17 +83,24 @@ function slotFromArgs(args: unknown): Slot {
 
 const ALL_USAGE =
   '参数 { section? }：section 是分区名（插件条目 id 的末段，shared 项是 *），只回这一个分区；不给回全部分区。' +
-  '回 [{ section, key, title?, type?, description?, value?, default?, live, secret?, isSet?, mask? }]，secret 行不回值'
+  '回普通设置 [{ section, key, title?, type?, description?, value?, default?, live }]；凭据用 credentials.list'
+
+const CREDENTIALS_LIST_USAGE =
+  '参数 { section? }：只回指定分区；不给回全部分区。回凭据 [{ section, key, title?, type, description?, live, secret:true, isSet, mask? }]，不含值和默认值'
 
 /** 不给参数回全部；给了 section 只回那个分区，分区不存在就报错并列出有哪些 */
 export function settingsInSection(rows: readonly SettingView[], args: unknown): SettingView[] {
+  return rowsInSection(rows, args, ALL_COMMAND, ALL_USAGE)
+}
+
+function rowsInSection(rows: readonly SettingView[], args: unknown, command: string, usage: string): SettingView[] {
   if (args === undefined || args === null) return [...rows]
-  if (!isRecord(args)) throw new Error(`${ALL_COMMAND} 的参数要是对象：${ALL_USAGE}`)
+  if (!isRecord(args)) throw new Error(`${command} 的参数要是对象：${usage}`)
   const unknownKeys = Object.keys(args).filter((key) => key !== 'section')
-  if (unknownKeys.length > 0) throw new Error(`${ALL_COMMAND} 不认识参数 ${unknownKeys.join('、')}：${ALL_USAGE}`)
+  if (unknownKeys.length > 0) throw new Error(`${command} 不认识参数 ${unknownKeys.join('、')}：${usage}`)
   const section = args['section']
   if (section === undefined) return [...rows]
-  if (typeof section !== 'string' || section === '') throw new Error(`${ALL_COMMAND} 的 section 要是非空字符串`)
+  if (typeof section !== 'string' || section === '') throw new Error(`${command} 的 section 要是非空字符串`)
   const inSection = rows.filter((row) => row.section === section)
   if (inSection.length === 0) {
     const sections = [...new Set(rows.map((row) => row.section))]
@@ -99,6 +117,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private readonly logWarn: (message: string) => void
   private readonly logInfo: (message: string) => void
   private pendingMergedWrite: ReturnType<typeof setTimeout> | undefined
+  /** 派生给各调用方的 Service 共用这一条队列，覆盖检查和写入不可交错。 */
+  private readonly operations = { tail: Promise.resolve() }
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbSettings')
@@ -132,29 +152,95 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private registerSettingsCommands(contextWithCommands: Context, commandBus: GwbCommands): void {
     contextWithCommands.effect(() =>
       commandBus.register(
-        { name: ALL_COMMAND, description: '设置项与它们的值，可只取一个分区（secret 项不回值，只回是否已设置）', usage: ALL_USAGE, plugin: PACKAGE_NAME, effect: 'read' },
-        (args) => settingsInSection(this.settingsRegistry.all(), args),
+        { name: ALL_COMMAND, description: '普通设置项与它们的值，可只取一个分区；凭据用 credentials.list', usage: ALL_USAGE, plugin: PACKAGE_NAME, effect: 'read' },
+        (args) => settingsInSection(this.settingsRegistry.all(), args).filter((row) => row.secret !== true),
       ),
     )
     contextWithCommands.effect(() =>
       commandBus.register(
-        { name: GET_COMMAND, description: '按位置读一项设置（secret 项也回明文）', usage: '参数 { section, key }', plugin: PACKAGE_NAME, effect: 'read' },
-        (args) => this.settingsRegistry.read(slotFromArgs(args)),
+        { name: GET_COMMAND, description: '按位置读普通设置', usage: '参数 { section, key }。回保存值；凭据项拒绝读取，查凭据状态用 credentials.status', plugin: PACKAGE_NAME, effect: 'read' },
+        (args) => {
+          const slot = slotFromArgs(args)
+          this.assertOrdinarySetting(slot)
+          return this.settingsRegistry.read(slot)
+        },
       ),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: SET_COMMAND, description: '按位置写一项设置', usage: '参数 { section, key, value }', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
+      commandBus.register({ name: SET_COMMAND, description: '按位置写一项普通设置', usage: '参数 { section, key, value }。凭据项拒绝写入，请用 credentials.*', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
         const raw = argsAsRecord(args)
-        await this.writeValueAt(slotFromArgs(raw), raw['value'])
+        await this.writeValueAt(slotFromArgs(raw), raw['value'], true)
         return { ok: true }
       }),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: DELETE_COMMAND, description: '按位置抹掉一项设置的值（定义还在）', usage: '参数 { section, key }', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
-        await this.dropValueAt(slotFromArgs(args))
+      commandBus.register({ name: DELETE_COMMAND, description: '按位置抹掉一项普通设置的值（定义还在）', usage: '参数 { section, key }。凭据项请用 credentials.delete', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
+        await this.dropValueAt(slotFromArgs(args), 'setting')
         return { ok: true }
       }),
     )
+    this.registerCredentialCommands(contextWithCommands, commandBus)
+  }
+
+  private registerCredentialCommands(context: Context, commands: GwbCommands): void {
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_LIST_COMMAND, description: '列出凭据与配置状态，不返回值', usage: CREDENTIALS_LIST_USAGE, plugin: PACKAGE_NAME, effect: 'read' },
+      (args) => rowsInSection(this.settingsRegistry.all(), args, CREDENTIALS_LIST_COMMAND, CREDENTIALS_LIST_USAGE).filter((row) => row.secret === true),
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_STATUS_COMMAND, description: '查一项凭据是否已配置，不返回值', usage: '参数 { section, key }。回 { section, key, type:"secret", secret:true, isSet, live }；没这一项回 null，普通设置报错。isSet 只代表存有值，不代表服务端认证成功', plugin: PACKAGE_NAME, effect: 'read' },
+      (args) => this.credentialStatus(credentialSlot(args)) ?? null,
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_SET_COMMAND, description: '本地设置界面保存凭据', usage: '参数 { section, key, value }，value 要是字符串。只给本地页面或受信插件；目标必须是已启用插件声明的凭据，覆盖保存值，只回目标状态', plugin: PACKAGE_NAME, effect: 'write', hiddenFromAgents: true },
+      (args, source) => {
+        if (source?.via !== 'ui' && source?.via !== 'plugin') throw new Error('凭据输入只供本地页面和受信插件使用；管理凭据请用 credentials.copy/import/generate')
+        const raw = argsAsRecord(args)
+        const slot = credentialSlot({ section: raw['section'], key: raw['key'] })
+        return this.writeCredential(slot, true, () => {
+          if (typeof raw['value'] !== 'string') throw new Error('凭据值要是字符串；清除请用 credentials.delete')
+          return raw['value']
+        })
+      },
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_DELETE_COMMAND, description: '清除凭据值，保留声明', usage: '参数 { section, key }。只清除本 home 的凭据值，可清除已停用插件留下的凭据，回目标配置状态；服务端撤销由对应插件负责', plugin: PACKAGE_NAME, effect: 'write' },
+      async (args) => {
+        const slot = credentialSlot(args)
+        await this.dropValueAt(slot, 'credential')
+        return this.credentialStatus(slot)
+      },
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_REVEAL_COMMAND, description: '本地设置界面查看凭据', usage: '参数 { section, key }。只给本地页面或受信插件，回保存值；不对 MCP 开放', plugin: PACKAGE_NAME, effect: 'read', hiddenFromAgents: true },
+      (args, source) => {
+        if (source?.via !== 'ui' && source?.via !== 'plugin') throw new Error('凭据明文只供本地页面和受信插件使用；管理凭据请用 credentials.copy/import/generate')
+        const slot = credentialSlot(args)
+        this.requireCredential(slot)
+        return this.settingsRegistry.read(slot)
+      },
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_COPY_COMMAND, description: '把指定凭据复制到当前 home 的凭据项，不回显明文', usage: '参数 { from:{ home?, section, key }, to:{ section, key }, overwrite?:false }。from.home 只收当前 home 同级的 home 名，不给读当前 home；只读来源、只写当前 home。两端必须是 secret，目标必须由已启用插件声明；已有值需 overwrite:true。回目标配置状态，复制后两边独立，后续修改不同步', plugin: PACKAGE_NAME, effect: 'write' },
+      (raw) => {
+        const args = copyArgs(raw)
+        return this.writeCredential(args.to, args.overwrite, () => readCopiedCredential(this.settingsFile, args.from, (slot) => this.settingsRegistry.read(slot), (slot) => this.settingsRegistry.status(slot)))
+      },
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_IMPORT_COMMAND, description: '从指定本机文件导入凭据，不把内容带进回执', usage: '参数 { from:{ file, format:"text"|"json", path?:["字段",…] }, to:{ section, key }, overwrite?:false }。file 是绝对路径、1 MiB 以内；text 去掉一个末尾换行，json 按 path 选非空字符串（空路径选根）。目标必须是当前 home 已启用插件声明的 secret；已有值需 overwrite:true。来源只读；回目标状态、不回值，不代表认证成功', plugin: PACKAGE_NAME, effect: 'write' },
+      (raw) => {
+        const args = importArgs(raw)
+        return this.writeCredential(args.to, args.overwrite, () => readImportedCredential(args.from))
+      },
+    ))
+    context.effect(() => commands.register(
+      { name: CREDENTIALS_GENERATE_COMMAND, description: '生成随机凭据并直接保存，不返回值', usage: '参数 { to:{ section, key }, bytes?:32, overwrite?:false }。bytes 是 16—128 的整数，生成 base64url 字符串；目标必须是已启用插件声明的 secret。回目标状态。这里只生成随机值，不签发第三方 token、不赋予有效期；注册、失效、撤销由使用它的服务负责', plugin: PACKAGE_NAME, effect: 'write' },
+      (raw) => {
+        const args = generateArgs(raw)
+        return this.writeCredential(args.to, args.overwrite, () => generateCredential(args.bytes))
+      },
+    ))
   }
 
   private registerOwnSkillsWheneverSkillsPluginIsLoaded(): void {
@@ -225,16 +311,72 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     return slot
   }
 
-  private async writeValueAt(slot: Slot, value: unknown): Promise<void> {
-    this.settingsRegistry.put(slot, value)
-    await this.writeSettingsFile()
-    this.logInfo(`设置 ${slot.section}.${slot.key} 已写`)
+  private assertOrdinarySetting(slot: Slot): void {
+    if (this.settingsRegistry.status(slot)?.secret === true) throw new Error('这是凭据项；请用 credentials.*，查状态用 credentials.status')
   }
 
-  private async dropValueAt(slot: Slot): Promise<void> {
-    this.settingsRegistry.drop(slot)
-    await this.writeSettingsFile()
-    this.logInfo(`设置 ${slot.section}.${slot.key} 已删`)
+  private credentialStatus(slot: Slot): SettingStatus | undefined {
+    const status = this.settingsRegistry.status(slot)
+    if (status !== undefined && !status.secret) throw new Error('这是普通设置；请用 settings.*')
+    return status
+  }
+
+  private requireCredential(slot: Slot): SettingStatus {
+    const status = this.credentialStatus(slot)
+    if (status === undefined) throw new Error('凭据项不存在；请用 credentials.list 查可用项')
+    return status
+  }
+
+  private async writeValueAt(slot: Slot, value: unknown, ordinaryOnly = false): Promise<void> {
+    await this.enqueue(async () => {
+      if (ordinaryOnly) this.assertOrdinarySetting(slot)
+      if (this.settingsRegistry.status(slot)?.secret === true && typeof value !== 'string') throw new Error('凭据值要是字符串；清除请用 delete')
+      const previous = this.settingsRegistry.read(slot)
+      this.settingsRegistry.put(slot, value)
+      await this.persistValueChange(slot, previous)
+      this.logInfo(`设置 ${slot.section}.${slot.key} 已写`)
+    })
+  }
+
+  private async dropValueAt(slot: Slot, kind?: 'setting' | 'credential'): Promise<void> {
+    await this.enqueue(async () => {
+      if (kind === 'setting') this.assertOrdinarySetting(slot)
+      if (kind === 'credential') this.requireCredential(slot)
+      const previous = this.settingsRegistry.read(slot)
+      this.settingsRegistry.drop(slot)
+      await this.persistValueChange(slot, previous)
+      this.logInfo(`设置 ${slot.section}.${slot.key} 已删`)
+    })
+  }
+
+  private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operations.tail.then(operation)
+    this.operations.tail = result.then(() => {}, () => {})
+    return result
+  }
+
+  private writeCredential(slot: Slot, overwrite: boolean, read: () => string): Promise<SettingStatus> {
+    return this.enqueue(async () => {
+      assertWritableCredential(this.settingsRegistry.status(slot), overwrite)
+      const previous = this.settingsRegistry.read(slot)
+      this.settingsRegistry.put(slot, read())
+      await this.persistValueChange(slot, previous)
+      this.logInfo(`凭据 ${slot.section}.${slot.key} 已写`)
+      return this.settingsRegistry.status(slot)!
+    })
+  }
+
+  private async persistValueChange(slot: Slot, previous: unknown): Promise<void> {
+    try {
+      await this.writeSettingsFile()
+    } catch (error) {
+      // 凭据可能已落盘而元信息写失败，按磁盘事实恢复此项，不让内存假装成功。
+      let persisted: unknown = previous
+      try { persisted = readSettings(this.settingsFile, this.logWarn).sections[slot.section]?.[slot.key]?.value } catch { /* 原始存储错误由下面交回 */ }
+      if (persisted === undefined) this.settingsRegistry.drop(slot)
+      else this.settingsRegistry.put(slot, persisted)
+      throw error
+    }
   }
 
   /** 日志里永远不写 value：gwb.log 在磁盘上，凭据写进去就删不掉。写失败先 warn 再抛，调用方吞掉异常也留得下记录 */
@@ -255,7 +397,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     this.pendingMergedWrite = setTimeout(() => {
       this.pendingMergedWrite = undefined
       // 失败时 writeSettingsFile 已经写过 warn，这里只接住，不让它成为没人处理的 rejection
-      void this.writeSettingsFile().catch(() => undefined)
+      void this.enqueue(() => this.writeSettingsFile()).catch(() => undefined)
     }, 0)
   }
 

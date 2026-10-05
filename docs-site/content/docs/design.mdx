@@ -82,10 +82,22 @@ cordis 不给服务做版本校验，插件之间的版本约束只写在 peer �
 
 cordis 的条目模型里 `id` 是身份，`name` 只说明装的是哪个包；同一个包可以配几条条目，各有各的配置。所以：
 
-- **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，设置在 `settings.json` 的 `hello` 分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
+- **数据目录与设置分区都按条目 id 的末段分**：`home:hello` 的数据在 `<home>/data/hello/`，普通设置在 `settings.json` 的 `hello` 分区，secret 值在同 home 的 `credentials.json` 对应分区。算法只取末段，不依赖内核的根条目 id，也避开 Windows 上不能进目录名的冒号
 - **调用方不自己报身份**：数据、设置、说明书、命令总线、两个命令行运行插件的服务都继承 cordis 的 `Service`，从调用方上下文上的 `fiber.entry` 认出条目 id 与包名。插件报不出别人的名字，也就读写不了别人的数据与设置
 - **目录与分区记着归哪个包**：插件管理生成默认 id 时去掉了 scope，不同 scope 的同名包会算出同一个 id，而条目删掉后数据与设置留在磁盘上。数据目录里有 `.owner.json`，`settings.json` 顶层有 `$owners`，包名对不上就拒绝，报错写明磁盘上哪个目录或文件，由人手工改名、删掉或改归属记录里的包名；工作台上没有转移归属的命令（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)、[归属对不上时由人手工处理](/trajectory/2026-09-25-owner-errors-manual-handling)）
-- **没有跨 home 的数据与设置**：一个 home 自己保存全部配置，要共享就复制文件
+- **每个 home 独立保管配置**：凭据复制用 `credentials.copy` 显式指定来源 home，只写当前 home；复制完成后两边各自独立，不回退读取 default
+
+## 凭据的存储与操作分开
+
+凭据管理集成在 `gwb-settings`：插件声明 `type: 'secret'` 后继续通过服务内部取用，值统一落在本 home 的明文 `credentials.json`，普通设置与声明留在 `settings.json`。命令按对象分开：`settings.*` 只处理普通设置，`credentials.*` 处理凭据；本地输入和查看用 `credentials.set/reveal`，日常 AI 操作只回配置状态。两组命令共用一个插件，不要求插件内部服务调用方拆成两套存储。
+
+AI 导入或复制凭据时只提交来源位置与目标位置，生成随机值时只提交目标，操作不把值交回会话。MCP 客户端接线由 onboard skill 编排，本地进程直接读凭据写配置；MCP 插件仅签发、列出和撤销令牌。`isSet` 只证明本地存有值；第三方认证、签发和撤销仍由业务插件负责。MCP 自己签发的临时凭据由入口逐请求检查有效期，权限与主凭据相同。
+
+这避免常规工作先读出明文再写回，也保留用户要求的明文文件与 home 自治。文件不是加密保险箱，本机插件仍有宿主进程的文件权限。备份或迁移 home 时需一起保存 `settings.json` 与 `credentials.json`；只有旧设置文件的备份不再包含全部凭据。存储选择见[按 home 保管凭据](/trajectory/2026-10-05-home-credentials)，命令边界见[凭据单独编排](/trajectory/2026-10-05-credential-command-boundary)，精确契约见[设置接缝](/docs/seams/settings)。
+
+{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
+
+{/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
 
 ## 插件在 peer 里写内核包
 

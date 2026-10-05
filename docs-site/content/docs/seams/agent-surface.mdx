@@ -32,11 +32,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 说明书插件在或不在，由局部注入时的 effect 维护：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="200-209" hash="9a0b701e37e8" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="200-209" hash="9a0b701e37e8" blob="1f9a4ca3fe38" */}
 
 **instructions、`index` 与 `search` 每次都重新读取**命令表与说明书清单，运行中新登记的命令下一次调用就在（instructions 是下一个请求）：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="243-273" hash="b5b5fee9a6ad" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-273" hash="b5b5fee9a6ad" blob="1f9a4ca3fe38" */}
 
 - instructions：`instructions.md` 全文，空一行接上目录——`你连上的是 home「<home>」（gwb-mcp <版本>）`、全部说明书的名字、对 agent 开放的命令取第一个点之前的前缀去重。只给名字不给描述：按日常使用的 default home 的规模，带上每份说明书的描述要六千字符左右，超过 Claude Code 的 2048 字符截断线；描述在 `index` 里
 - `index`：home 名、MCP 插件版本、`instructions.md` 全文（不带目录）、说明书清单（名字、包名、完整 description，超过 200 字才截）、命令按包名分组只列名字（顺序是命令表里首次出现的顺序）、末尾一句提示。description 不取「第一句」：那会把触发条件截掉一部分；截断只防写得过长的描述让清单变得很长
@@ -50,11 +50,11 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 **`run`**：先在 `gwbCommands.list()` 里找这条命令——不存在回 `isError` 的 `执行失败：没有这条命令：<命令名>。用 search {"q":"<关键词>"} 找名字，装卸过插件就重新调 index`，是 `hiddenFromAgents` 的回 `执行失败：命令 <命令名> 只给页面调用，不对 agent 开放`，两种都不执行、写一条 warn；再把参数处理一次（有的客户端把对象参数序列化成 JSON 字符串再发，能解析成 JSON 就用解析结果，解析不了原样交给命令），交给 `gwbCommands.run` 并带上 `{ via: 'mcp' }`，每次调用写一条日志，最后按回执的形状翻译：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="224-241" hash="8a6d3f00422c" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="224-241" hash="8a6d3f00422c" blob="1f9a4ca3fe38" */}
 
 {/* ref file="../plugins/mcp/src/tools.ts" lines="33-41" hash="99876956f9f5" blob="b881ae1796a2" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="274-283" hash="4e158c4fdb40" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="274-283" hash="4e158c4fdb40" blob="1f9a4ca3fe38" */}
 
 **返回的上限**：三个工具的结果都过一遍 `withinSizeLimit`，文本超过 `RESULT_CHAR_LIMIT`（40000 字符）就整个换成 `isError` 的说明，说明文字由各工具自己写（`run` 的那句写明命令已经执行完、去 `usage` 里找筛选或条数参数）。上限按 Claude Code 单次工具返回的上限（约 25000 token）定，超了客户端会把结果转存成文件：
 
@@ -80,15 +80,15 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 {/* ref file="../plugins/mcp/instructions.md" lines="8-8" hash="32d99f0ad42b" blob="8fb0b8ec4002" */}
 
-{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="17-17" hash="6b81efaaeefb" blob="60229c66ab01" */}
 
-{/* ref file="../plugins/mcp/instructions.md" lines="14-14" hash="6b81efaaeefb" blob="8fb0b8ec4002" */}
+{/* ref file="../plugins/mcp/instructions.md" lines="17-17" hash="6b81efaaeefb" blob="60229c66ab01" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="14-21" hash="5008a11110fe" blob="f020b75c2b13" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="474-474" hash="95921038316f" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="505-517" hash="0a1c303fb649" blob="1f9a4ca3fe38" */}
 
-这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`devkit.home.list` 由 devkit 登记。名字写在登记处与本插件两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
+这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`settings.*` 与 `credentials.*` 由设置插件登记，`mcp.client.issue` 由本插件登记；onboard 说明书由 agent-hooks-skills 插件登记。名字写在登记处与指引两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
 
 ## 约定
 
@@ -127,7 +127,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 `plugins/mcp/tests/inventory.test.ts` 测 instructions 末尾的目录与 `index` / `search` 的生成规则，`tools.test.ts` 测参数解析、回执翻译与返回上限，`server.test.ts` 按 default home 的规模测 instructions 的长度，`apply.test.ts` 经真的 HTTP 调到命令总线替身（含 `hiddenFromAgents` 被拒、命令不存在、返回超长）；MCP 插件拿到运行中真的命令表与说明书清单，只能在隔离 home 里验证。
 
-{/* ref file="../plugins/mcp/tests/apply.test.ts" lines="218-237" hash="6d67707036d2" blob="5d60cbfb0572" */}
+{/* ref file="../plugins/mcp/tests/apply.test.ts" lines="226-245" hash="6d67707036d2" blob="c3c915ebe603" */}
 
 {/* ref file="../plugins/mcp/tests/tools.test.ts" lines="56-59" hash="285de3a57f16" blob="5eca22548b60" */}
 

@@ -95,7 +95,7 @@ error TS1127: Invalid character.
 
 `const cli = ctx.gwbCommands` 加一句 `if (cli === undefined) return` 之后，箭头函数里的 `cli` 是收窄过的，`function` 声明里不是：函数声明会被提升，TypeScript 认为它可能在那句检查之前就被调用。症状是 `'cli' is possibly 'undefined'`，上面明明刚判断过。写成 `const … = () => {}`，或者把收窄过的值当参数传进一个函数。MCP 插件用后一种：三个工具的处理函数由一个收 `commandBus` 参数的函数生成：
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="243-244" hash="dca97a7d33c7" blob="c4b2c044378d" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-244" hash="dca97a7d33c7" blob="1f9a4ca3fe38" */}
 
 ### MCP SDK 的类型声明要 DOM 类型
 

@@ -1,0 +1,37 @@
+2026-10-05 Windows; credentials command split, source worktree implementation.
+Target home: settings-credentials-2610051911
+Source home: settings-credentials-source-2610051913
+Target settings/mcp: 0.3.11-dev.20261005191435 / 0.11.8-dev.20261005191435
+Source settings/mcp: 0.3.11-dev.20261005191506 / 0.11.8-dev.20261005191506
+Target baseui: 0.1.27-dev.20261005191514
+Kernel: 0.10.1
+
+Build and validation:
+- Base build/check passed: 39 files, 534 tests; base docs 77 pages, docfirst green.
+- UI build/check passed: 42 files, 590 tests; UI docs 101 pages, docfirst green.
+- devkit.dev evidence: installed versions match, all tested entries ACTIVE, no new errors.
+- verify.mjs target source passed 34 live checks via actual CLI and HTTP.
+
+Live checks include:
+- settings command inventory contains only all/get/set/delete.
+- credentials inventory lists list/status/copy/import/generate/delete; set/reveal hidden from agents.
+- settings list excludes credentials; credentials list/status contain no raw values.
+- settings get/set/delete reject secret targets and preserve saved values.
+- MCP refuses credentials set/reveal.
+- Import, same-home copy, explicit cross-home copy and random generation complete without echo.
+- Missing named source does not fall back to default; source home keeps its own working credentials.
+- CLI reconnects after rotation by reading the selected home's store internally.
+- Ordinary settings file and logs do not contain tested credentials.
+- Client config installation preserves unrelated entries; temporary token authentication, expiry and revocation work.
+- credentials.delete clears client token storage; internal plugin service reads remain compatible.
+
+Actual UI button verification in target home:
+- Plugin-manager MCP section combines port (ordinary setting) with token and client-tokens (credentials).
+- Token initially masked with empty editor; click reveal shows local value (only hasValue boolean recorded).
+- Click hide removes local revealed value and returns to password input.
+- Type an empty client-token JSON table and click Save: credentials.status isSet becomes true.
+- Clear that editor and click Save: credentials.status isSet becomes false; declaration remains live.
+- No read/save error, editor returns to empty masked state after saving; main token remains set.
+- Screenshot visually checked only after both secret editors were hidden; no raw values recorded.
+
+Both test homes were created for this task only. Daily home was not changed.

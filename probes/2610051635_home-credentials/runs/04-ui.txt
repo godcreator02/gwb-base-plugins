@@ -1,0 +1,16 @@
+2026-10-05 Windows; isolated home settings-credentials-2610051627
+baseui: 0.1.27-dev.20261005163438
+settings/mcp: 0.3.11-dev.20261005163846 / 0.11.8-dev.20261005163846
+Base commit: 2bf862f7fa11333d599a843eefdd12f8d5a71434 + home-credentials implementation
+
+plugin-manager pane, MCP entry expanded:
+- Ordinary settings.get via UI: {section:mcp,key:token,type:secret,secret:true,isSet:true,live:true}; no value.
+- Before reveal: input type=password, hasValue=false, placeholder=已设置（••••，不在此显示）.
+- Real click on local reveal button: input type=text, hasValue=true; hide button present, no failure message.
+- Real click on hide button: input type=password, hasValue=false; no failure message.
+- No value or unmasked screenshot recorded. DOM evidence script returned only input type, hasValue, placeholder and button state.
+
+Cross-home HTTP run 03:
+source home settings-credentials-source-2610051640
+source settings/mcp: 0.3.11-dev.20261005164123 / 0.11.8-dev.20261005164123
+25 checks passed. Both homes used kernel 0.10.1. Node v24.14.1.

@@ -1,62 +1,69 @@
 ---
 name: mcp
-description: 连接 gwb 工作台的 MCP 入口、MCP 工具调不通或回 401、换 token、没有 MCP 客户端要从命令行调命令时读。
+description: 连接 gwb 工作台、配置 MCP 客户端、签发或撤销临时凭据、换主凭据、排查 401、从命令行按 home 调命令时读。
 ---
 
 # MCP 入口
 
-插件 `@godcreator/gwb-mcp` 在 `http://127.0.0.1:<端口>/mcp` 开一个无状态的 streamable HTTP 入口，只收本机请求，每个请求都要带请求头 `Authorization: Bearer <token>`。default home 的端口固定是 2870；别的 home 的端口由系统分配，记在 `<home>/runtime.json` 的 `mcp` 项里（进程退出后不删，可能过时）。
+插件 `@godcreator/gwb-mcp` 在 `http://127.0.0.1:<端口>/mcp` 开一个无状态的 streamable HTTP 入口，只收本机请求，每次请求都要带 `Authorization: Bearer <token>`。default home 固定用 2870；其他 home 的端口记在 `<home>/runtime.json` 的 `mcp` 项里，进程退出后记录可能过时。
 
-## 连上一个工作台
+## 配置一个客户端
 
-1. 取连接片段：调 `mcp.info`（无参数）。还没有能用的 MCP 连接时，在命令行运行 `node <gwb-mcp 包目录>/bin/client.mjs run mcp.info`（default home 不用给任何参数，见「从命令行调命令」）。
-2. 回执 `data.mcpServers` 是直接复制就能用的片段：`{ "gwb": { "type": "http", "url": "…", "headers": { "Authorization": "Bearer <当前 token>" } } }`。把它写进客户端的 MCP 配置。
-3. 重连客户端。
-4. 调 `index`。
+读 `onboard` 说明书及其 `references/mcp-clients.md` 附件。客户端文件路径、JSON/TOML 形状、合并写入、失败恢复与重连验证由 skill 编排；MCP 插件不修改客户端配置。用户已授权接入时，在本地进程直接读取选定 home 的凭据并写入配置，只报告位置和验证结果。
 
-回执里是明文 token，会进你的会话记录；机器上还有别人看得到会话记录时，先和人确认再调。
+还没有可用的 MCP 连接时，用本插件 CLI 对选定 home 调命令和读取说明书，见下面「从命令行调命令」。
 
-完成的判据：`index` 返回了清单，清单里的 `home` 是要连的那个 home 的名字。
+## 临时客户端凭据
 
-## 换 token
+`mcp.client.issue {"expiresInSeconds":3600}` 签发一小时的独立临时 token。有效期必须是 1 到 31536000 的整数；回执只给 `{id,expiresAt}`，原文留在本 home 的凭据库。按编号安装到客户端的做法见 onboard。
 
-1. 调 `mcp.token {"rotate": true}`。回执 `data` 是 `{ token, file, rotated, mcpServers }`，`mcpServers` 片段里已经是新 token；新 token 立即生效。
-2. 所有用旧 token 的客户端从此回 401：逐个把新片段写进它们的配置并重连。
+临时凭据与主凭据能调用的命令相同，只限制使用时间；MCP 入口每次请求检查到期与撤销状态。签发完成的判据是回执有编号、`mcp.client.list` 中存在该编号；客户端连接完成另按 onboard 验证。
 
-完成的判据：每个客户端调 `index` 都成功。
+- 查状态：`mcp.client.list`，回 `[{id,expiresAt,expired}]`。
+- 提前撤销：`mcp.client.revoke {"id":"<编号>"}`，回 `{id,revoked}`。撤销不删除客户端文件；不存在时 `revoked:false`。
+- 接线失败：撤销本次签发的编号，保留原有主凭据和其他临时凭据。回收失败只报告编号，再用 list / revoke 核对并重试。
 
-## MCP 工具调不通
+## 换主凭据
 
-按顺序排查，哪一步解决了就停：
+1. 调 `mcp.token {"rotate":true}`，回 `{configured,rotated}`。旧主凭据立即失效。
+2. 按 onboard 说明书更新使用主凭据的客户端配置，然后重连。
+3. 逐个调 `index` 验证。
 
-1. 工具全灰、调不通：工作台没启动，或这个 home 没装 `gwb-mcp`。启动工作台（开始菜单「gwb-kernel」，或运行 `%LOCALAPPDATA%\Programs\gwb-kernel\gwb-kernel.exe`；从内核源码启动的看 gwb-kernel 仓 AGENTS 的「怎么跑」），然后重连客户端：MCP 连接不会自动接上中途才启动的工作台。
-2. 运行 `node <gwb-mcp 包目录>/bin/client.mjs index`。报连不上入口，就看 `<home>\gwb.log` 里 `gwb-mcp` 的那几行：`MCP 入口已就绪` 带着地址，`MCP 入口没能监听` 或 `MCP 入口没能启动` 带着原因。default 的 2870 被别的进程占着时入口不开、也不换端口：让人让出 2870 端口，再重启这个 home。
-3. 回 401：token 没带、对不上，或刚换过。重新取 `mcp.info` 的片段写进配置、重连。`gwb.log` 里 `拒绝了一条请求：…` 那一行写着没过的是 token、`Host` 还是 `Origin` 哪项检查。
-4. 回 403：入口只回 401，403 来自中间的代理，让客户端直连 `127.0.0.1`。
-5. 返回 `isError` 的文本：入口是通的。命令不存在、只给页面调用、命令自身失败，照说明书 `gwb-commands` 的「命令失败了」处理；文本说返回超过 40000 字符的，照文本里写的缩小范围（`search` 加条件，`run` 带上那条命令 `usage` 里的筛选或条数参数）再调。
-6. 入口这一版本身坏了：修好发下一版，让人在插件管理窗格点「全部更新」；工作台窗口也打不开时，在 home 目录运行 `pnpm add @godcreator/gwb-mcp@<新版本号>`，再重启这个 home。
-7. `plugin-manager.update {"all":true}` 升级到 `gwb-mcp` 自己时，进行中的回执会丢、连接断开：重连后用 `plugin-manager.list` 核对 `gwb-mcp` 那条条目的 `active` 为 `true`，再调 `shell.reload` 刷新界面。
+独立临时凭据不受主凭据轮换影响，要结束它们用 `mcp.client.revoke`。
 
-隔离 home 的基础插件集里没有 MCP 入口：对它调命令用 `devkit.cdp`（参数形状用 `search {"prefix": "devkit.cdp"}` 查）。`devkit.cdp` 只对隔离 home 用。
-
-完成的判据：`index` 返回了清单。
+`mcp.info` 只查地址与状态，回 `{url,port,auth:{configured}}`；`mcp.token` 无参数只查主凭据状态。经 MCP 或页面调用都不回明文，插件内部调用保留兼容的旧回执。
 
 ## 从命令行调命令
 
-包里带一个零依赖的单文件客户端 `bin/client.mjs`（node ≥18，复制到别处也能运行），同时登记成命令 `mcp.client`。
+包里的 `bin/client.mjs` 是零依赖单文件客户端（node ≥18），也登记成命令 `mcp.client`：
 
-1. 运行：
-   ```
-   node <gwb-mcp 包目录>/bin/client.mjs index
-   node <gwb-mcp 包目录>/bin/client.mjs search '{"prefix":"skill."}'
-   node <gwb-mcp 包目录>/bin/client.mjs run skill.read '{"name":"mcp"}'
-   ```
-2. 连 default home 不用给参数：地址缺省是 2870，token 自动从 default home 的凭据文件读。连别的 home 要显式给 `--url` 与 `--token`（或环境变量 `GWB_MCP_URL`、`GWB_MCP_TOKEN`）：隔离 home 的端口看 `devkit.home.list` 回执里的 `mcp` 项。其余选项看 `--help`。
+```
+node <gwb-mcp 包目录>/bin/client.mjs --home <名字> index
+node <gwb-mcp 包目录>/bin/client.mjs --home <名字> search '{"prefix":"skill."}'
+node <gwb-mcp 包目录>/bin/client.mjs --home <名字> run skill.read '{"name":"mcp"}'
+```
 
-完成的判据：标准输出是 JSON 回执，退出码 0；命令失败时照样打印原因，退出码 1。
+`--home` 默认 `default`，只接受名字。CLI 自动取该 home 的地址与凭据，不从其他 home 继承。显式 `--url` 或 `GWB_MCP_URL` 与该 home 的地址不同时，不自动发送该 home 的 token；需要显式配置凭据的其他服务仍可用 `--token` 或 `GWB_MCP_TOKEN`。其余选项看 `--help`。
 
-## 参考
+完成的判据：标准输出是 JSON 回执，退出码 0。工具失败仍打印原因、退出码 1；参数写错退出码 2。
 
-- **工具只有 `index`、`search`、`run` 三个**：MCP 的工具清单是连接时的快照，插件却随时可能重新加载，所以命令一律经 `run` 按名字调，每次调用都查当前的命令表。改这个插件时：加工具、改回执形状或参数语义破坏旧协议，给现有工具加可选参数不破坏；版本号升哪一位照说明书 `gwb-release`
-- **token**：每个 home 一份，存在 `<home>/mcp/secret.json`，重启不换
-- **instructions 末尾是这个 home 的目录**：home 名、全部说明书名、命令前缀；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了 `gwb.log` 里有一条 warn
+## MCP 工具调不通
+
+按顺序排查，解决就停：
+
+1. 工具全灰：台没启动，或这个 home 没装 `gwb-mcp`。启动工作台后重连客户端；MCP 连接不会自动接上中途启动的服务。
+2. 用上面的 CLI 对目标 home 调 `index`。连不上时查该 home 的 `gwb.log` 中 `gwb-mcp` 的入口就绪或监听失败信息。default 的 2870 被占时不会换端口，要先处理占用再重启。
+3. 回 401：主凭据可能已换，临时凭据可能已到期或撤销，也可能没带头。按 onboard 从目标 home 重新配置客户端，再重连；日志中的拒绝原因区分 token、Host 和 Origin。
+4. 凭据文件损坏或迁移失败：按日志修复原文件，保留现有凭据；启动不会用新 token 悄悄覆盖坏文件。
+5. 回 403：入口只回 401，403 来自中间代理，让客户端直连 `127.0.0.1`。
+6. 回 `isError`：入口已通，按正文及 `gwb-commands` 说明书排查。超过 40000 字符时缩小查询范围；写操作已执行的，不因回执过大重复执行。
+7. 升级 MCP 插件导致断连：重连后用 `plugin-manager.list` 核对它 `active:true`，再调 `shell.reload` 刷新界面。
+
+隔离 home 的基础插件集没有 MCP 入口；未安装入口时按 `gwb-devkit` 说明书使用 `devkit.cdp`。完成的判据仍是目标入口的 `index` 成功。
+
+## 保管与协议边界
+
+- 每个 home 的主 token 与临时 token 表由 settings 的 secret 项保管，明文落在本 home 的 `credentials.json`。它不加密磁盘，也不隔离有文件读取能力的本机代码。
+- 启动会把旧 `<home>/mcp/secret.json` 迁入 settings，确认持久化成功后才删旧文件；主凭据重启不换。凭据的复制、导入、普通随机值生成见 `gwb-settings`，MCP 有效期由本插件执行。
+- 工具固定为 `index`、`search`、`run`；命令每次按当前命令表分发，装卸插件后重调 `index`。版本规则见 `gwb-release`。
+- initialize 的 instructions 末尾有当前 home、说明书名、命令前缀；预算 2000 字符，超出在日志告警。

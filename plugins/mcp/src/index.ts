@@ -8,14 +8,15 @@ import type { Context, Logger } from 'cordis'
 import { z } from 'zod'
 import type { GwbContext } from '@godcreator/gwb-kernel-desktop'
 import type { GwbResult } from '@godcreator/gwb-commands'
-import { requireKernel } from './vocab.js'
+import { isRecord, requireKernel } from './vocab.js'
 // 这几个 import 同时激活对应插件的 `declare module 'cordis'`，给 ctx 加上 gwbCommands、gwbSettings、gwbSkills、gwbNodeCli
 import type { GwbCommands } from '@godcreator/gwb-commands'
 import type {} from '@godcreator/gwb-settings'
 import type {} from '@godcreator/gwb-skills'
 import type {} from '@godcreator/gwb-node-cli'
 import { DEFAULT_HOME, choosePort, connectionInfo, defaultPort, endpointUrl, homeNameOf, mcpServers, type PortChoice } from './endpoint.js'
-import { gateRequest, loadOrCreateToken, rotateToken, type GateVerdict } from './auth.js'
+import { gateRequest, type GateVerdict } from './auth.js'
+import { McpCredentials, TOKEN_KEY, CLIENT_TOKENS_KEY, clientTokenLifetime } from './credentials.js'
 import {
   buildIndex,
   buildInstructions,
@@ -77,7 +78,7 @@ function sendJson(res: ServerResponse, code: number, value: unknown): void {
 
 /** 401 回执里「去哪拿 token」那句，拒绝时唯一的提示 */
 export function credentialNote(file: string | undefined): string {
-  return `token 取法见 mcp.token 命令${file === undefined ? '' : `（或读 ${file}）`}`
+  return `按 onboard 说明书配置客户端；mcp.token 可查看凭据状态${file === undefined ? '' : `（凭据由 settings 保管：${file}）`}`
 }
 
 /** 三个工具的处理函数，做成可传入的形状，测试用内存传输连一对，不用启动 http */
@@ -156,7 +157,7 @@ function createMcpServer(version: string, instructions: string): McpServer {
 /** apply 里各部分共用、会变的几样 */
 interface EndpointState {
   /** 必须可改：`mcp.token` 换了新 token 要写回这里，请求检查才立刻用新的 */
-  secret: { token: string; file: string } | undefined
+  secret: McpCredentials | undefined
   /** 绑定成功后的实际端口。Host / Origin 名单要用它，系统分配端口时设置里的值是 0 */
   listeningPort: number | undefined
   /** 说明书服务；说明书插件不在或已卸载时是 undefined */
@@ -182,17 +183,16 @@ function definePortSettingAndChoose(ctx: GwbContext, home: string): PortChoice {
  * 在 apply 里就取 token，不等绑定成功：绑定之前就可能有请求进来。
  * 取不出来（磁盘满、目录不可写）不让插件加载失败：入口照开、所有请求一律 401，不退回成不检查
  */
-function loadSecretOrRefuseAll(log: Logger, dataDir: string): EndpointState['secret'] {
+async function loadSecretOrRefuseAll(ctx: GwbContext, log: Logger): Promise<EndpointState['secret']> {
+  ctx.gwbSettings.define({ key: TOKEN_KEY, title: 'MCP 主凭据', type: 'secret', description: '每个 home 独立保管；客户端接线读 onboard 说明书，mcp.token 可轮换' })
+  ctx.gwbSettings.define({ key: CLIENT_TOKENS_KEY, title: 'MCP 临时客户端凭据', type: 'secret', description: '由 mcp.client.issue 签发、mcp.client.revoke 撤销；有效期由入口逐请求检查' })
   try {
-    const loaded = loadOrCreateToken(dataDir)
-    if (loaded.created) {
-      log.info(`第一次启动 MCP 入口：token 已生成（${loaded.file}）。取法：mcp.token 命令，或由命令行客户端 bin/client.mjs 自动读这个文件`)
-    } else if (loaded.regenerated) {
-      log.warn(`凭据文件读不出 token，已把坏文件另存为 ${loaded.file}.broken-* 并生成新 token：所有客户端都要改配置`)
-    }
-    return { token: loaded.token, file: loaded.file }
-  } catch (loadError) {
-    log.error(`凭据文件取不出来，MCP 入口对所有请求一律回 401（不降级成不鉴权）：${String(loadError)}`)
+    const credentials = new McpCredentials(ctx.gwbSettings, requireKernel(ctx).dataDir)
+    await credentials.initialize()
+    log.info('MCP 凭据已由本 home 的 settings 保管；配置客户端读 onboard 说明书')
+    return credentials
+  } catch {
+    log.error('凭据无法读取或持久化，MCP 入口对所有请求一律回 401（不降级成不鉴权）')
     return undefined
   }
 }
@@ -311,10 +311,16 @@ async function handleMcpRequest(req: IncomingMessage, res: ServerResponse, log: 
 /** token、Host、Origin 三项检查在派发任何请求之前；拒绝写 warn 带原因，这个端口常收到无关请求 */
 function createHttpServer(log: Logger, state: EndpointState, choice: PortChoice, handlers: ToolHandlers, version: string): http.Server {
   return http.createServer((req, res) => {
+    let clients
+    try { clients = state.secret?.clients } catch {
+      sendJson(res, 401, { error: 'unauthorized', message: 'MCP 客户端凭据记录损坏，请在本机修复' })
+      return
+    }
     const verdict: GateVerdict = gateRequest({
       headers: req.headers,
       token: state.secret?.token ?? '',
       port: state.listeningPort ?? choice.port,
+      clients,
     })
     if (verdict !== undefined) {
       log.warn(`拒绝了一条请求：${verdict.refused}`)
@@ -401,22 +407,23 @@ function listeningStatusOf(ready: Promise<number>, state: EndpointState, home: s
   }
 }
 
-/** 两条命令的回执都带明文 token，会进调用方的会话记录，所以写进 usage */
+/** 页面与 MCP 只拿连接状态；受信插件保留内部读取能力。 */
 function registerInfoCommand(ctx: GwbContext, commandBus: GwbCommands, state: EndpointState, status: ListeningStatus): void {
   ctx.effect(() =>
     commandBus.register(
       {
         name: 'mcp.info',
-        description: 'MCP 入口的连接信息（url 与可直接复制的 mcpServers 片段，片段里带 Authorization 请求头与当前 token）',
+        description: 'MCP 入口地址与凭据状态；直接配置客户端读 onboard 说明书',
         usage:
-          '无参数。回执 { ok, data: { url, port, mcpServers, auth } }——mcpServers 片段里带 Authorization: Bearer <当前 token>，粘贴进客户端配置就能连接；只读当前 token、不换（换 token 用 mcp.token {"rotate":true}）。**回执里有明文凭据，会进入你的会话记录**。MCP 入口没开或凭据文件取不出来时回 ok:false 并说明原因',
+          '无参数。经 MCP 或页面回 {url,port,auth:{configured}}，不回凭据。插件内部调用兼容回 mcpServers 配置片段；入口未监听或凭据不可用时失败',
         plugin: PACKAGE_NAME,
         effect: 'read',
       },
-      async () => {
+      async (_raw, context) => {
         const port = await status.portOrNull()
         if (port === null) return { ok: false, error: status.notListeningError() }
         if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
+        if (context.via !== 'plugin') return { ok: true, data: { url: endpointUrl(port), port, auth: { configured: state.secret.token !== '' } } }
         return { ok: true, data: connectionInfo(port, state.secret.token, state.secret.file) }
       },
     ),
@@ -428,27 +435,25 @@ function registerTokenCommand(ctx: GwbContext, commandBus: GwbCommands, log: Log
     commandBus.register(
       {
         name: 'mcp.token',
-        description: 'MCP 入口的 token：取当前的，或换一份新的（换完之后旧客户端一律 401）',
+        description: '查看主凭据状态或轮换主凭据；独立临时客户端凭据不受轮换影响',
         usage:
-          '{"rotate":true} 换一份新的；不给参数就返回当前这份。回执 { ok, data: { token, file, rotated, mcpServers } }——mcpServers 片段里带的就是这份 token，粘贴进客户端配置就能连接。**回执里有明文凭据，会进入你的会话记录**',
+          '{"rotate":true} 轮换主凭据，旧主凭据失效；无参数查状态。经 MCP 或页面只回 {configured,rotated}，不回明文；插件内部调用兼容旧回执。安装客户端读 onboard 说明书',
         plugin: PACKAGE_NAME,
         effect: 'write',
       },
-      async (raw: unknown) => {
-        if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
+      async (raw: unknown, context) => {
         const rotateRequested = raw !== null && typeof raw === 'object' && (raw as { rotate?: unknown }).rotate === true
         const port = await status.portOrNull()
         if (port === null) return { ok: false, error: status.notListeningError() }
-        let token = state.secret.token
+        if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
         let rotated = false
         if (rotateRequested) {
-          const minted = rotateToken(requireKernel(ctx).dataDir)
-          // 写回内存里的凭据，下一个请求就按新 token 检查
-          state.secret = { token: minted.token, file: minted.file }
-          token = minted.token
+          await state.secret.rotate()
           rotated = true
-          log.warn('token 换了一份新的：所有旧客户端的配置都要跟着改，否则一律 401')
+          log.warn('MCP 主凭据已轮换：使用旧主凭据的客户端需重新配置，独立临时凭据继续有效')
         }
+        if (context.via !== 'plugin') return { ok: true, data: { configured: state.secret.token !== '', rotated } }
+        const token = state.secret.token
         return {
           ok: true,
           data: {
@@ -463,6 +468,39 @@ function registerTokenCommand(ctx: GwbContext, commandBus: GwbCommands, log: Log
   )
 }
 
+function registerClientCredentialCommands(ctx: GwbContext, commandBus: GwbCommands, state: EndpointState, status: ListeningStatus): void {
+  ctx.effect(() => commandBus.register({
+    name: 'mcp.client.list', plugin: PACKAGE_NAME, effect: 'read',
+    description: '列出独立临时 MCP 凭据的编号和到期状态，不回密钥',
+    usage: '无参数。回 [{id,expiresAt,expired}]；凭据权限与本 home 的主凭据相同，撤销用 mcp.client.revoke {id}。',
+  }, async () => {
+    await status.portOrNull()
+    if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
+    return state.secret.list()
+  }))
+  ctx.effect(() => commandBus.register({
+    name: 'mcp.client.issue', plugin: PACKAGE_NAME, effect: 'write',
+    description: '签发有期限的独立 MCP 凭据，只返回编号与到期时间',
+    usage: '参数 {expiresInSeconds}，1 到 31536000 的整数。回 {id,expiresAt}，不回密钥；权限与主凭据相同，有效期由入口逐请求检查。客户端接线读 onboard 说明书；配置失败按本次 id 调 mcp.client.revoke 回收。',
+  }, async (raw) => {
+    const lifetime = clientTokenLifetime(raw)
+    const port = await status.portOrNull()
+    if (port === null) return { ok: false, error: status.notListeningError() }
+    if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
+    return state.secret.issue(lifetime)
+  }))
+  ctx.effect(() => commandBus.register({
+    name: 'mcp.client.revoke', plugin: PACKAGE_NAME, effect: 'write',
+    description: '按编号撤销独立临时 MCP 凭据，不影响主凭据或其他客户端',
+    usage: '参数 {id}，id 来自 mcp.client.issue；回 {id,revoked}。不存在时 revoked:false；撤销不删除客户端配置文件。',
+  }, async (raw) => {
+    if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id === '') throw new Error('id 必须是临时凭据编号')
+    await status.portOrNull()
+    if (state.secret === undefined) return { ok: false, error: status.secretMissingError() }
+    return state.secret.revoke(raw.id)
+  }))
+}
+
 /** 命令行客户端经 gwbNodeCli 登记，同时成为总线命令。局部注入：node-cli 插件不在时入口照开 */
 function registerCliClientWheneverNodeCliIsLoaded(ctx: GwbContext): void {
   ctx.inject(['gwbNodeCli'], (contextWithNodeCli: Context) => {
@@ -471,7 +509,7 @@ function registerCliClientWheneverNodeCliIsLoaded(ctx: GwbContext): void {
       plugin: PACKAGE_NAME,
       description: '在命令行直接调用 MCP 入口（零依赖单文件，node ≥18，不用装任何包）',
       usage:
-        '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。入口地址用 --url 或环境变量 GWB_MCP_URL 给，缺省 http://127.0.0.1:2870/mcp（default home 固定用 2870 端口，隔离 home 的端口看 devkit.home.list 回执里的 mcp 字段）。命令失败时照样打印正文，退出码 1',
+        '{"args":["<动作>",…]}。动作 index / search [<JSON 筛选>] / run <命令名> [<JSON 参数>]。--home <名字> 自动读取该 home 的 runtime.json 地址与 settings 凭据；不给时用 default。--url 或 GWB_MCP_URL 可以指定入口，但与该 home 地址不同时不自动发送其凭据。命令失败照样打印正文，退出码 1',
       effect: 'external',
       entry: CLIENT_ENTRY,
     })
@@ -488,7 +526,7 @@ export function apply(ctx: GwbContext): void {
   const home = homeNameOf(requireKernel(ctx).dataDir)
   const choice = definePortSettingAndChoose(ctx, home)
   const state: EndpointState = {
-    secret: loadSecretOrRefuseAll(log, requireKernel(ctx).dataDir),
+    secret: undefined,
     listeningPort: undefined,
     skills: undefined,
     listenError: undefined,
@@ -497,15 +535,22 @@ export function apply(ctx: GwbContext): void {
 
   const handlers = createToolHandlers(commandBus, log, state, home, version)
   const server = createHttpServer(log, state, choice, handlers, version)
-  const ready = listenFallingBackWhenAllowed(server, choice, log, state)
+  let disposed = false
+  const ready = loadSecretOrRefuseAll(ctx, log).then((secret) => {
+    if (disposed) throw new Error('MCP 插件已卸载')
+    state.secret = secret
+    return listenFallingBackWhenAllowed(server, choice, log, state)
+  })
   reportListening(ready, ctx, log, state, home, choice)
 
   const status = listeningStatusOf(ready, state, home, choice)
   registerInfoCommand(ctx, commandBus, state, status)
   registerTokenCommand(ctx, commandBus, log, state, status)
+  registerClientCredentialCommands(ctx, commandBus, state, status)
   registerCliClientWheneverNodeCliIsLoaded(ctx)
 
   ctx.effect(() => () => {
+    disposed = true
     server.closeAllConnections()
     server.close()
   })

@@ -13,7 +13,7 @@ export interface SettingDef {
   title: string
   /**
    * 界面照它挑控件。`secret`：界面打码显示，`settings.all` 不回值（只回 `secret` / `isSet` / `mask`），
-   * 存储照样是明文，`settings.get` 与服务的 `get` 读得到真值。`string-list` 是字符串数组，界面逐行编辑
+   * 值由本 home 的 credentials.json 明文保管；插件内部 get 可取用，MCP 只读状态。`string-list` 是字符串数组
    */
   type: SettingType
   /** 写 true 进公共区，别的插件不用 define 就读得到 */
@@ -78,8 +78,10 @@ export interface SettingsRegistry {
   get(owner: Owner, key: string): unknown
   /** 算出这一项该往哪写。没声明过回 undefined */
   locate(owner: Owner, key: string): Slot | undefined
-  /** 按位置直读，不经身份，secret 项也回明文。`settings.get` 命令走这条 */
+  /** 内部按位置直读，不经身份，secret 项也回明文；命令层先校验对象类型与调用来源 */
   read(slot: Slot): unknown
+  /** 不含值的状态，普通项也不带 value/default。不存在时回 undefined */
+  status(slot: Slot): SettingStatus | undefined
   put(slot: Slot, value: unknown): void
   drop(slot: Slot): void
   /** 内存里的那一份，写文件用 */
@@ -88,8 +90,16 @@ export interface SettingsRegistry {
   owners(): SettingsOwners
   /** 把一个分区改归 `pkg` */
   transfer(section: string, pkg: string): void
-  /** 全部设置，给 `settings.all` 命令。secret 行不回明文，见 `SettingView` */
+  /** 完整元信息视图；命令层分别筛给 settings.all 与 credentials.list。secret 行不回明文 */
   all(): SettingView[]
+}
+
+/** 供 agent 核对配置是否存在；不携带值或默认值 */
+export interface SettingStatus extends Slot {
+  type?: string
+  secret: boolean
+  isSet: boolean
+  live: boolean
 }
 
 interface Declaration {
@@ -228,6 +238,10 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
     define(owner, def) {
       const ownSection = assertDefinable(owner, def)
+      const slot = slotOf(owner, def)
+      if (settingsBySection[slot.section]?.[slot.key]?.type === 'secret' && def.type !== 'secret') {
+        throw new Error('已登记的凭据项不能改成普通设置；请为普通设置另取一个键')
+      }
       claimSection(ownSection, owner)
 
       const key = declarationKey(owner, def.key)
@@ -261,6 +275,13 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
     read(slot) {
       return valueAt(slot)
+    },
+
+    status(slot) {
+      const stored = settingsBySection[slot.section]?.[slot.key]
+      if (stored === undefined) return undefined
+      const { liveViewKeys } = liveViewKeysAndDefaults()
+      return { ...slot, type: stored.type, secret: stored.type === 'secret', isSet: stored.value !== undefined, live: liveViewKeys.has(viewKey(slot)) }
     },
 
     put(slot, value) {

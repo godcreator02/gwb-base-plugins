@@ -1,6 +1,6 @@
 ---
 title: gwb-mcp · MCP 入口
-description: gwb-mcp 把命令总线提供给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、三条命令、写进 home 的文件、端口设置）、依赖与缺了会怎样，以及哪些事不归它做
+description: gwb-mcp 把命令总线提供给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、六条命令、写进 home 的文件、设置与凭据）、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
 **本页回答**：MCP 插件有哪些功能；agent、客户端配置和别的程序经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归命令总线或别的插件。包名 `@godcreator/gwb-mcp`，源码目录 `plugins/mcp/src`，入口文件 `index.ts`；包根另有零依赖的命令行客户端 `bin/client.mjs` 与每个会话都会读到的 `instructions.md`。
@@ -13,21 +13,21 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - **工具只有三个，以后也不增加**：`index` 给全部说明书与命令名的清单，`search` 按条件取命令用法，`run` 按名字调任何命令。MCP 的工具清单是连接时的快照，而插件在运行中装上、升级、停用；命令的变化全在 `run` 的参数里（轨迹卡[三个工具](/trajectory/2026-09-14-three-tool-face)、[MCP 复位](/trajectory/2026-09-14-mcp-returns)）
 - **每次调用都重新读取命令表与说明书**：插件在运行中装上、升级、停用，下一次 `index` 就反映出来
 - **instructions 带上这个 home 的目录**：initialize 返回的 instructions 是 `instructions.md` 接上一段目录——当前 home 名与本插件版本、全部说明书的名字、对 agent 开放的命令按第一个点之前的前缀去重后的列表。Claude Code 延迟加载 MCP 工具、不调工具时工具描述不进上下文，agent 连上时只看得到 instructions，目录让它知道这个 home 有什么、该去 `index` / `search` 找什么。每个请求新建 server 时重新生成；长度预算 2000 字符（Claude Code 超过 2048 字符不提示地截断），超了写一条 warn（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)）。
-  目录只有说明书的名字，agent 不知道什么时候该去读的，`instructions.md` 末尾写死一句指路，现在只有一句：目录里有 `zcode` 时，能写清范围的活可以派给本机的 ZCode 做（轨迹卡[instructions 里写死 zcode 的指路](/trajectory/2026-10-02-zcode-pointer-in-instructions)）
+  目录只有说明书的名字，`instructions.md` 补充必要的指路：凭据操作先读 `gwb-settings` / `mcp`；目录里有 `zcode` 时，能写清范围的活可以派给本机的 ZCode 做（轨迹卡[instructions 里写死 zcode 的指路](/trajectory/2026-10-02-zcode-pointer-in-instructions)）
 - **把命令的 `effect` 交给 agent、藏起只给页面调用的命令**：`search` 命中的每一条命令都带 `effect`，也能按 `effect` 筛；`hiddenFromAgents` 的命令 `index`、`search` 与 instructions 的目录都不列，`run` 直接拒绝、不执行
 - **`run` 先查命令表**：命令不存在回 `isError`，文本告诉 agent 用 `search {"q":…}` 找名字、装卸过插件就重新调 `index`；存在才交给命令总线
 - **单次返回有上限**：三个工具的返回超过 40000 字符就不交回原文，换成 `isError` 的文本说明怎么缩小范围（`search` 加条件、`index` 改按插件 `search`、`run` 带上命令自己的筛选或条数参数）；`run` 的那句写明命令已经执行完，免得 agent 重调一条会改东西的命令。上限按 Claude Code 单次工具返回的上限定，超了会被客户端转存成文件
 - **把回执翻译成 MCP 工具结果**：命令失败回带 `isError` 的文本，不是协议错误，连接不断；命令行工具的回执与处理函数自己返回的带 `ok` 的对象原样转成文本；有的客户端把对象参数序列化成 JSON 字符串再发，`run` 收到字符串先试着解析
-- **要 token**：每个 home 一份，存在 `<home>/mcp/secret.json`，重启不换；另外检查 `Host` 与 `Origin`。三项都在处理请求之前检查，不通过回 401 并写明原因；凭据文件取不出来时入口照开、所有请求一律 401，不退回成不检查
+- **要 token**：主凭据与独立临时凭据由本 home 的 settings 保管，明文存在 `credentials.json`。每次请求读取当前凭据，检查 token、临时凭据有效期、`Host` 与 `Origin`；不过就回 401。旧 `mcp/secret.json` 迁移持久化成功后才删除，坏文件不会被新凭据覆盖；凭据不可用时拒绝认证
 - **default 固定用 2870 端口**：端口被占就不开入口，不换端口；其他 home 缺省用系统分配的端口，显式给了端口而被占时改用系统分配的。default 不换端口，是因为连着 default 的 agent 会话把 `http://127.0.0.1:2870/mcp` 写进了自己的配置：一个测试 home 先启动占住 2870、default 换到别的端口的话，会话连上的是那个测试 home，命令、数据、说明书全是另一套，两边都不报错；不开入口的话马上能看出来
 - **把端口写进 home 的 `runtime.json`**：绑定成功后补上 `mcp` 一项，别的程序说出 home 名就能找到入口
 - **每次 agent 调命令都写一行日志**：命令总线的日志里看不出是 agent 调的，这里补一行，成功写 info，失败写 warn 并带原因
-- **连接信息与 token 用命令取**：`mcp.info`、`mcp.token`；另带一个零依赖的命令行客户端，登记成 `mcp.client`，没有 MCP 客户端的环境也能调
+- **配置客户端不用回显凭据**：`mcp.info`、`mcp.token` 经页面或 MCP 只回状态；`mcp.client.issue` 签发有期限的独立凭据；客户端接线由 onboard skill 完成，`list` / `revoke` 查状态与撤销。临时凭据与主凭据权限相同，主凭据轮换不影响它们。零依赖客户端 `mcp.client` 用 `--home` 自动选择本 home 的地址与凭据
 - **带一份说明书 `mcp`**：连接配置、为什么只有三个工具、工作台没启动时怎么办
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" hash="4bc7e47ca53e" blob="65e4dd6cd78c" */}
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="243-285" hash="5546474d270c" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="243-285" hash="5546474d270c" blob="1f9a4ca3fe38" */}
 
 {/* ref file="../plugins/mcp/src/inventory.ts" lines="40-62" hash="bdfdb5afd76b" blob="f020b75c2b13" */}
 
@@ -38,9 +38,9 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 每条接缝上交换什么、各方保证什么，写在接缝页；本节只列 MCP 插件提供了哪些接口。
 
 <Diagram name="mcp-request" title="MCP 客户端连 MCP 入口的一次请求（分步）">
-- 加载时：从设置插件读 `port`（default 是 2870，被占就不开入口）；读或生成 `<home>/mcp/secret.json` 里的 token；只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
+- 加载时：从设置插件读 `port`、主凭据和临时凭据表；主凭据缺失时迁入旧文件或生成，确认持久化后才清理旧文件。只绑 127.0.0.1，绑定成功后把 `{ port, url }` 写进 `runtime.json` 的 `mcp` 项
 - 客户端（agent，或随包的 `bin/client.mjs`）向 `http://127.0.0.1:<端口>/mcp` 发 POST，带 `Authorization: Bearer <token>`
-- token、Host、Origin 三项检查在处理请求之前做，任何一项不过回 401，工具一次都不会被调用
+- 每次请求检查当前主凭据或未到期且未撤销的临时凭据，再查 Host、Origin；任何一项不过回 401，工具一次都不会被调用
 - 通过的请求新建一个 McpServer 和一条 transport，instructions 在这时按当前的命令表与说明书清单生成，再登记 `index`、`search`、`run` 三个工具；路径不对回 404，不是 POST 回 405
 - `index`、`search` 每次都重新读取命令总线的 `list()` 与说明书插件的 `list()`，`run` 先在 `list()` 里查到命令、确认不是只给页面调用的，再交给命令总线的 `run()`；返回超过 40000 字符换成 `isError` 的说明；响应结束时 server 与 transport 一起关闭
 </Diagram>
@@ -53,17 +53,19 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | 工具 `search` | `plugin?`（精确包名）、`prefix?`（命令名前缀）、`q?`（子串，不分大小写）、`effect?`（`read` / `write` / `external`，别的值在协议层被拒；给了就不回说明书）；命中的命令带 `usage` 与 `effect`，不含 `hiddenFromAgents` 的；不带参数就返回全部 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 工具 `run` | `command`、`args?`；命令不存在或是 `hiddenFromAgents` 的，不执行、回 `isError` 的文本；回执转成文本，命令失败回 `isError` 的文本 | [3 命令表开给 agent](/docs/seams/agent-surface) |
 | 三个工具的返回上限 | 超过 40000 字符不交回原文，回 `isError` 的文本说明怎么缩小范围 | [3 命令表开给 agent](/docs/seams/agent-surface) |
-| 命令 `mcp.info` | 无参数，返回 `{ url, port, mcpServers, auth }`：`mcpServers` 是可以照抄进客户端配置的片段，带 `Authorization` 请求头与当前 token，只读不换，标 `effect: 'read'`。**回执里是明文 token，会进调用方的会话记录** | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| 命令 `mcp.token` | 不给参数返回当前 token；`{"rotate":true}` 换一份新的，立即生效，旧客户端从此 401。返回 `{ token, file, rotated, mcpServers }`，标 `effect: 'write'`。**回执里是明文 token** | [2 MCP 协议](/docs/seams/mcp-protocol) |
-| 命令 `mcp.client` | `bin/client.mjs` 登记成的 node 命令行工具：`{"args":["index"]}`、`["search", "<JSON 条件>"]`、`["run", "<命令名>", "<JSON 参数>"]`；地址取 `--url`、`GWB_MCP_URL`，缺省 default 的 2870；token 取 `--token`、`GWB_MCP_TOKEN`，缺省读 default home 的凭据文件；失败时退出码 1；标 `effect: 'external'` | [9 命令行工具](/docs/seams/cli) |
-| 文件 `<home>/mcp/secret.json` | `{ "token": "<32 字节随机数的 base64url>" }`；没有就生成；认不出时先改名成 `secret.json.broken-<时间戳>` 留着，再生成新的 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.info` | 无参数；MCP / 页面回 `{url,port,auth:{configured}}`；插件内部保留带 `mcpServers` 的兼容回执 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.token` | 无参数查状态，`{rotate:true}` 轮换主凭据；MCP / 页面只回 `{configured,rotated}`；独立临时凭据不受轮换影响 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.client.issue` | `{expiresInSeconds}`；签发独立临时 token，只回 `{id,expiresAt}`；本插件不写客户端配置 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.client.list` / `revoke` | list 无参数回 `[{id,expiresAt,expired}]`；revoke `{id}` 回 `{id,revoked}`，不删除客户端配置文件 | [2 MCP 协议](/docs/seams/mcp-protocol) |
+| 命令 `mcp.client` | `bin/client.mjs` 登记成的 node 工具；`--home <名字>` 默认 default，自动读该 home 地址与凭据；自定义 URL 与该 home 地址不同时不自动发送其凭据 | [9 命令行工具](/docs/seams/cli) |
+| settings 的 secret 项 `token` / `client-tokens` | 主凭据与临时凭据表（JSON 字符串），由 settings 明文存入本 home 的 `credentials.json`；只在迁移时读旧 `mcp/secret.json` | [5 设置](/docs/seams/settings) |
 | `<home>/runtime.json` 的 `mcp` 项 | `{ port, url }`；绑定成功后读出整份、只改这一项、写回；没绑定成功不写，写失败只记 warn，进程退出不删 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 设置 `port`（数字，本插件自己的设置分区） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效 | [5 设置](/docs/seams/settings) |
 | 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
-{/* ref file="../plugins/mcp/src/index.ts" lines="101-142" hash="643035e06d7a" blob="22353857ab33" */}
+{/* ref file="../plugins/mcp/src/index.ts" lines="102-143" hash="643035e06d7a" blob="1f9a4ca3fe38" */}
 
-三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。**变更的级别**：加一个工具是 major 级协议变更，给现有工具加可选参数是 minor，改返回形状或参数语义是 major。
+三个工具写死在 `registerTools` 里，没有运行时名单，登记命令的一方也没有「放成顶层工具」的字段。协议变更与版本规则按 `gwb-release` 说明书判断。
 
 instructions 是每个会话的固定开销。测试按日常使用的 default home 的规模（33 份说明书、28 个命令前缀）生成一份，检查它不超过 `INSTRUCTIONS_CHAR_BUDGET`（2000 字符），并且「只有三个工具」「总是带条件」「每条命令都标了 effect」几句还在；home 再装多了、超出预算，运行时只写 warn，不截断：
 
@@ -82,4 +84,13 @@ instructions 是每个会话的固定开销。测试按日常使用的 default h
 - **不推送通知**：无状态，没有会话；三个工具不会变，客户端不需要清单变更通知
 - **不列装了哪些插件**：`index` 里只有说明书与命令；装了哪些插件（包括没有命令的界面插件）问插件管理的 `plugin-manager.list`
 - **不校验命令参数**：命令自己校验
-- **不替客户端写配置、不负责客户端的超时**：`mcp.info`、`mcp.token` 只给片段；`run` 一直等到命令返回，客户端自己的超时在客户端配，`mcp.client` 用 `--timeout`
+- **不管理客户端自己的超时**：`run` 一直等到命令返回，超时在客户端配，`mcp.client` 用 `--timeout`
+- **不修改客户端配置**：接线步骤和格式知识归 onboard skill，本插件只管理令牌和入口
+- **不缩小临时凭据的命令权限**：它只增加到期与单独撤销；同样能调用全部对 agent 开放的命令
+- **不加密或隔离本机文件读取**：状态回执减少明文进入会话，不能阻止有磁盘权限的代码读凭据
+
+{/* ref file="../plugins/mcp/src/credentials.ts" lines="46-99" hash="afeb00ac97bc" blob="6c45cbb2667a" */}
+
+{/* ref file="../plugins/mcp/bin/client.mjs" lines="93-132" hash="8d05f6b6396e" blob="33bdde6b10f1" */}
+
+{/* ref file="../plugins/mcp/src/index.ts" lines="412-504" hash="655d284721fc" blob="1f9a4ca3fe38" */}

@@ -41,9 +41,10 @@ pnpm check
 | commands | `registry.test.ts` | 命令表本身：定义缺项与 `plugin` 不符的报错文本、来源原样转交、回执两种形状、抛错收成失败回执、同名后登记的生效并告警、注销只删自己那条 |
 | commands | `service.test.ts` | 真 cordis 加真 loader（`@cordisjs/plugin-loader`，模块加载换成按包名查表）：`plugin` 取自调用方条目，在 `ctx.inject`、`ctx.plugin`、`Service.init` 里都取得到；不经 loader 加载时抛错；调用方卸载后命令自动注销 |
 | skills | `collect.test.ts`、`service.test.ts` | 临时目录里的真目录树：frontmatter、只看一层、缺描述照收并报；服务：身份、同名先登记的保留、注销不删别人后来的、只读清单里的文件、两条命令 |
-| mcp | `auth.test.ts`、`endpoint.test.ts`、`inventory.test.ts`、`tools.test.ts`、`runtime.test.ts` | 纯函数：三项检查与换发 token、端口的决定与配置片段、`index` / `search` 的生成（同样输入逐字节一致、现实规模下不超过 18KB）、回执翻译、`runtime.json` 只改 `mcp` 项 |
+| mcp | `auth.test.ts`、`endpoint.test.ts`、`inventory.test.ts`、`tools.test.ts`、`runtime.test.ts` | 纯函数：token/Host/Origin 检查及临时凭据到期、端口与配置片段、`index` / `search` 生成（同样输入逐字节一致、现实规模下不超过 18KB）、回执翻译、`runtime.json` 只改 `mcp` 项 |
 | mcp | `server.test.ts`、`apply.test.ts` | 内存传输连一对真的 server 与 client，工具恰好三个，`instructions.md` 的长度与两句话；装上整个插件，用真端口、真 HTTP 请求与 SDK 客户端测三种 401、404、405、`run` 带 `{ via: 'mcp' }`、换 token、端口被占时的两种处理 |
-| settings | `registry.test.ts`、`paths.test.ts`、`store.test.ts`、`service.test.ts` | 读的顺序、公共区、secret 掩码、归属；名字与分区；写入排队；服务在构造时同步读文件、合并写入、四条命令 |
+| mcp | `credentials.test.ts`、`client.test.ts` | 迁移、每 home 独立保管、客户端配置合并与失败回收、轮换与撤销、CLI 不回退另一 home、pnpm 链接路径实际启动 |
+| settings | `registry.test.ts`、`paths.test.ts`、`store.test.ts`、`service.test.ts`、`credentials.test.ts` | 读取顺序、公共区、归属、secret 状态；两文件迁移与写失败恢复、删除记录、写入排队；命令对象分离、本地输入查看、复制导入生成、跨 home 独立与显式覆盖 |
 | data | `paths.test.ts`、`store.test.ts`、`owner.test.ts`、`service.test.ts` | 名字与目录；读的三种结果、原子写、同时写好几次；归属文件；服务按调用方条目给目录、归属不符时抛错 |
 | node-cli | `registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | 登记校验；总线参数与 `cwd` 校验；真 node 子进程的退出码、参数不经 shell、超时、长输出写临时文件；服务登记成总线命令、经调用方上下文取总线、总线拒收时从登记表里删掉那条 |
 | py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务测试预先建好已就绪的 venv 目录、记号与 dist-info，用当前 node 的拷贝当入口程序，不启动 uv |

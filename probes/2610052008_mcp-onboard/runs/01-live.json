@@ -1,0 +1,32 @@
+{
+  "home": "mcp-onboard-2610052008",
+  "checks": [
+    "index target home",
+    "issue listed",
+    "configure removed",
+    "info hides raw credential",
+    "issue only status",
+    "temporary authenticates",
+    "list contains id",
+    "claude unrelated settings preserved",
+    "claude auth matches target home",
+    "zcode unrelated settings preserved",
+    "zcode auth matches target home",
+    "kimi unrelated settings preserved",
+    "kimi auth matches target home",
+    "codex parses and preserves",
+    "codex auth matches target home",
+    "revoke acknowledged",
+    "revoked returns 401",
+    "expired returns 401",
+    "expired flag",
+    "main remains valid",
+    "skill attachment shipped",
+    "hook authenticated to selected home",
+    "hook output contains no token",
+    "live credential store contains no temporary entries"
+  ],
+  "count": 24,
+  "defaultTouched": false,
+  "realClientConfigurationsTouched": false
+}

@@ -27,7 +27,7 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 设置插件的写法相同：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="166-176" hash="bfd644c59e2b" blob="60b4b86caaae" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="252-262" hash="bfd644c59e2b" blob="0dcb9862f136" */}
 
 说明书插件、命令插件与两个命令行运行插件只取包名：
 
@@ -52,7 +52,7 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 设置插件的版本：
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="42-66" hash="55a26433cfd5" blob="fa8c33f0a6bd" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="43-67" hash="55a26433cfd5" blob="bfe7369e3f7c" */}
 
 这两份**靠约定**保持一致：算法在 `plugins/data/src/paths.ts` 的 `entryDirName` 与 `plugins/settings/src/paths.ts` 的 `entrySection` 各写一份，字符集、段数上限、取末段的规则相同，两处注释互相指着对方。十几行纯逻辑不值得为它开一个共享包；代价是改一处要同时改另一处，否则同一条条目的数据目录和设置分区会对不上，两边的归属记录也记在不同的名字下（见[数据归属](/docs/seams/owners)）。没有测试把两份放在一起比。
 
@@ -60,7 +60,7 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 {/* ref file="../plugins/data/src/paths.ts" lines="9-9" hash="cfcbd83d0878" blob="8c9afd1a7ef1" */}
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="17-17" hash="cfcbd83d0878" blob="fa8c33f0a6bd" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="18-18" hash="cfcbd83d0878" blob="bfe7369e3f7c" */}
 
 ## 约定
 
@@ -93,4 +93,4 @@ description: 连接数据、设置、说明书、命令、node 命令行、pytho
 
 {/* ref file="../plugins/commands/tests/service.test.ts" lines="141-158" hash="220471389d98" blob="8ce55c6dd236" */}
 
-{/* ref file="../plugins/settings/tests/paths.test.ts" lines="54-56" hash="e275b23e2ae5" blob="5ad294737a81" */}
+{/* ref file="../plugins/settings/tests/paths.test.ts" lines="55-57" hash="e275b23e2ae5" blob="fde381ccd24b" */}
