@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-05T20:47+08:00",
+  "checks": [
+    {
+      "command": "plugin-manager.search",
+      "ok": true,
+      "markets": [
+        {
+          "scope": "@godcreator",
+          "ok": true,
+          "count": 40
+        },
+        {
+          "scope": "@j",
+          "ok": true,
+          "count": 3
+        },
+        {
+          "scope": "@god-private",
+          "ok": true,
+          "count": 1
+        }
+      ],
+      "packageCount": 44
+    },
+    {
+      "command": "cgm-alert.now",
+      "ok": true,
+      "health": {
+        "disconnected": false,
+        "linkDown": false,
+        "lastFetchOk": true,
+        "pushEnabled": true
+      }
+    },
+    {
+      "command": "gitea.http GET /user",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "command": "sources.status",
+      "ok": true
+    }
+  ]
+}

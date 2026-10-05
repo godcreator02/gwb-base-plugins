@@ -1,0 +1,18 @@
+{
+  "@godcreator/gwb-deepseek": "0.1.9",
+  "@godcreator/gwb-collab": "0.21.5",
+  "@godcreator/gwb-paper-library": "0.2.1",
+  "@godcreator/gwb-gitea": "0.1.15",
+  "@godcreator/gwb-settings": "0.4.0",
+  "@godcreator/gwb-agent-hooks-skills": "0.1.11",
+  "@godcreator/gwb-baseui": "0.1.27",
+  "@godcreator/gwb-mcp": "0.12.0",
+  "@godcreator/gwb-devkit": "0.26.0",
+  "@godcreator/gwb-sources": "0.2.0",
+  "@godcreator/gwb-unit-folder": "0.7.20",
+  "@godcreator/gwb-plugin-manager": "0.15.0",
+  "@godcreator/gwb-windows-backup": "0.4.0",
+  "@god-private/gwb-cgm-alert": "0.4.0",
+  "@godcreator/gwb-theme": "0.3.19",
+  "@godcreator/gwb-mineru": "0.6.7"
+}

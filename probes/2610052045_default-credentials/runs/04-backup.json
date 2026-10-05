@@ -1,0 +1,41 @@
+{
+  "pluginVersion": "0.4.0",
+  "backup": {
+    "frequencyMinutes": 30,
+    "running": false,
+    "runningSince": null,
+    "lastRunAt": "2026-10-05T20:54:35",
+    "lastRunOk": true,
+    "lastRunSummary": "43.580 GiB | local 3:35 | OSS 3:40",
+    "nextRunAt": "2026-10-05T21:24:35"
+  },
+  "healthOk": true,
+  "coverage": [
+    {
+      "repo": "local",
+      "ok": true,
+      "at": "2026-10-05T20:47:18.8870175+08:00",
+      "pathCount": 13,
+      "required": {
+        "credentials.json": true,
+        "settings.json": true,
+        "cordis.yml": true,
+        "package.json": true,
+        "pnpm-lock.yaml": true
+      }
+    },
+    {
+      "repo": "oss",
+      "ok": true,
+      "at": "2026-10-05T20:50:54.8166421+08:00",
+      "pathCount": 13,
+      "required": {
+        "credentials.json": true,
+        "settings.json": true,
+        "cordis.yml": true,
+        "package.json": true,
+        "pnpm-lock.yaml": true
+      }
+    }
+  ]
+}

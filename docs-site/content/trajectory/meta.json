@@ -37,6 +37,8 @@
     "2026-09-13-docs-ownership-split",
     "2026-09-13-terminology-rename",
     "2026-09-13-command-http-rename",
-    "2026-10-05-home-credentials"
+    "2026-10-05-home-credentials",
+    "2026-10-05-credential-command-boundary",
+    "2026-10-05-client-setup-as-skill"
   ]
 }

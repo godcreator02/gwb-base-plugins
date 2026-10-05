@@ -1,0 +1,30 @@
+---
+title: 客户端接线归 skill，MCP 只管理令牌生命周期
+born-at: 2026-10-05T20:52
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 客户端接线
+domain: 件
+---
+
+## 背景
+
+每 home 凭据和独立凭据命令确定后，用户复查整体适配计划，指出“客户端配置器目前没做全。配置应该用skill来配置，不是代码搞”。早期方案把客户端配置格式和文件写入放进 MCP 插件，随着 Codex、Claude、ZCode、Kimi 的格式差异扩大，这个边界需要重新划分。
+
+## 结论与边界
+
+按用户的决定，客户端接线由 onboard skill 指导 agent 在本机完成；MCP 插件负责主令牌、临时令牌、到期与撤销。此决定取代早期卡里的产品配置器部分，每 home 明文保管、内部取用、普通命令不回显凭据的选择继续成立。它依赖 agent 能使用本地文件工具，不声称本机程序无法读取凭据。
+
+supersedes:: [每个 home 自己保管凭据](2026-10-05-home-credentials.md)
+
+普通设置和凭据分成两组命令的边界继续成立。
+
+pivots-from:: [凭据命令边界](2026-10-05-credential-command-boundary.md)
+
+不发布 `mcp.client.configure`，也不另留一份四客户端适配器脚本。临时接入使用 `mcp.client.issue`，只回编号与期限；skill 指导本地进程按编号取对应令牌，合并目标配置、保留无关设置，再用写好的配置验证目标 home。现有主令牌无需因存储迁移而轮换。主令牌主动换发时，同样由 skill 更新使用旧值的客户端。
+
+客户端格式、常见路径、文件合并与失败恢复步骤归 onboard 附件；凭据复制、导入和随机值生成归 credentials 命令；第三方有效期与撤销仍归对应服务。临时 MCP 令牌具有入口权限，期限不代表权限范围缩小。
+
+## 依据
+
+基础实现提交 `f76d84f`、onboard 与启动钩子提交 `eb6a701`。四种配置格式、临时凭据到期和撤销、主令牌不变及启动钩子鉴权的隔离验收记录在 `probes/2610052008_mcp-onboard/runs/01-live.json`。default 切换记录另存 `probes/2610052045_default-credentials/`，只包含核对状态，不包含凭据值。
