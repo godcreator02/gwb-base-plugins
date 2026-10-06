@@ -11,7 +11,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 - **登记命令行工具**：插件给一个名字和要运行的 js 的绝对路径，拿回注销函数；插件卸载时自动注销，不用自己包 `ctx.effect`
 - **登记时就校验**：名字为空或带空白、js 路径不是绝对路径、时限不是正数或超上限，登记时就抛错——等到运行时才发现的话，报错的地方已经离登记的地方很远
-- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面、agent、别的插件照调命令的办法调它；`usage` 没给时补上参数形状那一句，`effect` 照登记时给的写进总线命令。总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、没写 `effect` 或不是 `read` / `write` / `external`、`plugin` 不是调用方的包名）时撤掉表里那条，把错抛给调用方
+- **登记的工具同时是命令总线上的命令**：命令名就是登记的名字，页面与 agent 照调命令的办法调它，别的插件在进程内调服务的 `run(name, extraArgs?, { cwd? })`；`usage` 没给时补上参数形状那一句，`effect` 照登记时给的写进总线命令。总线命令经调用方的上下文登记，命令总线认出的登记方是调用方；总线拒收（没写 `description`、没写 `effect` 或不是 `read` / `write` / `external`、`plugin` 不是调用方的包名）时撤掉表里那条，把错抛给调用方
 - **用运行工作台的那个 node 启动**：程序是 `process.execPath`（工作台进程的 electron.exe），带上 `ELECTRON_RUN_AS_NODE=1`；不查 PATH、不读 `bin` 字段、不经过 shell，参数全程是数组，引号、空格、中文原样到达
 - **工作目录**：按次给的优先，其次登记时给的，都没给就是那个 js 所在的目录；不用工作台进程自己的工作目录。按次给的必须是存在的目录的绝对路径，不合规时不启动进程，回一句说明要什么的 `{ ok: false, error }`
 - **时限**：缺省 60 秒，登记时可以给到 2,147,483,647 毫秒（Node 定时器的上限，轨迹卡[显式超时](/trajectory/2026-09-21-explicit-cli-timeout)）；到时限在 Windows 上用 `taskkill /T /F` 结束整个进程树
@@ -30,7 +30,7 @@ description: gwb-node-cli 运行插件随包带的 node 命令行工具：插件
 
 <Diagram name="cli-run" title="node 命令行工具的登记、调用与回执（分步）">
 - 登记方插件调 `ctx.gwbNodeCli.register({ name, entry, … })`，`entry` 是它随包发布的 js 的绝对路径；gwbNodeCli 同时用同一个名字调 `gwbCommands.register`，登记成总线命令
-- 页面、agent、别的插件经 `gwbCommands.run(name, args)` 调它；按次给的 `cwd` 不合规就不启动进程
+- 页面与 agent 经 `gwbCommands.run(name, args)` 调它，别的插件经服务的 `run`；按次给的 `cwd` 不合规就不启动进程
 - gwbNodeCli 用 `process.execPath` 加 `ELECTRON_RUN_AS_NODE=1` 启动子进程，argv 是 `[entry, ...固定参数, ...追加参数]`，不经 shell
 - 缺省 60 秒时限，到时限用 `taskkill /T /F` 结束整个进程树；输出只留尾部 64,000 字节，超出时全量写进系统临时目录
 - 回执 `CliRunResult` 带 `ok`，命令总线原样返回给调用方

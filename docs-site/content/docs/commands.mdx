@@ -5,7 +5,7 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 
 **本页回答**：命令插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归别的插件。包名 `@godcreator/gwb-commands`，源码目录 `plugins/commands/src`，入口文件 `index.ts`。
 
-命令插件提供命令总线：一张只在内存里的「命令名 → 处理函数」表，插件把自己的能力登记成命令，页面、agent 和别的插件都经这张表调用。它是 `cordis.yml` 里的一条普通条目，和别的插件一样装在 home 里、可以停用和升级。
+命令插件提供命令总线：一张只在内存里的「命令名 → 处理函数」表，插件把自己的能力登记成命令，页面和 agent 经这张表调用；插件之间的能力走 cordis 服务，不经这张表。它是 `cordis.yml` 里的一条普通条目，和别的插件一样装在 home 里、可以停用和升级。
 
 ## 功能
 
@@ -13,8 +13,8 @@ description: gwb-commands 提供命令总线 ctx.gwbCommands，一张「命令�
 - **登记时检查定义**：`name`、`description`、`usage` 缺一项或为空串就抛错，没写 `effect` 也抛错，错误文本写明三个值各是什么意思；命令记在哪个包名下由命令总线从调用方条目取，登记方写的 `plugin` 与之不同也抛错；`effect` 写了 `read` / `write` / `external` 以外的值、`hiddenFromAgents` 写了 `true` 以外的值也抛错（轨迹卡[命令定义改在登记时检查](/trajectory/2026-09-24-command-def-checked-at-register)）
 - **命令带两个给 agent 看的标记**：`effect` 说明调它会动到什么——`read` 什么都不改（联网只读也算），`write` 改本机的文件、设置、数据或界面，`external` 影响本机以外或打扰人（推送、发到远端、发消息、弹窗或通知），必填，按参数可能做几种事的取最重的那种（`external` > `write` > `read`）。`hiddenFromAgents: true` 表示只给页面调用，MCP 入口不列出、agent 调不到。两项都只原样存进命令表，命令总线自己不按它们做任何限制（轨迹卡[命令标副作用、instructions 带目录](/trajectory/2026-09-26-command-effect-and-agent-catalog)、[effect 改成必填](/trajectory/2026-09-30-command-effect-required)）
 - **同名命令后登记的生效**：同时写一条 warn，写明原来是哪个包、现在是哪个；先登记的插件卸载时只删自己那条，不删接手的那条
-- **按名字执行命令**：页面经本包 `./client` 的 `command`（通过内核请求通道交给本包处理器）、agent 经 MCP 入口的 `run`、别的插件直接调，执行的是同一张表
-- **转交请求来源**：本包页面处理器带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，别的插件不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
+- **按名字执行命令**：页面经本包 `./client` 的 `command`（通过内核请求通道交给本包处理器）、agent 经 MCP 入口的 `run`，执行的是同一张表；插件在进程内也能直接调，按规矩插件之间改用对方的服务
+- **转交请求来源**：本包页面处理器带 `{ via: 'ui' }`、MCP 入口带 `{ via: 'mcp' }`，进程内直接调的不带，处理函数收到 `{ via: 'plugin' }`；命令总线只转交，不按来源限制能调什么（轨迹卡[命令总线把请求来源转交给处理函数](/trajectory/2026-09-24-commands-carry-request-source)）
 - **执行不抛错**：回执只有成功、失败两种形状；处理函数抛错、命令不存在都回失败回执并写明原因
 - **列出全部命令**：每条带名字、一句话介绍、用法、登记方的包名和 `effect`，登记时写了 `hiddenFromAgents` 的再带这一项
 - **写日志**：登记写 info；返回失败、抛错、找不到命令写 warn；只读命令（`effect: 'read'`）执行成功不写，其余命令执行成功写 debug。内核默认不把 debug 写进 `gwb.log`，要查谁在什么时候调了哪条改东西的命令，启动时设环境变量 `GWB_DEBUG=gwb-commands`（[命令成功只记 debug，只读命令不记](/trajectory/2026-09-28-command-success-debug-reads-unlogged)）
