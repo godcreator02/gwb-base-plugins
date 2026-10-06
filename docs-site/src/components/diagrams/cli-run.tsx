@@ -26,7 +26,7 @@ const STEPS: { title: string; detail: string; lit: Part[]; flows: string[] }[] =
   },
   {
     title: '第 3 步：调用',
-    detail: '页面、agent、别的插件经 gwbCommands.run(name, args) 调它：args 给数组就是追加参数，给 { args?, cwd? } 也认。按次给的 cwd 不合规就不启动进程，回 { ok: false, error }。',
+    detail: '页面与 agent 经 gwbCommands.run(name, args) 调它（别的插件在进程内调服务的 run）：args 给数组就是追加参数，给 { args?, cwd? } 也认。按次给的 cwd 不合规就不启动进程，回 { ok: false, error }。',
     lit: ['caller', 'bus', 'nodeCli'],
     flows: ['call', 'handler'],
   },
