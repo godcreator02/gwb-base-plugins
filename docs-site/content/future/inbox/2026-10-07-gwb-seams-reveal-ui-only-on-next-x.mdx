@@ -1,0 +1,20 @@
+---
+title: '设置插件下次升 x 时：credentials.reveal 只认 ui'
+description: '来源：gwb-seams 方案「服务是本体」的待定 8；node 侧已经没有插件经命令读凭据明文'
+docfirst: none
+---
+
+* **目标仓**：`D:\unitfolders\igldu-gwbkernel\gwb-base-plugins`（设置插件 `plugins/settings`）
+* **来源**：gwb-seams 方案页 `content/future/spec/services-first.mdx` 的待定 8
+* **基准**：仓 main `df80cf8`
+
+### 现状
+
+`credentials.reveal` 对 `via` 是 `ui` 或 `plugin` 都放行（`plugins/settings/src/index.ts` 里那句「凭据明文只供本地页面和受信插件使用」）。
+命令总线 `run` 的第三个参数缺省就是 `{ via: 'plugin' }`，所以任何插件不写来源也能读出任何凭据。
+2026-10-07 协作站改用 gwb-gitea 的服务 `gwbGitea` 以后，各插件仓的 node 侧已经没有调用方，只剩基础界面的窗格（页面上，`via` 是 `ui`）。
+
+### 要做的
+
+改成只认 `ui`，`credentials.set` 一并考虑。usage 与报错写明了插件也能调，收窄它是破坏性改动，照 gwb-release 设置插件要升 x、
+所有 peer 写了设置插件的插件跟着改。用户 2026-10-07 同意推荐：不为这一条单独升 x，等设置插件下次本来就要升 x 时一起做。
