@@ -20,9 +20,9 @@ description: 连接数据插件与要把状态写进磁盘的插件；交换的�
 
 **服务**：
 
-{/* ref file="../plugins/data/src/index.ts" lines="16-28" hash="c87d3e6cc3f6" blob="cc9bc17278e7" */}
+{/* ref file="../plugins/data/src/index.ts" lines="16-28" hash="667d0f30f0ff" blob="01a45eb140d3" */}
 
-`owners()` 与 `transferOwner()` 此刻没有调用方（插件管理 0.14 起不再调用），见[数据归属](/docs/seams/owners)。
+`owners()` 与 `transferOwner()` 由插件管理的 `plugin-manager.transfer-owner` 调用，见[数据归属](/docs/seams/owners)。
 
 **目录**：`<home>/data/<条目 id 的末段>/`。同一个包加了两条条目，就是两个目录：
 

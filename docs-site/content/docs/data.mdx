@@ -13,7 +13,7 @@ description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目�
 - **认得出调用方**：插件不用报自己是谁，服务从调用方的上下文里认出条目；插件没法读写别的条目的目录
 - **按名字整份读写 JSON 文档**：一份文档是目录里的 `<文档名>.json`；没有这份文档、或文件解析不了，读出来都是 `undefined`，解析不了时另写一条 warn——数据坏了悄悄变成默认值是最难查的那种问题
 - **写入是原子的**：先序列化（循环引用之类在建目录之前就抛出），再写同目录的临时文件（名字带随机后缀）、改名覆盖；同一份文档的多次写入按发起顺序一次一个，后发起的那次留在文件里（轨迹卡[写入排队](/trajectory/2026-09-24-serialize-file-writes)）；写失败删掉临时文件、写一条 error 日志，异常照样抛给调用方——调用方常把异常吞掉
-- **目录记着归哪个包**：目录第一次被用到时建出来并写下 `.owner.json`，之后包名对不上的一律拒绝；归属文件认不出时抛错，不当成没有归属。核对是同步的——`dir` 是同步的 getter，插件拿到路径就可能自己往里写；核对过的目录记在内存里，不重复读磁盘。包名对不上时报错写明目录路径，由人手工改名、删掉目录或改 `.owner.json` 里的包名；服务上的 `owners`、`transferOwner` 能列出和改写归属，插件管理 0.14 起不再调用，此刻没有调用方
+- **目录记着归哪个包**：目录第一次被用到时建出来并写下 `.owner.json`，之后包名对不上的一律拒绝；归属文件认不出时抛错，不当成没有归属。核对是同步的——`dir` 是同步的 getter，插件拿到路径就可能自己往里写；核对过的目录记在内存里，不重复读磁盘。包名对不上时报错写明目录路径，由人手工改名、删掉目录或改 `.owner.json` 里的包名；服务上的 `owners`、`transferOwner` 能列出和改写归属，插件管理的 `plugin-manager.transfer-owner` 给包改了名的插件调它们
 - **条目没写 id 时提醒**：条目 id 是 loader 生成的 8 位随机十六进制时，写一条 warn（这种 id 每次启动都变，数据每次启动都会新建一份），每条条目只写一次
 - **名字写错当场报错**：文档名与条目 id 的每一段都必须是 kebab-case，条目 id 超过两段抛错
 
@@ -34,14 +34,14 @@ description: gwb-data 提供服务 ctx.gwbData，给每条条目一个数据目�
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | 服务 `ctx.gwbData` 的 `dir`、`readDoc(doc)`、`writeDoc(doc, value)` | 调用方条目的数据目录；按文档名读、整份替换写 | [6 数据](/docs/seams/data) |
-| 服务 `ctx.gwbData` 的 `owners()`、`transferOwner(id, pkg)` | 列出各数据目录归哪个包；把一个目录改归另一个包。此刻没有调用方 | [7 数据归属](/docs/seams/owners) |
+| 服务 `ctx.gwbData` 的 `owners()`、`transferOwner(id, pkg)` | 列出各数据目录归哪个包；把一个目录改归另一个包。插件管理的 `transfer-owner` 调它们 | [7 数据归属](/docs/seams/owners) |
 | 目录 `<home>/data/<条目 id 的末段>/` | 目录名由调用方的条目 id 算出：取末段，`home:hello` 得 `hello` | [8 条目身份](/docs/seams/entry-identity) |
 | 文件 `<数据目录>/.owner.json` | `{ "pkg": "<包名>" }`，记这个目录归哪个包；文件名带点，文档名是 kebab-case，两者撞不上 | [7 数据归属](/docs/seams/owners) |
 | 文件 `<数据目录>/<文档名>.json` | 一份文档，两格缩进的 JSON | [6 数据](/docs/seams/data) |
 
 服务的类型由本包导出（`GwbDataApi`，`import type {} from '@godcreator/gwb-data'` 让 `ctx.gwbData` 有类型）：
 
-{/* ref file="../plugins/data/src/index.ts" lines="16-28" hash="c87d3e6cc3f6" blob="cc9bc17278e7" */}
+{/* ref file="../plugins/data/src/index.ts" lines="16-28" hash="667d0f30f0ff" blob="01a45eb140d3" */}
 
 用它的插件写 `export const inject = ['gwbData']`，之后：
 

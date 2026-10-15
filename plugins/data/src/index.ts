@@ -21,9 +21,9 @@ export interface GwbDataApi {
   readDoc(doc: string): Promise<unknown>
   /** 整份替换，原子写入 */
   writeDoc(doc: string, value: unknown): Promise<void>
-  /** 各数据目录的归属：目录名（条目 id 末段）→ 包名。还没记归属的目录不列。插件管理 0.14 起不再调用，留待本插件下次本来就要升 x 时删 */
+  /** 各数据目录的归属：目录名（条目 id 末段）→ 包名。还没记归属的目录不列。插件管理的 plugin-manager.transfer-owner 调它 */
   owners(): Promise<Record<string, string>>
-  /** 把一个数据目录改归 `pkg`。`id` 认完整 entryId 也认裸 id。插件管理 0.14 起不再调用，留待本插件下次本来就要升 x 时删 */
+  /** 把一个数据目录改归 `pkg`，目录不在就建出来。`id` 认完整 entryId 也认裸 id。插件管理的 plugin-manager.transfer-owner 调它 */
   transferOwner(id: string, pkg: string): Promise<void>
 }
 

@@ -37,11 +37,11 @@ const STEPS: { title: string; detail: string; lit: Part[]; owner: string | undef
     flows: ['renamed'],
   },
   {
-    title: '第 3 步：人手工改归属记录',
-    detail: '确认是同一个插件后，人把 data/foo/.owner.json 的 pkg 改成 @new/gwb-foo，关掉工作台再把 settings.json 里 $owners 的 foo 改成 @new/gwb-foo。不是同一个插件时改名或删掉旧的目录与分区。',
+    title: '第 3 步：人改归属记录',
+    detail: '确认是同一个插件后，卸掉旧包，调插件管理的 plugin-manager.transfer-owner 把两处都改成 @new/gwb-foo，它经两个插件的 transferOwner 改、不用关工作台；也可以手工改 data/foo/.owner.json 的 pkg，关掉工作台再改 settings.json 里 $owners 的 foo。不是同一个插件时改名或删掉旧的目录与分区。',
     lit: ['person', 'ownerFile', 'ownerTable'],
     owner: '@new/gwb-foo',
-    outcome: '手工改归属：foo → @new/gwb-foo',
+    outcome: '改归属：foo → @new/gwb-foo',
     flows: [],
   },
   {

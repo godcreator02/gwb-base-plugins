@@ -1,16 +1,16 @@
 ---
 title: 7 数据归属 owners
-description: 数据插件与设置插件记下每个数据目录、每个设置分区归哪个包，记在数据目录里的 .owner.json 和 settings.json 顶层的 $owners；包名对不上就拒绝，报错写明归属于谁、由人在磁盘上的哪个目录或文件手工处理。两个服务上的 owners() / transferOwner(id, pkg) 还在，插件管理 0.14 起不再调用，此刻没有调用方
+description: 数据插件与设置插件记下每个数据目录、每个设置分区归哪个包，记在数据目录里的 .owner.json 和 settings.json 顶层的 $owners；包名对不上就拒绝，报错写明归属于谁、由人在磁盘上的哪个目录或文件手工处理。两个服务上的 owners() / transferOwner(id, pkg) 由插件管理的 transfer-owner 命令调用，包改名时不用关工作台就能改归属
 ---
 
-**本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么、人怎么手工处理；两个服务上的 `owners()` / `transferOwner()` 此刻是什么状态；各方保证什么。
+**本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么、人怎么处理；两个服务上的 `owners()` / `transferOwner()` 谁在调；各方保证什么。
 
 ## 连接的模块
 
 - [数据插件](/docs/data)：每个数据目录里一个 `.owner.json`
 - [设置插件](/docs/settings)：`settings.json` 顶层一张 `$owners`
-- 照报错手工处理归属的人：改名或删掉旧的数据目录与设置分区，或改归属记录里的包名
-- 两个服务上的 `owners()`、`transferOwner()` 此刻没有调用方：插件管理 `@godcreator/gwb-plugin-manager`（生命周期插件仓 `gwb-lifecycle-plugins`）0.14 起选条目 id 时不读归属，也没有转移归属的命令
+- 照报错处理归属的人：改名或删掉旧的数据目录与设置分区，或改归属记录里的包名
+- 插件管理 `@godcreator/gwb-plugin-manager`（生命周期插件仓 `gwb-lifecycle-plugins`）：0.15.3 起的命令 `plugin-manager.transfer-owner` 调两个服务上的 `owners()`、`transferOwner()`，给包改了名的插件改归属；选条目 id 时不读归属
 
 为什么要记归属：数据目录名与设置分区名都是条目 id 的末段（见[条目身份](/docs/seams/entry-identity)），而不同 scope 的同名包会算出同一个条目 id（`@a/gwb-foo` 与 `@b/foo` 都叫 `foo`）；条目删了数据与设置留在磁盘上，下一个拿到这个 id 的包就会读到前一个包的东西（轨迹卡[目录与分区记下归属的包](/trajectory/2026-09-19-owner-stamp)）。
 
@@ -20,11 +20,11 @@ description: 数据插件与设置插件记下每个数据目录、每个设置�
 - 两处归属记录：数据目录里的 `.owner.json`（`{ "pkg": "<包名>" }`）、`settings.json` 顶层 `$owners` 里的一项，键都是条目 id 的末段
 - 第 1 步：`@old/gwb-foo` 的条目 `home:foo` 第一次取数据目录、第一次 `define` 时，两处都记成 `@old/gwb-foo`
 - 第 2 步：同一个插件改名成 `@new/gwb-foo`，条目 id 还是 `foo`；数据插件与设置插件都抛错、不动数据，报错写明归属于谁、磁盘上哪个目录或文件要手工处理
-- 第 3 步：人确认是同一个插件后手工改归属记录：`<home>/data/foo/.owner.json` 的 `pkg` 改成 `@new/gwb-foo`；关掉工作台，把 `settings.json` 里 `$owners` 的 `foo` 改成 `@new/gwb-foo`。不是同一个插件时改名或删掉旧的目录与分区
+- 第 3 步：人确认是同一个插件后改归属记录：卸掉旧包，调 `plugin-manager.transfer-owner` 把两处都改成 `@new/gwb-foo`，不用关工作台；也可以手工改 `<home>/data/foo/.owner.json` 的 `pkg`，关掉工作台再改 `settings.json` 里 `$owners` 的 `foo`。不是同一个插件时改名或删掉旧的目录与分区
 - 第 4 步：之后新包名放行、旧包名被拒
 </Diagram>
 
-**两个服务上的同名方法**：插件管理 0.14 起不再调用，此刻没有调用方，留到这两个插件下次本来就要升 x 时删（轨迹卡[归属对不上时由人手工处理](/trajectory/2026-09-25-owner-errors-manual-handling)）。
+**两个服务上的同名方法**：插件管理的 `plugin-manager.transfer-owner` 调它们，先读 `owners()` 看这个 id 记着哪几样，只对记着的调 `transferOwner()`（为什么 0.14 删掉的命令又加回来，见生命周期插件仓的轨迹卡「加回改归属」）。
 
 {/* ref file="../plugins/data/src/index.ts" lines="78-88" hash="c979fdc01ba4" blob="cc9bc17278e7" */}
 
@@ -69,7 +69,7 @@ description: 数据插件与设置插件记下每个数据目录、每个设置�
 
 - 数据插件与设置插件不判断「是不是同一个插件改了名」：包名对不上一律拒绝，由人决定怎么处理
 - 数据插件与设置插件不删除旧包留下的数据与设置
-- 工作台上没有转移归属的命令，本仓的两个插件也不登记这样的命令
+- 本仓的两个插件不登记转移归属的命令：命令在插件管理里，它一次改两处
 - 这套归属不是安全边界：插件在同一个进程里，能直接改这两个文件；它防的是同名 id 误读别人的数据
 
 ## 测试

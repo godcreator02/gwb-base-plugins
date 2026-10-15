@@ -46,7 +46,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 4 | 说明书 | 说明书 ↔ 带说明书的插件 | `gwbSkills.register(dir)`、`SKILL.md` 的目录形状、`skill.list` / `skill.read` | [说明书](/docs/seams/skills) |
 | 5 | 设置与凭据 | 设置 ↔ 各插件与界面 | `gwbSettings`、公共区 `*`、`settings.*` 普通设置命令、`credentials.*` 凭据命令、每 home 的两份文件 | [设置](/docs/seams/settings) |
 | 6 | 数据 | 数据 ↔ 各插件 | `gwbData` 的 `dir`、`readDoc`、`writeDoc` | [数据](/docs/seams/data) |
-| 7 | 数据归属 | 数据、设置 ↔ 手工处理归属的人 | `.owner.json` 与 `$owners`、拒绝时的报错；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方（插件管理 0.14 起不再调用） | [数据归属](/docs/seams/owners) |
+| 7 | 数据归属 | 数据、设置 ↔ 手工处理归属的人 | `.owner.json` 与 `$owners`、拒绝时的报错；`owners()`、`transferOwner(id, pkg)` 由插件管理的 `transfer-owner` 调用 | [数据归属](/docs/seams/owners) |
 | 8 | 条目身份（约定） | 数据、设置、说明书、命令、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id 与包名；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 登记工具的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run`；回执 `CliRunResult`；python 的 venv | [命令行工具](/docs/seams/cli) |
 

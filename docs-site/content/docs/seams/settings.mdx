@@ -22,7 +22,7 @@ description: 服务按插件条目分区；settings 命令只操作普通设置�
 
 **服务**保持 `define/get/set/delete` 的用法。同步 get 先找自己声明的项，没有保存值回 default；自己没声明的 key 读公共区 `*`。set/delete 只能操作自己声明的项：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="06d41c33cd26" blob="0dcb9862f136" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="375c5a08e1d9" blob="67bdb7451f8e" */}
 
 `shared:true` 只表示本 home 内公共设置；不表示与别的 home 共用文件或同步值。条目要用固定 id，分区取 id 末段，名称规则见 `plugins/settings/src/paths.ts`。
 

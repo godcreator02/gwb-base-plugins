@@ -18,7 +18,7 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 
 凭据命令、来源区分与内部服务接口的正本：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="06d41c33cd26" blob="0dcb9862f136" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="375c5a08e1d9" blob="67bdb7451f8e" */}
 
 {/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
 
@@ -34,7 +34,7 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | 服务 `define/get/set/delete` | 声明、同步读、写入、删除值；声明仍保留，get 可回默认值 | [5 设置](/docs/seams/settings) |
-| 服务 `owners/transferOwner` | 列分区归属、转移归属；此刻没有消费方 | [7 数据归属](/docs/seams/owners) |
+| 服务 `owners/transferOwner` | 列分区归属、转移归属；插件管理的 `transfer-owner` 调它们 | [7 数据归属](/docs/seams/owners) |
 | `settings.all/get/set/delete` | 只列出、读取、写入或清除普通设置 | [5 设置](/docs/seams/settings) |
 | `credentials.list/status` | 只列出凭据或查配置状态；`isSet` 不代表认证成功 | [5 设置](/docs/seams/settings) |
 | `credentials.copy/import/generate/delete` | 复制、文件导入、生成随机字符串或清除凭据；不返回值 | [5 设置](/docs/seams/settings) |

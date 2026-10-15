@@ -65,7 +65,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
-| 服务 | `gwbData` | `dir`（调用方条目的数据目录）、`readDoc(doc)`、`writeDoc(doc, value)`；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方。类型 `GwbDataApi` 由本包导出 |
+| 服务 | `gwbData` | `dir`（调用方条目的数据目录）、`readDoc(doc)`、`writeDoc(doc, value)`；`owners()`、`transferOwner(id, pkg)` 由插件管理的 `plugin-manager.transfer-owner` 调用。类型 `GwbDataApi` 由本包导出 |
 | 命令 | 无 | |
 | 事件 | 无 | |
 | 磁盘目录 | `<home>/data/<条目 id 末段>/` | 每条条目一个；文档是其中的 `<文档名>.json`，归属记在 `.owner.json` |
@@ -301,7 +301,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 | 类别 | 名字 | 说明 |
 | --- | --- | --- |
-| 服务 | `gwbSettings` | `define(def)`、`get(key)`、`set(key, value)`、`delete(key)`；`owners()`、`transferOwner(id, pkg)` 此刻没有调用方。类型 `GwbSettingsApi`、`SettingDef` 由本包导出 |
+| 服务 | `gwbSettings` | `define(def)`、`get(key)`、`set(key, value)`、`delete(key)`；`owners()`、`transferOwner(id, pkg)` 由插件管理的 `plugin-manager.transfer-owner` 调用。类型 `GwbSettingsApi`、`SettingDef` 由本包导出 |
 | 普通设置命令 | `settings.all/get/set/delete` | 按位置列出、读取、写入或清除普通设置；secret 目标对所有来源拒绝 |
 | 凭据命令 | `credentials.list/status/copy/import/generate/delete` | 按位置查询状态、复制、导入、生成或清除凭据，不返回原文 |
 | 本地凭据命令 | `credentials.set/reveal` | 本地输入、查看按钮与受信插件按位置读写，标 `hiddenFromAgents`，只允许 ui/plugin 来源 |
