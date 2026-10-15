@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-data",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "author": {
     "name": "godcreator"
   },
   "description": "插件的数据：每个插件的文档存放在 <home>/data/<条目 id>/ 下，一份文档一个 JSON 文件，原子写入。服务 gwbData；skill 0 份；命令 0 条。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +18,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
@@ -29,7 +31,8 @@
     "cordis": "^4.0.0-rc.10"
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -38,7 +41,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

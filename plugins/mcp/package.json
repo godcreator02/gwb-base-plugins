@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-mcp",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "author": {
     "name": "godcreator"
   },
   "description": "MCP 入口：工具只有 index / search / run 三个，无状态 streamableHTTP、凭据由每个 home 独立保管，default 固定用 2870 端口。支持不回显的临时凭据签发、到期检查与撤销，客户端接线由 onboard skill 编排；自带零依赖命令行客户端，--home 读取对应入口与凭据。服务无；skill 1 份；命令 6 条。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -20,7 +21,8 @@
     "dist",
     "src",
     "instructions.md",
-    "skills"
+    "skills",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node build.ts && tsc -p tsconfig.json --emitDeclarationOnly",
@@ -43,7 +45,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -55,7 +58,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

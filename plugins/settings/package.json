@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-settings",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": {
     "name": "godcreator"
   },
   "description": "设置与凭据：每个 home 的普通设置与声明存在 settings.json，secret 明文存在 credentials.json；凭据可不回显地查状态、复制、导入、生成，插件内部照常取用，本地界面可查看。服务 gwbSettings；skill 1 份。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +19,8 @@
   "files": [
     "dist",
     "skills",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
@@ -40,7 +42,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -49,7 +52,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-node-cli",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": {
     "name": "godcreator"
   },
   "description": "运行 node 写的命令行工具：插件把自己构建出来的 cli.js 登记进来，由它启动进程、收集输出、到时限结束进程；登记的命令自动转登记成总线命令。服务 gwbNodeCli；skill 1 份；命令 1 条。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,7 +19,8 @@
   "files": [
     "dist",
     "skills",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
@@ -37,7 +39,8 @@
     }
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -46,7 +49,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

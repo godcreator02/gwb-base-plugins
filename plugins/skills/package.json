@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-skills",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "author": {
     "name": "godcreator"
   },
   "description": "说明书：有说明书的插件自己登记进来，按名收集与查询；说明书名全局唯一，重名的那份不登记。服务 gwbSkills；skill 0 份；命令 2 条。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +18,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
@@ -30,7 +32,8 @@
     "cordis": "^4.0.0-rc.10"
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -39,7 +42,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"

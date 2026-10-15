@@ -33,7 +33,7 @@ description: 连接说明书插件与带说明书的插件；交换的是服务 
 
 这个目录要列进包的 `files`，否则发布出去的包里没有它——包照样发布、照样装得上，直到插件加载时扫目录才报「说明书目录读不了」：
 
-{/* ref file="../plugins/commands/package.json" lines="22-26" hash="17cd10117409" blob="90da31caec7b" */}
+{/* ref file="../plugins/commands/package.json" lines="23-28" hash="618534cceb94" blob="d5c2cff55105" */}
 
 **目录与文件的形状**：`register(dir)` 扫 `dir` 下的每个子目录，有 `SKILL.md` 的算一份，更深的 `SKILL.md` 不算。SKILL.md 的 frontmatter 只认单行 `key: value`：`name` 缺了用目录名；`description` 缺了照收并写 warn；折叠块（`>-`、`|`）取不到值，同样写 warn。每份收下的文件有上限：
 

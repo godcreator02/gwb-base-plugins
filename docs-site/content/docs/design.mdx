@@ -44,7 +44,7 @@ description: 基础插件仓为什么这样划分——只放无界面的插件�
 - **生态外的库**：只有 MCP 插件用（MCP SDK、zod），写 dev，由 `build.ts` 打包进构建产物
 - **类型引用到、又不是插件的包写 dev**（`@types/node`、MCP 插件打包的库）
 
-{/* ref file="../plugins/commands/package.json" lines="45-48" hash="f8d3f419cdae" blob="90da31caec7b" */}
+{/* ref file="../plugins/commands/package.json" lines="47-50" hash="f8d3f419cdae" blob="d5c2cff55105" */}
 
 ## 插件之间只经服务
 
@@ -103,9 +103,9 @@ AI 导入或复制凭据时只提交来源位置与目标位置，生成随机�
 
 内核和插件各自发版，内核包装在每个 home 的根上。每个插件在 peer 里写内核包 `@godcreator/gwb-kernel-desktop` 的范围 `^x.y.z`，这个范围就是它兼容哪些内核（轨迹卡[peer 写内核包](/trajectory/2026-09-24-peer-kernel-package)）。此刻都写 `^0.10.0`：
 
-{/* ref file="../plugins/mcp/package.json" lines="30-36" hash="76984e5cc8e9" blob="3e9388ae86bc" */}
+{/* ref file="../plugins/mcp/package.json" lines="32-38" hash="76984e5cc8e9" blob="f6333b955770" */}
 
-{/* ref file="../plugins/data/package.json" lines="27-30" hash="f8d3f419cdae" blob="43fea79452c2" */}
+{/* ref file="../plugins/data/package.json" lines="29-32" hash="f8d3f419cdae" blob="be856c776b74" */}
 
 ## 刻意不做的事
 

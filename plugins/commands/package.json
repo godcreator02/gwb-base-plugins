@@ -1,10 +1,11 @@
 {
   "name": "@godcreator/gwb-commands",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "author": {
     "name": "godcreator"
   },
   "description": "命令总线：插件把能力登记成「命令名 → 处理函数」的表，页面、agent 与其他插件经同一张表调用（agent 经 MCP 入口的 index / search / run）。服务 gwbCommands；skill 1 份；命令 0 条。",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,7 +23,8 @@
   "files": [
     "dist",
     "skills",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
@@ -37,7 +39,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://git.tianshen02.online:28377/godcreator/gwb-base-plugins.git"
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
   },
   "keywords": [
     "gwb-plugin"
@@ -47,6 +49,7 @@
     "cordis": "^4.0.0-rc.10"
   },
   "publishConfig": {
-    "registry": "https://git.tianshen02.online:28377/api/packages/godcreator/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   }
 }
