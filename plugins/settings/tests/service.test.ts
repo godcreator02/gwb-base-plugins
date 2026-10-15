@@ -5,7 +5,7 @@ import { Context } from 'cordis'
 import type { Fiber, Message, Plugin } from 'cordis'
 import type { GwbCommandContext, GwbCommandHandler } from '@godcreator/gwb-commands'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import GwbSettings, { type GwbSettingsApi, type SettingView } from '../src/index.js'
+import GwbSettings, { type GwbSettingsApi, type SettingGroupDef, type SettingView } from '../src/index.js'
 import { readSettings, writeSettings } from '../src/store.js'
 
 let home: string
@@ -357,6 +357,72 @@ describe('设置与凭据命令', () => {
     expect(() => runCommand('settings.get', 'x')).toThrow('参数要是一个对象：{ section, key }')
     expect(() => runCommand('settings.get', { key: 'k' })).toThrow('section 要是个非空字符串')
     expect(() => runCommand('settings.get', { section: 's', key: '' })).toThrow('key 要是个非空字符串')
+  })
+})
+
+describe('一组设置经服务与命令', () => {
+  const models: SettingGroupDef = {
+    key: 'models',
+    title: '模型',
+    fields: [
+      { key: 'model', title: '模型名', type: 'string' },
+      { key: 'api', title: '请求地址', type: 'string', default: 'https://api.example.com' },
+      { key: 'token', title: '令牌', type: 'secret' },
+    ],
+  }
+  const listSlot = { section: 'hello', key: 'models' }
+  const liveKeys = (runCommand: (name: string, args?: unknown) => unknown): string[] =>
+    [...(runCommand('settings.all') as SettingView[]), ...(runCommand('credentials.list') as SettingView[])].filter((row) => row.live).map((row) => row.key).sort()
+
+  it('settings.set 改名单：新实例补声明、去掉的实例 live:false 且值留着；getGroup 现读', async () => {
+    const { root, runCommand } = await bootSettings()
+    const { settings } = await caller(root, HELLO, (s) => s.defineGroup(models))
+    expect(await runCommand('settings.set', { ...listSlot, value: ['deepseek', 'kimi'] }, { via: 'mcp' })).toEqual({ ok: true })
+    expect(liveKeys(runCommand)).toEqual(['models', 'models.deepseek.api', 'models.deepseek.model', 'models.deepseek.token', 'models.kimi.api', 'models.kimi.model', 'models.kimi.token'])
+    await runCommand('settings.set', { section: 'hello', key: 'models.kimi.model', value: 'kimi-k2' }, { via: 'mcp' })
+    expect(settings.getGroup('models').map((item) => item.name)).toEqual(['deepseek', 'kimi'])
+    await settings.set('models', ['deepseek'])
+    const kimiModel = (runCommand('settings.all', { section: 'hello' }) as SettingView[]).find((row) => row.key === 'models.kimi.model')
+    expect(kimiModel).toMatchObject({ value: 'kimi-k2', live: false })
+    expect(settings.getGroup('models')).toEqual([{ name: 'deepseek', values: { model: undefined, api: 'https://api.example.com', token: undefined } }])
+    expect(readFileJson()).toMatchObject({ hello: { models: { value: ['deepseek'] }, 'models.kimi.model': { value: 'kimi-k2', title: 'kimi · 模型名' } } })
+  })
+
+  it('不合规的名单经命令与服务都整次拒绝，文件不变', async () => {
+    const { root, runCommand } = await bootSettings()
+    const { settings } = await caller(root, HELLO, (s) => s.defineGroup(models))
+    await settings.set('models', ['deepseek'])
+    const before = fs.readFileSync(settingsFile, 'utf8')
+    await expect(runCommand('settings.set', { ...listSlot, value: ['deepseek', 'Kimi'] }, { via: 'mcp' })).rejects.toThrow('实例名不合规')
+    await expect(settings.set('models', ['deepseek', 'deepseek'])).rejects.toThrow('实例名重复了')
+    await expect(settings.set('models', 'deepseek')).rejects.toThrow('要是字符串数组')
+    expect(fs.readFileSync(settingsFile, 'utf8')).toBe(before)
+    expect(settings.getGroup('models').map((item) => item.name)).toEqual(['deepseek'])
+  })
+
+  it('派生的 secret 字段经 credentials.import 写入：list 打码，getGroup 回明文', async () => {
+    const sourceFile = path.join(home, 'token.txt')
+    fs.writeFileSync(sourceFile, 'fake-deepseek-token\n')
+    const { root, runCommand } = await bootSettings()
+    const { settings } = await caller(root, HELLO, (s) => s.defineGroup(models))
+    await settings.set('models', ['deepseek'])
+    const to = { section: 'hello', key: 'models.deepseek.token' }
+    const result = await runCommand('credentials.import', { from: { file: sourceFile, format: 'text' }, to }, { via: 'mcp' })
+    expect(result).toEqual({ ...to, type: 'secret', secret: true, isSet: true, live: true })
+    const listed = runCommand('credentials.list', { section: 'hello' }) as SettingView[]
+    expect(listed).toEqual([{ ...to, title: 'deepseek · 令牌', type: 'secret', live: true, secret: true, isSet: true, mask: '••••' }])
+    expect(JSON.stringify(listed)).not.toContain('fake-deepseek-token')
+    expect(settings.getGroup('models')[0]?.values['token']).toBe('fake-deepseek-token')
+    expect(fs.readFileSync(settingsFile, 'utf8')).not.toContain('fake-deepseek-token')
+  })
+
+  it('getGroup 只认自己声明过的组；调用方卸载时名单与派生项都不再 live', async () => {
+    const { root, runCommand } = await bootSettings()
+    const { settings, fiber } = await caller(root, HELLO, (s) => s.defineGroup(models))
+    await settings.set('models', ['deepseek'])
+    expect(() => settings.getGroup('other')).toThrow('没有用 defineGroup 声明过一组设置 other')
+    await fiber.dispose()
+    expect(liveKeys(runCommand)).toEqual([])
   })
 })
 

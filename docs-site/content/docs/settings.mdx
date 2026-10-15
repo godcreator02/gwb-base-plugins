@@ -11,6 +11,7 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 
 - **按条目分区**：分区是调用方条目 id 的末段；同一个包的两条条目各存各的。`shared:true` 进入当前 home 的公共区 `*`，不跨 home。
 - **声明与取值**：`define` 给出 key、title、type 和可选说明、默认值；服务 `get` 先找自己声明的项，没有保存值时回 default；没声明过的 key 去公共区找。普通值由消费方校验，写入 secret 必须是字符串。
+- **一组设置**：份数不定、字段相同的配置（如多份模型，每份是模型名、请求地址、token）用 `defineGroup` 声明。组名那一项是 string-list，存实例名单；名单里每个实例的每个字段由设置插件声明成普通设置，键名 `<组>.<实例>.<字段>`，所以现有命令、凭据打码与设置窗格照常列出和读写它们。名单经 `settings.set` 或服务 `set` 改动时先整份校验（字符串数组、每个都是 kebab-case、不重复），不合规整次拒绝；写入后新实例补声明，去掉的实例撤销声明、值留着成为 `live:false` 的项。使用方用时调 `getGroup` 现读，名单变化不发事件。
 - **按对象选择命令**：`settings.all/get/set/delete` 只处理普通设置；`credentials.list/status` 只查凭据的配置情况。设置命令遇到 secret 会明确报错，不随调用来源改变 get 的返回含义。
 - **凭据管理在本机完成**：`credentials.copy`、`credentials.import`、`credentials.generate` 只返回目标状态。目标必须是已启用插件声明的 secret；覆盖已有值要显式 `overwrite:true`。跨 home 复制只读取点名的来源，只写当前 home。本地界面输入与查看分别用隐藏命令 `credentials.set/reveal`，两条均拒绝 MCP 来源。
 - **分区归属与声明持续保存**：`settings.json` 顶层 `$owners` 记包名，避免另一包误用旧分区。插件卸载只撤销运行中的声明，文件里的元信息仍可列出，`live:false`。
@@ -18,9 +19,9 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 
 凭据命令、来源区分与内部服务接口的正本：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="54-68" hash="375c5a08e1d9" blob="67bdb7451f8e" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="58-79" hash="5343c9af5dc7" blob="321c04cd56e7" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="163-255" hash="03cfd62d61cd" blob="321c04cd56e7" */}
 
 ## 接口
 
@@ -34,6 +35,7 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 | 接口 | 做什么 | 接缝 |
 | --- | --- | --- |
 | 服务 `define/get/set/delete` | 声明、同步读、写入、删除值；声明仍保留，get 可回默认值 | [5 设置](/docs/seams/settings) |
+| 服务 `defineGroup/getGroup` | 声明一组设置（实例名单加每个实例派生的各字段）、按名单顺序读出每份实例；只认自己声明过的组 | [5 设置](/docs/seams/settings) |
 | 服务 `owners/transferOwner` | 列分区归属、转移归属；插件管理的 `transfer-owner` 调它们 | [7 数据归属](/docs/seams/owners) |
 | `settings.all/get/set/delete` | 只列出、读取、写入或清除普通设置 | [5 设置](/docs/seams/settings) |
 | `credentials.list/status` | 只列出凭据或查配置状态；`isSet` 不代表认证成功 | [5 设置](/docs/seams/settings) |
@@ -48,7 +50,13 @@ description: 插件声明设置项；每个 home 独立保存普通设置与明�
 
 {/* ref file="../plugins/settings/src/registry.ts" lines="6-24" hash="19147e03b9b0" blob="96e9afba8421" */}
 
-{/* ref file="../plugins/settings/src/paths.ts" lines="70-77" hash="f2b5d2df6495" blob="bfe7369e3f7c" */}
+{/* ref file="../plugins/settings/src/paths.ts" lines="80-87" hash="f2b5d2df6495" blob="8df9215f7975" */}
+
+一组设置的声明与 `getGroup` 回的形状。普通 `define` 的键仍只收 kebab-case，组派生的键是点号连接的三段、每段 kebab-case，两种键撞不上；`credentials.*` 的槽位两种都收：
+
+{/* ref file="../plugins/settings/src/registry.ts" lines="26-44" hash="13a5d59c6f86" blob="e25cc1fe6013" */}
+
+{/* ref file="../plugins/settings/src/paths.ts" lines="27-35" hash="1c96f3b35ed0" blob="8df9215f7975" */}
 
 ## 依赖
 

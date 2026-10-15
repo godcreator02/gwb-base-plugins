@@ -1,5 +1,5 @@
 import { isRecord } from './vocab.js'
-import { assertKey, assertSection, entrySection, OWNERS_KEY, SHARED_SECTION } from './paths.js'
+import { assertKey, assertSection, derivedKey, entrySection, isValidKey, OWNERS_KEY, SHARED_SECTION } from './paths.js'
 
 // 这个文件不碰 ctx、不碰 fs：内存里的设置表、声明表与解析规则
 
@@ -21,6 +21,26 @@ export interface SettingDef {
   description?: string
   /** 文件里没值时 get 回它 */
   default?: unknown
+}
+
+/**
+ * 一组设置：同一套字段可以有任意多份实例（如多份模型配置，每份有模型名、地址、token）。
+ * `key` 这一项本身是 string-list，存实例名单；名单里每个实例的每个字段各是一项普通设置，键名 `<key>.<实例>.<字段>`
+ */
+export interface SettingGroupDef {
+  /** kebab-case，也是存实例名单那一项的键 */
+  key: string
+  /** 实例名单那一项的标签 */
+  title: string
+  description?: string
+  /** 每份实例都有的字段。key 是 kebab-case、组内不重复；派生项的标签是「<实例> · <字段 title>」 */
+  fields: Array<{ key: string; title: string; type: SettingType; description?: string; default?: unknown }>
+}
+
+/** `getGroup` 回的一份实例：名字与各字段的值，没值的字段是它的 default */
+export interface SettingGroupInstance {
+  name: string
+  values: Record<string, unknown>
 }
 
 /** 文件里一项的形状。`value` 缺席就是「还没设过」，不是「设成了 undefined」 */
@@ -75,6 +95,10 @@ export interface SettingsRegistry {
   /** 把文件里读来的这份装进来。只在构造时调一次 */
   load(home: SettingsFile, owners: SettingsOwners): void
   define(owner: Owner, def: SettingDef): () => void
+  /** 声明实例名单一项，再给名单里现有的每个实例声明各字段。回的函数把这些声明全部注销 */
+  defineGroup(owner: Owner, def: SettingGroupDef): () => void
+  /** 按名单顺序回各实例的值。没 defineGroup 过这个组就抛错 */
+  getGroup(owner: Owner, key: string): SettingGroupInstance[]
   get(owner: Owner, key: string): unknown
   /** 算出这一项该往哪写。没声明过回 undefined */
   locate(owner: Owner, key: string): Slot | undefined
@@ -82,7 +106,9 @@ export interface SettingsRegistry {
   read(slot: Slot): unknown
   /** 不含值的状态，普通项也不带 value/default。不存在时回 undefined */
   status(slot: Slot): SettingStatus | undefined
+  /** 写的是某个组的实例名单时，先校验新名单（不合规抛错、什么都不改），写入后补上新实例的声明、撤销去掉的实例的声明 */
   put(slot: Slot, value: unknown): void
+  /** 抹掉的是某个组的实例名单时，名单变空，全部实例的声明撤销，值留着 */
   drop(slot: Slot): void
   /** 内存里的那一份，写文件用 */
   file(): SettingsFile
@@ -105,6 +131,56 @@ export interface SettingStatus extends Slot {
 interface Declaration {
   owner: Owner
   def: SettingDef
+}
+
+interface GroupDeclaration {
+  owner: Owner
+  def: SettingGroupDef
+  /** 实例名 → 注销它各字段声明的函数 */
+  undefineFieldsByInstance: Map<string, Array<() => void>>
+}
+
+/** 名单是外部输入（命令、手改的文件）：不合规就拒绝，不替它修正 */
+function instanceNamesOf(groupKey: string, value: unknown): string[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || !value.every((name) => typeof name === 'string')) {
+    throw new Error(`一组设置 ${groupKey} 的实例名单要是字符串数组，如 ["deepseek","kimi"]`)
+  }
+  const names = value as string[]
+  const invalid = names.filter((name) => !isValidKey(name))
+  if (invalid.length > 0) {
+    throw new Error(`一组设置 ${groupKey} 的实例名不合规：${invalid.map((name) => JSON.stringify(name)).join('、')}。实例名一律 kebab-case（小写字母、数字、单连字符分段），比如 deepseek、kimi-k2`)
+  }
+  const duplicated = names.filter((name, index) => names.indexOf(name) !== index)
+  if (duplicated.length > 0) throw new Error(`一组设置 ${groupKey} 的实例名重复了：${[...new Set(duplicated)].join('、')}`)
+  return names
+}
+
+function assertGroupDefinable(def: SettingGroupDef): void {
+  assertKey(def.key)
+  if (def.title === '') throw new Error(`一组设置 ${def.key} 的 title 是空的。`)
+  if (def.fields.length === 0) throw new Error(`一组设置 ${def.key} 没有字段。`)
+  const seen = new Set<string>()
+  for (const field of def.fields) {
+    assertKey(field.key)
+    if (field.title === '') throw new Error(`一组设置 ${def.key} 的字段 ${field.key} 的 title 是空的。`)
+    if (seen.has(field.key)) throw new Error(`一组设置 ${def.key} 的字段 ${field.key} 重复了。`)
+    seen.add(field.key)
+  }
+}
+
+function instanceListDef(def: SettingGroupDef): SettingDef {
+  return { key: def.key, title: def.title, type: 'string-list', description: def.description }
+}
+
+function instanceFieldDefs(def: SettingGroupDef, instanceName: string): SettingDef[] {
+  return def.fields.map((field) => ({
+    key: derivedKey(def.key, instanceName, field.key),
+    title: `${instanceName} · ${field.title}`,
+    type: field.type,
+    description: field.description,
+    default: field.default,
+  }))
 }
 
 /** 声明表的键：分区名（末段，和文件里的分区名同一种写法）+ NUL + 设置名。条目 id 与设置名都不可能含 NUL */
@@ -179,9 +255,13 @@ export function toOwners(raw: unknown, warn: (message: string) => void, where: s
   return ownerBySection
 }
 
-/** 先于任何改动做完全部校验，返回调用方的分区名 */
+/** 先于任何改动做完全部校验，返回调用方的分区名。只有 define 收的键要查 kebab-case，组派生的键由 defineGroup 拼出 */
 function assertDefinable(owner: Owner, def: SettingDef): string {
   assertKey(def.key)
+  return assertDeclarable(owner, def)
+}
+
+function assertDeclarable(owner: Owner, def: SettingDef): string {
   const ownSection = entrySection(owner.entryId)
   assertSection(ownSection)
   if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)
@@ -194,6 +274,11 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
   let ownerBySection: SettingsOwners = {}
 
   const valueAt = (slot: Slot): unknown => settingsBySection[slot.section]?.[slot.key]?.value
+
+  const writeValue = (slot: Slot, value: unknown): void => {
+    const section = (settingsBySection[slot.section] ??= {})
+    section[slot.key] = { ...section[slot.key], value }
+  }
 
   /** 分区没有归属就归调用方，归别的包就抛错 */
   const claimSection = (ownSection: string, owner: Owner): void => {
@@ -230,6 +315,57 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     return { liveViewKeys, declaredDefaultByViewKey }
   }
 
+  const assertNotDowngradingSecret = (owner: Owner, def: SettingDef): void => {
+    const slot = slotOf(owner, def)
+    if (settingsBySection[slot.section]?.[slot.key]?.type === 'secret' && def.type !== 'secret') {
+      throw new Error('已登记的凭据项不能改成普通设置；请为普通设置另取一个键')
+    }
+  }
+
+  /** 校验都做完之后才调：从这里起开始改表 */
+  const declare = (owner: Owner, def: SettingDef, ownSection: string): (() => void) => {
+    claimSection(ownSection, owner)
+    const key = declarationKey(owner, def.key)
+    if (declarationsByKey.has(key)) warn(`${owner.entryId} 重复声明了设置 ${def.key}，后来者生效`)
+    const declaration: Declaration = { owner, def }
+    declarationsByKey.set(key, declaration)
+    writeDeclarationIntoFile(owner, def)
+
+    // 只删自己这份：重复声明之后，先声明的一方注销时不能删掉后来的那份
+    return () => {
+      if (declarationsByKey.get(key) === declaration) declarationsByKey.delete(key)
+    }
+  }
+
+  /** 键是 declarationKey 的写法；组不进公共区，所以实例名单的位置与声明表的键一一对应 */
+  const groupsByDeclarationKey = new Map<string, GroupDeclaration>()
+
+  const groupAt = (slot: Slot): GroupDeclaration | undefined =>
+    slot.section === SHARED_SECTION ? undefined : groupsByDeclarationKey.get(viewKey(slot))
+
+  const instanceListSlot = (group: GroupDeclaration): Slot => slotOf(group.owner, instanceListDef(group.def))
+
+  /** 名单里每个实例要声明的各项先全部查过，查完才动表 */
+  const assertInstancesDeclarable = (owner: Owner, def: SettingGroupDef, names: readonly string[]): void => {
+    for (const name of names) {
+      for (const fieldDef of instanceFieldDefs(def, name)) assertNotDowngradingSecret(owner, fieldDef)
+    }
+  }
+
+  /** 去掉的实例撤销声明（值留在文件里，成为 live:false 的项），新增的实例补声明 */
+  const syncInstanceDeclarations = (group: GroupDeclaration, names: readonly string[]): void => {
+    for (const [name, undefineFields] of group.undefineFieldsByInstance) {
+      if (names.includes(name)) continue
+      for (const undefine of undefineFields) undefine()
+      group.undefineFieldsByInstance.delete(name)
+    }
+    const ownSection = entrySection(group.owner.entryId)
+    for (const name of names) {
+      if (group.undefineFieldsByInstance.has(name)) continue
+      group.undefineFieldsByInstance.set(name, instanceFieldDefs(group.def, name).map((fieldDef) => declare(group.owner, fieldDef, ownSection)))
+    }
+  }
+
   return {
     load(home, table) {
       settingsBySection = home
@@ -238,22 +374,43 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
 
     define(owner, def) {
       const ownSection = assertDefinable(owner, def)
-      const slot = slotOf(owner, def)
-      if (settingsBySection[slot.section]?.[slot.key]?.type === 'secret' && def.type !== 'secret') {
-        throw new Error('已登记的凭据项不能改成普通设置；请为普通设置另取一个键')
-      }
-      claimSection(ownSection, owner)
+      assertNotDowngradingSecret(owner, def)
+      return declare(owner, def, ownSection)
+    },
 
+    defineGroup(owner, def) {
+      assertGroupDefinable(def)
+      const listDef = instanceListDef(def)
+      const ownSection = assertDeclarable(owner, listDef)
+      assertNotDowngradingSecret(owner, listDef)
+      const names = instanceNamesOf(def.key, valueAt(slotOf(owner, listDef)))
+      assertInstancesDeclarable(owner, def, names)
+
+      const undefineList = declare(owner, listDef, ownSection)
+      const group: GroupDeclaration = { owner, def, undefineFieldsByInstance: new Map() }
       const key = declarationKey(owner, def.key)
-      if (declarationsByKey.has(key)) warn(`${owner.entryId} 重复声明了设置 ${def.key}，后来者生效`)
-      const declaration: Declaration = { owner, def }
-      declarationsByKey.set(key, declaration)
-      writeDeclarationIntoFile(owner, def)
+      groupsByDeclarationKey.set(key, group)
+      syncInstanceDeclarations(group, names)
 
-      // 只删自己这份：重复声明之后，先声明的一方注销时不能删掉后来的那份
       return () => {
-        if (declarationsByKey.get(key) === declaration) declarationsByKey.delete(key)
+        syncInstanceDeclarations(group, [])
+        if (groupsByDeclarationKey.get(key) === group) groupsByDeclarationKey.delete(key)
+        undefineList()
       }
+    },
+
+    getGroup(owner, key) {
+      const group = groupsByDeclarationKey.get(declarationKey(owner, key))
+      if (group === undefined) throw new Error(`${owner.entryId} 没有用 defineGroup 声明过一组设置 ${key}`)
+      const names = instanceNamesOf(key, valueAt(instanceListSlot(group)))
+      const ownSection = entrySection(group.owner.entryId)
+      return names.map((name) => ({
+        name,
+        values: Object.fromEntries(group.def.fields.map((field) => {
+          const stored = valueAt({ section: ownSection, key: derivedKey(key, name, field.key) })
+          return [field.key, stored === undefined ? field.default : stored]
+        })),
+      }))
     },
 
     get(owner, key) {
@@ -285,8 +442,15 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     },
 
     put(slot, value) {
-      const section = (settingsBySection[slot.section] ??= {})
-      section[slot.key] = { ...section[slot.key], value }
+      const group = groupAt(slot)
+      if (group === undefined) {
+        writeValue(slot, value)
+        return
+      }
+      const names = instanceNamesOf(group.def.key, value)
+      assertInstancesDeclarable(group.owner, group.def, names)
+      writeValue(slot, value)
+      syncInstanceDeclarations(group, names)
     },
 
     drop(slot) {
@@ -294,6 +458,8 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
       if (stored === undefined) return
       const { value: _dropped, ...rest } = stored
       settingsBySection[slot.section]![slot.key] = rest
+      const group = groupAt(slot)
+      if (group !== undefined) syncInstanceDeclarations(group, [])
     },
 
     file() {

@@ -9,6 +9,8 @@ import {
   createRegistry,
   type Owner,
   type SettingDef,
+  type SettingGroupDef,
+  type SettingGroupInstance,
   type SettingsOwners,
   type SettingsRegistry,
   type SettingView,
@@ -20,6 +22,8 @@ import { assertWritableCredential, copyArgs, credentialSlot, generateArgs, gener
 
 export type {
   SettingDef,
+  SettingGroupDef,
+  SettingGroupInstance,
   SettingType,
   SettingView,
   SettingStatus,
@@ -54,6 +58,13 @@ export const CREDENTIALS_REVEAL_COMMAND = 'credentials.reveal'
 export interface GwbSettingsApi {
   /** 声明一项。回注销函数（插件卸载时自动注销，不用自己包 ctx.effect） */
   define(def: SettingDef): () => void
+  /**
+   * 声明一组设置：`key` 一项存实例名单（string-list），名单里每个实例的每个字段由本服务声明成普通设置，键名 `<key>.<实例>.<字段>`。
+   * 名单经 `settings.set` 或 `set` 改动时校验并重算这些声明；去掉的实例值留着，成为 live:false 的项。回注销函数，插件卸载时自动注销
+   */
+  defineGroup(def: SettingGroupDef): () => void
+  /** 按名单顺序读一组设置的每份实例，没值的字段回 default，secret 也回明文。只认自己 defineGroup 过的组，用时现读，名单变化不发事件 */
+  getGroup(key: string): SettingGroupInstance[]
   /** 读一项。同步——表在内存里 */
   get(key: string): unknown
   /** 写一项，写进文件 */
@@ -278,8 +289,21 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     return undefine
   }
 
+  defineGroup(def: SettingGroupDef): () => void {
+    const identity = this.callerEntryIdentity()
+    this.warnWhenEntryIdIsRandom(identity)
+    const undefine = this.settingsRegistry.defineGroup(identity, def)
+    this.scheduleMergedWrite()
+    this.ctx.effect(() => undefine)
+    return undefine
+  }
+
   get(key: string): unknown {
     return this.settingsRegistry.get(this.callerEntryIdentity(), key)
+  }
+
+  getGroup(key: string): SettingGroupInstance[] {
+    return this.settingsRegistry.getGroup(this.callerEntryIdentity(), key)
   }
 
   async set(key: string, value: unknown): Promise<void> {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRegistry, SECRET_MASK, toOwners, toSettingsFile, type Owner } from '../src/registry.js'
+import { createRegistry, SECRET_MASK, toOwners, toSettingsFile, type Owner, type SettingGroupDef } from '../src/registry.js'
 
 const alice: Owner = { entryId: 'home:alice', pkg: '@godcreator/gwb-alice' }
 const bob: Owner = { entryId: 'home:bob', pkg: '@godcreator/gwb-bob' }
@@ -210,6 +210,125 @@ describe('元信息：代码是权威，盘上是快照', () => {
     reg.put(reg.locate(alice, 'sources')!, ['D:/Notes', 'D:/Projects'])
     expect(reg.get(alice, 'sources')).toEqual(['D:/Notes', 'D:/Projects'])
     expect(reg.all().find((v) => v.key === 'sources')?.type).toBe('string-list')
+  })
+})
+
+describe('一组设置', () => {
+  const models: SettingGroupDef = {
+    key: 'models',
+    title: '模型',
+    fields: [
+      { key: 'model', title: '模型名', type: 'string' },
+      { key: 'api', title: '请求地址', type: 'string', default: 'https://api.example.com' },
+      { key: 'token', title: '令牌', type: 'secret' },
+    ],
+  }
+  const listSlot = { section: 'alice', key: 'models' }
+  const keysOf = (reg: ReturnType<typeof createRegistry>): string[] => reg.all().filter((v) => v.live).map((v) => v.key)
+
+  it('名单是 string-list；名单里每个实例的每个字段派生一项，标题是「实例 · 字段」', () => {
+    const warn = vi.fn()
+    const reg = createRegistry(warn)
+    reg.load({ alice: { models: { value: ['deepseek'] } } }, {})
+    reg.defineGroup(alice, models)
+    expect(keysOf(reg)).toEqual(['models', 'models.deepseek.model', 'models.deepseek.api', 'models.deepseek.token'])
+    expect(reg.all().find((v) => v.key === 'models')).toMatchObject({ section: 'alice', title: '模型', type: 'string-list', value: ['deepseek'] })
+    expect(reg.all().find((v) => v.key === 'models.deepseek.api')).toMatchObject({ title: 'deepseek · 请求地址', type: 'string', default: 'https://api.example.com' })
+    expect(reg.status({ section: 'alice', key: 'models.deepseek.token' })).toMatchObject({ secret: true, isSet: false, live: true })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('名单加一个实例就补声明；去掉一个就撤销声明，值留着、live:false', () => {
+    const { reg } = fresh()
+    reg.defineGroup(alice, models)
+    expect(keysOf(reg)).toEqual(['models'])
+    reg.put(listSlot, ['deepseek', 'kimi'])
+    expect(keysOf(reg)).toContain('models.kimi.token')
+    reg.put({ section: 'alice', key: 'models.kimi.model' }, 'kimi-k2')
+    reg.put(listSlot, ['deepseek'])
+    expect(keysOf(reg).filter((key) => key.startsWith('models.kimi.'))).toEqual([])
+    expect(reg.all().find((v) => v.key === 'models.kimi.model')).toMatchObject({ value: 'kimi-k2', live: false })
+    expect(reg.locate(alice, 'models.kimi.model')).toBeUndefined()
+    reg.put(listSlot, ['deepseek', 'kimi'])
+    expect(reg.getGroup(alice, 'models').find((item) => item.name === 'kimi')?.values['model']).toBe('kimi-k2')
+  })
+
+  it('抹掉名单等于名单变空：全部实例撤销声明，值留着', () => {
+    const { reg } = fresh()
+    reg.defineGroup(alice, models)
+    reg.put(listSlot, ['deepseek'])
+    reg.put({ section: 'alice', key: 'models.deepseek.model' }, 'deepseek-chat')
+    reg.drop(listSlot)
+    expect(keysOf(reg)).toEqual(['models'])
+    expect(reg.getGroup(alice, 'models')).toEqual([])
+    expect(reg.read({ section: 'alice', key: 'models.deepseek.model' })).toBe('deepseek-chat')
+  })
+
+  it.each([
+    ['不是数组', 'deepseek', '要是字符串数组'],
+    ['含非字符串', ['deepseek', 1], '要是字符串数组'],
+    ['不是 kebab-case', ['deepseek', 'Kimi'], '实例名不合规'],
+    ['带点号', ['a.b'], '实例名不合规'],
+    ['重复', ['deepseek', 'deepseek'], '实例名重复了'],
+  ])('名单%s：整次拒绝，值与声明都不动', (_case, value, message) => {
+    const { reg } = fresh()
+    reg.defineGroup(alice, models)
+    reg.put(listSlot, ['deepseek'])
+    const before = reg.all()
+    expect(() => reg.put(listSlot, value)).toThrow(message)
+    expect(reg.all()).toEqual(before)
+  })
+
+  it('getGroup 按名单顺序回各实例，没值回 default，secret 回明文', () => {
+    const { reg } = fresh()
+    reg.defineGroup(alice, models)
+    reg.put(listSlot, ['kimi', 'deepseek'])
+    reg.put({ section: 'alice', key: 'models.deepseek.token' }, 'fake-group-token')
+    reg.put({ section: 'alice', key: 'models.kimi.api' }, 'https://kimi.example.com')
+    expect(reg.getGroup(alice, 'models')).toEqual([
+      { name: 'kimi', values: { model: undefined, api: 'https://kimi.example.com', token: undefined } },
+      { name: 'deepseek', values: { model: undefined, api: 'https://api.example.com', token: 'fake-group-token' } },
+    ])
+    expect(JSON.stringify(reg.all())).not.toContain('fake-group-token')
+  })
+
+  it('getGroup 只认自己 defineGroup 过的组', () => {
+    const { reg } = fresh()
+    reg.define(alice, { key: 'plain', title: '普通', type: 'string-list' })
+    reg.defineGroup(alice, models)
+    expect(() => reg.getGroup(alice, 'plain')).toThrow('没有用 defineGroup 声明过一组设置 plain')
+    expect(() => reg.getGroup(bob, 'models')).toThrow('home:bob 没有用 defineGroup 声明过一组设置 models')
+  })
+
+  it('普通 define 不收带点号的键；组键、字段键也查 kebab-case，字段键重复报错', () => {
+    const { reg } = fresh()
+    expect(() => reg.define(alice, { key: 'models.deepseek.token', title: 'x', type: 'secret' })).toThrow('不合规')
+    expect(() => reg.defineGroup(alice, { ...models, key: 'Models' })).toThrow('不合规')
+    expect(() => reg.defineGroup(alice, { ...models, fields: [{ key: 'api_key', title: 'x', type: 'string' }] })).toThrow('不合规')
+    expect(() => reg.defineGroup(alice, { ...models, fields: [models.fields[0]!, models.fields[0]!] })).toThrow('字段 model 重复了')
+    expect(reg.all()).toEqual([])
+  })
+
+  it('盘上的名单不合规：defineGroup 报错，什么都不声明', () => {
+    const warn = vi.fn()
+    const reg = createRegistry(warn)
+    reg.load({ alice: { models: { value: ['Bad Name'] } } }, {})
+    expect(() => reg.defineGroup(alice, models)).toThrow('实例名不合规')
+    expect(reg.all().filter((v) => v.live)).toEqual([])
+    expect(reg.owners()).toEqual({})
+  })
+
+  it('注销把名单与全部派生声明一起撤销，值留着', () => {
+    const { reg } = fresh()
+    const off = reg.defineGroup(alice, models)
+    reg.put(listSlot, ['deepseek'])
+    reg.put({ section: 'alice', key: 'models.deepseek.model' }, 'deepseek-chat')
+    off()
+    expect(keysOf(reg)).toEqual([])
+    expect(() => reg.getGroup(alice, 'models')).toThrow('没有用 defineGroup')
+    expect(reg.read({ section: 'alice', key: 'models.deepseek.model' })).toBe('deepseek-chat')
+    reg.put(listSlot, ['deepseek', 'kimi'])
+    expect(keysOf(reg)).toEqual([])
   })
 })
 

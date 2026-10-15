@@ -3,7 +3,7 @@ import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { isRecord } from './vocab.js'
 import { readSettings } from './store.js'
-import { homeFile, isValidKey } from './paths.js'
+import { homeFile, isValidDerivedKey, isValidKey } from './paths.js'
 import type { SettingStatus, Slot } from './registry.js'
 
 const MAX_IMPORT_BYTES = 1024 * 1024
@@ -33,7 +33,9 @@ export function credentialSlot(raw: unknown): Slot {
   const section = value['section']
   const key = value['key']
   if (typeof section !== 'string' || (section !== '*' && !isValidKey(section))) throw new Error('section 要是分区名（kebab-case 或 *）')
-  if (typeof key !== 'string' || !isValidKey(key) || ['constructor', 'prototype'].includes(key)) throw new Error('key 要是有效的设置键（kebab-case）')
+  if (typeof key !== 'string' || !(isValidKey(key) || isValidDerivedKey(key)) || ['constructor', 'prototype'].includes(key)) {
+    throw new Error('key 要是有效的设置键（kebab-case，或一组设置派生的 <组>.<实例>.<字段>）')
+  }
   if (section === 'constructor' || section === 'prototype') throw new Error('section 不能使用原型属性名')
   return { section, key }
 }

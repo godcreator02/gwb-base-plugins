@@ -1,0 +1,28 @@
+---
+title: 一组设置：实例名单加派生的普通设置
+born-at: 2026-10-15T20:29
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 一组设置
+domain: 件
+---
+
+## 背景
+
+用户设计新插件 gwb-claude-agent 时要配置多份模型，每份是模型名、请求地址、token 三项。设置插件此前只能声明固定键的单项设置，份数不定的配置只能写死在插件里或塞进一项的值里。用户说：「模型显然不用写死吧，不就是model，api和token三个设置不就是个新配置了，可以通用吧」，随后说：「给设置插件增加一组设置的功能呗」。
+
+## 结论与边界
+
+用户选定做法 A：服务 `gwbSettings` 新增 `defineGroup` 与 `getGroup`。组名那一项是 string-list，存实例名单；名单里每个实例的每个字段由设置插件自动声明成普通设置，键名 `<组>.<实例>.<字段>`（如 `models.deepseek.token`）。凭据命令、`settings.all`、设置窗格全部沿用，不改；`settings.json` 与 `credentials.json` 的磁盘格式不变。
+
+同时定下三条：删掉一份实例时它的值（含凭据）留着不删，成为 `live:false` 的项，和插件卸载后留下的值一样；实例名必须 kebab-case，不合规直接报错，不替它纠正；不发变更事件，使用方每次用时调 `getGroup` 现读。名单经 `settings.set` 命令或服务 `set` 改动时先整份校验，不合规整次拒绝。
+
+适用边界：组只在调用方自己的分区里，不支持 `shared`；只验证了单元测试层面（registry 与服务，`plugins/settings/tests/`），没有在隔离 home 里配合设置窗格实际点过。普通 `define` 仍不收带点号的键，只有组派生的三段键带点号，两种键不会撞上。
+
+## 否掉的候选
+
+做法 B：整组存成一个对象，凭据另按组、实例、字段存。这要给 `credentials.*` 加 item/field 参数，baseui 也要先加控件才看得见。否掉的理由是改动扩散到凭据命令的契约与界面仓；做法 A 把每个字段落成已有的单项设置，现有命令与窗格不用动就能列出、读写、打码。
+
+## 代价与遗留
+
+派生项在 `settings.all` 里是平铺的一行行普通设置，界面没有按实例分组显示；要分组显示得在 baseui 另做，本次没做。去掉的实例留下的值不会自动清理，要清就按位置调 `settings.delete` 或 `credentials.delete`。

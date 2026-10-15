@@ -24,6 +24,16 @@ export function isValidKey(value: string): boolean {
   return KEY_PATTERN.test(value)
 }
 
+/** 一组设置派生的键 `<组>.<实例>.<字段>`：恰好三段，每段 kebab-case。普通 define 不收点号，两种键撞不上 */
+export function isValidDerivedKey(value: string): boolean {
+  const segments = value.split('.')
+  return segments.length === 3 && segments.every(isValidKey)
+}
+
+export function derivedKey(groupKey: string, instanceName: string, fieldKey: string): string {
+  return `${groupKey}.${instanceName}.${fieldKey}`
+}
+
 export function assertKey(value: string): void {
   if (!isValidKey(value)) {
     throw new Error(

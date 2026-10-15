@@ -24,6 +24,13 @@ describe('凭据操作参数边界', () => {
     expect(() => importArgs({ from: { file: path.join(dir, 'source'), format: 'json', path: [key] }, to })).toThrow('JSON 字段路径')
   })
 
+  it('槽位的键收 kebab-case 与一组设置派生的三段键，别的点号写法都拒绝', () => {
+    expect(credentialSlot({ section: 'example', key: 'models.deepseek.token' })).toEqual({ section: 'example', key: 'models.deepseek.token' })
+    for (const key of ['models.deepseek', 'a.b.c.d', 'models..token', 'models.DeepSeek.token', '.models.a']) {
+      expect(() => credentialSlot({ section: 'example', key })).toThrow('有效的设置键')
+    }
+  })
+
   it('未知字段不回显内容，overwrite 必须是显式 boolean', () => {
     let message = ''
     try { copyArgs({ from: to, to, [fake]: fake }) } catch (error) { message = String(error) }

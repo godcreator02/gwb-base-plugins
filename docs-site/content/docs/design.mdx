@@ -95,7 +95,7 @@ AI 导入或复制凭据时只提交来源位置与目标位置，生成随机�
 
 这避免常规工作先读出明文再写回，也保留用户要求的明文文件与 home 自治。文件不是加密保险箱，本机插件仍有宿主进程的文件权限。备份或迁移 home 时需一起保存 `settings.json` 与 `credentials.json`；只有旧设置文件的备份不再包含全部凭据。存储选择见[按 home 保管凭据](/trajectory/2026-10-05-home-credentials)，命令边界见[凭据单独编排](/trajectory/2026-10-05-credential-command-boundary)，精确契约见[设置接缝](/docs/seams/settings)。
 
-{/* ref file="../plugins/settings/src/index.ts" lines="152-244" hash="03cfd62d61cd" blob="0dcb9862f136" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="163-255" hash="03cfd62d61cd" blob="321c04cd56e7" */}
 
 {/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
 
