@@ -1,0 +1,22 @@
+---
+title: onboard 随 MCP 插件发布
+born-at: 2026-10-16T16:30
+type: choice
+parent: [2026-09-13-base-plugins]
+label: onboard 搬家
+domain: 件
+---
+
+## 背景
+
+onboard 说明书原来在 `@godcreator/gwb-agent-hooks-skills` 里，和社区技能收录、Codex 与 zcode 的纪律钩子放在一起。2026-10-16 用户把仓的公开规则定成「全公开或全不公开」，agent-hooks-skills 定为不公开，包改发到 gitea 的私有源。可内核的公开安装说明第 4 步要外人先装这个包、读 onboard 来接 MCP 客户端，包不公开，这一步就断了。
+
+## 结论
+
+onboard 拆成两份：接 MCP 客户端的部分（判断环境、连接配置、附件 `references/mcp-clients.md`）搬进 MCP 插件，说明书名不变，仍叫 `onboard`；装 SessionStart 钩子、纪律钩子、Claude Code 的 mods 那部分留在 agent-hooks-skills，改名 `agent-hooks`。
+
+放进 MCP 插件，是因为 onboard 讲的就是怎么连 MCP 入口，装了入口的 home 一定装着它；放进说明书插件或另开一个包，都要外人多装一样东西。
+
+说明书名不改，各处写的「读 onboard 说明书」（MCP 插件的命令说明、`instructions.md`、内核的安装说明、用户级 CLAUDE.md）都不用跟着改。
+
+代价：zcode 这类会丢掉 instructions 字段的客户端，原来靠 agent-hooks-skills 仓里的启动钩子 `fetch-gwb-instructions.py` 把 instructions 补进会话，外人现在拿不到这个脚本。onboard 里改成让 agent 连上后先调 `index`。

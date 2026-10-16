@@ -88,7 +88,7 @@ description: 连接 MCP 插件与命令插件、说明书插件；交换的是 g
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="505-517" hash="0a1c303fb649" blob="1f9a4ca3fe38" */}
 
-这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`settings.*` 与 `credentials.*` 由设置插件登记，`mcp.client.issue` 由本插件登记；onboard 说明书由 agent-hooks-skills 插件登记。名字写在登记处与指引两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
+这几个名字**靠约定**：`skill.read` 由说明书插件登记；`plugin-manager.list`、`plugin-manager.update` 由生命周期插件仓（gwb-lifecycle-plugins）的插件管理登记；`shell.reload` 由界面插件仓（gwb-ui-plugins）的外壳登记；`settings.*` 与 `credentials.*` 由设置插件登记，`mcp.client.issue` 与 onboard 说明书由本插件登记。名字写在登记处与指引两处，改了命令名这里不会报错，agent 照着调会收到「没有这条命令」。
 
 ## 约定
 

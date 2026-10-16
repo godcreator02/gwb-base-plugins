@@ -23,7 +23,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 - **把端口写进 home 的 `runtime.json`**：绑定成功后补上 `mcp` 一项，别的程序说出 home 名就能找到入口
 - **每次 agent 调命令都写一行日志**：命令总线的日志里看不出是 agent 调的，这里补一行，成功写 info，失败写 warn 并带原因
 - **配置客户端不用回显凭据**：`mcp.info`、`mcp.token` 经页面或 MCP 只回状态；`mcp.client.issue` 签发有期限的独立凭据；客户端接线由 onboard skill 完成，`list` / `revoke` 查状态与撤销。临时凭据与主凭据权限相同，主凭据轮换不影响它们。零依赖客户端 `mcp.client` 用 `--home` 自动选择本 home 的地址与凭据
-- **带一份说明书 `mcp`**：连接配置、为什么只有三个工具、工作台没启动时怎么办
+- **带两份说明书**：`mcp` 讲凭据、命令行客户端、MCP 工具调不通时怎么查；`onboard` 讲怎么把 Codex、Claude Code、ZCode、Kimi 接到入口上，客户端配置格式在它的附件 `references/mcp-clients.md` 里（轨迹卡[onboard 随 MCP 插件发布](/trajectory/2026-10-16-onboard-ships-with-mcp)）
 
 {/* ref file="../plugins/mcp/src/endpoint.ts" lines="39-47" hash="4bc7e47ca53e" blob="65e4dd6cd78c" */}
 
@@ -61,7 +61,7 @@ MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一
 | settings 的 secret 项 `token` / `client-tokens` | 主凭据与临时凭据表（JSON 字符串），由 settings 明文存入本 home 的 `credentials.json`；只在迁移时读旧 `mcp/secret.json` | [5 设置](/docs/seams/settings) |
 | `<home>/runtime.json` 的 `mcp` 项 | `{ port, url }`；绑定成功后读出整份、只改这一项、写回；没绑定成功不写，写失败只记 warn，进程退出不删 | [2 MCP 协议](/docs/seams/mcp-protocol) |
 | 设置 `port`（数字，本插件自己的设置分区） | 缺省按 home 名给：default 是 2870，其他 home 是 0（系统分配）；改了要重启这个 home 才生效 | [5 设置](/docs/seams/settings) |
-| 说明书 `mcp` | 包根 `skills/mcp/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+| 说明书 `mcp`、`onboard` | 包根 `skills/mcp/`、`skills/onboard/`，整个 `skills/` 目录交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
 
 {/* ref file="../plugins/mcp/src/index.ts" lines="102-143" hash="643035e06d7a" blob="1f9a4ca3fe38" */}
 
@@ -85,7 +85,7 @@ instructions 是每个会话的固定开销。测试按日常使用的 default h
 - **不列装了哪些插件**：`index` 里只有说明书与命令；装了哪些插件（包括没有命令的界面插件）问插件管理的 `plugin-manager.list`
 - **不校验命令参数**：命令自己校验
 - **不管理客户端自己的超时**：`run` 一直等到命令返回，超时在客户端配，`mcp.client` 用 `--timeout`
-- **不修改客户端配置**：接线步骤和格式知识归 onboard skill，本插件只管理令牌和入口
+- **不修改客户端配置**：接线步骤和配置格式写在随包的 onboard skill 里，由 agent 在本地照着写；插件的代码只管理令牌和入口
 - **不缩小临时凭据的命令权限**：它只增加到期与单独撤销；同样能调用全部对 agent 开放的命令
 - **不加密或隔离本机文件读取**：状态回执减少明文进入会话，不能阻止有磁盘权限的代码读凭据
 
