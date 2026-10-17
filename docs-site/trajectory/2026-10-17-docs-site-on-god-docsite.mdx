@@ -1,0 +1,29 @@
+---
+title: 文档站迁到 god-docsite
+born-at: 2026-10-17T16:50
+type: choice
+parent: [2026-09-13-base-plugins]
+label: 文档站迁到 god-docsite
+domain: 文档站
+---
+
+## 背景
+
+docs-site 原来是 Next 16 + `@godcreator/docfirst-workflow` 0.5.2：每个区一个 Next 布局（docs、trajectory、future 各一个侧栏），页面路由、星轨盘、llms 文本都是站里手写的 `src/app/` 文件，组件名册由 `src/components/registry.ts` 与 `scripts/verify-roster.mjs` 两边核对，看页面要先 `pnpm build` 再 `pnpm start`（端口 4315）。站里有 70 个 mdx、16 个自绘 SVG 示意组件（`Diagram` 分发器加 12 张图、parts 与 steps 两个辅助），没有用讲解组件包。平台换成了 `@godcreator/god-docsite`（fumadocs + React Router + Vite）加功能包 code-pin、trajectory、explainer，命令行换成 `@godcreator/docfirst` 0.1.0，开发服务由工作台的 `docsite.site.*` 托管。照 god-docsite 维护页「Next docfirst 站迁到平台」迁过来，先例是 gwb-vscode、gwb-windows-backup、gwb-gitea 等七次迁移。
+
+## 结论与边界
+
+- 骨架用 `docfirst.create` 在 `D:\gwb-docfirst-migrate\gwb-base-plugins\docs-site` 生成，`app/` 与根配置（vite / react-router / source.config / tsconfig / .gitignore / pnpm-workspace / 锁文件）、身份文件 `docsite.json`、`people.json`、`glossary.json`、`comments/` 整份换进 docs-site；`package.json` 的依赖与脚本照骨架，名字、版本、描述保留
+- 站移出仓根 pnpm 工作区（它自带 `pnpm-workspace.yaml`，留在里面就是工作区嵌套），仓根 `pnpm install` 后锁文件删掉站的 310 个依赖。维护页没写的一处：仓根 `package.json` 的 `doc` / `doc:confirm` / `doc:render` 原来用 `pnpm --filter gwb-base-plugins-docs-site` 从工作区过滤，filter 找不到站了，改成 `pnpm -C docs-site run …`；develop.mdx 里「pnpm 工作区是 plugins/* 与 docs-site」那句跟着改
+- 16 个组件全部挪进 `content/docs/_shared/`（`diagram.tsx` 加 `diagrams/`）：被 docs 根 6 页与 seams 子组 10 页共用，与 gwb-windows-backup 的接缝图同一种放法。删掉 9 个文件里的 `'use client'`；15 个用 `<Diagram>` 的页面开头加 import，路径相对页面
+- 示意图的强调色变量（`--diagram-a` / `--diagram-b` 及 soft 变体）与 `.diagram*` 一套类原来写在旧站 `src/app/global.css`，挪成组件旁的 `diagram.css` 由 `diagram.tsx` import，深浅主题各一套；`.note` 类没有任何页面用，没有挪
+- 轨迹卡 41 张从 `content/trajectory/` 挪到站点根 `trajectory/`，旧的 `meta.json` 删掉；`content/meta.json` 写站名，docs、future 两区加 `title` 与 `"root": true`；首页写一句站的介绍
+- `docfirst.config.mjs` 改成 `fumadocsRoster: true`、`trajectory: 'trajectory'`、名册加 `Term`，`Diagram` 的机读规则照旧（组件没有 `.data.mjs`，不用补 `.d.mts`）
+- 生成物只有两处变化，都是正本跟着迁移改的：README 与 AGENTS 里「build + start 看 4315 端口」改成由工作台托管开发服务。正本的列表本来就是 `-`、没有空表格格子、网址都在反引号里，doc-export 0.1.0 的已知差异一个都没碰到
+- `pnpm doc` 全绿（develop.mdx 一条黄灯复核后接受），`pnpm typecheck`、`pnpm build` 通过，仓根 `pnpm install` 与 `pnpm typecheck` 通过，`docsite.site.start` 后首页、`/docs`、`/future/overview`、卡页、`/llms.txt` 都是 200
+
+## 代价与遗留
+
+- 旧 `next.config.mjs` 里 9 条旧网址跳转（`/docs/roadmap` → `/future/roadmap`、`/docs/decisions` → `/docs/design` 等）没有迁：React Router 站没有对应机制，维护页没写这种情况；站内没有链接指向它们，只有外部直链会 404。其中 `/docs/roadmap` 那条原来是永久跳转，别的都是临时的
+- `public/anim/subset-sheets.html` 在站里没有被引用，没有动它
+- 没有术语表页，`glossary.json` 是空的，正文里没有术语标注

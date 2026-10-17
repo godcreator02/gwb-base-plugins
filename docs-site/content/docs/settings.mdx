@@ -3,6 +3,8 @@ title: gwb-settings · 设置与凭据
 description: 插件声明设置项；每个 home 独立保存普通设置与明文凭据。插件内部照常取用，页面与 agent 通过不回显的接口管理凭据。
 ---
 
+import { Diagram } from './_shared/diagram'
+
 **本页回答**：设置与凭据存在哪、插件怎样使用、AI 怎样完成配置而不经手明文。包名 `@godcreator/gwb-settings`，入口是 `plugins/settings/src/index.ts`。
 
 每个 home 有自己的 `settings.json` 与 `credentials.json`，不继承 default。前者存普通值、设置声明与分区归属，后者存 secret 的明文值；插件继续声明 `type:'secret'` 并经服务取用。

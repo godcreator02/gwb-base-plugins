@@ -3,6 +3,8 @@ title: gwb-py-cli · python 命令行工具
 description: gwb-py-cli 运行插件随包带的 python 命令行工具：在登记方的包根下用 uv 建 venv、每次运行前检查一遍、被删了就重建，再运行 venv 里的程序；登记的工具同时成为命令总线上的命令。本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
+import { Diagram } from './_shared/diagram'
+
 **本页回答**：python 命令行运行插件有哪些功能；插件、页面和 agent 经哪些接口用它，各属于哪条接缝；登记方的 python 项目要满足什么；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-py-cli`，源码目录 `plugins/py-cli/src`，入口文件 `index.ts`。
 
 它和 [gwb-node-cli](/docs/node-cli) 是同一套运行办法（登记时校验、同名登记成总线命令、参数、工作目录校验、时限、输出截断、回执形状都一样），多出来的是 venv：检查 venv 在不在、对不对，不对就用 uv 重建。它自己不带 python 项目，python 项目在登记它的插件的包根下。

@@ -31,12 +31,7 @@ pnpm doc            # docfirst check：被引用的代码变了会标黄
 
 ## 文档
 
-文档站在 `docs-site/`：
-
-```powershell
-pnpm --filter gwb-base-plugins-docs-site build
-pnpm --filter gwb-base-plugins-docs-site start   # http://127.0.0.1:4315
-```
+文档站在 `docs-site/`（god-docsite + docfirst，自己一套依赖，不在 pnpm 工作区里）。站里的 `pnpm build` 只作提交前的检查；看页面由工作台托管开发服务：`docsite.site.add {"dir":"<站目录>"}`，地址以 `docsite.site.list` 回的 `url` 为准，不在会话里自己 `pnpm dev`。
 
 入口页是插件之间的接缝图，每条接缝一页；每个插件一页；另有关键设计、开发、遇到过的问题。
 

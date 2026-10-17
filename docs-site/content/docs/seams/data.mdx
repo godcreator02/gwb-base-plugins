@@ -3,6 +3,8 @@ title: 6 数据 gwbData
 description: 连接数据插件与要把状态写进磁盘的插件；交换的是服务 ctx.gwbData 的 dir、readDoc、writeDoc，目录是 <home>/data/<条目 id 末段>/，由调用方条目定。数据插件保证 readDoc 没有或坏了都回 undefined、writeDoc 整份原子替换；用它的插件保证文档名用 kebab-case、自己处理读不到的情况
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：插件把自己的状态存到哪、怎么读写；数据插件对读写各保证什么；用它的插件要遵守什么。目录归属怎么记、对不上时怎么处理见[数据归属](/docs/seams/owners)，目录名怎么从条目 id 算出来见[条目身份](/docs/seams/entry-identity)，数据插件的功能见 [gwb-data](/docs/data)。
 
 ## 连接的模块

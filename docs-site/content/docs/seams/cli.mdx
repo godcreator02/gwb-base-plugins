@@ -3,6 +3,8 @@ title: 9 命令行工具 gwbNodeCli / gwbPyCli
 description: 连接 gwb-node-cli、gwb-py-cli 与登记命令行工具的插件、以及被启动的子进程；交换的是服务 ctx.gwbNodeCli / ctx.gwbPyCli 的 register(spec) / list() / run()（python 那边另有 ensureReady），登记的工具同时成为总线命令，回执带退出码、输出与超时。运行插件保证 argv 不经 shell、输出超过 64,000 字节写进临时文件、超时结束整个进程树；两份 run.ts / invoke.ts 靠约定保持相同
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：插件怎么把自己带的 node 或 python 命令行工具交给运行插件；运行插件怎么启动子进程、回执长什么样；子进程拿到什么；python 的 venv 由谁建、建在哪；运行插件、登记工具的插件、子进程各保证什么。两个运行插件的功能见 [gwb-node-cli](/docs/node-cli)、[gwb-py-cli](/docs/py-cli)。
 
 ## 连接的模块

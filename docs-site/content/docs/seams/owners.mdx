@@ -3,6 +3,8 @@ title: 7 数据归属 owners
 description: 数据插件与设置插件记下每个数据目录、每个设置分区归哪个包，记在数据目录里的 .owner.json 和 settings.json 顶层的 $owners；包名对不上就拒绝，报错写明归属于谁、由人在磁盘上的哪个目录或文件手工处理。两个服务上的 owners() / transferOwner(id, pkg) 由插件管理的 transfer-owner 命令调用，包改名时不用关工作台就能改归属
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：数据目录与设置分区怎么记住自己属于哪个包；包名对不上时发生什么、人怎么处理；两个服务上的 `owners()` / `transferOwner()` 谁在调；各方保证什么。
 
 ## 连接的模块

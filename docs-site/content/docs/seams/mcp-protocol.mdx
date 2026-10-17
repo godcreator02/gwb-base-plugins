@@ -3,6 +3,8 @@ title: 2 MCP 协议 /mcp
 description: 连接 MCP 插件与外部 MCP 客户端（包括随包的命令行客户端 bin/client.mjs）；交换的是 127.0.0.1 上的 HTTP 路径 /mcp——只收 POST、无状态、工具固定为 index / search / run，请求要带 Bearer token 并通过 Host / Origin 检查。MCP 插件保证 default 固定 2870 端口、主凭据每个 home 一份且重启不换，临时凭据可到期或单独撤销、绑定成功后把端口写进 runtime.json 的 mcp 项；客户端保证带对 token 与 Host、工作台重启后重连
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：外部 MCP 客户端怎么连上一个 home 的 MCP 入口；请求要过哪几项检查、每项防什么；端口、token 从哪来、写在哪；MCP 插件、客户端、随包的命令行客户端各保证什么。工具返回的内容从哪来、回执怎么翻译见[命令表开给 agent](/docs/seams/agent-surface)，MCP 插件的功能见 [gwb-mcp](/docs/mcp)。
 
 ## 连接的模块

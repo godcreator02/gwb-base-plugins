@@ -3,6 +3,8 @@ title: 8 条目身份 entry id
 description: 连接数据、设置、说明书、命令、node 命令行、python 命令行这些插件与 cordis 的 loader；交换的是 loader 放在调用方 fiber 上的 entry——条目 id 取 entry.id（形如 home:<id> 的两段），包名取 entry.options.name。条目 id 转成目录名与分区名的算法在数据插件与设置插件各写一份，靠约定保持一致；这些插件保证身份取不到就抛错
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：提供服务的插件怎么知道是哪个插件在调用它；条目 id 怎么变成数据目录名与设置分区名；哪些插件依赖这一点、各取哪一样；两份相同的算法怎么保持一致。
 
 ## 连接的模块

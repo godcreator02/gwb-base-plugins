@@ -1,7 +1,5 @@
 packages:
   - plugins/*
-  # 文档站：自己的依赖树，不进根 check
-  - docs-site
 
 allowBuilds:
   # @tailwindcss/cli 的依赖，只有 `tailwindcss --watch` 用得着；插件的构建是一次性的，

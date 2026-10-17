@@ -1,35 +1,37 @@
-/**
- * 站的内容集合，三个区各一个 defineDocs（自带 docs 与 meta，侧栏顺序由各目录的 meta.json 定）：
- *   docs        现状区，进 check；生成正本在 content/docs/outputs/ 下
- *   trajectory  轨迹卡，只增不改；frontmatter 由 cardSchema 认，正文里的关系边由 remarkTrajectoryLinks 标出
- *   future      未来区：路线、在途方案 future/spec/；别的仓投来的反馈是 GitHub 上本仓的 issue
- *
- * 集合级 mdxOptions 会去掉 fumadocs 的全部默认插件，所以写了 mdxOptions 的集合都经 applyMdxPreset 把默认插件加回来。
- * 只有现状区接 docfirst 的记号处理与 processed markdown：轨迹卡不许钉码，未来区的记号没有代码可核对。
- */
-import { applyMdxPreset, defineConfig, defineDocs } from 'fumadocs-mdx/config'
-import { cardSchema, docfirstMarkdownOptions, docfirstMdxOptions, remarkTrajectoryLinks } from '@godcreator/docfirst-workflow/fumadocs'
+import rehypeKatex from 'rehype-katex'
+import remarkMath from 'remark-math'
+import { applyMdxPreset, defineCollections, defineConfig, defineDocs } from 'fumadocs-mdx/config'
+import { featureRehypePlugins, featureRemarkPlugins } from './app/features/mdx.generated.ts'
+import { sitePlugins } from './app/lib/mdx-plugins.ts'
+
+// 各功能的集合（功能包 mdx.ts 的集合工厂按 package.json 的 godDocsite.collections 生成）；fumadocs-mdx 要求这份文件只导出集合
+export * from './app/features/collections.generated.ts'
+
+// 全局的 mdxOptions 管没写自己 mdxOptions 的集合（评论）与集合外被 import 的 mdx；
+// 集合写了自己的 mdxOptions，全局的对它就不生效，全站插件要在集合里再列一次
+export default defineConfig({
+  mdxOptions: { remarkPlugins: [remarkMath, ...featureRemarkPlugins], rehypePlugins: [rehypeKatex, ...featureRehypePlugins] },
+})
 
 export const docs = defineDocs({
-  dir: 'content/docs',
+  dir: 'content',
   docs: {
-    mdxOptions: applyMdxPreset(docfirstMdxOptions({ root: process.cwd() }) as never),
-    postprocess: { includeProcessedMarkdown: docfirstMarkdownOptions() },
-  },
-})
-
-export const trajectory = defineDocs({
-  dir: 'content/trajectory',
-  docs: {
-    schema: cardSchema,
+    async: true,
+    // 下划线开头的 .mdx 是被页面 import 的正文，不是独立页面
+    files: ['**/[^_]*.mdx'],
+    postprocess: { includeProcessedMarkdown: true },
     mdxOptions: applyMdxPreset({
-      remarkPlugins: (v) => [...v, [remarkTrajectoryLinks, { hrefBase: '/trajectory' }]],
+      remarkPlugins: sitePlugins.remarkPlugins,
+      rehypePlugins: (list) => [...sitePlugins.rehypePlugins, ...list],
     }),
   },
+  // fumadocs-mdx 默认把所有 .json 当目录说明：页面同名文件夹里的 .json 附件会让那个文件夹变成一组，同名的那一页从侧栏消失
+  meta: { files: ['**/meta.json'] },
 })
 
-export const future = defineDocs({
-  dir: 'content/future',
+// 评论：一串一个文件夹（index.mdx 是串头，回复各一个 mdx），frontmatter 由评论包校验
+export const comments = defineCollections({
+  type: 'doc',
+  dir: 'comments',
+  async: true,
 })
-
-export default defineConfig()

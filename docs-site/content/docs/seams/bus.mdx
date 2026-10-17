@@ -3,6 +3,8 @@ title: 1 命令总线 gwbCommands
 description: 连接命令插件与所有登记、调用命令的一方；交换的是服务 ctx.gwbCommands 的 register / run / list 与回执 { ok, data, error }。命令插件保证定义缺项就拒收、plugin 取调用方的包名、同名后登记的生效并告警、注销只删自己那条、登记方卸载时命令自动注销、run 从不抛错、请求来源原样交给处理函数；登记方保证四项写全（含 effect）、参数自己校验
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：插件怎么把能力登记成命令、调用方怎么按名字执行；这条接缝上交换什么；命令插件、登记命令的插件、调用命令的一方各保证什么；由哪些测试保护。命令插件的功能见 [gwb-commands](/docs/commands)。
 
 ## 连接的模块

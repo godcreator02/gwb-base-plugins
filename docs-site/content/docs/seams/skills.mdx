@@ -3,6 +3,8 @@ title: 4 说明书 gwbSkills
 description: 连接说明书插件与带说明书的插件；交换的是服务 ctx.gwbSkills 的 register(dir) / list() / read()、目录下每个子目录一份 SKILL.md 的目录形状，以及命令 skill.list / skill.read。说明书插件保证名字全局唯一、先登记的保留、只读登记过的文件；带说明书的插件保证把 skills/ 列进包的 files、frontmatter 每项写成单行
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：插件怎么把随包发布的说明书交给说明书插件；目录与 SKILL.md 要满足什么；agent 怎么读到正文；说明书插件和带说明书的插件各保证什么。说明书插件的功能见 [gwb-skills](/docs/skills)。
 
 ## 连接的模块

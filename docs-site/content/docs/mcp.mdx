@@ -3,6 +3,8 @@ title: gwb-mcp · MCP 入口
 description: gwb-mcp 把命令总线提供给外部 agent：一个只绑 127.0.0.1、要 token 的无状态 streamable HTTP 入口，工具只有 index、search、run 三个；default 固定用 2870 端口。本页讲它的功能、接口与所属接缝（端点、三个工具、六条命令、写进 home 的文件、设置与凭据）、依赖与缺了会怎样，以及哪些事不归它做
 ---
 
+import { Diagram } from './_shared/diagram'
+
 **本页回答**：MCP 插件有哪些功能；agent、客户端配置和别的程序经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实归命令总线或别的插件。包名 `@godcreator/gwb-mcp`，源码目录 `plugins/mcp/src`，入口文件 `index.ts`；包根另有零依赖的命令行客户端 `bin/client.mjs` 与每个会话都会读到的 `instructions.md`。
 
 MCP 插件是工作台唯一的对外入口，方向只有 agent 调工作台一种。它不提供服务，在 `apply` 里自己启动 `node:http`：页面走内核的 IPC，要真的 HTTP 的只有外部 agent。

@@ -16,9 +16,9 @@ pnpm build
 
 `pnpm build` 是 `pnpm -r build`，每个插件输出到自己的 `dist/`，构建前先清空它：`files` 白名单整个带上 `dist/`，删掉或改了名的源文件，上一次构建留下的产物不清掉就跟着发出去。MCP 插件以外的插件先用 `node -e` 删掉 `dist/`、再用 `tsc -p tsconfig.json`，MCP 插件的 `build.ts` 先删掉 `dist/`、再用 esbuild 打包出 `dist/index.js`，之后用 `tsc --emitDeclarationOnly` 输出类型声明。每个包的 `prepublishOnly` 都是 `pnpm build`：`pnpm check` 不构建，少了这一步会把上一版的 `dist` 原样发出去。
 
-{/* ref file="../package.json" lines="5-14" hash="4b9ac6e5a702" blob="fe3b21d9da1c" */}
+{/* ref file="../package.json" lines="5-14" hash="5e3faa02c69c" blob="6ea1268a4c89" */}
 
-pnpm 工作区是 `plugins/*` 与 `docs-site`。仓根 `packages/` 下如果还有 `shared-react`、`tokens`，是旧构建留下的未跟踪文件、没有 `package.json`，不在工作区里。
+pnpm 工作区是 `plugins/*`。文档站 `docs-site/` 不在工作区里：它建在 god-docsite 平台上，自带 `pnpm-workspace.yaml` 与自己的依赖树，留在里面就是工作区里嵌套工作区。仓根 `packages/` 下如果还有 `shared-react`、`tokens`，是旧构建留下的未跟踪文件、没有 `package.json`，不在工作区里。
 
 ## 提交前的检查
 

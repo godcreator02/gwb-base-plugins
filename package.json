@@ -8,9 +8,9 @@
     "lint": "oxlint . --type-aware --deny-warnings",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
-    "doc": "pnpm --filter gwb-base-plugins-docs-site exec docfirst check",
-    "doc:confirm": "pnpm --filter gwb-base-plugins-docs-site exec docfirst confirm",
-    "doc:render": "pnpm --filter gwb-base-plugins-docs-site exec docfirst render"
+    "doc": "pnpm -C docs-site run doc",
+    "doc:confirm": "pnpm -C docs-site run doc:confirm",
+    "doc:render": "pnpm -C docs-site run doc:render"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

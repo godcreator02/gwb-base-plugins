@@ -31,7 +31,7 @@ importmap、要么强制打包进来，并配上构建产物检查。
 
 ## 文档地图
 
-文档站在 `docs-site/`，端口 4315。看站只用 build 再 start，不用 dev：在 `docs-site` 运行 `pnpm build`，再 `pnpm start`。现状区：
+文档站在 `docs-site/`（god-docsite + docfirst，自己一套依赖，不在 pnpm 工作区里）。站里的 `pnpm build` 只作提交前的检查；看页面由工作台托管开发服务：`docsite.site.add {"dir":"<站目录>"}`，地址以 `docsite.site.list` 回的 `url` 为准，不在会话里自己 `pnpm dev`。现状区：
 
 - **入口页** `/docs`：接缝图，插件之间的每条接缝各有一页（`/docs/seams/…`）
 - **插件页**（每个插件一页）：每页写功能、接口（各属于哪条接缝）、不做的事

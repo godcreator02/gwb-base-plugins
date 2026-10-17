@@ -3,6 +3,8 @@ title: 3 命令表开给 agent
 description: 连接 MCP 插件与命令插件、说明书插件；交换的是 gwbCommands 的 list() / run() 与 gwbSkills 的 list()，MCP 插件每次调用都重新读取，拼成 instructions 末尾的目录与 index / search 的返回，跳过只给页面调用的命令，把 run 的回执翻译成 MCP 工具结果、超过 40000 字符就换成说明。回执有标准回执、处理函数原样返回的对象、命令行工具回执三种形状，靠键名区分；instructions 与提示里按名字提到的别的插件的命令，都只靠约定
 ---
 
+import { Diagram } from '../_shared/diagram'
+
 **本页回答**：`index`、`search`、`run` 三个工具的内容从哪来；命令回执怎么变成 MCP 工具结果；MCP 插件对命令插件、说明书插件依赖了哪几样；哪些地方只靠约定、写在哪两处。HTTP 与鉴权见 [MCP 协议](/docs/seams/mcp-protocol)。
 
 ## 连接的模块
