@@ -16,6 +16,7 @@
     "data",
     "node-cli",
     "py-cli",
+    "workers",
     "outputs"
   ]
 }

@@ -1,0 +1,61 @@
+{
+  "name": "@godcreator/gwb-workers",
+  "version": "0.1.0",
+  "author": {
+    "name": "godcreator"
+  },
+  "description": "线程池：插件把同步的重计算放进自己的线程池跑，不占工作台主线程；线程按需开、常驻，任务排队、可设超时，现状与最近任务的耗时可查。服务 gwbWorkers；skill 1 份；命令 1 条。",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "src",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "@godcreator/gwb-commands": "workspace:^",
+    "@godcreator/gwb-kernel-desktop": "^0.10.0",
+    "@godcreator/gwb-skills": "workspace:^",
+    "cordis": "^4.0.0-rc.10"
+  },
+  "peerDependenciesMeta": {
+    "@godcreator/gwb-commands": {
+      "optional": true
+    },
+    "@godcreator/gwb-skills": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "devDependencies": {
+    "@cordisjs/plugin-loader": "1.0.0-rc.7",
+    "@types/node": "^24.0.0",
+    "cordis": "4.0.0-rc.10",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/godcreator02/gwb-base-plugins.git"
+  },
+  "keywords": [
+    "gwb-plugin"
+  ]
+}

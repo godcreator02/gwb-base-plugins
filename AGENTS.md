@@ -1,6 +1,6 @@
 # gwb-base-plugins
 
-**gwb 的无界面基础插件仓**：插件 commands、mcp、skills、settings、data、node-cli、py-cli，
+**gwb 的无界面基础插件仓**：插件 commands、mcp、skills、settings、data、node-cli、py-cli、workers，
 内核类型从内核包（`@godcreator/gwb-kernel-desktop`）取，命令回执类型从 commands 取。插件管理（plugin-manager，含找插件、配包源）在生命周期插件仓 gwb-lifecycle-plugins，
 界面插件（shell、theme、baseui）在 gwb-ui-plugins，查日志的命令 `logger.query` 也由 baseui 登记，本仓没有日志插件；内核在 gwb-kernel，改它们去那些仓。
 **这个仓的插件不依赖任何界面包**：构建产物里的包名 import 只能是 node 内置模块与 `cordis`。

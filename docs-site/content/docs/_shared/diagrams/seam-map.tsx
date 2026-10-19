@@ -55,6 +55,8 @@ export function SeamMap() {
       <SeamLine d="M445,384 V470" byConvention />
       <SeamLine d="M280,314 V470" />
       <SeamLine d="M445,60 V130" />
+      <SeamLine d="M115,340 V257 H580" />
+      <SeamLine d="M115,384 V470" />
 
       <Box x={20} y={20} w={150} h={40} lines={['MCP 客户端', 'agent']} />
       <Box x={335} y={20} w={220} h={40} lines={['内核', '转交页面发来的命令']} />
@@ -66,9 +68,11 @@ export function SeamMap() {
       <Box x={205} y={270} w={150} h={44} lines={['python 命令行工具', 'gwb-py-cli']} tone="a" />
       <Box x={370} y={270} w={150} h={44} lines={['设置', 'gwb-settings']} tone="a" />
       <Box x={370} y={340} w={150} h={44} lines={['数据', 'gwb-data']} tone="a" />
+      <Box x={40} y={340} w={150} h={44} lines={['线程池', 'gwb-workers']} tone="a" />
 
       <Box x={580} y={130} w={160} h={254} lines={['别的插件', '外壳 · 插件管理 · 应用插件 …']} />
 
+      <Box x={40} y={470} w={150} h={52} lines={['线程', 'worker_threads', '插件的 worker.js']} />
       <Box x={205} y={470} w={150} h={44} lines={['子进程', 'Electron 的 node · uv']} />
       <Box x={370} y={470} w={150} h={44} lines={['cordis loader', '条目 id']} />
       <Box x={580} y={470} w={160} h={44} lines={['人', '手工处理归属记录']} />
@@ -83,6 +87,8 @@ export function SeamMap() {
       <Badge x={445} y={440} n={8} byConvention />
       <Badge x={280} y={440} n={9} />
       <Badge x={445} y={95} n={1} />
+      <Badge x={560} y={257} n={10} />
+      <Badge x={115} y={440} n={10} />
 
       <Note x={20} y={552}>虚线框是本仓；实线接缝有代码接口，点线接缝只靠约定；各插件都经接缝 1 登记命令，图上只画命令总线到内核、到别的插件那两条</Note>
     </svg>

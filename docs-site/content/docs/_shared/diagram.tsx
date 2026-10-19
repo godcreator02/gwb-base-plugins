@@ -20,6 +20,7 @@ import { PyCliRun } from './diagrams/py-cli-run'
 import { SeamMap } from './diagrams/seam-map'
 import { SettingsLayout } from './diagrams/settings-layout'
 import { SkillsFlow } from './diagrams/skills-flow'
+import { WorkersRun } from './diagrams/workers-run'
 
 const drawings: Record<string, () => ReactNode> = {
   'seam-map': () => <SeamMap />,
@@ -34,6 +35,7 @@ const drawings: Record<string, () => ReactNode> = {
   'entry-identity': () => <EntryIdentity />,
   'cli-run': () => <CliRun />,
   'py-cli-run': () => <PyCliRun />,
+  'workers-run': () => <WorkersRun />,
 }
 
 export function Diagram({ name, title, children }: { name: string; title?: string; children?: ReactNode }) {

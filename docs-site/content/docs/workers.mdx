@@ -1,0 +1,84 @@
+---
+title: gwb-workers · 线程池
+description: gwb-workers 让插件把同步的重计算（同步数据库查询、大文件解析）放进自己的线程池，不占工作台主线程；本页讲它的功能、接口与所属接缝、依赖与缺了会怎样，以及哪些事不归它做
+---
+
+import { Diagram } from './_shared/diagram'
+
+**本页回答**：线程池插件有哪些功能；插件经哪些接口用它，各属于哪条接缝；它依赖什么、缺了会怎样；哪些事常被以为归它、其实不归它。包名 `@godcreator/gwb-workers`，源码目录 `plugins/workers/src`，入口文件 `index.ts`。
+
+工作台的主线程上跑着界面、MCP 入口和所有插件，谁在这里同步算上几百毫秒，别的全都排队——几个 agent 同时调这类命令时，主线程一直是满的，界面与 MCP 入口一起卡住。这个插件把这类重计算放出去：插件开一个自己的线程池，主线程只转交参数、等结果。
+
+## 功能
+
+- **开池 `pool(options)`，回 `{ run }`**：池记在调用方插件的包名下，同一个插件里池名不能重；池随调用方卸载关闭——调用方不必自己包 `ctx.effect`，卸载时排队的与正在跑的任务都以关闭原因报错、线程全部终止
+- **选项登记时就校验**：`name` 为空、`module` 不是 `file:` 地址、`threads` 不在 1–16、`taskTimeoutMs` 不是正整数，当场抛错并写明哪个插件、哪一项——等到第一个任务跑起来才发现，报错的地方已经离开池的那行代码很远
+- **任务先来先跑**：排队是数组，`push` 进、`shift` 出；有空闲线程就交给它，没有且线程数没满就开新线程，满了就排队
+- **线程按需开、开了常驻，模块在每个线程里只加载一次**：线程入口启动时 `await import(module)`，之后逐条执行 `{ id, fn, args }`——数据库连接这类模块级状态在同一个线程上保留，不用每个任务重建
+- **参数与返回值过线程要能被结构化克隆**：不能有函数，类的实例按普通对象过去；参数克隆不了在主线程发出时报错，返回值克隆不了在线程交回时报错，两种都只是这一个任务失败，线程照常接下一个
+- **函数抛错按原来的 `name` 与 `message` 在主线程报错，线程留着接着用**；自定义错误类的身份过不来，要让调用方分辨的拒绝（参数不对、找不到）就在线程里换成返回值交回
+- **模块没导出这个函数时任务报错**「模块 … 没有导出函数 …」
+- **任务超时终止它所在的线程、任务报错**：`taskTimeoutMs` 不给就不限；线程出错或退出时，正在跑的任务报错，坏线程从池里拿掉，排队的任务换新线程接着跑——一个任务坏掉只影响它自己
+- **`stats()` 与命令 `workers.stats` 看现状**：每个池开了几个线程、忙几个、排队几个、成功失败各多少，以及最近 20 个任务各等了多久（`waitMs`）、跑了多久（`runMs`）——`waitMs` 一直很大说明线程不够或任务太慢
+
+{/* ref file="../plugins/workers/src/pool.ts" lines="3-12" hash="013dcce69b71" blob="23144da82fd8" */}
+
+{/* ref file="../plugins/workers/src/pool.ts" lines="206-216" hash="f026384bf377" blob="43607ca56067" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="86-100" hash="3ce7b36c9a7d" blob="7f02c862fd43" */}
+
+## 接口
+
+每条接缝上交换什么、各方保证什么，写在接缝页；本节只列线程池插件提供了哪些接口。
+
+<Diagram name="workers-run" title="线程池从开池到回结果（分步）">
+- 插件调 `ctx.gwbWorkers.pool({ name, module, threads, taskTimeoutMs? })` 开池，`module` 是它构建出的 `worker.js` 的地址；名字重了、`threads` 不在 1–16、`module` 不是 `file:` 地址，当场抛错
+- `run(fn, args)` 把任务放进队尾，先来先跑；参数与返回值要能被结构化克隆
+- 线程按需开、常驻，每个线程只加载一次模块；有空闲线程就交给它，没有且没满就开新线程
+- 线程调模块导出的 `fn(...args)`，回 `{ ok, value }` 或带 `name`、`message` 的错误，主线程按原样交给插件
+- 任务超时或线程出错：终止这个线程，这一个任务报错，排队的任务换新线程接着跑
+- 插件卸载时池关闭：排队的与正在跑的都报错，线程全部终止
+</Diagram>
+
+| 接口 | 做什么 | 接缝 |
+| --- | --- | --- |
+| 服务 `ctx.gwbWorkers` 的 `pool(options)` | 给调用方插件开一个池，回 `{ run }`；`options`：`name`（同一插件里不重）、`module`（`file:` 地址的 `URL`，一般写 `new URL('./worker.js', import.meta.url)`）、`threads`（1–16）、`taskTimeoutMs?`；只能在经 `cordis.yml` 加载的插件里调。类型 `GwbWorkers`、`WorkerPool`、`WorkerPoolOptions`、`WorkerPoolStats`、`WorkerTaskRecord` 由本包导出 | [10 线程池](/docs/seams/workers) |
+| 服务 `ctx.gwbWorkers` 的 `stats()` | 各池的现状与最近的任务；与命令 `workers.stats` 同一份 | [10 线程池](/docs/seams/workers) |
+| `WorkerPool.run(fn, args)` | 在空闲线程上调模块导出的函数 `fn(...args)`，先来先跑，线程都忙就排队；抛错按原来的 `name` 与 `message` | [10 线程池](/docs/seams/workers) |
+| 命令 `workers.stats` | 无参数，各池现状与最近 20 个任务；标 `effect: 'read'` | [1 命令总线](/docs/seams/bus) |
+| 线程里加载的模块 | 插件自己的 `worker.js`（构建时单独打出的入口），导出普通函数；拿不到主线程里的对象与服务，用到的东西从参数传入或在模块里自己打开 | [10 线程池](/docs/seams/workers) |
+| 说明书 `gwb-workers` | 包根 `skills/gwb-workers/`，交给说明书插件登记 | [4 说明书](/docs/seams/skills) |
+
+{/* ref file="../plugins/workers/src/pool.ts" lines="14-21" hash="ab7449e52403" blob="23144da82fd8" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="52-68" hash="f7ea4f900587" blob="7f02c862fd43" */}
+
+插件在 `apply` 里开池、把重计算经 `run` 接到命令上：
+
+```ts
+export const inject = ['gwbWorkers']
+
+const WORKER_URL = new URL('./worker.js', import.meta.url)
+
+export function apply(ctx: GwbContext) {
+  const pool = ctx.gwbWorkers.pool({ name: 'library', module: WORKER_URL, threads: 4, taskTimeoutMs: 30 * 60_000 })
+  // worker.js 导出 export function countPapers(dataDir: string): number
+  ctx.gwbCommands.register(def, () => pool.run('countPapers', [dataDir]))
+}
+```
+
+插件的构建要把 `worker.js` 单独作为一个入口打出来，跟 `index.js` 在同一个 `dist/` 下——线程入口 `dist/thread.js` 用 `new URL('./thread.js', import.meta.url)` 找自己旁边，`module` 给的地址在线程里动态 `import`。
+
+## 依赖
+
+注入了哪些服务、peer 怎么写、缺了会怎样，以及用了哪些约定通道（loader 放在 fiber 上的条目、Node 的 `worker_threads`、插件给的模块地址），见[插件之间怎么连](/docs/wiring#godcreatorgwb-workers)。
+
+## 不做的事
+
+- **不替插件决定什么放进线程**：哪些计算重到要放出去，插件自己判断
+- **不传函数、不传类实例**：参数与返回值要能被结构化克隆，做不到的报错，不设法序列化
+- **不共享内存**：不用 `SharedArrayBuffer`，插件要多线程共享数据自己想办法（比如走磁盘上的 SQLite）
+- **线程里没有 cordis 上下文与服务**：模块只能用普通 node 模块，拿不到 `ctx`，也调不了别的插件的服务
+- **不跨插件共用线程**：每个池只属于开它的插件，别的插件要用自己开池
+- **不持久化任务**：工作台重启时排队的任务就没了
+- **不管主线程上别的同步代码**：插件自己的同步代码占住主线程，不归线程池管

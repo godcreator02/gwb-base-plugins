@@ -1,0 +1,75 @@
+---
+title: 10 线程池 gwbWorkers
+description: 连接 gwb-workers 与开池的插件、线程里加载的模块、Node 的 worker_threads；交换的是服务 ctx.gwbWorkers 的 pool(options) / stats() 与 WorkerPool.run(fn, args)。gwb-workers 保证任务先来先跑、一个线程同时只跑一个任务、模块在每个线程只加载一次、任务出错只影响它自己；开池的插件保证模块是构建好的 js、参数与返回值能被结构化克隆
+---
+
+import { Diagram } from '../_shared/diagram'
+
+**本页回答**：插件怎么在工作台上开一个自己的线程池、把同步的重计算放出去；任务怎么排队、上线程、交回；线程坏了、超时了、插件卸载了各发生什么；三方（线程池插件、开池的插件、线程里的模块）各保证什么。线程池插件的功能见 [gwb-workers](/docs/workers)。
+
+## 连接的模块
+
+- [gwb-workers](/docs/workers) `@godcreator/gwb-workers`：服务 `ctx.gwbWorkers`，给每个插件开线程池
+- 开池的插件：此刻是仓外的论文库插件 `@godcreator/gwb-papers`，开了池 `library`，4 个线程
+- 线程里加载的模块：开池的插件随包带的 js（构建时单独打出的入口），导出普通函数
+- Node 的 `worker_threads`：线程由它开出，线程入口是 gwb-workers 构建产物里的 `dist/thread.js`
+
+## 接口
+
+<Diagram name="workers-run" title="线程池从开池到回结果（分步）">
+- 插件调 `ctx.gwbWorkers.pool({ name, module, threads, taskTimeoutMs? })` 开池，`module` 是它构建出的 `worker.js` 的地址；名字重了、`threads` 不在 1–16、`module` 不是 `file:` 地址，当场抛错
+- `run(fn, args)` 把任务放进队尾，先来先跑；参数与返回值要能被结构化克隆
+- 线程按需开、常驻，每个线程只加载一次模块；有空闲线程就交给它，没有且没满就开新线程
+- 线程调模块导出的 `fn(...args)`，回 `{ ok, value }` 或带 `name`、`message` 的错误，主线程按原样交给插件
+- 任务超时或线程出错：终止这个线程，这一个任务报错，排队的任务换新线程接着跑
+- 插件卸载时池关闭：排队的与正在跑的都报错，线程全部终止
+</Diagram>
+
+**服务与池**：`pool` 回的 `WorkerPool` 只有一个 `run`；任务从进队到交回的计时记进 `stats().recent`：
+
+{/* ref file="../plugins/workers/src/pool.ts" lines="14-21" hash="ab7449e52403" blob="23144da82fd8" */}
+
+{/* ref file="../plugins/workers/src/pool.ts" lines="23-46" hash="f9daef5778e5" blob="23144da82fd8" */}
+
+**线程入口**：每个线程启动时加载插件给的模块一次，之后逐条执行任务、交回结果。模块加载不了、没导出这个函数、抛错、返回值不能克隆，都在这一层变成任务报错：
+
+{/* ref file="../plugins/workers/src/thread.ts" hash="28374060828b" blob="2c95a1ad3d6c" */}
+
+**调用方的身份**：池记在调用方插件的包名下，包名从 loader 放在 fiber 上的条目取——不经 `cordis.yml` 加载的插件调不到 `pool`，报错写明为什么：
+
+{/* ref file="../plugins/workers/src/index.ts" lines="76-84" hash="12f22a0a3f93" blob="7f02c862fd43" */}
+
+## 约定
+
+**gwb-workers** 保证：
+
+- 任务先来先跑；一个线程同时只跑一个任务
+- 模块在每个线程只加载一次；线程有任务才开，开了就常驻
+- 任务出错只影响它自己：函数抛错按原 `name`、`message` 报、线程留着；线程出错、退出或任务超时才终止线程，排队的任务换新线程接着跑
+- 池随调用方卸载关闭；关闭时排队的与正在跑的任务都以关闭原因报错，之后的 `run` 也报错
+- `workers.stats` 只读，不看就不动任何池
+
+**开池的插件**保证：
+
+- `module` 是自己构建好的 js 的 `file:` 地址，从 `import.meta.url` 算出来；构建把它单独作为一个入口，跟 `index.js` 在同一个 `dist/` 下
+- 导出的函数参数与返回值能被结构化克隆；要分辨的错误在线程里换成返回值交回
+- 线程里的函数不依赖主线程的状态：每次调用都从参数拿到要的东西（比如数据目录），模块级常驻的东西（数据库连接）在模块里自己打开
+- 多线程同时写同一份数据时自己保证安全：论文库用 SQLite 的 WAL 加 `BEGIN IMMEDIATE`
+
+**线程里的模块**保证：
+
+- 导出普通函数，函数要能单独跑完
+- 不读 cordis 上下文与服务——线程里没有它们
+
+## 不负责的事
+
+- gwb-workers 不替插件决定什么放进线程，也不跨插件共用线程
+- 参数与返回值要能被结构化克隆：不传函数、不传类实例，线程池不设法序列化
+- 线程里没有 cordis 上下文与服务，模块只能用普通 node 模块
+- 任务不持久化：工作台重启时排队的任务就没了
+
+## 测试
+
+`pool.test.ts` 直接用 `thread.ts` 开真线程，测排队、超时、崩溃、关闭与最近任务的记录；`service.test.ts` 用真 cordis 加真 loader 搭一个 home，测池记在调用方包名下、卸载关闭、不经 loader 加载时抛错；`artifact.test.ts` 核对构建产物：相对 import 带扩展名、包名 import 只有 node 内置模块与 `cordis`、只有线程入口有非静态的动态 import。
+
+{/* ref file="../plugins/workers/tests/pool.test.ts" lines="101-108" hash="81ab24427593" blob="1df98787cd61" */}

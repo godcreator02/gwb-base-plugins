@@ -295,6 +295,50 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 {/* ref file="../plugins/py-cli/src/index.ts" lines="29-29" hash="0282d6b10880" blob="2a9461710ace" */}
 
+## @godcreator/gwb-workers
+
+### 提供
+
+| 类别 | 名字 | 说明 |
+| --- | --- | --- |
+| 服务 | `gwbWorkers` | `pool(options)` 给调用方插件开一个线程池、回 `{ run }`，池随调用方卸载关闭；`stats()` 各池现状与最近的任务。类型 `GwbWorkers`、`WorkerPool`、`WorkerPoolOptions`、`WorkerPoolStats`、`WorkerTaskRecord` 由本包导出 |
+| 命令 | `workers.stats` | 各池现状与最近 20 个任务；标 `effect: 'read'` |
+| 说明书 | `gwb-workers` | 包根 `skills/gwb-workers/` |
+| 事件 | 无 | |
+
+{/* ref file="../plugins/workers/src/index.ts" lines="14-22" hash="4fca6fc2c4c7" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="56-65" hash="2ccb17d381d1" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="70-74" hash="87ed568be72e" blob="7f02c862fd43" */}
+
+### 注入
+
+| 服务 | 提供方包 | 必需 / 局部注入 | peer 写法 | 用来做什么 | 缺了会怎样 |
+| --- | --- | --- | --- | --- | --- |
+| `gwbCommands` | `@godcreator/gwb-commands` | 局部注入（`Service.init` 里 `ctx.inject(['gwbCommands'], …)`） | `workspace:^`，标 `optional` | 登记 `workers.stats` | 没有 `workers.stats`，服务照常提供 |
+| `gwbSkills` | `@godcreator/gwb-skills` | 局部注入（`Service.init` 里 `ctx.inject(['gwbSkills'], …)`） | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，服务照常提供 |
+
+{/* ref file="../plugins/workers/src/index.ts" lines="53-53" hash="2bd78485cc1b" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="71-71" hash="aed85aebe511" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/package.json" lines="30-43" hash="0d7b4b7ef2fe" blob="0a608af4d603" */}
+
+### 按名字调用与约定通道
+
+| 通道 | 对方 | 名字 | 用来做什么 |
+| --- | --- | --- | --- |
+| loader 的 `fiber.entry` | cordis loader | `entry.options.name` | 认出开池插件的包名，池按「包名 + 池名」登记；取不到时 `pool` 抛错「只能在经 cordis.yml 加载的插件里调用」 |
+| Node 的 `worker_threads` | 线程 | 线程入口 `new URL('./thread.js', import.meta.url)` | 开线程、收消息；线程入口要和 `index.js` 在同一个 `dist/` 下 |
+| 插件给的模块地址 | 插件随包带的 js | `options.module` 的 `file:` 地址 | 线程启动时动态 `import` 一次，之后逐条执行 `{ id, fn, args }` |
+
+{/* ref file="../plugins/workers/src/index.ts" lines="76-84" hash="12f22a0a3f93" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/src/index.ts" lines="33-35" hash="4bb3a20a4963" blob="7f02c862fd43" */}
+
+{/* ref file="../plugins/workers/src/thread.ts" lines="10-12" hash="62659f5b1b1c" blob="2c95a1ad3d6c" */}
+
 ## @godcreator/gwb-settings
 
 ### 提供

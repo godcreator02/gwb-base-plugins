@@ -48,6 +48,7 @@ pnpm check
 | data | `paths.test.ts`、`store.test.ts`、`owner.test.ts`、`service.test.ts` | 名字与目录；读的三种结果、原子写、同时写好几次；归属文件；服务按调用方条目给目录、归属不符时抛错 |
 | node-cli | `registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | 登记校验；总线参数与 `cwd` 校验；真 node 子进程的退出码、参数不经 shell、超时、长输出写临时文件；服务登记成总线命令、经调用方上下文取总线、总线拒收时从登记表里删掉那条 |
 | py-cli | `bootstrap.test.ts`、`registry.test.ts`、`invoke.test.ts`、`run.test.ts`、`service.test.ts` | venv 检查的判断；登记校验；副本各测一份；服务测试预先建好已就绪的 venv 目录、记号与 dist-info，用当前 node 的拷贝当入口程序，不启动 uv |
+| workers | `pool.test.ts`、`service.test.ts`、`artifact.test.ts` | 直接用 `thread.ts` 开真线程：参数与返回值过线程、线程常驻模块只加载一次、排队先来先跑、`threads` 上限、线程里同步占住时主线程照常、报错与超时换新线程、参数不能克隆时只这一个任务失败不占住线程、关闭、最近任务、选项校验；真 cordis 加真 loader 的 home：池记在调用方包名下、同插件重名抛错、卸载关池、不经 loader 抛错；构建产物：相对 import 带扩展名、包名 import 只有 node 内置模块与 `cordis`、只有线程入口有非静态的动态 import |
 
 {/* ref file="../plugins/commands/tests/service.test.ts" lines="11-11" hash="436203d2800b" blob="8ce55c6dd236" */}
 
@@ -57,10 +58,10 @@ pnpm check
 
 ## 发版
 
-**包的顺序**：`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、两个命令行运行插件用命令总线，设置与两个命令行运行插件用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件（逐条见[插件之间怎么连](/docs/wiring)）。全部一起发时这样传：
+**包的顺序**：`devkit.release` 的 `packages` 被依赖的在前。本仓插件之间的依赖是：说明书、设置、两个命令行运行插件、线程池用命令总线，设置与两个命令行运行插件、线程池用说明书，MCP 插件用命令总线、设置、说明书与 node 命令行运行插件（逐条见[插件之间怎么连](/docs/wiring)）。全部一起发时这样传：
 
 ```
-devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills","plugins/settings","plugins/data","plugins/node-cli","plugins/py-cli","plugins/mcp"]}
+devkit.release {"dir":"<仓根绝对路径>","packages":["plugins/commands","plugins/skills","plugins/settings","plugins/data","plugins/workers","plugins/node-cli","plugins/py-cli","plugins/mcp"]}
 ```
 
 **各包清单此刻的样子**：`devkit.release` 按每个包 `package.json` 的 `publishConfig.registry` 决定发到哪、没写就拒发，并要求 peer 里写了内核包、写法是 `^x.y.z`。每个包的 `publishConfig` 都是 npmjs（`https://registry.npmjs.org/`，`access` 为 `public`），许可证是 MIT、`files` 里带 `LICENSE`，peer 里内核包都是 `^0.10.0`；本机的 `@godcreator` 还从 gitea 的团队源装的这段时间，发版加 `alsoPublishTo` 同时发到团队源（见 devkit 的发正式版那页）；用到的本仓插件也写在 peer（`workspace:^`，发版时换成 `^<版本号>`）：

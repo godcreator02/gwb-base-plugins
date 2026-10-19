@@ -9,7 +9,7 @@ import { Diagram } from './_shared/diagram'
 
 ## 是什么，为什么这样划分
 
-god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、node 与 python 命令行工具。它们都是 home 里 `cordis.yml` 列出的普通插件，和别的插件一样装在 home 里、可以停用和升级。内核只提供插件平台，不认识任何命令；界面在界面插件仓，查日志的命令 `logger.query` 也由那边的基础界面插件 `@godcreator/gwb-baseui` 登记；插件管理（装插件、找插件、配包源）在生命周期插件仓 `gwb-lifecycle-plugins`，内核在内核仓。
+god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、设置、数据、node 与 python 命令行工具、线程池。它们都是 home 里 `cordis.yml` 列出的普通插件，和别的插件一样装在 home 里、可以停用和升级。内核只提供插件平台，不认识任何命令；界面在界面插件仓，查日志的命令 `logger.query` 也由那边的基础界面插件 `@godcreator/gwb-baseui` 登记；插件管理（装插件、找插件、配包源）在生命周期插件仓 `gwb-lifecycle-plugins`，内核在内核仓。
 
 这个仓的插件只从内核包取类型，不依赖任何界面包，彼此之间只经服务连接，命令只给页面与 agent。为什么这样划分、刻意不做什么，见[关键设计](/docs/design)。
 
@@ -17,7 +17,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 
 **一次 agent 调用**：agent 的 MCP 客户端向 `http://127.0.0.1:<端口>/mcp` 发 POST → MCP 插件先做 token、Host、Origin 三项检查（接缝 2）→ `index` / `search` 每次重新读取命令总线与说明书插件的清单，`run` 把命令名和参数交给命令总线、标明来自 MCP（接缝 3、1）→ 命令总线找到登记这条命令的插件执行，比如设置插件的 `settings.get` 按分区读出一项（接缝 5）→ 回执原路回到 MCP 插件，翻译成工具结果；命令失败是带 `isError` 的文本，不是协议错误。
 
-**一个插件加载时**：loader 按 `cordis.yml` 加载它，在它的 fiber 上放下条目（接缝 8）→ 它在 `apply` 里把能力登记成命令（接缝 1）、把包根的 `skills/` 交给说明书插件（接缝 4）、声明自己的设置项（接缝 5）、取自己的数据目录（接缝 6）；设置分区与数据目录按条目 id 的末段命名，第一次用到时记下归哪个包（接缝 7）→ 它随包带的命令行工具交给 node 或 python 命令行运行插件，同时成为总线命令（接缝 9）。插件卸载时，它登记的命令、说明书、设置声明、命令行工具都跟着注销。
+**一个插件加载时**：loader 按 `cordis.yml` 加载它，在它的 fiber 上放下条目（接缝 8）→ 它在 `apply` 里把能力登记成命令（接缝 1）、把包根的 `skills/` 交给说明书插件（接缝 4）、声明自己的设置项（接缝 5）、取自己的数据目录（接缝 6）；设置分区与数据目录按条目 id 的末段命名，第一次用到时记下归哪个包（接缝 7）→ 它随包带的命令行工具交给 node 或 python 命令行运行插件，同时成为总线命令（接缝 9）→ 它要做同步的重计算时向线程池开池，任务在线程里跑、不占主线程（接缝 10）。插件卸载时，它登记的命令、说明书、设置声明、命令行工具、开的线程池都跟着注销。
 
 ## 按要做的事读
 
@@ -27,13 +27,14 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 - **插件要存设置或数据**：[设置](/docs/seams/settings)、[数据](/docs/seams/data)、[条目身份](/docs/seams/entry-identity)；包名对不上、要接着用旧数据：[数据归属](/docs/seams/owners)
 - **给 agent 提供能力、排查 MCP**：[MCP 协议](/docs/seams/mcp-protocol)、[命令表开给 agent](/docs/seams/agent-surface)
 - **把一个命令行工具接进工作台**：[命令行工具](/docs/seams/cli)
+- **插件有同步的重计算**：[线程池](/docs/seams/workers)
 - **查一个插件注入了谁、调了谁的命令、改名会影响谁**：[插件之间怎么连](/docs/wiring)
 
 ## 接缝图
 
 <Diagram name="seam-map" title="虚线框是本仓，连线是接缝，编号对应下面的表">
-- 本仓插件：MCP 入口 `gwb-mcp`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`
-- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；照报错手工处理归属记录的人（接缝 7）；cordis loader；子进程（Electron 以 node 模式运行、uv）
+- 本仓插件：MCP 入口 `gwb-mcp`、命令总线 `gwb-commands`、node 命令行工具 `gwb-node-cli`、说明书 `gwb-skills`、python 命令行工具 `gwb-py-cli`、设置 `gwb-settings`、数据 `gwb-data`、线程池 `gwb-workers`
+- 仓外：MCP 客户端（agent）；内核（把页面发来的命令交给命令总线）；别的插件（外壳、插件管理、应用插件等，用本仓提供的服务）；照报错手工处理归属记录的人（接缝 7）；cordis loader；子进程（Electron 以 node 模式运行、uv）；线程（Node 的 worker_threads，加载插件的 worker.js）
 - 各插件都经接缝 1 登记自己的命令；图上只画命令总线到内核、到别的插件那两条
 - 实线接缝有代码接口；点线接缝 8 只靠约定
 </Diagram>
@@ -51,6 +52,7 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | 7 | 数据归属 | 数据、设置 ↔ 手工处理归属的人 | `.owner.json` 与 `$owners`、拒绝时的报错；`owners()`、`transferOwner(id, pkg)` 由插件管理的 `transfer-owner` 调用 | [数据归属](/docs/seams/owners) |
 | 8 | 条目身份（约定） | 数据、设置、说明书、命令、两个命令行工具插件 ↔ cordis loader | 调用方的条目 id 与包名；条目 id 转目录名、分区名的算法 | [条目身份](/docs/seams/entry-identity) |
 | 9 | 命令行工具 | node / python 命令行工具插件 ↔ 登记工具的插件、子进程 | `gwbNodeCli` / `gwbPyCli` 的 `register`、`run`；回执 `CliRunResult`；python 的 venv | [命令行工具](/docs/seams/cli) |
+| 10 | 线程池 | 线程池 ↔ 开池的插件、线程 | `gwbWorkers` 的 `pool`、`run`、`stats`；线程里加载的模块与它导出的函数 | [线程池](/docs/seams/workers) |
 
 ## 插件
 
@@ -63,5 +65,6 @@ god 工作台的无界面基础插件：命令总线、MCP 入口、说明书、
 | `@godcreator/gwb-data` | 各插件的数据目录与文档 | [gwb-data](/docs/data) |
 | `@godcreator/gwb-node-cli` | 把 node 写的命令行工具变成命令 | [gwb-node-cli](/docs/node-cli) |
 | `@godcreator/gwb-py-cli` | 把 python 写的命令行工具变成命令 | [gwb-py-cli](/docs/py-cli) |
+| `@godcreator/gwb-workers` | 插件把同步的重计算放进自己的线程池 | [gwb-workers](/docs/workers) |
 
-{/* tree dir="../plugins" depth="1" hash="8d9669d96c9f" */}
+{/* tree dir="../plugins" depth="1" hash="efad6284009c" */}
