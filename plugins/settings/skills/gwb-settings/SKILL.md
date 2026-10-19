@@ -37,7 +37,7 @@ description: 读改设置、查凭据状态、不回显地复制导入生成凭�
 
 ## 修改普通设置
 
-1. 按位置调 `settings.set {section,key,value}`；按声明类型给值：`string`、`number`、`boolean`、`string-list`。清除普通设置用 `settings.delete {section,key}`。
+1. 按位置调 `settings.set {section,key,value}`；按声明类型给值：`string`、`number`、`boolean`、`string-list`。`settings.all` 那行带 `hasOptions:true` 的，先调 `settings.options {section,key}` 看能填什么，只能填清单里的值。清除普通设置用 `settings.delete {section,key}`。
 2. 删除值后声明保留，插件内部 `get` 回到 `default`。
 3. 增删一份实例就是改组名那一项的名单：`settings.set {section,key:"<组>",value:["deepseek","kimi"]}`，实例名一律 kebab-case、不重复，不合规整次拒绝。新实例的各字段随即出现在列表里（键 `<组>.<实例>.<字段>`），按位置写普通字段、用 `credentials.*` 写 secret 字段；去掉的实例值留着，成为 `live:false` 的项，要清就按位置删。
 4. `description` 写了重启生效的，完成后重启指定 home。
@@ -46,8 +46,8 @@ description: 读改设置、查凭据状态、不回显地复制导入生成凭�
 
 ## 在插件里声明与取用
 
-1. 注入 `gwbSettings`，在 `apply` 中 `define({key,title,type,description?,default?,shared?})`；key 用 kebab-case，title 不为空。
-2. `get(key)` 同步取值，没有值时回 `default`；没声明过的 key 去公共区 `*` 找。`set`、`delete` 只能操作自己声明过的项。普通值由消费插件校验类型。
+1. 注入 `gwbSettings`，在 `apply` 中 `define({key,title,type,description?,default?,shared?,options?})`；key 用 kebab-case，title 不为空。值只能从一份清单里挑的 string 项给 `options: async () => [...]`：设置界面画成下拉框，写入时不在清单里就拒绝；清单每次现列，不缓存。
+2. `get(key)` 同步取值，没有值时回 `default`；没声明过的 key 去公共区 `*` 找。`set`、`delete` 只能操作自己声明过的项。普通值由消费插件校验类型。值变了要跟着做事的，用 `watch(key, listener)`：这一项写进文件后回调收到 get 会回的值，不用轮询。
 3. secret 仍声明 `type:'secret'`，服务内部 `get/set/delete` 保持取值与读写能力，写入只接受字符串。插件不用另管文件或引用；跨插件按位置取用走内部 `credentials.reveal`，`settings.get` 对插件来源也拒绝 secret。不要把取到的值拼进回执、异常或日志。
 4. 份数不定、字段相同的配置（如多份模型，每份是模型名、请求地址、token）用一组设置：`defineGroup({key,title,description?,fields:[{key,title,type,description?,default?},…]})`。组名那一项存实例名单，名单里每个实例的每个字段由设置插件声明成 `<组>.<实例>.<字段>`；用时调 `getGroup(key)` 现读，按名单顺序回 `[{name,values}]`，没值回 `default`，secret 回明文。名单变化不发事件，别缓存结果。组键、字段键用 kebab-case，组不能 `shared`。
 5. 只需要本 home 内共享的项才写 `shared:true`；它不代表跨 home 共享。

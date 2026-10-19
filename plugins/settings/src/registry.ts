@@ -21,6 +21,11 @@ export interface SettingDef {
   description?: string
   /** 文件里没值时 get 回它 */
   default?: unknown
+  /**
+   * 只能配 `type: 'string'`。界面画成下拉框，清单经 `settings.options` 取；经命令或 `set` 写入时值必须在清单里，`delete` 不查。
+   * 每次用到都调一次，不缓存：清单可以随本机状态变（如装了新字体）
+   */
+  options?: () => Promise<readonly string[]>
 }
 
 /**
@@ -83,6 +88,8 @@ export interface SettingView extends Slot {
   default?: unknown
   /** 此刻有插件声明着它吗。插件停了文件里那份还在，但这里是 false */
   live: boolean
+  /** 声明里带 `options`：界面画成下拉框，清单经 `settings.options` 取。没有选项的行不带 */
+  hasOptions?: true
   /** 这一项是 `secret` 型吗。非 secret 行不带 */
   secret?: true
   /** secret 行设过值没有。非 secret 行不带 */
@@ -104,6 +111,10 @@ export interface SettingsRegistry {
   locate(owner: Owner, key: string): Slot | undefined
   /** 内部按位置直读，不经身份，secret 项也回明文；命令层先校验对象类型与调用来源 */
   read(slot: Slot): unknown
+  /** 按位置读、没值时回此刻声明里的 default：就是声明方 get 会回的值，给 watch 的回调用 */
+  effectiveValue(slot: Slot): unknown
+  /** 此刻声明着这个位置、且带 `options` 的那份声明的清单函数；没有就回 undefined */
+  optionsAt(slot: Slot): (() => Promise<readonly string[]>) | undefined
   /** 不含值的状态，普通项也不带 value/default。不存在时回 undefined */
   status(slot: Slot): SettingStatus | undefined
   /** 写的是某个组的实例名单时，先校验新名单（不合规抛错、什么都不改），写入后补上新实例的声明、撤销去掉的实例的声明 */
@@ -265,6 +276,7 @@ function assertDeclarable(owner: Owner, def: SettingDef): string {
   const ownSection = entrySection(owner.entryId)
   assertSection(ownSection)
   if (def.title === '') throw new Error(`设置 ${def.key} 的 title 是空的。`)
+  if (def.options !== undefined && def.type !== 'string') throw new Error(`设置 ${def.key} 配了 options，只有 type 为 'string' 的项能配，它是 '${def.type}'。`)
   return ownSection
 }
 
@@ -303,16 +315,27 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     }
   }
 
-  /** 此刻有声明的各项的位置，与其中带默认值的那些 */
-  const liveViewKeysAndDefaults = (): { liveViewKeys: Set<string>; declaredDefaultByViewKey: Map<string, unknown> } => {
+  /** 此刻有声明的各项的位置，与其中带默认值、带选项的那些 */
+  const liveViewKeysAndDefaults = (): { liveViewKeys: Set<string>; declaredDefaultByViewKey: Map<string, unknown>; viewKeysWithOptions: Set<string> } => {
     const liveViewKeys = new Set<string>()
     const declaredDefaultByViewKey = new Map<string, unknown>()
+    const viewKeysWithOptions = new Set<string>()
     for (const { owner, def } of declarationsByKey.values()) {
       const view = viewKey(slotOf(owner, def))
       liveViewKeys.add(view)
       if (def.default !== undefined) declaredDefaultByViewKey.set(view, def.default)
+      if (def.options !== undefined) viewKeysWithOptions.add(view)
     }
-    return { liveViewKeys, declaredDefaultByViewKey }
+    return { liveViewKeys, declaredDefaultByViewKey, viewKeysWithOptions }
+  }
+
+  /** 此刻声明着这个位置的那份声明；共享项与分区项的位置都按 slotOf 比 */
+  const liveDeclarationAt = (slot: Slot): SettingDef | undefined => {
+    const wanted = viewKey(slot)
+    for (const { owner, def } of declarationsByKey.values()) {
+      if (viewKey(slotOf(owner, def)) === wanted) return def
+    }
+    return undefined
   }
 
   const assertNotDowngradingSecret = (owner: Owner, def: SettingDef): void => {
@@ -434,6 +457,15 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
       return valueAt(slot)
     },
 
+    effectiveValue(slot) {
+      const stored = valueAt(slot)
+      return stored === undefined ? liveDeclarationAt(slot)?.default : stored
+    },
+
+    optionsAt(slot) {
+      return liveDeclarationAt(slot)?.options
+    },
+
     status(slot) {
       const stored = settingsBySection[slot.section]?.[slot.key]
       if (stored === undefined) return undefined
@@ -477,14 +509,20 @@ export function createRegistry(warn: (message: string) => void): SettingsRegistr
     },
 
     all() {
-      const { liveViewKeys, declaredDefaultByViewKey } = liveViewKeysAndDefaults()
+      const { liveViewKeys, declaredDefaultByViewKey, viewKeysWithOptions } = liveViewKeysAndDefaults()
       const rows: SettingView[] = []
       for (const [section, items] of Object.entries(settingsBySection)) {
         for (const [key, stored] of Object.entries(items)) {
           const slot: Slot = { section, key }
           const view = viewKey(slot)
           const declaredDefault = declaredDefaultByViewKey.get(view)
-          rows.push({ ...slot, ...stored, ...(declaredDefault !== undefined ? { default: declaredDefault } : {}), live: liveViewKeys.has(view) })
+          rows.push({
+            ...slot,
+            ...stored,
+            ...(declaredDefault !== undefined ? { default: declaredDefault } : {}),
+            live: liveViewKeys.has(view),
+            ...(viewKeysWithOptions.has(view) ? { hasOptions: true as const } : {}),
+          })
         }
       }
       // secret 行的明文在这里拦下，见 `maskSecret`

@@ -24,17 +24,25 @@ import { Diagram } from '../_shared/diagram'
 
 **服务**有 `define/get/set/delete` 与一组设置的 `defineGroup/getGroup`。同步 get 先找自己声明的项，没有保存值回 default；自己没声明的 key 读公共区 `*`。set/delete 只能操作自己声明的项：
 
-{/* ref file="../plugins/settings/src/index.ts" lines="58-79" hash="5343c9af5dc7" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="58-84" hash="6b0e4d11eb98" blob="fd1a447dd1c3" */}
+
+**选项**：string 型的项声明时可以带 `options`，它是一个回字符串数组的异步函数，每次用到都调一次、不缓存，清单可以随本机状态变（如装了新字体）。别的类型配 `options`，`define` 报错。写入前先列一遍清单，值不在里面就整次拒绝，什么都不写；列清单放在写入队列外面做，不卡住别的写入：
+
+{/* ref file="../plugins/settings/src/index.ts" lines="404-412" hash="76a973e0f291" blob="fd1a447dd1c3" */}
+
+**监听**：`watch(key, listener)` 只收自己声明过的项。这一项写进文件之后，不管是经 `settings.set`、设置窗格、`credentials.*` 还是自己的 set / delete，回调收到 get 会回的值（删掉后就是 default）。写文件失败不通知；回调抛错不影响已写入的值，记一条 warn 写明是哪个条目的回调，接着通知别的回调：
+
+{/* ref file="../plugins/settings/src/index.ts" lines="414-426" hash="d4f130a6ce94" blob="fd1a447dd1c3" */}
 
 `shared:true` 只表示本 home 内公共设置；不表示与别的 home 共用文件或同步值。条目要用固定 id，分区取 id 末段，名称规则见 `plugins/settings/src/paths.ts`。
 
 **一组设置**用 `defineGroup` 声明：组名那一项是 string-list，存实例名单；名单里每个实例的每个字段由设置插件声明成调用方分区里的普通设置，键名 `<组>.<实例>.<字段>`，标签是 `<实例> · <字段 title>`，类型、说明、默认值取字段的。组不进公共区。`getGroup` 只认调用方自己声明过的组，按名单顺序回 `{name, values}`，没值的字段回 default，secret 回明文；名单变化不发事件，使用方用时现读：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="381-414" hash="9b5bdd01022f" blob="e25cc1fe6013" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="404-437" hash="9b5bdd01022f" blob="072a55b331da" */}
 
 名单经 `settings.set` 命令或服务 `set` 写入时先整份校验（字符串数组、每个都是 kebab-case、不重复），不合规整次拒绝、什么都不写；写入后新实例补声明，去掉的实例撤销声明，它的值（含凭据）留在文件里，成为 `live:false` 的项，和插件卸载后留下的值一样。`settings.delete` 抹掉名单等于名单变空。盘上的名单不合规时 `defineGroup` 直接报错：
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="444-463" hash="bf58523d651d" blob="e25cc1fe6013" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="476-495" hash="bf58523d651d" blob="072a55b331da" */}
 
 派生项就是普通的单项设置，`settings.*` 与 `credentials.*` 按位置定位照常能用；`credentials.*` 的槽位键收 kebab-case 或点号连接的三段，磁盘格式不变。
 
@@ -42,14 +50,14 @@ import { Diagram } from '../_shared/diagram'
 
 | 对象 | 查询入口 | 写入与清除 |
 | --- | --- | --- |
-| 普通设置 | settings.all/get | settings.set/delete |
+| 普通设置 | settings.all/get；带选项的项用 settings.options 查能填什么 | settings.set/delete |
 | 凭据 | credentials.list/status；本地查看用 credentials.reveal | credentials.copy/import/generate/delete；本地输入用 credentials.set |
 
-`settings.all {section?}` 只列普通设置，`settings.get` 回保存值，未保存回 undefined，经 MCP 翻译为 null，不回默认值。`settings.get/set/delete` 对任何来源的 secret 目标都报错并指向 `credentials.*`，插件内部按位置调用也遵守这一条。
+`settings.all {section?}` 只列普通设置，声明里带选项的行多一个 `hasOptions: true`；`settings.options {section,key}` 调那一项的 `options()` 回字符串数组，此刻没人声明、或声明里没有选项都报错。`settings.get` 回保存值，未保存回 undefined，经 MCP 翻译为 null，不回默认值。`settings.get/set/delete` 对任何来源的 secret 目标都报错并指向 `credentials.*`，插件内部按位置调用也遵守这一条。
 
 `credentials.list {section?}` 只列凭据，沿用 SettingView 的分区、声明和 live 字段；不带 value/default，只有 secret、isSet 与已保存时的定长掩码。`credentials.status {section,key}` 返回 `{section,key,type,secret:true,isSet,live}`；目标不存在回 null，普通设置目标报错。isSet 是存储状态，不是账号认证结果。
 
-{/* ref file="../plugins/settings/src/index.ts" lines="163-255" hash="03cfd62d61cd" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="184-282" hash="0686317f4649" blob="fd1a447dd1c3" */}
 
 **不回显的写操作**：
 
@@ -76,7 +84,7 @@ copy/import/generate 的目标必须仍由已启用插件声明，已有值需 `
 
 {/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
 
-凭据文件损坏或无法读取会报错；旧 settings 文件解析失败时可暂时按空设置读取，但后续写入会重新严格检查、拒绝覆盖。错误不附文件内容或解析片段。操作失败后服务按可读取的磁盘事实恢复该项，调用方应重新查状态，不把失败等同于完全没有落盘。
+凭据文件损坏或无法读取会报错；旧 settings 文件解析失败时可暂时按空设置读取，但后续写入会重新严格检查、拒绝覆盖。错误不附文件内容或解析片段。操作失败后服务按可读取的磁盘事实恢复该项，调用方应重新查状态，不把失败等同于什么都没写进文件。
 
 ## 约定
 
@@ -95,4 +103,4 @@ copy/import/generate 的目标必须仍由已启用插件声明，已有值需 `
 
 ## 测试
 
-`plugins/settings/tests/registry.test.ts` 覆盖分区、状态、掩码与一组设置的派生声明和名单校验；`service.test.ts` 覆盖调用来源、凭据命令、覆盖检查，以及经命令改名单、派生凭据的导入与打码；`store.test.ts` 覆盖迁移、删除记录、损坏保护与写入顺序。真实 loader 身份与本地眼睛按钮由隔离 home 联合验证。
+`plugins/settings/tests/registry.test.ts` 覆盖分区、状态、掩码与一组设置的派生声明和名单校验；`service.test.ts` 覆盖调用来源、凭据命令、覆盖检查，经命令改名单、派生凭据的导入与打码，选项的清单校验与 `settings.options`，以及 `watch` 的通知、注销与回调出错；`store.test.ts` 覆盖迁移、删除记录、损坏保护与写入顺序。真实 loader 身份与本地眼睛按钮由隔离 home 联合验证。

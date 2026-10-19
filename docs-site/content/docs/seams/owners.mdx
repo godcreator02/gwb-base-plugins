@@ -30,7 +30,7 @@ import { Diagram } from '../_shared/diagram'
 
 {/* ref file="../plugins/data/src/index.ts" lines="78-88" hash="c979fdc01ba4" blob="cc9bc17278e7" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="317-326" hash="c31a538d4fc6" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="361-370" hash="c31a538d4fc6" blob="fd1a447dd1c3" */}
 
 - `owners()`：目录名或分区名（条目 id 末段）→ 包名。数据插件的是异步的，设置插件的是同步的；还没记过归属的不列
 - `transferOwner(id, pkg)`：把一个目录或分区的归属改成 `pkg`，立刻写盘；`id` 认完整的条目 id，也认只有末段的 id；包名为空抛错；设置插件拒绝转移公共区 `*`
@@ -43,13 +43,13 @@ import { Diagram } from '../_shared/diagram'
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="8-9" hash="4d737fd4b864" blob="fa8c33f0a6bd" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="283-292" hash="492b3ea8de11" blob="e25cc1fe6013" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="295-304" hash="492b3ea8de11" blob="072a55b331da" */}
 
 **报错里写的手工处理办法**：两边拒绝时都写明归属于谁、由人在磁盘上哪里处理。数据那边给出目录的完整路径与 `.owner.json`；设置那边给出 `<home>/settings.json` 里的分区名与 `$owners` 那一项，并要求先关掉工作台——设置插件每次写文件都用内存里的整张表替换整份文件，工作台开着时手改的内容会被下一次写入覆盖：
 
 {/* ref file="../plugins/data/src/owner.ts" lines="53-53" hash="83e1a216684d" blob="35b771a926f0" */}
 
-{/* ref file="../plugins/settings/src/registry.ts" lines="288-288" hash="a856e409d9ad" blob="e25cc1fe6013" */}
+{/* ref file="../plugins/settings/src/registry.ts" lines="300-300" hash="a856e409d9ad" blob="072a55b331da" */}
 
 ## 约定
 

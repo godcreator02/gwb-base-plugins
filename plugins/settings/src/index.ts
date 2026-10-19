@@ -45,6 +45,7 @@ export const ALL_COMMAND = 'settings.all'
 export const GET_COMMAND = 'settings.get'
 export const SET_COMMAND = 'settings.set'
 export const DELETE_COMMAND = 'settings.delete'
+export const OPTIONS_COMMAND = 'settings.options'
 export const CREDENTIALS_LIST_COMMAND = 'credentials.list'
 export const CREDENTIALS_STATUS_COMMAND = 'credentials.status'
 export const CREDENTIALS_SET_COMMAND = 'credentials.set'
@@ -67,10 +68,15 @@ export interface GwbSettingsApi {
   getGroup(key: string): SettingGroupInstance[]
   /** 读一项。同步——表在内存里 */
   get(key: string): unknown
-  /** 写一项，写进文件 */
+  /** 写一项，写进文件。声明里带 `options` 的，值必须在清单里 */
   set(key: string, value: unknown): Promise<void>
   /** 抹掉值，定义还在。get 因此回落到 default */
   delete(key: string): Promise<void>
+  /**
+   * 自己声明过的一项写进文件之后（经命令、界面还是本服务的 set / delete 都算），回调收到 get 会回的那个值。
+   * 回注销函数，调用方卸载时自动注销。回调抛错不影响那次写入，记一条 warn
+   */
+  watch(key: string, listener: (value: unknown) => void): () => void
   /** 各分区归哪个包：分区名（条目 id 最后一段）→ 包名。还没被 define 过的分区不列。插件管理的 plugin-manager.transfer-owner 调它 */
   owners(): SettingsOwners
   /** 把一个分区改归 `pkg`，写进文件。`id` 认完整 entryId 也认不带前缀的 id。插件管理的 plugin-manager.transfer-owner 调它 */
@@ -80,6 +86,11 @@ export interface GwbSettingsApi {
 function argsAsRecord(args: unknown): Record<string, unknown> {
   if (!isRecord(args)) throw new Error('参数要是一个对象：{ section, key }')
   return args
+}
+
+/** 分区名与设置名都不可能含 NUL */
+function watcherSlotKey(slot: Slot): string {
+  return `${slot.section}\u0000${slot.key}`
 }
 
 /** 命令按位置定位，不看调用方身份：页面不是插件，没有身份可取 */
@@ -94,7 +105,15 @@ function slotFromArgs(args: unknown): Slot {
 
 const ALL_USAGE =
   '参数 { section? }：section 是分区名（插件条目 id 的末段，shared 项是 *），只回这一个分区；不给回全部分区。' +
-  '回普通设置 [{ section, key, title?, type?, description?, value?, default?, live }]；凭据用 credentials.list'
+  '回普通设置 [{ section, key, title?, type?, description?, value?, default?, live, hasOptions? }]：hasOptions 为 true 的项只能填 settings.options 列出的值；凭据用 credentials.list'
+
+const OPTIONS_USAGE = '参数 { section, key }。回这一项能填的值（字符串数组），每次现列；只有 settings.all 里 hasOptions 为 true 的项有，别的项报错'
+
+/** 设置变了要通知的回调，按位置分；`watch` 的调用方是谁写在 entryId 里，回调出错时报得出是谁的 */
+interface SettingWatcher {
+  entryId: string
+  listener: (value: unknown) => void
+}
 
 const CREDENTIALS_LIST_USAGE =
   '参数 { section? }：只回指定分区；不给回全部分区。回凭据 [{ section, key, title?, type, description?, live, secret:true, isSet, mask? }]，不含值和默认值'
@@ -130,6 +149,8 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private pendingMergedWrite: ReturnType<typeof setTimeout> | undefined
   /** 派生给各调用方的 Service 共用这一条队列，覆盖检查和写入不可交错。 */
   private readonly operations = { tail: Promise.resolve() }
+  /** 派生给各调用方的 Service 共用这一张表：位置（section + NUL + key）→ 那一项的回调 */
+  private readonly watchersBySlot = new Map<string, Set<SettingWatcher>>()
 
   constructor(ctx: GwbContext) {
     super(ctx, 'gwbSettings')
@@ -178,7 +199,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       ),
     )
     contextWithCommands.effect(() =>
-      commandBus.register({ name: SET_COMMAND, description: '按位置写一项普通设置', usage: '参数 { section, key, value }。凭据项拒绝写入，请用 credentials.*', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
+      commandBus.register({ name: SET_COMMAND, description: '按位置写一项普通设置', usage: '参数 { section, key, value }。凭据项拒绝写入，请用 credentials.*；hasOptions 的项值必须在 settings.options 列出的清单里', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
         const raw = argsAsRecord(args)
         await this.writeValueAt(slotFromArgs(raw), raw['value'], true)
         return { ok: true }
@@ -188,6 +209,12 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
       commandBus.register({ name: DELETE_COMMAND, description: '按位置抹掉一项普通设置的值（定义还在）', usage: '参数 { section, key }。凭据项请用 credentials.delete', plugin: PACKAGE_NAME, effect: 'write' }, async (args) => {
         await this.dropValueAt(slotFromArgs(args), 'setting')
         return { ok: true }
+      }),
+    )
+    contextWithCommands.effect(() =>
+      commandBus.register({ name: OPTIONS_COMMAND, description: '一项设置能填哪些值（界面画成下拉框的那些项）', usage: OPTIONS_USAGE, plugin: PACKAGE_NAME, effect: 'read' }, async (args) => {
+        const slot = slotFromArgs(args)
+        return [...(await this.requireOptionsAt(slot)())]
       }),
     )
     this.registerCredentialCommands(contextWithCommands, commandBus)
@@ -314,6 +341,23 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     await this.dropValueAt(this.slotOfOwnDeclaration(key, '删'))
   }
 
+  watch(key: string, listener: (value: unknown) => void): () => void {
+    const identity = this.callerEntryIdentity()
+    const slot = this.slotOfOwnDeclaration(key, '监听')
+    const watcher: SettingWatcher = { entryId: identity.entryId, listener }
+    const slotKey = watcherSlotKey(slot)
+    const watchers = this.watchersBySlot.get(slotKey) ?? new Set<SettingWatcher>()
+    this.watchersBySlot.set(slotKey, watchers)
+    watchers.add(watcher)
+    const unwatch = (): void => {
+      watchers.delete(watcher)
+      if (watchers.size === 0 && this.watchersBySlot.get(slotKey) === watchers) this.watchersBySlot.delete(slotKey)
+    }
+    // this.ctx 是调用方的上下文，调用方卸载时自动注销
+    this.ctx.effect(() => unwatch)
+    return unwatch
+  }
+
   owners(): SettingsOwners {
     return { ...this.settingsRegistry.owners() }
   }
@@ -351,7 +395,38 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
     return status
   }
 
+  private requireOptionsAt(slot: Slot): () => Promise<readonly string[]> {
+    const options = this.settingsRegistry.optionsAt(slot)
+    if (options === undefined) throw new Error(`设置 ${slot.section}.${slot.key} 没有选项：只有此刻有插件声明着、声明里带 options 的项才有（settings.all 里 hasOptions 为 true）`)
+    return options
+  }
+
+  /** 列清单可能要跑外部程序，放在写入队列外面做，不卡住别的写入 */
+  private async assertAmongOptions(slot: Slot, value: unknown): Promise<void> {
+    const options = this.settingsRegistry.optionsAt(slot)
+    if (options === undefined) return
+    const allowed = await options()
+    if (typeof value !== 'string' || !allowed.includes(value)) {
+      throw new Error(`设置 ${slot.section}.${slot.key} 只能填清单里的值，${JSON.stringify(value)} 不在里面；清单用 ${OPTIONS_COMMAND} 查，回到默认用 ${DELETE_COMMAND}`)
+    }
+  }
+
+  /** 回调抛错不影响已经写进文件的值：错误属于那个调用方，记 warn 写明是谁的，接着通知别的回调 */
+  private notifyWatchers(slot: Slot): void {
+    const watchers = this.watchersBySlot.get(watcherSlotKey(slot))
+    if (watchers === undefined) return
+    const value = this.settingsRegistry.effectiveValue(slot)
+    for (const { entryId, listener } of watchers) {
+      try {
+        listener(value)
+      } catch (error) {
+        this.logWarn(`${entryId} 监听设置 ${slot.section}.${slot.key} 的回调出错：${String(error)}`)
+      }
+    }
+  }
+
   private async writeValueAt(slot: Slot, value: unknown, ordinaryOnly = false): Promise<void> {
+    await this.assertAmongOptions(slot, value)
     await this.enqueue(async () => {
       if (ordinaryOnly) this.assertOrdinarySetting(slot)
       if (this.settingsRegistry.status(slot)?.secret === true && typeof value !== 'string') throw new Error('凭据值要是字符串；清除请用 delete')
@@ -393,6 +468,7 @@ export default class GwbSettings extends Service implements GwbSettingsApi {
   private async persistValueChange(slot: Slot, previous: unknown): Promise<void> {
     try {
       await this.writeSettingsFile()
+      this.notifyWatchers(slot)
     } catch (error) {
       // 凭据可能已落盘而元信息写失败，按磁盘事实恢复此项，不让内存假装成功。
       let persisted: unknown = previous

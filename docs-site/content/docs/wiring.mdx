@@ -353,7 +353,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | 说明书 | `gwb-settings` | 包根 `skills/gwb-settings/` |
 | 事件 | 无 | |
 
-{/* ref file="../plugins/settings/src/index.ts" lines="135-135" hash="a6a99e330b2c" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="156-156" hash="a6a99e330b2c" blob="fd1a447dd1c3" */}
 
 {/* ref file="../plugins/settings/src/index.ts" lines="44-44" hash="c017557656be" blob="321c04cd56e7" */}
 
@@ -371,13 +371,13 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 | `gwbSkills` | `@godcreator/gwb-skills` | 局部注入 | `workspace:^`，标 `optional` | 登记自带的说明书 | 不登记说明书，设置插件照常加载 |
 | `gwbKernel` 的 `dataDir` | 内核（`@godcreator/gwb-kernel-desktop`） | 不写进 `inject`，经 `requireKernel` 取 | `^0.10.0` | 算出本 home 的 settings 与 credentials 文件 | 构造时抛错「ctx.gwbKernel 不在」，插件加载失败 |
 
-{/* ref file="../plugins/settings/src/index.ts" lines="155-155" hash="2bd78485cc1b" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="176-176" hash="2bd78485cc1b" blob="fd1a447dd1c3" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="258-258" hash="aed85aebe511" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="285-285" hash="aed85aebe511" blob="fd1a447dd1c3" */}
 
 {/* ref file="../plugins/settings/package.json" lines="37-37" hash="2546cd7382e6" blob="b4b3a6eef146" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="139-139" hash="f25e479f27e8" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="160-160" hash="f25e479f27e8" blob="fd1a447dd1c3" */}
 
 ### 按名字调用与约定通道
 
@@ -391,9 +391,9 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 **对象与来源各管一件事**：settings 命令只管理普通设置，credentials 命令只管理凭据；命令按位置可操作不同分区，综合界面合并两种列表。命令总线固定的 `via` 只用于限制 `credentials.set/reveal` 的本地输入与查看。插件服务内部 `get` 保持原来的取值契约；跨插件按位置取用改走内部 `credentials.reveal`。这些约定减少常规工具回显，不构成本机文件访问的安全隔离；插件和具有本机执行能力的调试工具仍能访问宿主文件。
 
-{/* ref file="../plugins/settings/src/index.ts" lines="85-85" hash="dfe38b9fe841" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="96-96" hash="dfe38b9fe841" blob="fd1a447dd1c3" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="265-265" hash="401706f1b352" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="292-292" hash="401706f1b352" blob="fd1a447dd1c3" */}
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="11-11" hash="e5b24ce07055" blob="fa8c33f0a6bd" */}
 
@@ -401,7 +401,7 @@ description: 本仓插件各提供哪些服务、命令与事件；各注入了�
 
 {/* ref file="../plugins/settings/src/paths.ts" lines="9-9" hash="ba1e488b6f1d" blob="fa8c33f0a6bd" */}
 
-{/* ref file="../plugins/settings/src/index.ts" lines="163-255" hash="03cfd62d61cd" blob="321c04cd56e7" */}
+{/* ref file="../plugins/settings/src/index.ts" lines="184-282" hash="0686317f4649" blob="fd1a447dd1c3" */}
 
 {/* ref file="../plugins/settings/src/store.ts" lines="172-192" hash="fd838273448a" blob="69d6fedc9da6" */}
 

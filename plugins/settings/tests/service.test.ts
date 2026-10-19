@@ -220,6 +220,7 @@ describe('设置与凭据命令', () => {
       ['settings.get', '@godcreator/gwb-settings'],
       ['settings.set', '@godcreator/gwb-settings'],
       ['settings.delete', '@godcreator/gwb-settings'],
+      ['settings.options', '@godcreator/gwb-settings'],
       ['credentials.list', '@godcreator/gwb-settings'],
       ['credentials.status', '@godcreator/gwb-settings'],
       ['credentials.set', '@godcreator/gwb-settings'],
@@ -357,6 +358,127 @@ describe('设置与凭据命令', () => {
     expect(() => runCommand('settings.get', 'x')).toThrow('参数要是一个对象：{ section, key }')
     expect(() => runCommand('settings.get', { key: 'k' })).toThrow('section 要是个非空字符串')
     expect(() => runCommand('settings.get', { section: 's', key: '' })).toThrow('key 要是个非空字符串')
+  })
+})
+
+describe('带选项的设置', () => {
+  const fonts = ['Sarasa Mono SC', 'Microsoft YaHei']
+  const slot = { section: 'hello', key: 'font' }
+  const defineFont = (settings: GwbSettingsApi): void => {
+    settings.define({ key: 'font', title: '字体', type: 'string', options: async () => fonts })
+  }
+
+  it('settings.all 的行带 hasOptions，settings.options 回清单的副本', async () => {
+    const { root, runCommand } = await bootSettings()
+    await caller(root, HELLO, (s) => {
+      defineFont(s)
+      s.define({ key: 'level', title: '级别', type: 'string' })
+    })
+    await scheduledWriteDone()
+    const rows = runCommand('settings.all', { section: 'hello' }) as SettingView[]
+    expect(rows.find((row) => row.key === 'font')?.hasOptions).toBe(true)
+    expect(rows.find((row) => row.key === 'level')).not.toHaveProperty('hasOptions')
+    const listed = (await runCommand('settings.options', slot, { via: 'mcp' })) as string[]
+    expect(listed).toEqual(fonts)
+    expect(listed).not.toBe(fonts)
+  })
+
+  it('settings.set 与服务的 set 只收清单里的值，delete 不查清单', async () => {
+    const { root, runCommand } = await bootSettings()
+    const { settings } = await caller(root, HELLO, defineFont)
+    expect(await runCommand('settings.set', { ...slot, value: 'Sarasa Mono SC' }, { via: 'mcp' })).toEqual({ ok: true })
+    await expect(runCommand('settings.set', { ...slot, value: 'Sarasa Mono' }, { via: 'mcp' })).rejects.toThrow('"Sarasa Mono" 不在里面；清单用 settings.options 查')
+    await expect(runCommand('settings.set', { ...slot, value: 3 }, { via: 'ui' })).rejects.toThrow('只能填清单里的值')
+    await expect(settings.set('font', 'Comic Sans')).rejects.toThrow('不在里面')
+    expect(settings.get('font')).toBe('Sarasa Mono SC')
+    expect(await runCommand('settings.delete', slot)).toEqual({ ok: true })
+    expect(settings.get('font')).toBeUndefined()
+  })
+
+  it('没有选项的项、没人声明的项 settings.options 都报错', async () => {
+    const { root, runCommand } = await bootSettings()
+    const { fiber } = await caller(root, HELLO, (s) => {
+      defineFont(s)
+      s.define({ key: 'level', title: '级别', type: 'string' })
+    })
+    await expect(runCommand('settings.options', { section: 'hello', key: 'level' })).rejects.toThrow('没有选项')
+    await fiber.dispose()
+    await expect(runCommand('settings.options', slot)).rejects.toThrow('没有选项')
+    await scheduledWriteDone()
+  })
+
+  it('options 只能配在 string 型上', async () => {
+    const { root } = await bootSettings()
+    const { settings } = await caller(root, HELLO)
+    expect(() => settings.define({ key: 'n', title: '数', type: 'number', options: async () => ['1'] })).toThrow("只有 type 为 'string' 的项能配，它是 'number'")
+  })
+})
+
+describe('watch', () => {
+  it('经命令写、自己 set、delete 之后各收到一次 get 会回的值；注销后不再收到', async () => {
+    const { root, runCommand } = await bootSettings()
+    const seen: unknown[] = []
+    let unwatch: (() => void) | undefined
+    const { settings } = await caller(root, HELLO, (s) => {
+      s.define({ key: 'level', title: '级别', type: 'string', default: 'info' })
+      unwatch = s.watch('level', (value) => seen.push(value))
+    })
+    await runCommand('settings.set', { section: 'hello', key: 'level', value: 'debug' }, { via: 'mcp' })
+    await settings.set('level', 'warn')
+    await settings.delete('level')
+    expect(seen).toEqual(['debug', 'warn', 'info'])
+    unwatch!()
+    await settings.set('level', 'error')
+    expect(seen).toEqual(['debug', 'warn', 'info'])
+  })
+
+  it('别的项变了不通知；调用方卸载后自动注销', async () => {
+    const { root, runCommand } = await bootSettings()
+    const seen: unknown[] = []
+    const { fiber } = await caller(root, HELLO, (s) => {
+      s.define({ key: 'level', title: '级别', type: 'string' })
+      s.define({ key: 'other', title: '别的', type: 'string' })
+      s.watch('level', (value) => seen.push(value))
+    })
+    await runCommand('settings.set', { section: 'hello', key: 'other', value: 'x' })
+    expect(seen).toEqual([])
+    await fiber.dispose()
+    await runCommand('settings.set', { section: 'hello', key: 'level', value: 'debug' })
+    expect(seen).toEqual([])
+  })
+
+  it('回调抛错：写入照常成功，warn 写明是谁的回调，别的回调照常收到', async () => {
+    const { root, logs } = await bootSettings()
+    const seen: unknown[] = []
+    const { settings } = await caller(root, HELLO, (s) => {
+      s.define({ key: 'level', title: '级别', type: 'string' })
+      s.watch('level', () => {
+        throw new Error('回调坏了')
+      })
+      s.watch('level', (value) => seen.push(value))
+    })
+    await settings.set('level', 'debug')
+    expect(settings.get('level')).toBe('debug')
+    expect(seen).toEqual(['debug'])
+    expect(textsOf(logs, 'warn')).toContain('home:hello 监听设置 hello.level 的回调出错：Error: 回调坏了')
+  })
+
+  it('写盘失败不通知', async () => {
+    fs.mkdirSync(settingsFile)
+    const { root } = await bootSettings()
+    const seen: unknown[] = []
+    const { settings } = await caller(root, HELLO, (s) => {
+      s.define({ key: 'level', title: '级别', type: 'string' })
+      s.watch('level', (value) => seen.push(value))
+    })
+    await expect(settings.set('level', 'x')).rejects.toThrow()
+    expect(seen).toEqual([])
+  })
+
+  it('只能监听自己声明过的项', async () => {
+    const { root } = await bootSettings()
+    const { settings } = await caller(root, HELLO)
+    expect(() => settings.watch('nope', () => {})).toThrow('home:hello 要监听一项自己没声明过的设置：nope')
   })
 })
 
